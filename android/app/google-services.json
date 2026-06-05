@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "308694397519",
+    "project_id": "testi-app-flutter",
+    "storage_bucket": "testi-app-flutter.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:308694397519:android:08d8b460e8d9d39d95b03a",
+        "android_client_info": {
+          "package_name": "com.airid.testi_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCeH2GsD6-vW3j-2Nz00r8_pJm4XsACbvI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

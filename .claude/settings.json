@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"e:\\\\Projets_CREC\\\\TestiApp\\\\testi_app\" -Recurse -Directory)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Sort-Object)",
+      "PowerShell(tree \"e:\\\\Projets_CREC\\\\TestiApp\\\\testi_app\\\\lib\" -L 2 2>$null)",
+      "Bash(powershell -Command \"\\(Get-Content 'lib\\\\core\\\\router\\\\app_router.dart'\\) -replace '\\\\\\(_, __\\\\\\)', '\\(_, _\\)' | Set-Content 'lib\\\\core\\\\router\\\\app_router.dart' -Encoding utf8\")",
+      "Bash(flutter analyze *)",
+      "Bash(flutter pub *)",
+      "Read(//c/Users/fhoueha/AppData/Local/Pub/Cache/hosted/pub.dev/file_picker-12.0.0-beta.5/lib/**)"
+    ]
+  }
+}

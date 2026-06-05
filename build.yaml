@@ -1,0 +1,10 @@
+targets:
+  $default:
+    builders:
+      # Convertit automatiquement camelCase Dart → snake_case JSON
+      # ex: displayName → display_name, avatarUrl → avatar_url
+      json_serializable:
+        options:
+          field_rename: snake
+          explicit_to_json: true
+          include_if_null: false

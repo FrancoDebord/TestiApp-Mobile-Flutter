@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Facebook App Configuration
+        ══════════════════════════
+        Remplis ces valeurs avec tes identifiants Facebook :
+        1. Va sur https://developers.facebook.com
+        2. Mes applications → Créer une application → Type: Consommateur
+        3. Dans Paramètres → De base :
+              - Copie l'ID de l'application  → facebook_app_id
+              - Copie le Token client         → facebook_client_token
+        4. Le protocole = "fb" + ton App ID  → fb_login_protocol_scheme
+    -->
+    <string name="facebook_app_id">1519758282887552</string>
+    <string name="facebook_client_token">40f309ba70fffb0033672cd24f52421a</string>
+    <string name="fb_login_protocol_scheme">fb1519758282887552</string>
+
+    <!-- Nom de l'application -->
+    <string name="app_name">Témoignages</string>
+</resources>
