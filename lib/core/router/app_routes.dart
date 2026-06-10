@@ -26,6 +26,9 @@ abstract final class AppRoutes {
   static const String category = 'category';
   static const String searchResults = 'search-results';
 
+  // ── Tab: Shorts ─────────────────────────────────────────────────────────
+  static const String shorts = 'shorts';
+
   // ── Tab: Publier ────────────────────────────────────────────────────────
   static const String publish = 'publish';
   static const String publishPreview = 'publish-preview';
@@ -54,6 +57,10 @@ abstract final class AppRoutes {
   // ── Admin (Administrateur only) ──────────────────────────────────────────
   static const String adminDashboard = 'admin-dashboard';
 
+  // ── Bible ────────────────────────────────────────────────────────────────
+  static const String bible       = 'bible';
+  static const String bibleReader = 'bible-reader';
+
   // ── Error ────────────────────────────────────────────────────────────────
   static const String notFound = 'not-found';
 }
@@ -76,9 +83,19 @@ abstract final class AppPaths {
   // Tab roots (relative — used inside ShellRoute branches)
   static const String home = 'home';
   static const String explore = 'explore';
+  static const String shorts = 'shorts';
   static const String publish = 'publish';
   static const String notifications = 'notifications';
   static const String profile = 'profile';
+
+  // Absolute paths for shell tabs
+  static const String homePath = '/home';
+  static const String explorePath = '/explore';
+  static const String biblePath = '/bible';
+  static const String shortsPath = '/shorts';
+  static const String publishPath = '/publish';
+  static const String notificationsPath = '/notifications';
+  static const String profilePath = '/profile';
 
   // Nested under home
   static const String featuredTestimony = 'featured/:id';
@@ -109,6 +126,10 @@ abstract final class AppPaths {
 
   // Admin
   static const String adminDashboard = '/admin';
+
+  // Bible
+  static const String bible       = '/bible';
+  static const String bibleReader = '/bible/:id';
 
   // Error
   static const String notFound = '/404';

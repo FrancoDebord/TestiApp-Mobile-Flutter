@@ -28,7 +28,10 @@ class ModerationScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final stats = ref.watch(moderationStatsProvider);
+    final stats = ref.watch(moderationStatsProvider).value ??
+        const ModerationStats(
+            pending: 0, approvedToday: 0,
+            rejectedToday: 0, totalThisMonth: 0);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),

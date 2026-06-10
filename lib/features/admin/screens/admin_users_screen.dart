@@ -18,7 +18,7 @@ class AdminUsersScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final users = ref.watch(adminUsersProvider);
+    final users = ref.watch(adminUsersListProvider);
     final searchController = TextEditingController(
       text: ref.read(adminUserSearchProvider),
     );

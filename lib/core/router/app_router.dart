@@ -2,8 +2,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../features/auth/screens/simple_register_screen.dart';
+import '../../features/bible/screens/bible_reader_screen.dart';
+import '../../features/bible/screens/bible_screen.dart';
+import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/onboarding_screen.dart';
+import '../../features/auth/screens/register_screen.dart';
 import '../../features/auth/screens/splash_screen.dart';
 import '../../features/error/screens/not_found_screen.dart';
 import '../../features/explore/screens/category_screen.dart';
@@ -141,14 +144,17 @@ List<RouteBase> _buildRoutes() {
       name: AppRoutes.register,
       pageBuilder: (context, state) => AppTransitions.fade(
         state: state,
-        child: const SimpleRegisterScreen(),
+        child: const RegisterScreen(),
       ),
     ),
     // Alias /login â†’ /register
     GoRoute(
       path: '/login',
       name: AppRoutes.login,
-      redirect: (_, _) => '/register',
+      pageBuilder: (context, state) => AppTransitions.fade(
+        state: state,
+        child: const LoginScreen(),
+      ),
     ),
     // ConservÃ© pour rÃ©tro-compatibilitÃ©
     GoRoute(
@@ -326,7 +332,34 @@ List<RouteBase> _buildRoutes() {
           ],
         ),
 
-        // â”€â”€ Branch 2: Publier â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // â”€â”€ Branch 2: Bible â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/bible',
+              name: AppRoutes.bible,
+              pageBuilder: (context, state) => AppTransitions.none(
+                state: state,
+                child: const BibleScreen(),
+              ),
+              routes: [
+                GoRoute(
+                  path: ':id',
+                  name: AppRoutes.bibleReader,
+                  pageBuilder: (context, state) {
+                    final code = state.pathParameters['id']!;
+                    return AppTransitions.slideRight(
+                      state: state,
+                      child: BibleReaderScreen(translationCode: code),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
+
+        // ── Branch 3: Publier ────────────────────────────────────────────────
         StatefulShellBranch(
           routes: [
             GoRoute(

@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:testi_app/core/router/app_routes.dart';
+import 'package:testi_app/l10n/app_localizations.dart';
 
-/// The persistent shell that wraps the 5 bottom-nav tabs.
+/// The persistent shell that wraps the 6 bottom-nav tabs.
 ///
 /// Each branch of the [StatefulShellRoute] maintains its own [Navigator],
 /// so switching tabs preserves each tab's individual back-stack.
+/// Horizontal swipe on the body switches tabs (inner scrollables win the
+/// gesture arena and are not affected).
 class ScaffoldWithBottomNav extends StatelessWidget {
   const ScaffoldWithBottomNav({
     required this.navigationShell,
@@ -14,40 +17,43 @@ class ScaffoldWithBottomNav extends StatelessWidget {
 
   final StatefulNavigationShell navigationShell;
 
-  // Tab metadata ─────────────────────────────────────────────────────────────
+  // Minimum swipe speed (px/s) required to switch tab.
+  static const double _swipeVelocityThreshold = 500;
 
+  // Tab icon metadata (labels resolved at build time via l10n)
   static const List<_TabItem> _tabs = [
     _TabItem(
       index: 0,
-      label: 'Accueil',
       activeIcon: Icons.home_rounded,
       inactiveIcon: Icons.home_outlined,
       initialRoute: AppPaths.home,
     ),
     _TabItem(
       index: 1,
-      label: 'Explorer',
       activeIcon: Icons.explore_rounded,
       inactiveIcon: Icons.explore_outlined,
       initialRoute: AppPaths.explore,
     ),
     _TabItem(
       index: 2,
-      label: 'Publier',
+      activeIcon: Icons.menu_book_rounded,
+      inactiveIcon: Icons.menu_book_outlined,
+      initialRoute: AppPaths.biblePath,
+    ),
+    _TabItem(
+      index: 3,
       activeIcon: Icons.add_circle_rounded,
       inactiveIcon: Icons.add_circle_outline_rounded,
       initialRoute: AppPaths.publish,
     ),
     _TabItem(
-      index: 3,
-      label: 'Notifications',
+      index: 4,
       activeIcon: Icons.notifications_rounded,
       inactiveIcon: Icons.notifications_outlined,
       initialRoute: AppPaths.notifications,
     ),
     _TabItem(
-      index: 4,
-      label: 'Profil',
+      index: 5,
       activeIcon: Icons.person_rounded,
       inactiveIcon: Icons.person_outline_rounded,
       initialRoute: AppPaths.profile,
@@ -67,10 +73,31 @@ class ScaffoldWithBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final currentIndex = navigationShell.currentIndex;
 
+    final labels = [
+      l10n.navHome,
+      l10n.navExplore,
+      'Bible',
+      l10n.navPublish,
+      l10n.navNotifications,
+      l10n.navProfile,
+    ];
+
     return Scaffold(
-      body: navigationShell,
+      body: GestureDetector(
+        onHorizontalDragEnd: (details) {
+          final v = details.primaryVelocity ?? 0;
+          final i = navigationShell.currentIndex;
+          if (v < -_swipeVelocityThreshold && i < _tabs.length - 1) {
+            navigationShell.goBranch(i + 1);
+          } else if (v > _swipeVelocityThreshold && i > 0) {
+            navigationShell.goBranch(i - 1);
+          }
+        },
+        child: navigationShell,
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: currentIndex,
         onDestinationSelected: (index) => _onTabTap(context, index),
@@ -78,7 +105,9 @@ class ScaffoldWithBottomNav extends StatelessWidget {
         indicatorColor: theme.colorScheme.primary.withAlpha(30),
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         elevation: 3,
-        destinations: _tabs.map((tab) {
+        destinations: _tabs.asMap().entries.map((entry) {
+          final tab = entry.value;
+          final label = labels[entry.key];
           return NavigationDestination(
             icon: Icon(
               tab.inactiveIcon,
@@ -88,9 +117,8 @@ class ScaffoldWithBottomNav extends StatelessWidget {
               tab.activeIcon,
               color: theme.colorScheme.primary,
             ),
-            label: tab.label,
-            // Show notification badge on the Notifications tab
-            tooltip: tab.label,
+            label: label,
+            tooltip: label,
           );
         }).toList(),
       ),
@@ -103,14 +131,12 @@ class ScaffoldWithBottomNav extends StatelessWidget {
 class _TabItem {
   const _TabItem({
     required this.index,
-    required this.label,
     required this.activeIcon,
     required this.inactiveIcon,
     required this.initialRoute,
   });
 
   final int index;
-  final String label;
   final IconData activeIcon;
   final IconData inactiveIcon;
   final String initialRoute;

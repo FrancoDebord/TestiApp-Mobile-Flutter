@@ -13,19 +13,8 @@ import '../widgets/video_testimony_card.dart';
 // TrendingScreen
 // ============================================================================
 
-/// "Voir tout" screen — shown when the user taps "Voir tout" in the featured
-/// carousel or trending sections on the home screen.
-///
-/// Widget tree:
-/// DefaultTabController (length: 4)
-///   └─ Scaffold
-///       └─ NestedScrollView
-///           ├─ headerSliverBuilder → SliverAppBar (pinned, TabBar.bottom)
-///           └─ body → TabBarView
-///               ├─ _TestimonyTab (featured)
-///               ├─ _TestimonyTab (sorted by views)
-///               ├─ _TestimonyTab (sorted by createdAt)
-///               └─ _TestimonyTab (sorted by prayers)
+/// "Voir tout" screen — 8 tabs :
+/// À la une · Tendances · Récents · Plus priés · Vidéos · Audios · Textes · Shorts
 class TrendingScreen extends ConsumerWidget {
   const TrendingScreen({super.key});
 
@@ -34,22 +23,25 @@ class TrendingScreen extends ConsumerWidget {
     Tab(text: 'Tendances'),
     Tab(text: 'Récents'),
     Tab(text: 'Plus priés'),
+    Tab(text: 'Vidéos'),
+    Tab(text: 'Audios'),
+    Tab(text: 'Textes'),
+    Tab(text: 'Shorts'),
   ];
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final featured = ref.watch(featuredProvider);
-    final all = ref.watch(feedNotifierProvider);
+    final featured  = ref.watch(featuredProvider);
+    final all       = ref.watch(feedNotifierProvider);
 
-    // Sorted copies — avoid mutating the original lists
-    final byViews = [...all]
-      ..sort((a, b) => b.stats.views.compareTo(a.stats.views));
-
-    final byDate = [...all]
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
-    final byPrayers = [...all]
-      ..sort((a, b) => b.stats.prayers.compareTo(a.stats.prayers));
+    final byViews   = [...all]..sort((a, b) => b.stats.views.compareTo(a.stats.views));
+    final byDate    = [...all]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    final byPrayers = [...all]..sort((a, b) => b.stats.prayers.compareTo(a.stats.prayers));
+    final videos    = byDate.whereType<VideoTestimony>().toList();
+    final audios    = byDate.whereType<AudioTestimony>().toList();
+    final texts     = byDate.whereType<TextTestimony>().toList();
+    // Shorts = vidéos courtes (≤ 60 s)
+    final shorts    = videos.where((v) => v.durationSeconds <= 60).toList();
 
     return DefaultTabController(
       length: _tabs.length,
@@ -71,7 +63,7 @@ class TrendingScreen extends ConsumerWidget {
                 onPressed: () => Navigator.of(context).pop(),
               ),
               title: Text(
-                'Tendances',
+                'Voir tout',
                 style: AppTextStyles.h3.copyWith(fontSize: 18),
               ),
               centerTitle: false,
@@ -101,6 +93,10 @@ class TrendingScreen extends ConsumerWidget {
               _TestimonyTab(testimonies: byViews,  emptyLabel: 'Aucune tendance disponible'),
               _TestimonyTab(testimonies: byDate,   emptyLabel: 'Aucun témoignage récent'),
               _TestimonyTab(testimonies: byPrayers, emptyLabel: 'Aucun témoignage prié'),
+              _TestimonyTab(testimonies: videos,   emptyLabel: 'Aucune vidéo disponible'),
+              _TestimonyTab(testimonies: audios,   emptyLabel: 'Aucun audio disponible'),
+              _TestimonyTab(testimonies: texts,    emptyLabel: 'Aucun texte disponible'),
+              _TestimonyTab(testimonies: shorts,   emptyLabel: 'Aucun short disponible'),
             ],
           ),
         ),

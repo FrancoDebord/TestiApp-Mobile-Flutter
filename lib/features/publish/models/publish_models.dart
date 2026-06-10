@@ -80,13 +80,21 @@ class PublishDraft {
     this.audioPath,
     this.audioDurationSeconds = 0,
     this.audioTranscript = '',
+    this.audioRemoteUrl,
     this.videoPath,
+    this.videoDurationSeconds = 0,
     this.videoTrimStart = Duration.zero,
     this.videoTrimEnd = Duration.zero,
     this.videoThumbnailIndex = 0,
+    this.videoRemoteUrl,
     this.visibility = TestimonyVisibility.public,
     this.consentGiven = false,
     this.status = PublishStatus.draft,
+    this.errorMessage,
+    this.isAuthError = false,
+    this.categoryId,
+    this.isUploadingMedia = false,
+    this.uploadError,
   });
 
   TestimonyFormat? format;
@@ -102,17 +110,27 @@ class PublishDraft {
   String? audioPath;
   int audioDurationSeconds;
   String audioTranscript;
+  String? audioRemoteUrl;
 
   // video
   String? videoPath;
+  int videoDurationSeconds;
   Duration videoTrimStart;
   Duration videoTrimEnd;
   int videoThumbnailIndex;
+  String? videoRemoteUrl;
 
   // publication
   TestimonyVisibility visibility;
   bool consentGiven;
   PublishStatus status;
+  String? errorMessage;
+  bool isAuthError;
+  int? categoryId;
+
+  // upload
+  bool isUploadingMedia;
+  String? uploadError;
 
   PublishDraft copyWith({
     TestimonyFormat? format,
@@ -125,12 +143,20 @@ class PublishDraft {
     int? audioDurationSeconds,
     String? audioTranscript,
     String? videoPath,
+    int? videoDurationSeconds,
     Duration? videoTrimStart,
     Duration? videoTrimEnd,
     int? videoThumbnailIndex,
     TestimonyVisibility? visibility,
     bool? consentGiven,
     PublishStatus? status,
+    bool? isAuthError,
+    int? categoryId,
+    bool? isUploadingMedia,
+    Object? errorMessage = _sentinel,
+    Object? audioRemoteUrl = _sentinel,
+    Object? videoRemoteUrl = _sentinel,
+    Object? uploadError = _sentinel,
   }) {
     return PublishDraft(
       format: format ?? this.format,
@@ -142,13 +168,29 @@ class PublishDraft {
       audioPath: audioPath ?? this.audioPath,
       audioDurationSeconds: audioDurationSeconds ?? this.audioDurationSeconds,
       audioTranscript: audioTranscript ?? this.audioTranscript,
+      audioRemoteUrl: audioRemoteUrl == _sentinel
+          ? this.audioRemoteUrl
+          : audioRemoteUrl as String?,
       videoPath: videoPath ?? this.videoPath,
+      videoDurationSeconds: videoDurationSeconds ?? this.videoDurationSeconds,
       videoTrimStart: videoTrimStart ?? this.videoTrimStart,
       videoTrimEnd: videoTrimEnd ?? this.videoTrimEnd,
       videoThumbnailIndex: videoThumbnailIndex ?? this.videoThumbnailIndex,
+      videoRemoteUrl: videoRemoteUrl == _sentinel
+          ? this.videoRemoteUrl
+          : videoRemoteUrl as String?,
       visibility: visibility ?? this.visibility,
       consentGiven: consentGiven ?? this.consentGiven,
       status: status ?? this.status,
+      isAuthError: isAuthError ?? this.isAuthError,
+      categoryId: categoryId ?? this.categoryId,
+      isUploadingMedia: isUploadingMedia ?? this.isUploadingMedia,
+      errorMessage:
+          errorMessage == _sentinel ? this.errorMessage : errorMessage as String?,
+      uploadError:
+          uploadError == _sentinel ? this.uploadError : uploadError as String?,
     );
   }
 }
+
+const Object _sentinel = Object();

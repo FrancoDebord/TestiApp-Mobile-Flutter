@@ -4,14 +4,18 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../features/home/models/testimony_model.dart';
 import '../../../features/home/widgets/audio_testimony_card.dart';
 import '../../../features/home/widgets/text_testimony_card.dart';
 import '../../../features/home/widgets/video_testimony_card.dart';
+import '../../../features/prayer/screens/group_prayer_sessions_screen.dart';
+import '../../../features/prayer/screens/prayer_requests_screen.dart';
 import '../models/profile_models.dart';
 import '../providers/profile_provider.dart';
 
@@ -49,11 +53,83 @@ class ProfileScreen extends ConsumerWidget {
 
 // ── SliverAppBar hero gradient ─────────────────────────────────────────────
 
-class _ProfileSliverAppBar extends StatelessWidget {
+class _ProfileSliverAppBar extends ConsumerStatefulWidget {
   const _ProfileSliverAppBar({required this.profile});
   final UserProfile profile;
 
-  // Avatar : photo locale > URL réseau > initiales
+  @override
+  ConsumerState<_ProfileSliverAppBar> createState() =>
+      _ProfileSliverAppBarState();
+}
+
+class _ProfileSliverAppBarState extends ConsumerState<_ProfileSliverAppBar> {
+  bool _uploading = false;
+
+  Future<void> _pickAvatar() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 36, height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: Color(0xFFF3E8FF),
+                child: Icon(Icons.photo_library_rounded,
+                    color: AppColors.primary),
+              ),
+              title: const Text('Galerie photos',
+                  style: TextStyle(fontFamily: 'Inter')),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+            ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: Color(0xFFF3E8FF),
+                child: Icon(Icons.camera_alt_rounded,
+                    color: AppColors.primary),
+              ),
+              title: const Text('Prendre une photo',
+                  style: TextStyle(fontFamily: 'Inter')),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (source == null) return;
+
+    final file = await ImagePicker().pickImage(
+      source:       source,
+      maxWidth:     512,
+      maxHeight:    512,
+      imageQuality: 85,
+    );
+    if (file == null || !mounted) return;
+
+    setState(() => _uploading = true);
+    try {
+      await ref
+          .read(profileExtrasProvider.notifier)
+          .updateAvatar(file.path);
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
+
   Widget _buildAvatar(UserProfile p) {
     final localPath = p.extras.avatarPath;
     ImageProvider? bg;
@@ -64,28 +140,58 @@ class _ProfileSliverAppBar extends StatelessWidget {
     } else if (p.avatarUrl != null) {
       bg = NetworkImage(p.avatarUrl!);
     }
-    return CircleAvatar(
-      radius: 44,
-      backgroundColor: Colors.white.withAlpha(35),
-      backgroundImage: bg,
-      child: bg == null
-          ? Text(
-              p.initials,
-              style: const TextStyle(
-                fontFamily: 'Poppins',
-                fontWeight: FontWeight.w700,
-                fontSize: 28,
-                color: Colors.white,
+
+    return GestureDetector(
+      onTap: _pickAvatar,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          CircleAvatar(
+            radius: 44,
+            backgroundColor: Colors.white.withAlpha(35),
+            backgroundImage: bg,
+            child: bg == null
+                ? Text(
+                    p.initials,
+                    style: const TextStyle(
+                      fontFamily:  'Poppins',
+                      fontWeight:  FontWeight.w700,
+                      fontSize:    28,
+                      color:       Colors.white,
+                    ),
+                  )
+                : null,
+          ),
+          // Camera badge
+          Positioned(
+            bottom: 0, right: 0,
+            child: Container(
+              width: 26, height: 26,
+              decoration: BoxDecoration(
+                color:  AppColors.primary,
+                shape:  BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 2),
               ),
-            )
-          : null,
+              child: _uploading
+                  ? const Padding(
+                      padding: EdgeInsets.all(5),
+                      child: CircularProgressIndicator(
+                          color: Colors.white, strokeWidth: 2),
+                    )
+                  : const Icon(Icons.camera_alt_rounded,
+                        color: Colors.white, size: 13),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final profile = widget.profile;
     return SliverAppBar(
-      expandedHeight: 340,   // augmenté pour bio + titre
+      expandedHeight: 340,
       pinned: true,
       backgroundColor: AppColors.primary,
       surfaceTintColor: Colors.transparent,
@@ -115,7 +221,6 @@ class _ProfileSliverAppBar extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.end,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Avatar (photo locale > URL réseau > initiales)
                   _buildAvatar(profile),
                   const SizedBox(height: 12),
                   Text(
@@ -123,30 +228,29 @@ class _ProfileSliverAppBar extends StatelessWidget {
                     style: const TextStyle(
                       fontFamily: 'Poppins',
                       fontWeight: FontWeight.w700,
-                      fontSize: 22,
-                      color: Colors.white,
+                      fontSize:   22,
+                      color:      Colors.white,
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  // Titre (si renseigné)
                   if (profile.extras.title.isNotEmpty) ...[
                     const SizedBox(height: 3),
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 3),
                       decoration: BoxDecoration(
-                        color: Colors.white.withAlpha(25),
+                        color:        Colors.white.withAlpha(25),
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
+                        border:       Border.all(
                             color: Colors.white.withAlpha(60)),
                       ),
                       child: Text(
                         profile.extras.title,
                         style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.white.withAlpha(220),
+                          fontFamily:  'Inter',
+                          fontSize:    11,
+                          fontWeight:  FontWeight.w500,
+                          color:       Colors.white.withAlpha(220),
                         ),
                       ),
                     ),
@@ -159,8 +263,8 @@ class _ProfileSliverAppBar extends StatelessWidget {
                     ].join(' · '),
                     style: TextStyle(
                       fontFamily: 'Inter',
-                      fontSize: 12,
-                      color: Colors.white.withAlpha(190),
+                      fontSize:   12,
+                      color:      Colors.white.withAlpha(190),
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -170,30 +274,31 @@ class _ProfileSliverAppBar extends StatelessWidget {
                       profile.bio!,
                       style: TextStyle(
                         fontFamily: 'Inter',
-                        fontSize: 12,
-                        fontStyle: FontStyle.italic,
-                        color: Colors.white.withAlpha(170),
-                        height: 1.4,
+                        fontSize:   12,
+                        fontStyle:  FontStyle.italic,
+                        color:      Colors.white.withAlpha(170),
+                        height:     1.4,
                       ),
                       textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                      maxLines:  2,
+                      overflow:  TextOverflow.ellipsis,
                     ),
                   ],
                   const SizedBox(height: 14),
                   SizedBox(
                     height: 36,
                     child: OutlinedButton.icon(
-                      onPressed: () => context.pushNamed(AppRoutes.editProfile),
+                      onPressed: () =>
+                          context.pushNamed(AppRoutes.editProfile),
                       icon: const Icon(Icons.edit_rounded,
                           color: Colors.white, size: 15),
-                      label: const Text(
-                        'Modifier le profil',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontFamily: 'Inter',
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
+                      label: Text(
+                        AppLocalizations.of(context).profileEdit,
+                        style: const TextStyle(
+                          color:       Colors.white,
+                          fontFamily:  'Inter',
+                          fontSize:    13,
+                          fontWeight:  FontWeight.w500,
                         ),
                       ),
                       style: OutlinedButton.styleFrom(
@@ -227,19 +332,23 @@ class _StatsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       color: AppColors.surface,
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: Row(
         children: [
-          _StatTile('${profile.testimonyCount}', 'Témoignages',
+          _StatTile('${profile.testimonyCount}', l10n.profileTestimonies,
               Icons.auto_stories_rounded, AppColors.primary),
           Container(width: 1, height: 48, color: AppColors.border),
-          _StatTile(_fmt(profile.likeCount), "J'aime reçus",
-              Icons.favorite_rounded, AppColors.danger),
+          _StatTile(_fmt(profile.followersCount), l10n.profileFollowers,
+              Icons.people_rounded, AppColors.danger),
           Container(width: 1, height: 48, color: AppColors.border),
-          _StatTile(_fmt(profile.prayerCount), 'Prières',
-              Icons.volunteer_activism_rounded, AppColors.secondary),
+          _StatTile(_fmt(profile.followingCount), l10n.profileFollowing,
+              Icons.person_add_rounded, AppColors.secondary),
+          Container(width: 1, height: 48, color: AppColors.border),
+          _StatTile(_fmt(profile.prayerCount), l10n.profilePrayers,
+              Icons.volunteer_activism_rounded, const Color(0xFF0EA5E9)),
         ],
       ),
     );
@@ -512,6 +621,30 @@ class _QuickActions extends StatelessWidget {
             title: 'Témoignages sauvegardés',
             subtitle: 'Vos témoignages mis de côté',
             onTap: () => context.pushNamed(AppRoutes.savedTestimonies),
+          ),
+          const SizedBox(height: 10),
+          _ActionTile(
+            icon: Icons.volunteer_activism_rounded,
+            color: const Color(0xFF0EA5E9),
+            title: 'Requêtes de prière',
+            subtitle: 'Soumettre et intercéder pour les autres',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const PrayerRequestsScreen(),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          _ActionTile(
+            icon: Icons.groups_rounded,
+            color: const Color(0xFF8B5CF6),
+            title: 'Sessions de prière',
+            subtitle: 'Rejoindre ou créer une session collective',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const GroupPrayerSessionsScreen(),
+              ),
+            ),
           ),
           const SizedBox(height: 10),
           _ActionTile(

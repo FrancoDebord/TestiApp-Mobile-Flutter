@@ -1,150 +1,109 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/app_constants.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../services/api_service.dart';
 import '../../moderation/models/moderation_models.dart';
 import '../models/admin_models.dart';
 
-// =============================================================================
-// Stub data — replace bodies with Dio repository calls
-// =============================================================================
+// ============================================================================
+// Helpers : JSON API → modèles admin
+// ============================================================================
 
-final _stubUsers = <AdminUser>[
-  AdminUser(
-    uid: 'u1',
-    displayName: 'Marie Dubois',
-    email: 'marie.dubois@email.com',
-    role: UserRole.utilisateur,
-    status: UserAccountStatus.active,
-    country: 'Côte d\'Ivoire',
-    joinedAt: DateTime(2024, 3, 10),
-  ),
-  AdminUser(
-    uid: 'u2',
-    displayName: 'Jean-Paul Koffi',
-    email: 'jpkoffi@email.com',
-    role: UserRole.utilisateur,
-    status: UserAccountStatus.active,
-    country: 'Cameroun',
-    joinedAt: DateTime(2024, 6, 22),
-  ),
-  AdminUser(
-    uid: 'u3',
-    displayName: 'Esther Nkomo',
-    email: 'esther.nkomo@email.com',
-    role: UserRole.moderateur,
-    status: UserAccountStatus.active,
-    country: 'Congo',
-    joinedAt: DateTime(2023, 11, 5),
-  ),
-  AdminUser(
-    uid: 'u4',
-    displayName: 'Samuel Ouédraogo',
-    email: 'samuel.o@email.com',
-    role: UserRole.utilisateur,
-    status: UserAccountStatus.suspended,
-    country: 'Burkina Faso',
-    joinedAt: DateTime(2024, 1, 18),
-  ),
-  AdminUser(
-    uid: 'u5',
-    displayName: 'Grace Mensah',
-    email: 'grace.mensah@email.com',
-    role: UserRole.utilisateur,
-    status: UserAccountStatus.active,
-    country: 'Ghana',
-    joinedAt: DateTime(2025, 2, 3),
-  ),
-  AdminUser(
-    uid: 'u6',
-    displayName: 'Pierre Batumike',
-    email: 'pierre.b@email.com',
-    role: UserRole.administrateur,
-    status: UserAccountStatus.active,
-    country: 'RDC',
-    joinedAt: DateTime(2023, 5, 14),
-  ),
-];
+AdminMetrics _metricsFromJson(Map<String, dynamic> m) => AdminMetrics(
+      totalUsers:         (m['totalUsers']         as int?)    ?? 0,
+      newUsersToday:      (m['newUsersToday']       as int?)    ?? 0,
+      totalTestimonies:   (m['totalTestimonies']    as int?)    ?? 0,
+      viewsThisMonth:     (m['viewsThisMonth']      as int?)    ?? 0,
+      approvalRate:       (m['approvalRate']        as num?)?.toDouble() ?? 0.0,
+      pendingTestimonies: (m['pendingTestimonies']  as int?)    ?? 0,
+      avgEngagement:      (m['avgEngagement']       as num?)?.toDouble() ?? 0.0,
+      commentsThisMonth:  (m['commentsThisMonth']   as int?)    ?? 0,
+    );
 
-final _stubTestimonies = <PublishedTestimony>[
-  PublishedTestimony(
-    id: 't1',
-    title: 'Comment Dieu m\'a guéri d\'une maladie incurable',
-    authorName: 'Marie Dubois',
-    category: 'Guérison',
-    type: TestimonyType.text,
-    publishedAt: DateTime(2025, 5, 20),
-    views: 1420,
-    likes: 312,
-  ),
-  PublishedTestimony(
-    id: 't2',
-    title: 'Délivrance de la dépendance à l\'alcool',
-    authorName: 'Jean-Paul Koffi',
-    category: 'Délivrance',
-    type: TestimonyType.audio,
-    publishedAt: DateTime(2025, 5, 18),
-    views: 876,
-    likes: 198,
-  ),
-  PublishedTestimony(
-    id: 't3',
-    title: 'Mon mariage restauré après deux ans de séparation',
-    authorName: 'Esther Nkomo',
-    category: 'Mariage',
-    type: TestimonyType.video,
-    publishedAt: DateTime(2025, 5, 15),
-    views: 2310,
-    likes: 507,
-  ),
-];
+AdminUser? _userFromJson(dynamic raw) {
+  try {
+    final m = raw as Map<String, dynamic>;
+    return AdminUser(
+      uid:         m['id']          as String,
+      displayName: m['displayName'] as String? ?? '',
+      email:       m['email']       as String? ?? '',
+      role:        _parseRole(m['role'] as String? ?? 'utilisateur'),
+      status:      _parseStatus(m['status'] as String? ?? 'active'),
+      avatarUrl:   m['avatarUrl']   as String?,
+      country:     m['country']     as String?,
+      joinedAt:    DateTime.tryParse(m['createdAt'] as String? ?? ''),
+    );
+  } catch (_) {
+    return null;
+  }
+}
 
-final _stubCategories = <AppCategory>[
-  AppCategory(
-      id: 'c1', name: 'Guérison', slug: 'guerison', order: 1, testimonyCount: 245),
-  AppCategory(
-      id: 'c2', name: 'Délivrance', slug: 'delivrance', order: 2, testimonyCount: 189),
-  AppCategory(
-      id: 'c3', name: 'Conversion', slug: 'conversion', order: 3, testimonyCount: 312),
-  AppCategory(
-      id: 'c4', name: 'Mariage', slug: 'mariage', order: 4, testimonyCount: 98),
-  AppCategory(
-      id: 'c5', name: 'Famille', slug: 'famille', order: 5, testimonyCount: 134),
-  AppCategory(
-      id: 'c6', name: 'Finances', slug: 'finances', order: 6, testimonyCount: 76),
-  AppCategory(
-      id: 'c7', name: 'Miracles', slug: 'miracles', order: 7, testimonyCount: 421),
-  AppCategory(
-      id: 'c8',
-      name: 'Protection divine',
-      slug: 'protection-divine',
-      order: 8,
-      testimonyCount: 167),
-  AppCategory(
-      id: 'c9', name: 'Ministère', slug: 'ministere', order: 9, testimonyCount: 55),
-  AppCategory(
-      id: 'c10', name: 'Salut', slug: 'salut', order: 10, testimonyCount: 203),
-];
+PublishedTestimony? _testimonyFromJson(dynamic raw) {
+  try {
+    final m       = raw as Map<String, dynamic>;
+    final userMap = m['user'] as Map<String, dynamic>? ?? {};
+    final statsMap= m['stats'] as Map<String, dynamic>? ?? {};
+    return PublishedTestimony(
+      id:          m['id']    as String,
+      title:       m['title'] as String? ?? '',
+      authorName:  userMap['displayName'] as String? ?? '',
+      category:    m['category'] as String? ?? '',
+      type:        _parseType(m['type'] as String? ?? 'text'),
+      publishedAt: DateTime.tryParse(m['createdAt'] as String? ?? '') ?? DateTime.now(),
+      views:       (statsMap['viewsCount'] as int?) ?? 0,
+      likes:       (statsMap['likesCount'] as int?) ?? 0,
+    );
+  } catch (_) {
+    return null;
+  }
+}
 
-// =============================================================================
-// Providers
-// =============================================================================
+UserRole _parseRole(String v) => switch (v) {
+      'administrateur' => UserRole.administrateur,
+      'moderateur'     => UserRole.moderateur,
+      'visiteur'       => UserRole.visiteur,
+      _                => UserRole.utilisateur,
+    };
 
-// ── Metrics ───────────────────────────────────────────────────────────────────
+UserAccountStatus _parseStatus(String v) => switch (v) {
+      'suspended' => UserAccountStatus.suspended,
+      'banned'    => UserAccountStatus.banned,
+      _           => UserAccountStatus.active,
+    };
 
-final adminMetricsProvider = Provider<AdminMetrics>((ref) {
-  return const AdminMetrics(
-    totalUsers: 4_280,
-    newUsersToday: 37,
-    totalTestimonies: 1_900,
-    viewsThisMonth: 128_400,
-    approvalRate: 87.3,
-    pendingTestimonies: 24,
-    avgEngagement: 4.6,
-    commentsThisMonth: 3_210,
-  );
-});
+TestimonyType _parseType(String v) => switch (v) {
+      'audio' => TestimonyType.audio,
+      'video' => TestimonyType.video,
+      _       => TestimonyType.text,
+    };
 
-// ── Users ─────────────────────────────────────────────────────────────────────
+// ============================================================================
+// Métriques — AsyncNotifier
+// ============================================================================
+
+class AdminMetricsNotifier extends AsyncNotifier<AdminMetrics> {
+  @override
+  Future<AdminMetrics> build() async {
+    final api      = ref.read(apiServiceProvider);
+    final response = await api.get<Map<String, dynamic>>(AppConstants.adminStats);
+    return _metricsFromJson(response.data);
+  }
+
+  Future<void> refresh() async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(build);
+  }
+}
+
+final adminMetricsProvider =
+    AsyncNotifierProvider<AdminMetricsNotifier, AdminMetrics>(
+  AdminMetricsNotifier.new,
+);
+
+// ============================================================================
+// Users — AsyncNotifier avec filtre de recherche
+// ============================================================================
 
 class _AdminUserSearchNotifier extends Notifier<String> {
   @override
@@ -157,35 +116,182 @@ final adminUserSearchProvider =
   _AdminUserSearchNotifier.new,
 );
 
-final adminUsersProvider = Provider<List<AdminUser>>((ref) {
-  final query = ref.watch(adminUserSearchProvider).toLowerCase();
-  if (query.isEmpty) return _stubUsers;
-  return _stubUsers.where((u) {
-    return u.displayName.toLowerCase().contains(query) ||
-        u.email.toLowerCase().contains(query);
-  }).toList();
-});
-
-// ── Testimonies ───────────────────────────────────────────────────────────────
-
-final adminTestimoniesProvider = Provider<List<PublishedTestimony>>((ref) {
-  return _stubTestimonies;
-});
-
-// ── Categories ────────────────────────────────────────────────────────────────
-
-class _AdminCategoriesNotifier extends Notifier<List<AppCategory>> {
+class AdminUsersNotifier extends AsyncNotifier<List<AdminUser>> {
   @override
-  List<AppCategory> build() => _stubCategories;
-  void update(List<AppCategory> categories) => state = categories;
+  Future<List<AdminUser>> build() => _fetch('');
+
+  Future<List<AdminUser>> _fetch(String query) async {
+    final api = ref.read(apiServiceProvider);
+    final url = query.isEmpty
+        ? AppConstants.adminUsers
+        : '${AppConstants.adminUsers}?q=${Uri.encodeComponent(query)}';
+    final response = await api.get<List<dynamic>>(url);
+    return response.data
+        .map(_userFromJson)
+        .whereType<AdminUser>()
+        .toList();
+  }
+
+  Future<void> search(String query) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() => _fetch(query));
+  }
+
+  Future<void> banUser(String id) async {
+    final api = ref.read(apiServiceProvider);
+    await api.post<void>(AppConstants.adminBanUser(id));
+    state = AsyncValue.data(
+      state.value?.where((u) => u.uid != id).toList() ?? [],
+    );
+  }
+
+  Future<void> suspendUser(String id) async {
+    final api = ref.read(apiServiceProvider);
+    await api.post<void>(AppConstants.adminSuspendUser(id));
+    state = AsyncValue.data([
+      for (final u in state.value ?? [])
+        if (u.uid == id)
+          AdminUser(
+            uid: u.uid, displayName: u.displayName, email: u.email,
+            role: u.role, status: UserAccountStatus.suspended,
+            avatarUrl: u.avatarUrl, country: u.country, joinedAt: u.joinedAt,
+          )
+        else
+          u,
+    ]);
+  }
+
+  Future<void> activateUser(String id) async {
+    final api = ref.read(apiServiceProvider);
+    await api.post<void>(AppConstants.adminActivateUser(id));
+    state = AsyncValue.data([
+      for (final u in state.value ?? [])
+        if (u.uid == id)
+          AdminUser(
+            uid: u.uid, displayName: u.displayName, email: u.email,
+            role: u.role, status: UserAccountStatus.active,
+            avatarUrl: u.avatarUrl, country: u.country, joinedAt: u.joinedAt,
+          )
+        else
+          u,
+    ]);
+  }
+
+  Future<void> updateRole(String id, UserRole role) async {
+    final api      = ref.read(apiServiceProvider);
+    final roleStr  = switch (role) {
+      UserRole.administrateur => 'administrateur',
+      UserRole.moderateur     => 'moderateur',
+      UserRole.visiteur       => 'visiteur',
+      _                       => 'utilisateur',
+    };
+    await api.put<void>(AppConstants.adminUserRole(id), data: {'role': roleStr});
+    state = AsyncValue.data([
+      for (final u in state.value ?? [])
+        if (u.uid == id)
+          AdminUser(
+            uid: u.uid, displayName: u.displayName, email: u.email,
+            role: role, status: u.status,
+            avatarUrl: u.avatarUrl, country: u.country, joinedAt: u.joinedAt,
+          )
+        else
+          u,
+    ]);
+  }
+}
+
+final adminUsersProvider =
+    AsyncNotifierProvider<AdminUsersNotifier, List<AdminUser>>(
+  AdminUsersNotifier.new,
+);
+
+// Providers dérivés (synchrones) pour les écrans existants
+final adminUsersListProvider = Provider<List<AdminUser>>((ref) {
+  final query = ref.watch(adminUserSearchProvider).toLowerCase();
+  final all   = ref.watch(adminUsersProvider).value ?? const [];
+  if (query.isEmpty) return all;
+  return all
+      .where((u) =>
+          u.displayName.toLowerCase().contains(query) ||
+          u.email.toLowerCase().contains(query))
+      .toList();
+});
+
+// ============================================================================
+// Testimonies admin — FutureProvider
+// ============================================================================
+
+final adminTestimoniesProvider = FutureProvider<List<PublishedTestimony>>((ref) async {
+  final api      = ref.read(apiServiceProvider);
+  final response = await api.get<List<dynamic>>(AppConstants.adminTestimonies);
+  return response.data
+      .map(_testimonyFromJson)
+      .whereType<PublishedTestimony>()
+      .toList();
+});
+
+// ============================================================================
+// Categories — sync Notifier (load from API on init, local update for UI)
+// ============================================================================
+
+AppCategory? _categoryFromJson(dynamic raw) {
+  try {
+    final m = raw as Map<String, dynamic>;
+    return AppCategory(
+      id:             m['id']             as String,
+      name:           m['name']           as String,
+      slug:           m['slug']           as String,
+      order:          (m['order']         as int?) ?? 0,
+      testimonyCount: (m['testimonyCount'] as int?) ?? 0,
+      isActive:       (m['isActive']      as bool?) ?? true,
+    );
+  } catch (_) {
+    return null;
+  }
+}
+
+class AdminCategoriesNotifier extends Notifier<List<AppCategory>> {
+  @override
+  List<AppCategory> build() {
+    Future.microtask(_loadFromApi);
+    return const [];
+  }
+
+  Future<void> _loadFromApi() async {
+    try {
+      final api      = ref.read(apiServiceProvider);
+      final response = await api.get<List<dynamic>>(AppConstants.adminCategories);
+      state = response.data
+          .map(_categoryFromJson)
+          .whereType<AppCategory>()
+          .toList();
+    } catch (_) {}
+  }
+
+  void update(List<AppCategory> categories) {
+    state = categories;
+    () async {
+      try {
+        final api = ref.read(apiServiceProvider);
+        final payload = categories.asMap().entries.map((e) => {
+          'id': e.value.id, 'order': e.key + 1,
+          'name': e.value.name, 'slug': e.value.slug,
+          'is_active': e.value.isActive,
+        }).toList();
+        await api.put<void>(AppConstants.adminCategories, data: {'categories': payload});
+      } catch (_) {}
+    }();
+  }
 }
 
 final adminCategoriesProvider =
-    NotifierProvider<_AdminCategoriesNotifier, List<AppCategory>>(
-  _AdminCategoriesNotifier.new,
+    NotifierProvider<AdminCategoriesNotifier, List<AppCategory>>(
+  AdminCategoriesNotifier.new,
 );
 
-// ── App settings ──────────────────────────────────────────────────────────────
+// ============================================================================
+// App settings
+// ============================================================================
 
 class AppSettingsNotifier extends Notifier<AppSettings> {
   @override
@@ -193,21 +299,32 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
 
   void toggle(String key) {
     state = switch (key) {
-      'maintenanceMode' =>
-        state.copyWith(maintenanceMode: !state.maintenanceMode),
-      'allowNewRegistrations' =>
-        state.copyWith(allowNewRegistrations: !state.allowNewRegistrations),
-      'allowGuestView' =>
-        state.copyWith(allowGuestView: !state.allowGuestView),
-      'requireEmailVerification' =>
-        state.copyWith(requireEmailVerification: !state.requireEmailVerification),
-      'autoModerationEnabled' =>
-        state.copyWith(autoModerationEnabled: !state.autoModerationEnabled),
-      'pushNotificationsEnabled' =>
-        state.copyWith(pushNotificationsEnabled: !state.pushNotificationsEnabled),
-      _ => state,
+      'maintenanceMode'          => state.copyWith(maintenanceMode:          !state.maintenanceMode),
+      'allowNewRegistrations'    => state.copyWith(allowNewRegistrations:    !state.allowNewRegistrations),
+      'allowGuestView'           => state.copyWith(allowGuestView:           !state.allowGuestView),
+      'requireEmailVerification' => state.copyWith(requireEmailVerification: !state.requireEmailVerification),
+      'autoModerationEnabled'    => state.copyWith(autoModerationEnabled:    !state.autoModerationEnabled),
+      'pushNotificationsEnabled' => state.copyWith(pushNotificationsEnabled: !state.pushNotificationsEnabled),
+      _                          => state,
     };
+    // Synchroniser avec l'API (fire-and-forget)
+    () async {
+      try {
+        final api = ref.read(apiServiceProvider);
+        await api.put<void>(AppConstants.adminSettings, data: {key: _boolFromKey(key)});
+      } catch (_) {}
+    }();
   }
+
+  bool _boolFromKey(String key) => switch (key) {
+        'maintenanceMode'          => state.maintenanceMode,
+        'allowNewRegistrations'    => state.allowNewRegistrations,
+        'allowGuestView'           => state.allowGuestView,
+        'requireEmailVerification' => state.requireEmailVerification,
+        'autoModerationEnabled'    => state.autoModerationEnabled,
+        'pushNotificationsEnabled' => state.pushNotificationsEnabled,
+        _                          => false,
+      };
 }
 
 final appSettingsProvider =
@@ -215,7 +332,9 @@ final appSettingsProvider =
   AppSettingsNotifier.new,
 );
 
-// ── Active admin section ──────────────────────────────────────────────────────
+// ============================================================================
+// Active admin section
+// ============================================================================
 
 enum AdminSection {
   users,

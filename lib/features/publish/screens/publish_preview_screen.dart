@@ -1,6 +1,9 @@
 import 'dart:async' show Timer;
 import 'dart:io' show File;
 
+import 'package:video_player/video_player.dart'
+    show VideoPlayerController;
+
 import 'package:audio_waveforms/audio_waveforms.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:just_audio/just_audio.dart';
@@ -12,7 +15,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../../core/providers/categories_provider.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../bible/providers/bible_providers.dart'
+    show bibleVerseToInsertProvider;
 import '../models/publish_models.dart';
 import '../providers/publish_provider.dart';
 import 'video_camera_screen.dart';
@@ -49,7 +55,6 @@ class PublishPreviewScreen extends ConsumerWidget {
         child: Column(
           children: [
             _StepperHeader(step: step, format: format),
-            _WorkflowStatusBar(status: draft.status),
             Expanded(
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 280),
@@ -89,8 +94,6 @@ class PublishPreviewScreen extends ConsumerWidget {
           case TestimonyFormat.video:
             return const _Step2Video();
         }
-      case 3:
-        return const _Step3Preview();
       default:
         return const _Step1Details();
     }
@@ -140,7 +143,7 @@ class _StepperHeader extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Étape $step sur 3',
+                  'Étape $step sur 2',
                   style: const TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 12,
@@ -152,7 +155,7 @@ class _StepperHeader extends StatelessWidget {
           ),
           // Progress dots
           Row(
-            children: List.generate(3, (i) {
+            children: List.generate(2, (i) {
               final active = i + 1 == step;
               final done = i + 1 < step;
               return AnimatedContainer(
@@ -171,103 +174,6 @@ class _StepperHeader extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-// =============================================================================
-// Workflow status bar
-// =============================================================================
-
-class _WorkflowStatusBar extends StatelessWidget {
-  const _WorkflowStatusBar({required this.status});
-
-  final PublishStatus status;
-
-  static const _labels = ['Brouillon', 'Soumis', 'En validation', 'Publié'];
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: AppColors.surface,
-      padding: const EdgeInsets.only(
-          left: 16, right: 16, bottom: 10),
-      child: Row(
-        children: List.generate(PublishStatus.values.length * 2 - 1, (i) {
-          if (i.isOdd) {
-            // connector line
-            final leftIdx = i ~/ 2;
-            final filled = leftIdx < status.index;
-            return Expanded(
-              child: Container(
-                height: 2,
-                color: filled ? AppColors.primary : AppColors.border,
-              ),
-            );
-          }
-          final idx = i ~/ 2;
-          final done = idx < status.index;
-          final current = idx == status.index;
-          return _StatusDot(
-            label: _labels[idx],
-            done: done,
-            current: current,
-          );
-        }),
-      ),
-    );
-  }
-}
-
-class _StatusDot extends StatelessWidget {
-  const _StatusDot({
-    required this.label,
-    required this.done,
-    required this.current,
-  });
-
-  final String label;
-  final bool done;
-  final bool current;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          width: 20,
-          height: 20,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: done || current ? AppColors.primary : AppColors.border,
-            border: Border.all(
-              color: current ? AppColors.primary : Colors.transparent,
-              width: 2,
-            ),
-          ),
-          child: done
-              ? const Icon(Icons.check_rounded,
-                  size: 12, color: Colors.white)
-              : current
-                  ? const Center(
-                      child: CircleAvatar(
-                          radius: 4, backgroundColor: Colors.white))
-                  : null,
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontFamily: 'Inter',
-            fontSize: 9,
-            color:
-                done || current ? AppColors.primary : AppColors.textSecondary,
-            fontWeight:
-                current ? FontWeight.w600 : FontWeight.normal,
-          ),
-        ),
-      ],
     );
   }
 }
@@ -328,7 +234,7 @@ class _Step1DetailsState extends ConsumerState<_Step1Details> {
           _FieldLabel(label: 'Catégorie', required: true),
           const SizedBox(height: 8),
           _CategorySelector(
-            selected: draft.category,
+            selectedSlug: draft.category,
             onChanged: notifier.updateCategory,
           ),
           const SizedBox(height: 20),
@@ -364,9 +270,19 @@ class _Step2TextState extends ConsumerState<_Step2Text> {
   @override
   void initState() {
     super.initState();
-    final draft = ref.read(publishProvider);
-    _bodyCtrl = TextEditingController(text: draft.bodyText);
-    _verseCtrl = TextEditingController(text: draft.bibleVerse);
+    final draft   = ref.read(publishProvider);
+    _bodyCtrl     = TextEditingController(text: draft.bodyText);
+    _verseCtrl    = TextEditingController(text: draft.bibleVerse);
+
+    // Pre-fill verse from Bible reader (bibleVerseToInsertProvider)
+    final pending = ref.read(bibleVerseToInsertProvider);
+    if (pending != null && pending.isNotEmpty) {
+      _verseCtrl.text = pending;
+      ref.read(publishProvider.notifier).updateBibleVerse(pending);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.read(bibleVerseToInsertProvider.notifier).clear();
+      });
+    }
   }
 
   @override
@@ -498,8 +414,9 @@ class _Step2AudioState extends ConsumerState<_Step2Audio> {
     ref.read(audioRecordingProvider.notifier).stopRecording();
 
     if (path != null) {
-      ref.read(publishProvider.notifier).updateAudioPath(path);
-      ref.read(publishProvider.notifier).updateAudioDuration(_elapsed);
+      final notifier = ref.read(publishProvider.notifier);
+      notifier.updateAudioPath(path);
+      notifier.updateAudioDuration(_elapsed);
     }
   }
 
@@ -509,8 +426,8 @@ class _Step2AudioState extends ConsumerState<_Step2Audio> {
     final file = await FilePicker.pickFile(type: FileType.audio);
     final path = file?.path;
     if (path != null && mounted) {
-      ref.read(publishProvider.notifier).updateAudioPath(path);
       ref.read(audioRecordingProvider.notifier).stopRecording();
+      ref.read(publishProvider.notifier).updateAudioPath(path);
     }
   }
 
@@ -521,8 +438,7 @@ class _Step2AudioState extends ConsumerState<_Step2Audio> {
     if (_isRecording) _recorder.stop();
     setState(() { _isRecording = false; _elapsed = 0; });
     ref.read(audioRecordingProvider.notifier).reset();
-    ref.read(publishProvider.notifier).updateAudioPath('');
-    ref.read(publishProvider.notifier).updateAudioDuration(0);
+    ref.read(publishProvider.notifier).clearAudio();
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────
@@ -611,14 +527,43 @@ class _Step2AudioState extends ConsumerState<_Step2Audio> {
 // Step 2 — Video
 // =============================================================================
 
-class _Step2Video extends ConsumerWidget {
+class _Step2Video extends ConsumerStatefulWidget {
   const _Step2Video();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_Step2Video> createState() => _Step2VideoState();
+}
+
+class _Step2VideoState extends ConsumerState<_Step2Video> {
+  final _picker = ImagePicker();
+  Duration _videoDuration = Duration.zero;
+
+  Future<void> _applyVideoPath(String path) async {
+    final notifier = ref.read(publishProvider.notifier);
+
+    final ctrl = VideoPlayerController.file(File(path));
+    try {
+      await ctrl.initialize();
+      final dur = ctrl.value.duration;
+      if (dur > Duration.zero) {
+        notifier.updateVideoDuration(dur.inSeconds);
+        notifier.updateVideoTrim(Duration.zero, dur);
+        if (mounted) setState(() => _videoDuration = dur);
+      }
+    } finally {
+      ctrl.dispose();
+    }
+
+    notifier.updateVideoPath(path);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final draft    = ref.watch(publishProvider);
     final notifier = ref.read(publishProvider.notifier);
-    final picker   = ImagePicker();
+    final total    = _videoDuration > Duration.zero
+        ? _videoDuration
+        : const Duration(seconds: 60);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -628,28 +573,29 @@ class _Step2Video extends ConsumerWidget {
           _VideoCameraPreview(
             videoPath: draft.videoPath,
             onRecord: () async {
-              // Ouvre l'écran caméra in-app et récupère le chemin enregistré
               final String? path = await Navigator.of(context).push<String>(
                 MaterialPageRoute(
                   fullscreenDialog: true,
                   builder: (_) => const VideoCameraScreen(),
                 ),
               );
-              if (path != null) notifier.updateVideoPath(path);
+              if (path != null) await _applyVideoPath(path);
             },
             onImport: () async {
-              final XFile? file = await picker.pickVideo(
+              final XFile? file = await _picker.pickVideo(
                 source: ImageSource.gallery,
               );
-              if (file != null) notifier.updateVideoPath(file.path);
+              if (file != null) await _applyVideoPath(file.path);
             },
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
+
+          const SizedBox(height: 12),
 
           // ── Trim tool ─────────────────────────────────────────────────────
           if (draft.videoPath != null) ...[
             _VideoTrimTool(
-              totalDuration: const Duration(seconds: 60),
+              totalDuration: total,
               trimStart: draft.videoTrimStart,
               trimEnd: draft.videoTrimEnd,
               onChanged: notifier.updateVideoTrim,
@@ -669,165 +615,97 @@ class _Step2Video extends ConsumerWidget {
 }
 
 // =============================================================================
-// Step 3 — Preview & Publication
-// =============================================================================
-
-class _Step3Preview extends ConsumerWidget {
-  const _Step3Preview();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final draft = ref.watch(publishProvider);
-    final notifier = ref.read(publishProvider.notifier);
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Preview card ───────────────────────────────────────────────────
-          Text(
-            'Aperçu',
-            style: const TextStyle(
-              fontFamily: 'Poppins',
-              fontWeight: FontWeight.w600,
-              fontSize: 15,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 12),
-          _TestimonyPreviewCard(draft: draft),
-          const SizedBox(height: 24),
-
-          // ── Visibility toggle ──────────────────────────────────────────────
-          Text(
-            'Visibilité',
-            style: const TextStyle(
-              fontFamily: 'Poppins',
-              fontWeight: FontWeight.w600,
-              fontSize: 15,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 10),
-          _VisibilityToggle(
-            current: draft.visibility,
-            onChanged: notifier.setVisibility,
-          ),
-          const SizedBox(height: 24),
-
-          // ── Consent checkbox ──────────────────────────────────────────────
-          _ConsentCheckbox(
-            value: draft.consentGiven,
-            onChanged: (_) => notifier.toggleConsent(),
-          ),
-          const SizedBox(height: 28),
-
-          // ── Action buttons ─────────────────────────────────────────────────
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: ElevatedButton(
-              onPressed: draft.consentGiven && draft.title.isNotEmpty
-                  ? () async {
-                      await notifier.publish();
-                      if (context.mounted) context.go('/home');
-                    }
-                  : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: AppColors.border,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
-                elevation: 0,
-              ),
-              child: const Text(
-                'Publier',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontWeight: FontWeight.w600,
-                  fontSize: 16,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: OutlinedButton(
-              onPressed: () {
-                notifier.saveDraft();
-                context.pop();
-              },
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.primary,
-                side: const BorderSide(color: AppColors.primary),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
-              ),
-              child: const Text(
-                'Enregistrer brouillon',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontWeight: FontWeight.w600,
-                  fontSize: 15,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// =============================================================================
 // Bottom navigation buttons
 // =============================================================================
 
-class _BottomNavButtons extends ConsumerWidget {
-  // Ne reçoit plus `draft` en prop — regarde publishProvider directement
-  // pour garantir la réactivité immédiate sans dépendre du rebuild parent.
+class _BottomNavButtons extends ConsumerStatefulWidget {
   const _BottomNavButtons({required this.step});
-
   final int step;
 
-  bool _canProceed(
-    PublishDraft draft,
-    AudioRecordingStatus recordingStatus,
-  ) {
-    switch (step) {
+  @override
+  ConsumerState<_BottomNavButtons> createState() => _BottomNavButtonsState();
+}
+
+class _BottomNavButtonsState extends ConsumerState<_BottomNavButtons> {
+  bool _isPublishing = false;
+
+  bool _canProceed(PublishDraft draft, AudioRecordingStatus recordingStatus) {
+    switch (widget.step) {
       case 1:
         return draft.title.trim().isNotEmpty && draft.category != null;
       case 2:
         if (draft.format == TestimonyFormat.text) {
-          // Texte non vide — le minimum de qualité est géré par la modération
           return draft.bodyText.trim().isNotEmpty;
         }
         if (draft.format == TestimonyFormat.audio) {
-          // audioRecordingProvider pilote l'état d'enregistrement ;
-          // audioDurationSeconds est un compteur stub jamais mis à jour
           return recordingStatus == AudioRecordingStatus.finished ||
               draft.audioPath != null;
         }
-        // Vidéo : un fichier doit être sélectionné
         return draft.videoPath != null;
       default:
         return true;
     }
   }
 
+  Future<void> _publish() async {
+    setState(() => _isPublishing = true);
+    try {
+      await ref.read(publishProvider.notifier).publish();
+      if (!mounted) return;
+      final result = ref.read(publishProvider);
+      if (result.isAuthError) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              result.errorMessage ?? 'Session expirée. Reconnecte-toi.',
+              style: const TextStyle(fontFamily: 'Inter', fontSize: 13),
+            ),
+            backgroundColor: const Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10)),
+            margin: const EdgeInsets.all(16),
+            action: SnackBarAction(
+              label: 'Se connecter',
+              textColor: Colors.white,
+              onPressed: () => context.go('/login'),
+            ),
+          ),
+        );
+      } else if (result.errorMessage != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result.errorMessage!,
+                style: const TextStyle(fontFamily: 'Inter', fontSize: 13)),
+            backgroundColor: const Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10)),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      } else {
+        context.go('/home');
+      }
+    } finally {
+      if (mounted) setState(() => _isPublishing = false);
+    }
+  }
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final draft           = ref.watch(publishProvider);
     final recordingStatus = ref.watch(audioRecordingProvider);
     final stepNotifier    = ref.read(publishStepProvider.notifier);
 
-    if (step == 3) return const SizedBox.shrink();
-
-    final canGo = _canProceed(draft, recordingStatus);
+    final canGo      = _canProceed(draft, recordingStatus);
+    final isLastStep = widget.step == 2;
+    final canPublish = isLastStep &&
+        canGo &&
+        draft.title.isNotEmpty &&
+        draft.status != PublishStatus.submitted &&
+        !draft.isUploadingMedia &&
+        !_isPublishing;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
@@ -837,10 +715,10 @@ class _BottomNavButtons extends ConsumerWidget {
       ),
       child: Row(
         children: [
-          if (step > 1)
+          if (widget.step > 1)
             Expanded(
               child: OutlinedButton(
-                onPressed: stepNotifier.previous,
+                onPressed: _isPublishing ? null : stepNotifier.previous,
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.textPrimary,
                   side: const BorderSide(color: AppColors.border),
@@ -854,11 +732,13 @@ class _BottomNavButtons extends ConsumerWidget {
                 ),
               ),
             ),
-          if (step > 1) const SizedBox(width: 12),
+          if (widget.step > 1) const SizedBox(width: 12),
           Expanded(
-            flex: step == 1 ? 1 : 2,
+            flex: widget.step == 1 ? 1 : 2,
             child: ElevatedButton(
-              onPressed: canGo ? stepNotifier.next : null,
+              onPressed: isLastStep
+                  ? (canPublish ? _publish : null)
+                  : (canGo ? stepNotifier.next : null),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
@@ -868,14 +748,21 @@ class _BottomNavButtons extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 elevation: 0,
               ),
-              child: const Text(
-                'Suivant',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontWeight: FontWeight.w600,
-                  fontSize: 15,
-                ),
-              ),
+              child: _isPublishing
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                          color: Colors.white, strokeWidth: 2),
+                    )
+                  : Text(
+                      isLastStep ? 'Publier' : 'Suivant',
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                    ),
             ),
           ),
         ],
@@ -924,19 +811,26 @@ class _FieldLabel extends StatelessWidget {
 
 // ── Category selector ─────────────────────────────────────────────────────────
 
-class _CategorySelector extends StatelessWidget {
+class _CategorySelector extends ConsumerWidget {
   const _CategorySelector({
-    required this.selected,
+    required this.selectedSlug,
     required this.onChanged,
   });
 
-  final String? selected;
-  final ValueChanged<String> onChanged;
+  /// Slug stocké dans le draft (ex: "guerison"). Null si rien sélectionné.
+  final String? selectedSlug;
+  final ValueChanged<CategoryModel> onChanged;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final categories = ref.watch(categoriesListProvider);
+    final selectedCat = selectedSlug != null
+        ? categories.where((c) => c.slug == selectedSlug).firstOrNull
+        : null;
+    final displayName = selectedCat?.name ?? selectedSlug;
+
     return GestureDetector(
-      onTap: () => _showCategorySheet(context),
+      onTap: () => _showCategorySheet(context, categories),
       child: Container(
         height: 52,
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -950,18 +844,18 @@ class _CategorySelector extends StatelessWidget {
             Icon(
               Icons.category_rounded,
               size: 18,
-              color: selected != null
+              color: selectedSlug != null
                   ? AppColors.primary
                   : AppColors.textSecondary,
             ),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                selected ?? 'Sélectionner une catégorie',
+                displayName ?? 'Sélectionner une catégorie',
                 style: TextStyle(
                   fontFamily: 'Inter',
                   fontSize: 14,
-                  color: selected != null
+                  color: selectedSlug != null
                       ? AppColors.textPrimary
                       : AppColors.textSecondary,
                 ),
@@ -975,10 +869,11 @@ class _CategorySelector extends StatelessWidget {
     );
   }
 
-  void _showCategorySheet(BuildContext context) {
+  void _showCategorySheet(
+      BuildContext context, List<CategoryModel> categories) {
     showModalBottomSheet<void>(
       context: context,
-      isScrollControlled: true,          // Permet une hauteur variable
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => DraggableScrollableSheet(
         initialChildSize: 0.6,
@@ -992,7 +887,6 @@ class _CategorySelector extends StatelessWidget {
           ),
           child: Column(
             children: [
-              // Poignée
               const SizedBox(height: 10),
               Container(
                 width: 36, height: 4,
@@ -1019,38 +913,41 @@ class _CategorySelector extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               const Divider(height: 1, color: AppColors.border),
-              // Liste scrollable — plus d'overflow possible
               Expanded(
-                child: ListView(
-                  controller: scrollCtrl,
-                  padding: const EdgeInsets.only(bottom: 20),
-                  children: kTestimonyCategories.map((cat) {
-                    final isSelected = cat == selected;
-                    return ListTile(
-                      title: Text(
-                        cat,
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 14,
-                          color: isSelected
-                              ? AppColors.primary
-                              : AppColors.textPrimary,
-                          fontWeight: isSelected
-                              ? FontWeight.w600
-                              : FontWeight.normal,
-                        ),
+                child: categories.isEmpty
+                    ? const Center(child: CircularProgressIndicator())
+                    : ListView.builder(
+                        controller: scrollCtrl,
+                        padding: const EdgeInsets.only(bottom: 20),
+                        itemCount: categories.length,
+                        itemBuilder: (_, i) {
+                          final cat = categories[i];
+                          final isSelected = cat.slug == selectedSlug;
+                          return ListTile(
+                            title: Text(
+                              cat.name,
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 14,
+                                color: isSelected
+                                    ? AppColors.primary
+                                    : AppColors.textPrimary,
+                                fontWeight: isSelected
+                                    ? FontWeight.w600
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                            trailing: isSelected
+                                ? const Icon(Icons.check_circle_rounded,
+                                    color: AppColors.primary, size: 20)
+                                : null,
+                            onTap: () {
+                              onChanged(cat);
+                              Navigator.of(context).pop();
+                            },
+                          );
+                        },
                       ),
-                      trailing: isSelected
-                          ? const Icon(Icons.check_circle_rounded,
-                              color: AppColors.primary, size: 20)
-                          : null,
-                      onTap: () {
-                        onChanged(cat);
-                        Navigator.of(context).pop();
-                      },
-                    );
-                  }).toList(),
-                ),
               ),
             ],
           ),
@@ -1953,247 +1850,6 @@ class _ThumbnailSelector extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-// ── Testimony preview card ────────────────────────────────────────────────────
-
-class _TestimonyPreviewCard extends StatelessWidget {
-  const _TestimonyPreviewCard({required this.draft});
-
-  final PublishDraft draft;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(10),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Cover
-          Container(
-            height: 140,
-            decoration: BoxDecoration(
-              color: AppColors.primaryLight.withAlpha(40),
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(16)),
-            ),
-            child: const Center(
-              child: Icon(Icons.image_rounded,
-                  size: 40, color: AppColors.primaryLight),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (draft.category != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryLight.withAlpha(30),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      draft.category!,
-                      style: const TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 11,
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                const SizedBox(height: 8),
-                Text(
-                  draft.title.isEmpty ? 'Titre du témoignage' : draft.title,
-                  style: const TextStyle(
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                    color: AppColors.textPrimary,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (draft.bodyText.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    draft.bodyText,
-                    style: const TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 13,
-                      color: AppColors.textSecondary,
-                    ),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    const CircleAvatar(
-                      radius: 14,
-                      backgroundColor: AppColors.primaryLight,
-                      child: Icon(Icons.person_rounded,
-                          size: 16, color: Colors.white),
-                    ),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Vous',
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const Spacer(),
-                    const Icon(Icons.favorite_border_rounded,
-                        size: 16, color: AppColors.textSecondary),
-                    const SizedBox(width: 4),
-                    const Text('0',
-                        style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 12,
-                            color: AppColors.textSecondary)),
-                    const SizedBox(width: 12),
-                    const Icon(Icons.front_hand_outlined,
-                        size: 16, color: AppColors.textSecondary),
-                    const SizedBox(width: 4),
-                    const Text('0',
-                        style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 12,
-                            color: AppColors.textSecondary)),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Visibility toggle ─────────────────────────────────────────────────────────
-
-class _VisibilityToggle extends StatelessWidget {
-  const _VisibilityToggle({
-    required this.current,
-    required this.onChanged,
-  });
-
-  final TestimonyVisibility current;
-  final ValueChanged<TestimonyVisibility> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: TestimonyVisibility.values.map((v) {
-        final selected = v == current;
-        return Expanded(
-          child: GestureDetector(
-            onTap: () => onChanged(v),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              margin: EdgeInsets.only(
-                  right: v == TestimonyVisibility.public ? 8 : 0),
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color: selected ? AppColors.primary : AppColors.surface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: selected ? AppColors.primary : AppColors.border,
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    v == TestimonyVisibility.public
-                        ? Icons.public_rounded
-                        : Icons.lock_rounded,
-                    size: 16,
-                    color: selected ? Colors.white : AppColors.textSecondary,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    v == TestimonyVisibility.public ? 'Publique' : 'Privé',
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: selected ? Colors.white : AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-}
-
-// ── Consent checkbox ──────────────────────────────────────────────────────────
-
-class _ConsentCheckbox extends StatelessWidget {
-  const _ConsentCheckbox({
-    required this.value,
-    required this.onChanged,
-  });
-
-  final bool value;
-  final ValueChanged<bool?> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => onChanged(!value),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 24,
-            height: 24,
-            child: Checkbox(
-              value: value,
-              onChanged: onChanged,
-              activeColor: AppColors.primary,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(4)),
-            ),
-          ),
-          const SizedBox(width: 10),
-          const Expanded(
-            child: Text(
-              'Je certifie que mon témoignage est véridique et que je l\'ai vécu personnellement.',
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 13,
-                color: AppColors.textSecondary,
-                height: 1.4,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

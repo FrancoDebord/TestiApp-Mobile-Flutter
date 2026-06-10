@@ -217,9 +217,9 @@ class _MediaHeader extends StatelessWidget {
                 ? CachedNetworkImage(
                     imageUrl: testimony.thumbnailUrl!,
                     fit: BoxFit.cover,
-                    placeholder: (_, __) => _GradientPlaceholder(
+                    placeholder: (_, _) => _GradientPlaceholder(
                         gradient: testimony.category.gradient),
-                    errorWidget: (_, __, ___) => _GradientPlaceholder(
+                    errorWidget: (_, _, _) => _GradientPlaceholder(
                         gradient: testimony.category.gradient),
                   )
                 : _GradientPlaceholder(gradient: testimony.category.gradient),

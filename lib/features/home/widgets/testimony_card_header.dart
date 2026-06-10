@@ -5,20 +5,101 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../models/testimony_model.dart';
 
+/// Compact author row for content-first card layout.
+/// Avatar (28 px) · Name · timestamp · optional Suivre button.
+class TestimonyAuthorRow extends StatelessWidget {
+  const TestimonyAuthorRow({
+    required this.testimony,
+    this.showFollow = true,
+    super.key,
+  });
+
+  final Testimony testimony;
+  final bool showFollow;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        GestureDetector(
+          onTap: () => context.go('/profile'),
+          child: CircleAvatar(
+            radius: 14,
+            backgroundColor: AppColors.primaryLight.withAlpha(40),
+            backgroundImage: testimony.author.avatarUrl != null
+                ? NetworkImage(testimony.author.avatarUrl!)
+                : null,
+            child: testimony.author.avatarUrl == null
+                ? Text(
+                    testimony.author.displayName.isNotEmpty
+                        ? testimony.author.displayName[0].toUpperCase()
+                        : '?',
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                    ),
+                  )
+                : null,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: GestureDetector(
+            onTap: () => context.go('/profile'),
+            child: RichText(
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              text: TextSpan(
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+                children: [
+                  TextSpan(
+                    text: testimony.author.displayName,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const TextSpan(text: '  ·  '),
+                  TextSpan(text: _timeAgo(testimony.createdAt)),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (showFollow) ...[
+          const SizedBox(width: 8),
+          _FollowButton(onTap: null),
+        ],
+      ],
+    );
+  }
+
+  static String _timeAgo(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inMinutes < 60) return 'il y a ${diff.inMinutes} min';
+    if (diff.inHours < 24) return 'il y a ${diff.inHours}h';
+    return 'il y a ${diff.inDays}j';
+  }
+}
+
+/// Category chip — public so cards can use it directly.
+class CategoryBadge extends StatelessWidget {
+  const CategoryBadge({required this.category, super.key});
+  final TestimonyCategory category;
+
+  @override
+  Widget build(BuildContext context) =>
+      _CategoryBadge(category: category);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 /// Reusable card header: avatar + display name + timestamp + follow button
 /// + optional trailing widget + category chip.
-///
-/// Widget tree:
-/// Column
-///   ├─ Row
-///   │   ├─ CircleAvatar (40 px)
-///   │   ├─ SizedBox
-///   │   ├─ Expanded → Column
-///   │   │   ├─ Text (displayName, labelMedium)
-///   │   │   └─ Text (timeAgo, bodySmall)
-///   │   ├─ _FollowButton
-///   │   └─ [trailing]
-///   └─ SizedBox + _CategoryBadge
 class TestimonyCardHeader extends StatelessWidget {
   const TestimonyCardHeader({
     required this.testimony,

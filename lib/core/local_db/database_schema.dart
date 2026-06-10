@@ -3,7 +3,7 @@ import 'package:sqflite/sqflite.dart';
 /// All CREATE TABLE statements and index definitions.
 /// Version history is managed via onUpgrade.
 abstract final class DatabaseSchema {
-  static const int version = 1;
+  static const int version = 4;
 
   // ── Table names ────────────────────────────────────────────────────────────
   static const tUsers              = 'users';
@@ -17,6 +17,12 @@ abstract final class DatabaseSchema {
   static const tDrafts             = 'drafts';
   static const tSyncCursors        = 'sync_cursors';
   static const tPendingOperations  = 'pending_operations';
+
+  // ── Bible (v2) ─────────────────────────────────────────────────────────────
+  static const tBibleTranslations = 'bible_translations';
+  static const tBibleBooks        = 'bible_books';
+  static const tBibleVerses       = 'bible_verses';
+  static const tBibleHighlights   = 'bible_highlights';
 
   // ── onCreate ───────────────────────────────────────────────────────────────
   static Future<void> onCreate(Database db, int version) async {
@@ -33,6 +39,10 @@ abstract final class DatabaseSchema {
     batch.execute(_createDrafts);
     batch.execute(_createSyncCursors);
     batch.execute(_createPendingOperations);
+    batch.execute(_createBibleTranslations);
+    batch.execute(_createBibleBooks);
+    batch.execute(_createBibleVerses);
+    batch.execute(_createBibleHighlights);
 
     // Indexes
     batch.execute(_idxTestimoniesStatus);
@@ -41,13 +51,31 @@ abstract final class DatabaseSchema {
     batch.execute(_idxNotificationsRecipient);
     batch.execute(_idxCommentsTestimony);
     batch.execute(_idxPendingOpStatus);
+    batch.execute(_idxBibleVersesLookup);
 
     await batch.commit(noResult: true);
   }
 
   static Future<void> onUpgrade(Database db, int oldV, int newV) async {
-    // Future migrations go here:
-    // if (oldV < 2) { await db.execute(...); }
+    if (oldV < 2) {
+      await db.execute(_createBibleTranslations);
+      await db.execute(_createBibleBooks);
+      await db.execute(_createBibleVerses);
+      await db.execute(_idxBibleVersesLookup);
+    }
+    if (oldV < 3) {
+      // Recreate Bible tables with string code as primary key (was integer).
+      await db.execute('DROP TABLE IF EXISTS $tBibleVerses');
+      await db.execute('DROP TABLE IF EXISTS $tBibleBooks');
+      await db.execute('DROP TABLE IF EXISTS $tBibleTranslations');
+      await db.execute(_createBibleTranslations);
+      await db.execute(_createBibleBooks);
+      await db.execute(_createBibleVerses);
+      await db.execute(_idxBibleVersesLookup);
+    }
+    if (oldV < 4) {
+      await db.execute(_createBibleHighlights);
+    }
   }
 
   // ── Tables ─────────────────────────────────────────────────────────────────
@@ -237,6 +265,58 @@ abstract final class DatabaseSchema {
     )
   ''';
 
+  // ── Bible tables (v3 — string code as PK) ────────────────────────────────
+
+  static const _createBibleTranslations = '''
+    CREATE TABLE $tBibleTranslations (
+      code           TEXT PRIMARY KEY,
+      name           TEXT NOT NULL,
+      language       TEXT NOT NULL DEFAULT 'fr',
+      verses_count   INTEGER DEFAULT 0,
+      is_downloaded  INTEGER NOT NULL DEFAULT 0,
+      downloaded_at  TEXT,
+      updated_at     TEXT NOT NULL
+    )
+  ''';
+
+  static const _createBibleBooks = '''
+    CREATE TABLE $tBibleBooks (
+      id                INTEGER PRIMARY KEY AUTOINCREMENT,
+      translation_code  TEXT NOT NULL,
+      book_number       INTEGER NOT NULL,
+      name              TEXT NOT NULL,
+      chapters_count    INTEGER DEFAULT 0,
+      UNIQUE(translation_code, book_number),
+      FOREIGN KEY(translation_code) REFERENCES $tBibleTranslations(code) ON DELETE CASCADE
+    )
+  ''';
+
+  static const _createBibleVerses = '''
+    CREATE TABLE $tBibleVerses (
+      id                INTEGER PRIMARY KEY AUTOINCREMENT,
+      translation_code  TEXT NOT NULL,
+      book_number       INTEGER NOT NULL,
+      chapter_number    INTEGER NOT NULL,
+      verse_number      INTEGER NOT NULL,
+      text              TEXT NOT NULL,
+      UNIQUE(translation_code, book_number, chapter_number, verse_number),
+      FOREIGN KEY(translation_code) REFERENCES $tBibleTranslations(code) ON DELETE CASCADE
+    )
+  ''';
+
+  static const _createBibleHighlights = '''
+    CREATE TABLE $tBibleHighlights (
+      id                INTEGER PRIMARY KEY AUTOINCREMENT,
+      translation_code  TEXT NOT NULL,
+      book_number       INTEGER NOT NULL,
+      chapter_number    INTEGER NOT NULL,
+      verse_number      INTEGER NOT NULL,
+      color             TEXT NOT NULL,
+      created_at        TEXT NOT NULL,
+      UNIQUE(translation_code, book_number, chapter_number, verse_number)
+    )
+  ''';
+
   // ── Indexes ────────────────────────────────────────────────────────────────
 
   static const _idxTestimoniesStatus =
@@ -256,4 +336,7 @@ abstract final class DatabaseSchema {
 
   static const _idxPendingOpStatus =
       'CREATE INDEX idx_pending_op_status ON $tPendingOperations(status, created_at)';
+
+  static const _idxBibleVersesLookup =
+      'CREATE INDEX idx_bible_verses_lookup ON $tBibleVerses(translation_code, book_number, chapter_number)';
 }

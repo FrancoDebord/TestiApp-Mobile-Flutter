@@ -48,21 +48,38 @@ class UserModel {
 
   // ── JSON ─────────────────────────────────────────────────────────────────────
 
-  factory UserModel.fromJson(Map<String, dynamic> j) => UserModel(
-    id:               j['id']               as String,
-    displayName:      j['display_name']     as String? ?? j['name'] as String? ?? '',
-    email:            j['email']            as String? ?? '',
-    phone:            j['phone']            as String? ?? '',
-    avatarUrl:        j['avatar_url']       as String?,
-    country:          j['country']          as String? ?? '',
-    role:             UserRole.fromJson(j['role'] as String?),
-    isEmailVerified:  j['is_email_verified'] as bool? ?? true,
-    testimonyCount:   (j['testimony_count'] as num?)?.toInt() ?? 0,
-    likeCount:        (j['like_count']      as num?)?.toInt() ?? 0,
-    prayerCount:      (j['prayer_count']    as num?)?.toInt() ?? 0,
-    createdAt:        j['created_at']       as String?,
-    updatedAt:        j['updated_at']       as String?,
-  );
+  factory UserModel.fromJson(Map<String, dynamic> j) {
+    // Accepte display_name, name, ou first_name + last_name selon le serveur
+    final first  = (j['first_name'] as String?)?.trim() ?? '';
+    final last   = (j['last_name']  as String?)?.trim() ?? '';
+    final joined = [first, last].where((s) => s.isNotEmpty).join(' ');
+    final dn     = (j['display_name'] as String?)?.trim() ?? '';
+    final nm     = (j['name']         as String?)?.trim() ?? '';
+    final rawEmail = (j['email'] as String?)?.trim() ?? '';
+    final emailPrefix = rawEmail.contains('@') ? rawEmail.split('@').first : '';
+    final displayName = dn.isNotEmpty ? dn
+        : nm.isNotEmpty ? nm
+        : joined.isNotEmpty ? joined
+        : emailPrefix;
+    // ignore: avoid_print
+    if (displayName.isEmpty) print('[UserModel] ⚠ no name fields. Keys=${j.keys.toList()}');
+
+    return UserModel(
+      id:               j['id']               as String,
+      displayName:      displayName,
+      email:            j['email']            as String? ?? '',
+      phone:            j['phone']            as String? ?? '',
+      avatarUrl:        j['avatar_url']       as String?,
+      country:          j['country']          as String? ?? '',
+      role:             UserRole.fromJson(j['role'] as String?),
+      isEmailVerified:  j['is_email_verified'] as bool? ?? true,
+      testimonyCount:   (j['testimony_count'] as num?)?.toInt() ?? 0,
+      likeCount:        (j['like_count']      as num?)?.toInt() ?? 0,
+      prayerCount:      (j['prayer_count']    as num?)?.toInt() ?? 0,
+      createdAt:        j['created_at']       as String?,
+      updatedAt:        j['updated_at']       as String?,
+    );
+  }
 
   Map<String, dynamic> toJson() => {
     'id': id, 'display_name': displayName, 'email': email, 'phone': phone,

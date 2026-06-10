@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/providers/auth_provider.dart';
+import '../providers/auth_notifier.dart';
 import '../../../core/router/app_routes.dart';
+import '../../../services/api_service.dart' show LaravelApiException;
 import '../widgets/auth_widgets.dart';
 
 // =============================================================================
@@ -76,6 +77,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   int _passwordStrength = 0;
   bool _isLoading = false;
   String? _errorMessage;
+
+  Future<void> _signInWithGoogle() async {
+    setState(() { _isLoading = true; _errorMessage = null; });
+    try {
+      await ref.read(authStateProvider.notifier).signInWithGoogle();
+    } catch (e) {
+      if (mounted) setState(() => _errorMessage = e.toString());
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -157,14 +169,24 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     setState(() => _isLoading = true);
     try {
-      await ref.read(authProvider.notifier).signIn(
-            email: _emailController.text.trim(),
-            password: _passwordController.text,
+      await ref.read(authStateProvider.notifier).register(
+            firstName: _firstNameController.text.trim(),
+            lastName:  _lastNameController.text.trim(),
+            email:     _emailController.text.trim(),
+            password:  _passwordController.text,
+            country:   _selectedCountry,
           );
+      // La redirection vers /home est gérée par le router (auth state change)
     } catch (e) {
       if (mounted) {
-        setState(() => _errorMessage =
-            "Impossible de créer le compte. Vérifiez vos informations ou réessayez.");
+        final msg = e is LaravelApiException
+            ? e.displayMessage
+            : e.toString().contains('): ')
+                ? e.toString().substring(e.toString().indexOf('): ') + 3)
+                : e.toString();
+        setState(() => _errorMessage = msg.isNotEmpty
+            ? msg
+            : 'Impossible de créer le compte. Vérifiez vos informations.');
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -382,6 +404,41 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         label: "S'inscrire",
                         isLoading: isLoading,
                         onPressed: isLoading ? null : _submit,
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // Divider "ou".
+                      const AuthOrDivider(),
+
+                      const SizedBox(height: 16),
+
+                      // Google sign-in.
+                      OutlinedButton.icon(
+                        onPressed: isLoading ? null : _signInWithGoogle,
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(48),
+                          side: const BorderSide(
+                              color: Color(0xFFDB4437), width: 1.5),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          backgroundColor:
+                              const Color(0xFFDB4437).withAlpha(12),
+                          foregroundColor: const Color(0xFFDB4437),
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: 12),
+                        ),
+                        icon: const Icon(Icons.g_mobiledata_rounded,
+                            size: 22, color: Color(0xFFDB4437)),
+                        label: const Text(
+                          'Continuer avec Google',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                            color: Color(0xFFDB4437),
+                          ),
+                        ),
                       ),
 
                       const SizedBox(height: 28),

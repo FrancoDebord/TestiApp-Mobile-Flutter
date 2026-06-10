@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/auth_provider.dart' show UserRole;
 import '../models/admin_models.dart';
 import '../providers/admin_provider.dart';
 
@@ -21,7 +21,7 @@ class AdminModeratorsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final allUsers = ref.watch(adminUsersProvider);
+    final allUsers = ref.watch(adminUsersListProvider);
     final moderators =
         allUsers.where((u) => u.role == UserRole.moderateur).toList();
     final candidates =

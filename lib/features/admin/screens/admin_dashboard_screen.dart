@@ -32,7 +32,11 @@ class AdminDashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final metrics = ref.watch(adminMetricsProvider);
+    final metrics = ref.watch(adminMetricsProvider).value ??
+        const AdminMetrics(
+            totalUsers: 0, newUsersToday: 0, totalTestimonies: 0,
+            viewsThisMonth: 0, approvalRate: 0.0, pendingTestimonies: 0,
+            avgEngagement: 0.0, commentsThisMonth: 0);
     final currentSection = ref.watch(adminSectionProvider);
 
     return Scaffold(
@@ -193,7 +197,7 @@ class _SectionNavList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final metrics = ref.watch(adminMetricsProvider);
+    final metrics = ref.watch(adminMetricsProvider).value;
 
     final sections = [
       (
@@ -236,7 +240,7 @@ class _SectionNavList extends ConsumerWidget {
         Icons.settings_outlined,
         'Paramètres',
         'Configuration de l\'app',
-        metrics.pendingTestimonies,
+        metrics?.pendingTestimonies,
       ),
     ];
 

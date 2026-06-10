@@ -1,104 +1,136 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/app_constants.dart';
+import '../../../services/api_service.dart';
 import '../models/moderation_models.dart';
 
-// =============================================================================
-// Stub data — replace with Dio repository calls
-// =============================================================================
+// ============================================================================
+// Helpers : JSON API → modèles de modération
+// ============================================================================
 
-final _stubItems = <ModerationItem>[
-  ModerationItem(
-    id: 'm1',
-    author: const ModerationAuthor(
-      uid: 'u1',
-      displayName: 'Marie Dubois',
-      country: 'Côte d\'Ivoire',
-      avatarUrl: null,
-    ),
-    title: 'Comment Dieu m\'a guéri d\'une maladie incurable après des années de prières',
-    category: 'Guérison',
-    type: TestimonyType.text,
-    status: ModerationStatus.pending,
-    submittedAt: DateTime.now().subtract(const Duration(hours: 2)),
-    contentPreview:
-        'Il y a trois ans, les médecins m\'ont annoncé que je souffrais d\'une maladie rare et incurable. J\'ai pleuré, j\'ai douté, mais j\'ai continué à prier...',
-  ),
-  ModerationItem(
-    id: 'm2',
-    author: const ModerationAuthor(
-      uid: 'u2',
-      displayName: 'Jean-Paul Koffi',
-      country: 'Cameroun',
-      avatarUrl: null,
-    ),
-    title: 'Délivrance de la dépendance à l\'alcool grâce à la prière',
-    category: 'Délivrance',
-    type: TestimonyType.audio,
-    status: ModerationStatus.pending,
-    submittedAt: DateTime.now().subtract(const Duration(hours: 5)),
-    contentPreview:
-        'Pendant dix ans j\'étais esclave de l\'alcool. Ma famille avait perdu espoir. Un soir lors d\'une réunion de prière...',
-  ),
-  ModerationItem(
-    id: 'm3',
-    author: const ModerationAuthor(
-      uid: 'u3',
-      displayName: 'Esther Nkomo',
-      country: 'Congo',
-      avatarUrl: null,
-    ),
-    title: 'Mon mariage restauré après deux ans de séparation',
-    category: 'Mariage',
-    type: TestimonyType.video,
-    status: ModerationStatus.inReview,
-    submittedAt: DateTime.now().subtract(const Duration(hours: 8)),
-    contentPreview:
-        'Mon mari et moi étions séparés depuis deux ans. Les avocats avaient déjà préparé les papiers du divorce...',
-  ),
-  ModerationItem(
-    id: 'm4',
-    author: const ModerationAuthor(
-      uid: 'u4',
-      displayName: 'Samuel Ouédraogo',
-      country: 'Burkina Faso',
-      avatarUrl: null,
-    ),
-    title: 'Dieu a pourvu à tous mes besoins financiers en un seul jour',
-    category: 'Finances',
-    type: TestimonyType.text,
-    status: ModerationStatus.pending,
-    submittedAt: DateTime.now().subtract(const Duration(hours: 12)),
-    contentPreview:
-        'J\'avais des dettes énormes et je ne savais pas comment nourrir mes enfants. J\'ai jeûné trois jours et prié...',
-  ),
-  ModerationItem(
-    id: 'm5',
-    author: const ModerationAuthor(
-      uid: 'u5',
-      displayName: 'Grace Mensah',
-      country: 'Ghana',
-      avatarUrl: null,
-    ),
-    title: 'Protection divine lors d\'un accident de voiture mortel',
-    category: 'Protection divine',
-    type: TestimonyType.text,
-    status: ModerationStatus.inReview,
-    submittedAt: DateTime.now().subtract(const Duration(days: 1)),
-    contentPreview:
-        'C\'était un vendredi soir. Je rentrais du travail quand soudain un camion a percuté ma voiture de plein fouet...',
-  ),
-];
+ModerationItem? _itemFromJson(dynamic raw) {
+  try {
+    final m      = raw as Map<String, dynamic>;
+    final author = m['author'] as Map<String, dynamic>? ?? {};
 
-// =============================================================================
+    return ModerationItem(
+      id:             m['id']             as String,
+      title:          m['title']          as String? ?? '',
+      category:       m['category']       as String? ?? '',
+      type:           _parseType(m['type'] as String? ?? 'text'),
+      status:         _parseStatus(m['status'] as String? ?? 'pending'),
+      submittedAt:    DateTime.tryParse(m['submittedAt'] as String? ?? '') ?? DateTime.now(),
+      contentPreview: m['contentPreview'] as String?,
+      rejectionReason: _parseRejectionReason(m['rejectionReason'] as String?),
+      moderatorNote:  m['moderatorNote']  as String?,
+      author: ModerationAuthor(
+        uid:         author['uid']         as String? ?? '',
+        displayName: author['displayName'] as String? ?? 'Anonyme',
+        country:     author['country']     as String? ?? '',
+        avatarUrl:   author['avatarUrl']   as String?,
+      ),
+    );
+  } catch (_) {
+    return null;
+  }
+}
+
+TestimonyType _parseType(String v) => switch (v) {
+      'audio' => TestimonyType.audio,
+      'video' => TestimonyType.video,
+      _       => TestimonyType.text,
+    };
+
+ModerationStatus _parseStatus(String v) => switch (v) {
+      'in_review' => ModerationStatus.inReview,
+      'approved'  => ModerationStatus.approved,
+      'rejected'  => ModerationStatus.rejected,
+      _           => ModerationStatus.pending,
+    };
+
+RejectionReason? _parseRejectionReason(String? v) => switch (v) {
+      'inappropriate_content' => RejectionReason.inappropriateContent,
+      'false_testimony'       => RejectionReason.falseTestimony,
+      'hate_speech'           => RejectionReason.hateSpeech,
+      'spam'                  => RejectionReason.spam,
+      'other'                 => RejectionReason.other,
+      _                       => null,
+    };
+
+ModerationStats _statsFromJson(Map<String, dynamic> m) => ModerationStats(
+      pending:        (m['pending']        as int?) ?? 0,
+      approvedToday:  (m['approvedToday']  as int?) ?? 0,
+      rejectedToday:  (m['rejectedToday']  as int?) ?? 0,
+      totalThisMonth: (m['totalThisMonth'] as int?) ?? 0,
+    );
+
+// ============================================================================
+// Notifier principal — charge et met à jour les items de modération
+// ============================================================================
+
+class ModerationNotifier extends AsyncNotifier<List<ModerationItem>> {
+  @override
+  Future<List<ModerationItem>> build() => _fetchPending();
+
+  Future<List<ModerationItem>> _fetchPending() async {
+    final api      = ref.read(apiServiceProvider);
+    final response = await api.get<List<dynamic>>(AppConstants.moderationPending);
+    return response.data
+        .map(_itemFromJson)
+        .whereType<ModerationItem>()
+        .toList();
+  }
+
+  Future<void> approve(String id) async {
+    final api = ref.read(apiServiceProvider);
+    await api.post<void>(AppConstants.moderationApprove(id));
+    state = AsyncValue.data(
+      state.value?.where((i) => i.id != id).toList() ?? [],
+    );
+  }
+
+  Future<void> reject(String id, RejectionReason reason, String note) async {
+    final api = ref.read(apiServiceProvider);
+    await api.post<void>(
+      AppConstants.moderationReject(id),
+      data: {
+        'rejection_reason': _rejectionReasonToApi(reason),
+        if (note.isNotEmpty) 'moderator_note': note,
+      },
+    );
+    state = AsyncValue.data(
+      state.value?.where((i) => i.id != id).toList() ?? [],
+    );
+  }
+
+  Future<void> refresh() async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(_fetchPending);
+  }
+
+  static String _rejectionReasonToApi(RejectionReason r) => switch (r) {
+        RejectionReason.inappropriateContent => 'inappropriate_content',
+        RejectionReason.falseTestimony       => 'false_testimony',
+        RejectionReason.hateSpeech           => 'hate_speech',
+        RejectionReason.spam                 => 'spam',
+        RejectionReason.other                => 'other',
+      };
+}
+
+final moderationNotifierProvider =
+    AsyncNotifierProvider<ModerationNotifier, List<ModerationItem>>(
+  ModerationNotifier.new,
+);
+
+// ============================================================================
 // Filter state notifier
-// =============================================================================
+// ============================================================================
 
 enum ModerationFilterTab { pending, inReview, all }
 
 class ModerationFilterNotifier extends Notifier<ModerationFilterTab> {
   @override
   ModerationFilterTab build() => ModerationFilterTab.pending;
-
   void setTab(ModerationFilterTab tab) => state = tab;
 }
 
@@ -107,44 +139,38 @@ final moderationFilterProvider =
   ModerationFilterNotifier.new,
 );
 
-// =============================================================================
-// Items provider (filtered)
-// =============================================================================
+// ============================================================================
+// Items filtrés (dérivé du notifier async)
+// ============================================================================
 
 final moderationItemsProvider = Provider<List<ModerationItem>>((ref) {
   final filter = ref.watch(moderationFilterProvider);
-  switch (filter) {
-    case ModerationFilterTab.pending:
-      return _stubItems
-          .where((i) => i.status == ModerationStatus.pending)
-          .toList();
-    case ModerationFilterTab.inReview:
-      return _stubItems
-          .where((i) => i.status == ModerationStatus.inReview)
-          .toList();
-    case ModerationFilterTab.all:
-      return _stubItems;
-  }
+  final items  = ref.watch(moderationNotifierProvider).value ?? const [];
+
+  return switch (filter) {
+    ModerationFilterTab.pending  => items.where((i) => i.status == ModerationStatus.pending).toList(),
+    ModerationFilterTab.inReview => items.where((i) => i.status == ModerationStatus.inReview).toList(),
+    ModerationFilterTab.all      => items,
+  };
 });
 
-// =============================================================================
+// ============================================================================
 // Stats provider
-// =============================================================================
+// ============================================================================
 
-final moderationStatsProvider = Provider<ModerationStats>((ref) {
-  return const ModerationStats(
-    pending: 24,
-    approvedToday: 12,
-    rejectedToday: 3,
-    totalThisMonth: 89,
-  );
+final moderationStatsProvider =
+    FutureProvider<ModerationStats>((ref) async {
+  final api      = ref.read(apiServiceProvider);
+  final response = await api.get<Map<String, dynamic>>(AppConstants.moderationStats);
+  return _statsFromJson(response.data);
 });
 
-// =============================================================================
-// Single item provider
-// =============================================================================
+// ============================================================================
+// Item par ID (lecture locale dans la liste déjà chargée)
+// ============================================================================
 
 final moderationItemByIdProvider =
     Provider.family<ModerationItem?, String>((ref, id) {
-  return _stubItems.where((i) => i.id == id).firstOrNull;
+  final all = ref.watch(moderationNotifierProvider).value ?? const [];
+  return all.where((i) => i.id == id).firstOrNull;
 });

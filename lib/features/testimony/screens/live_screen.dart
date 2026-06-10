@@ -3,12 +3,10 @@
 // GO LIVE screen — broadcaster perspective.
 //
 // Widget tree (simplified):
-//   LiveScreen (StatefulWidget)
+//   LiveScreen (ConsumerStatefulWidget)
 //   ├─ _SetupView   (pre-live setup form over camera preview)
 //   ├─ _LiveView    (full-screen live session with overlays)
 //   └─ _SummaryView (post-live summary)
-//
-// Backend hook: _startLive() contains a TODO for RTMP / Agora / LiveKit.
 
 import 'dart:async';
 import 'dart:math';
@@ -17,10 +15,17 @@ import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../../../core/local_db/daos/testimony_dao.dart';
+import '../../../core/local_db/database_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../features/auth/providers/auth_notifier.dart' show currentUserProvider;
+import '../../home/models/testimony_model.dart';
+import '../../home/providers/home_providers.dart';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -50,7 +55,13 @@ const List<String> _kStubComments = [
   "Timothée S. : Cela m'encourage tellement !",
 ];
 
-// ─── Data model ───────────────────────────────────────────────────────────────
+// ─── Data models ──────────────────────────────────────────────────────────────
+
+class _LiveViewer {
+  const _LiveViewer({required this.name, required this.initials});
+  final String name;
+  final String initials;
+}
 
 class _LiveComment {
   _LiveComment({
@@ -90,14 +101,14 @@ class _LiveComment {
 // LiveScreen
 // =============================================================================
 
-class LiveScreen extends StatefulWidget {
+class LiveScreen extends ConsumerStatefulWidget {
   const LiveScreen({super.key});
 
   @override
-  State<LiveScreen> createState() => _LiveScreenState();
+  ConsumerState<LiveScreen> createState() => _LiveScreenState();
 }
 
-class _LiveScreenState extends State<LiveScreen>
+class _LiveScreenState extends ConsumerState<LiveScreen>
     with TickerProviderStateMixin, WidgetsBindingObserver {
   // ── Core state ────────────────────────────────────────────────────────────
 
@@ -138,6 +149,23 @@ class _LiveScreenState extends State<LiveScreen>
 
   late AnimationController _pulseCtrl;
   late Animation<double> _pulseAnim;
+
+  // ── Spectateurs (stub) ────────────────────────────────────────────────────
+
+  bool _showViewers = false;
+  final List<_LiveViewer> _viewers = [
+    _LiveViewer(name: 'Marie N.',    initials: 'MN'),
+    _LiveViewer(name: 'Jean P.',     initials: 'JP'),
+    _LiveViewer(name: 'Esther K.',   initials: 'EK'),
+    _LiveViewer(name: 'Samuel B.',   initials: 'SB'),
+    _LiveViewer(name: 'Grace M.',    initials: 'GM'),
+  ];
+
+  // ── Sauvegarde rediffusion ────────────────────────────────────────────────
+
+  bool    _isSaving     = false;
+  bool    _replaySaved  = false;
+  String? _recordingPath;           // chemin du fichier vidéo enregistré
 
   // ── RNG ───────────────────────────────────────────────────────────────────
 
@@ -276,6 +304,15 @@ class _LiveScreenState extends State<LiveScreen>
     _startDurationTimer();
     _startCommentTimer();
     _startViewerTimer();
+
+    // Démarre l'enregistrement vidéo réel (non disponible sur Web)
+    if (!kIsWeb && _cameraInitialized && _cameraCtrl != null) {
+      try {
+        await _cameraCtrl!.startVideoRecording();
+      } catch (_) {
+        // L'appareil ne supporte pas l'enregistrement — le live continue sans capture
+      }
+    }
   }
 
   void _startDurationTimer() {
@@ -419,10 +456,23 @@ class _LiveScreenState extends State<LiveScreen>
 
     if (confirmed == true && mounted) {
       _cancelTimers();
-      setState(() {
-        _isLive = false;
-        _showSummary = true;
-      });
+
+      // Arrête l'enregistrement et récupère le fichier
+      String? path;
+      if (!kIsWeb && (_cameraCtrl?.value.isRecordingVideo ?? false)) {
+        try {
+          final xFile = await _cameraCtrl!.stopVideoRecording();
+          path = xFile.path;
+        } catch (_) {}
+      }
+
+      if (mounted) {
+        setState(() {
+          _isLive        = false;
+          _showSummary   = true;
+          _recordingPath = path;
+        });
+      }
     }
   }
 
@@ -430,12 +480,106 @@ class _LiveScreenState extends State<LiveScreen>
 
   Future<void> _flipCamera() async {
     if (_cameras.length < 2) return;
+
+    // Arrête temporairement l'enregistrement pendant le flip
+    if (!kIsWeb && (_cameraCtrl?.value.isRecordingVideo ?? false)) {
+      try { await _cameraCtrl!.stopVideoRecording(); } catch (_) {}
+    }
+
     final newIndex = (_camIndex + 1) % _cameras.length;
     _camIndex = newIndex;
     await _setupCamera(newIndex);
+
+    // Reprend l'enregistrement si le live est toujours actif
+    if (_isLive && !kIsWeb && _cameraInitialized && _cameraCtrl != null) {
+      try { await _cameraCtrl!.startVideoRecording(); } catch (_) {}
+    }
   }
 
   void _toggleMute() => setState(() => _isMuted = !_isMuted);
+
+  // ── Spectateurs ───────────────────────────────────────────────────────────
+
+  void _toggleViewers() => setState(() => _showViewers = !_showViewers);
+
+  // ── Sauvegarde rediffusion ────────────────────────────────────────────────
+
+  Future<void> _saveLive() async {
+    if (_replaySaved || _isSaving) return;
+    setState(() => _isSaving = true);
+
+    final user = ref.read(currentUserProvider);
+    final now  = DateTime.now();
+    final id   = 'live_${now.millisecondsSinceEpoch}';
+
+    final testimony = VideoTestimony(
+      id:              id,
+      author:          TestimonyAuthor(
+        uid:         user?.id ?? 'anon',
+        displayName: user?.displayName ?? 'Anonyme',
+      ),
+      title:           _titleCtrl.text.trim(),
+      category:        _selectedCategory != null
+          ? TestimonyCategory.values.firstWhere(
+              (c) => c.name.toLowerCase() ==
+                  _selectedCategory!.toLowerCase().replaceAll('é', 'e')
+                      .replaceAll('è', 'e').replaceAll('ê', 'e'),
+              orElse: () => TestimonyCategory.miracles,
+            )
+          : TestimonyCategory.miracles,
+      createdAt:       now,
+      stats:           TestimonyStats(
+        views:    _peakViewers,
+        likes:    0,
+        prayers:  0,
+        comments: _comments.length,
+      ),
+      durationSeconds: _elapsedSeconds,
+      thumbnailUrl: '',
+      mediaPath: _recordingPath,
+    );
+
+    // Insert SQLite
+    try {
+      final dao = TestimonyDao(DatabaseService());
+      await dao.upsert({
+        'id':           id,
+        'user_id':      user?.id ?? 'anon',
+        'author_name':  user?.displayName ?? 'Anonyme',
+        'type':         'video',
+        'title':        testimony.title,
+        'category':     testimony.category.name,
+        'duration_sec': _elapsedSeconds,
+        'views':        _peakViewers,
+        'like_count':   0,
+        'prayer_count': 0,
+        'comment_count': _comments.length,
+        'media_url':    _recordingPath ?? '',
+        'status':       'published',
+        'created_at':   now.toIso8601String(),
+        'updated_at':   now.toIso8601String(),
+      });
+    } catch (_) {
+      // SQLite indisponible — on continue quand même en mémoire
+    }
+
+    // Ajouter au feed en mémoire
+    ref.read(feedNotifierProvider.notifier).addTestimony(testimony);
+
+    if (mounted) {
+      setState(() {
+        _isSaving    = false;
+        _replaySaved = true;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Rediffusion sauvegardée et publiée !'),
+          backgroundColor: AppColors.success,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
+  }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -713,12 +857,28 @@ class _LiveScreenState extends State<LiveScreen>
             ),
           ),
 
-          // 4. RIGHT-SIDE: viewer count badge
+          // 4. RIGHT-SIDE: viewer count badge (tappable → shows list)
           Positioned(
             right: 12,
             top: MediaQuery.of(context).size.height * 0.2,
-            child: _ViewerBadge(count: _viewerCount),
+            child: GestureDetector(
+              onTap: _toggleViewers,
+              child: _ViewerBadge(count: _viewerCount),
+            ),
           ),
+
+          // 4b. Viewers slide-in panel
+          if (_showViewers)
+            Positioned(
+              right: 0,
+              top: MediaQuery.of(context).size.height * 0.12,
+              bottom: 180,
+              width: 200,
+              child: _ViewersPanel(
+                viewers: _viewers,
+                onClose: _toggleViewers,
+              ),
+            ),
 
           // 5. BOTTOM: comments overlay + input
           Positioned(
@@ -754,7 +914,7 @@ class _LiveScreenState extends State<LiveScreen>
                               fontSize: 14,
                             ),
                             decoration: InputDecoration(
-                              hintText: 'Écrire un commentaire…',
+                              hintText: AppLocalizations.of(context).liveCommentHint,
                               hintStyle: const TextStyle(
                                 color: Colors.white54,
                                 fontFamily: 'Inter',
@@ -835,7 +995,11 @@ class _LiveScreenState extends State<LiveScreen>
                   icon: Icons.share_rounded,
                   label: 'Partager',
                   onTap: () {
-                    // TODO: implement share live link
+                    final slug = _titleCtrl.text.trim()
+                        .replaceAll(' ', '_')
+                        .toLowerCase();
+                    final link = 'testi://app/live/$slug';
+                    Clipboard.setData(ClipboardData(text: link));
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Lien copié dans le presse-papiers !'),
@@ -956,35 +1120,44 @@ class _LiveScreenState extends State<LiveScreen>
                       color: AppColors.primary,
                     ),
                   ),
-                  title: const Text(
-                    'Sauvegarder la rediffusion',
+                  title: Text(
+                    _replaySaved
+                        ? '${AppLocalizations.of(context).liveSaveReplay} ✓'
+                        : AppLocalizations.of(context).liveSaveReplay,
                     style: TextStyle(
                       fontFamily: 'Poppins',
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
-                      color: AppColors.textPrimary,
+                      color: _replaySaved
+                          ? AppColors.success
+                          : AppColors.textPrimary,
                     ),
                   ),
-                  subtitle: const Text(
-                    'Rendre votre live disponible en replay',
-                    style: TextStyle(
+                  subtitle: Text(
+                    _replaySaved
+                        ? 'Votre live est maintenant disponible en replay'
+                        : 'Rendre votre live disponible en replay',
+                    style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 12,
                       color: AppColors.textSecondary,
                     ),
                   ),
-                  trailing: const Icon(
-                    Icons.chevron_right_rounded,
-                    color: AppColors.textSecondary,
-                  ),
-                  onTap: () {
-                    // TODO: implement save replay
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Rediffusion sauvegardée ! (stub)'),
-                      ),
-                    );
-                  },
+                  trailing: _isSaving
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Icon(
+                          _replaySaved
+                              ? Icons.check_circle_rounded
+                              : Icons.chevron_right_rounded,
+                          color: _replaySaved
+                              ? AppColors.success
+                              : AppColors.textSecondary,
+                        ),
+                  onTap: (_replaySaved || _isSaving) ? null : _saveLive,
                 ),
               ),
               const SizedBox(height: 32),
@@ -1002,9 +1175,9 @@ class _LiveScreenState extends State<LiveScreen>
                     ),
                   ),
                   icon: const Icon(Icons.arrow_back_rounded),
-                  label: const Text(
-                    'Retour',
-                    style: TextStyle(
+                  label: Text(
+                    AppLocalizations.of(context).commonBack,
+                    style: const TextStyle(
                       fontFamily: 'Poppins',
                       fontWeight: FontWeight.w600,
                       fontSize: 16,
@@ -1207,9 +1380,9 @@ class _SetupPanel extends StatelessWidget {
                 elevation: 4,
               ),
               icon: const Icon(Icons.live_tv_rounded, size: 22),
-              label: const Text(
-                'DÉMARRER LE LIVE',
-                style: TextStyle(
+              label: Text(
+                AppLocalizations.of(context).liveStart,
+                style: const TextStyle(
                   fontFamily: 'Poppins',
                   fontWeight: FontWeight.w700,
                   fontSize: 16,
@@ -1229,26 +1402,96 @@ class _SetupPanel extends StatelessWidget {
 // Sub-widgets
 // =============================================================================
 
-// ── Camera preview ────────────────────────────────────────────────────────────
+// ── Camera preview with pinch-to-zoom ─────────────────────────────────────────
 
-class _CameraPreviewWidget extends StatelessWidget {
+class _CameraPreviewWidget extends StatefulWidget {
   const _CameraPreviewWidget({required this.controller});
   final CameraController controller;
 
   @override
+  State<_CameraPreviewWidget> createState() => _CameraPreviewWidgetState();
+}
+
+class _CameraPreviewWidgetState extends State<_CameraPreviewWidget> {
+  double _currentZoom = 1.0;
+  double _baseZoom    = 1.0;
+  double _minZoom     = 1.0;
+  double _maxZoom     = 8.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadZoomBounds();
+  }
+
+  Future<void> _loadZoomBounds() async {
+    try {
+      final min = await widget.controller.getMinZoomLevel();
+      final max = await widget.controller.getMaxZoomLevel();
+      if (mounted) setState(() { _minZoom = min; _maxZoom = max; });
+    } catch (_) {}
+  }
+
+  void _handleScaleStart(ScaleStartDetails _) {
+    _baseZoom = _currentZoom;
+  }
+
+  Future<void> _handleScaleUpdate(ScaleUpdateDetails details) async {
+    final zoom = (_baseZoom * details.scale).clamp(_minZoom, _maxZoom);
+    if ((zoom - _currentZoom).abs() < 0.01) return;
+    setState(() => _currentZoom = zoom);
+    try {
+      await widget.controller.setZoomLevel(zoom);
+    } catch (_) {}
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final camRatio = controller.value.aspectRatio;
-        final screenRatio = constraints.maxWidth / constraints.maxHeight;
-        final scale = screenRatio < camRatio
-            ? constraints.maxHeight * camRatio / constraints.maxWidth
-            : constraints.maxWidth / (constraints.maxHeight * camRatio);
-        return Transform.scale(
-          scale: scale,
-          child: Center(child: CameraPreview(controller)),
-        );
-      },
+    return GestureDetector(
+      onScaleStart:  _handleScaleStart,
+      onScaleUpdate: _handleScaleUpdate,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Cover: fills entire screen in portrait, slight crop on sides
+          SizedBox.expand(
+            child: FittedBox(
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+              child: SizedBox(
+                width: 1,
+                height: 1 / widget.controller.value.aspectRatio,
+                child: CameraPreview(widget.controller),
+              ),
+            ),
+          ),
+          // Zoom indicator (shows briefly when user pinches)
+          if (_currentZoom > _minZoom + 0.05)
+            Positioned(
+              bottom: 160,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${_currentZoom.toStringAsFixed(1)}×',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -1289,9 +1532,9 @@ class _LiveBadge extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 6),
-          const Text(
-            'EN DIRECT',
-            style: TextStyle(
+          Text(
+            AppLocalizations.of(context).liveBadge,
+            style: const TextStyle(
               fontFamily: 'Poppins',
               fontWeight: FontWeight.w700,
               fontSize: 11,
@@ -1516,6 +1759,99 @@ class _CircleButton extends StatelessWidget {
           border: Border.all(color: Colors.white24),
         ),
         child: Icon(icon, color: Colors.white, size: 22),
+      ),
+    );
+  }
+}
+
+// ── Viewers side panel ────────────────────────────────────────────────────────
+
+class _ViewersPanel extends StatelessWidget {
+  const _ViewersPanel({required this.viewers, required this.onClose});
+
+  final List<_LiveViewer> viewers;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.black.withAlpha(200),
+        borderRadius: const BorderRadius.horizontal(left: Radius.circular(16)),
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 6, 6),
+            child: Row(
+              children: [
+                const Text(
+                  'En ligne',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+                const Spacer(),
+                GestureDetector(
+                  onTap: onClose,
+                  child: const Icon(Icons.close_rounded,
+                      color: Colors.white54, size: 18),
+                ),
+              ],
+            ),
+          ),
+          const Divider(color: Colors.white12, height: 1),
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              itemCount: viewers.length,
+              itemBuilder: (_, i) {
+                final v = viewers[i];
+                return Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 5),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withAlpha(180),
+                          shape: BoxShape.circle,
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          v.initials,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          v.name,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontFamily: 'Inter',
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

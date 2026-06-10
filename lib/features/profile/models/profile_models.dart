@@ -75,6 +75,8 @@ class UserProfile {
     required this.testimonyCount,
     required this.likeCount,
     required this.prayerCount,
+    this.followersCount = 0,
+    this.followingCount = 0,
     this.bio,
     this.avatarUrl,
     this.isPrivate = false,
@@ -88,6 +90,8 @@ class UserProfile {
   final int          testimonyCount;
   final int          likeCount;
   final int          prayerCount;
+  final int          followersCount;
+  final int          followingCount;
   final String?      bio;
   final String?      avatarUrl;
   final bool         isPrivate;

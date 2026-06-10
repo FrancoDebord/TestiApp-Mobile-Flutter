@@ -1,91 +1,50 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/app_constants.dart';
+import '../../../services/api_service.dart';
 import '../models/notification_models.dart';
 
-// =============================================================================
-// Stub data — replace with Dio repository calls
-// =============================================================================
+// ============================================================================
+// Helper : JSON API → AppNotification
+// ============================================================================
 
-final _now = DateTime.now();
+AppNotification? _fromJson(dynamic raw) {
+  try {
+    final m = raw as Map<String, dynamic>;
+    return AppNotification(
+      id:                   m['id']             as String,
+      type:                 _parseType(m['type'] as String? ?? ''),
+      actorName:            m['actorName']      as String? ?? '',
+      testimonyTitle:       m['testimonyTitle'] as String? ?? '',
+      createdAt:            DateTime.tryParse(m['createdAt'] as String? ?? '') ?? DateTime.now(),
+      actorAvatarUrl:       m['actorAvatar']    as String?,
+      isRead:               m['isRead']         as bool? ?? false,
+    );
+  } catch (_) {
+    return null;
+  }
+}
 
-final _stubNotifications = <AppNotification>[
-  // Today
-  AppNotification(
-    id: 'n1',
-    type: NotificationType.comment,
-    actorName: 'Marie Dubois',
-    testimonyTitle: 'Ma guérison miraculeuse',
-    createdAt: _now.subtract(const Duration(minutes: 5)),
-    isRead: false,
-  ),
-  AppNotification(
-    id: 'n2',
-    type: NotificationType.prayer,
-    actorName: 'Jean-Paul Koffi',
-    testimonyTitle: 'Délivrance de l\'addiction',
-    createdAt: _now.subtract(const Duration(minutes: 23)),
-    isRead: false,
-  ),
-  AppNotification(
-    id: 'n3',
-    type: NotificationType.like,
-    actorName: 'Esther Nkomo',
-    testimonyTitle: 'Mon mariage restauré',
-    createdAt: _now.subtract(const Duration(hours: 1)),
-    isRead: false,
-  ),
-  AppNotification(
-    id: 'n4',
-    type: NotificationType.approved,
-    actorName: 'Modérateur',
-    testimonyTitle: 'Protection divine sur la route',
-    createdAt: _now.subtract(const Duration(hours: 3)),
-    isRead: true,
-  ),
-  // Yesterday
-  AppNotification(
-    id: 'n5',
-    type: NotificationType.comment,
-    actorName: 'Samuel Ouédraogo',
-    testimonyTitle: 'Finances rétablies par la foi',
-    createdAt: _now.subtract(const Duration(hours: 26)),
-    isRead: true,
-  ),
-  AppNotification(
-    id: 'n6',
-    type: NotificationType.newFollowedTestimony,
-    actorName: 'Grace Mensah',
-    testimonyTitle: 'Conversion de mon frère',
-    createdAt: _now.subtract(const Duration(hours: 30)),
-    isRead: true,
-  ),
-  // This week
-  AppNotification(
-    id: 'n7',
-    type: NotificationType.pendingCorrection,
-    actorName: 'Modérateur',
-    testimonyTitle: 'Miracle de guérison',
-    createdAt: _now.subtract(const Duration(days: 3)),
-    isRead: true,
-  ),
-  AppNotification(
-    id: 'n8',
-    type: NotificationType.prayer,
-    actorName: 'Abigail Mensah',
-    testimonyTitle: 'Bénédiction familiale',
-    createdAt: _now.subtract(const Duration(days: 4)),
-    isRead: true,
-  ),
-];
+NotificationType _parseType(String v) => switch (v) {
+      'like'                  => NotificationType.like,
+      'comment'               => NotificationType.comment,
+      'reply'                 => NotificationType.comment,
+      'mention'               => NotificationType.comment,
+      'testimony_approved'    => NotificationType.approved,
+      'testimony_rejected'    => NotificationType.pendingCorrection,
+      'pending_correction'    => NotificationType.pendingCorrection,
+      'new_followed_testimony'=> NotificationType.newFollowedTestimony,
+      'prayer'                => NotificationType.prayer,
+      _                       => NotificationType.like,
+    };
 
-// =============================================================================
+// ============================================================================
 // Filter notifier
-// =============================================================================
+// ============================================================================
 
 class NotificationFilterNotifier extends Notifier<NotificationFilterTab> {
   @override
   NotificationFilterTab build() => NotificationFilterTab.all;
-
   void setTab(NotificationFilterTab tab) => state = tab;
 }
 
@@ -94,59 +53,79 @@ final notificationFilterProvider =
   NotificationFilterNotifier.new,
 );
 
-// =============================================================================
-// Notifications list notifier (marks read, etc.)
-// =============================================================================
+// ============================================================================
+// Notifications list notifier — chargé depuis l'API
+// ============================================================================
 
-class NotificationsNotifier extends Notifier<List<AppNotification>> {
+class NotificationsNotifier extends AsyncNotifier<List<AppNotification>> {
   @override
-  List<AppNotification> build() => List.unmodifiable(_stubNotifications);
+  Future<List<AppNotification>> build() => _fetchFromApi();
 
-  void markRead(String id) {
-    state = [
-      for (final n in state)
-        if (n.id == id) n.copyWith(isRead: true) else n,
-    ];
+  Future<List<AppNotification>> _fetchFromApi() async {
+    final api      = ref.read(apiServiceProvider);
+    final response = await api.get<List<dynamic>>(AppConstants.notifications);
+    return response.data
+        .map(_fromJson)
+        .whereType<AppNotification>()
+        .toList();
   }
 
-  void markAllRead() {
-    state = [for (final n in state) n.copyWith(isRead: true)];
+  Future<void> markRead(String id) async {
+    // Mise à jour optimiste locale
+    state = AsyncValue.data([
+      for (final n in state.value ?? [])
+        if (n.id == id) n.copyWith(isRead: true) else n,
+    ]);
+    // Appel API (fire-and-forget)
+    try {
+      final api = ref.read(apiServiceProvider);
+      await api.post<void>(AppConstants.notificationRead(id));
+    } catch (_) {}
+  }
+
+  Future<void> markAllRead() async {
+    state = AsyncValue.data([
+      for (final n in state.value ?? []) n.copyWith(isRead: true),
+    ]);
+    try {
+      final api = ref.read(apiServiceProvider);
+      await api.post<void>(AppConstants.notificationsReadAll);
+    } catch (_) {}
+  }
+
+  Future<void> refresh() async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(_fetchFromApi);
   }
 }
 
 final notificationsNotifierProvider =
-    NotifierProvider<NotificationsNotifier, List<AppNotification>>(
+    AsyncNotifierProvider<NotificationsNotifier, List<AppNotification>>(
   NotificationsNotifier.new,
 );
 
-// =============================================================================
+// ============================================================================
 // Filtered list provider
-// =============================================================================
+// ============================================================================
 
-final filteredNotificationsProvider =
-    Provider<List<AppNotification>>((ref) {
+final filteredNotificationsProvider = Provider<List<AppNotification>>((ref) {
   final filter = ref.watch(notificationFilterProvider);
-  final all = ref.watch(notificationsNotifierProvider);
+  final all    = ref.watch(notificationsNotifierProvider).value ?? const [];
 
-  switch (filter) {
-    case NotificationFilterTab.all:
-      return all;
-    case NotificationFilterTab.comments:
-      return all.where((n) => n.isCommentType).toList();
-    case NotificationFilterTab.reactions:
-      return all.where((n) => n.isReactionType).toList();
-    case NotificationFilterTab.system:
-      return all.where((n) => n.isSystemType).toList();
-  }
+  return switch (filter) {
+    NotificationFilterTab.all       => all,
+    NotificationFilterTab.comments  => all.where((n) => n.isCommentType).toList(),
+    NotificationFilterTab.reactions => all.where((n) => n.isReactionType).toList(),
+    NotificationFilterTab.system    => all.where((n) => n.isSystemType).toList(),
+  };
 });
 
-// =============================================================================
+// ============================================================================
 // Unread count (used by bottom-nav badge)
-// =============================================================================
+// ============================================================================
 
 final unreadCountProvider = Provider<int>((ref) {
-  return ref
-      .watch(notificationsNotifierProvider)
+  return (ref.watch(notificationsNotifierProvider).value ?? const [])
       .where((n) => !n.isRead)
       .length;
 });

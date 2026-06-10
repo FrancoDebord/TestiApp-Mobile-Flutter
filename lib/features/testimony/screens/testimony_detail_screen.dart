@@ -3,14 +3,18 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
 
+import '../../../core/app_constants.dart';
 import '../../../core/local_db/daos/comment_dao.dart';
 import '../../../core/local_db/database_service.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../services/api_service.dart' show apiServiceProvider;
+import '../../../shared/models/comment_model.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../features/auth/providers/auth_notifier.dart'
     show currentUserProvider;
 import '../../../features/home/models/testimony_model.dart';
 import '../../../features/home/providers/home_providers.dart';
+import '../../../l10n/app_localizations.dart';
 import 'audio_player_screen.dart';
 import 'video_player_screen.dart';
 
@@ -22,14 +26,13 @@ class _LocalComment {
     required this.authorName,
     required this.body,
     required this.createdAt,
-    this.likes = 0,
   });
 
   final String id;
   final String authorName;
   final String body;
   final DateTime createdAt;
-  final int likes;
+  final int likes = 0;
 
   String get initials {
     final parts = authorName.trim().split(' ');
@@ -46,6 +49,13 @@ class _LocalComment {
     if (diff.inHours < 24) return 'il y a ${diff.inHours}h';
     return 'il y a ${diff.inDays}j';
   }
+
+  factory _LocalComment.fromModel(CommentModel m) => _LocalComment(
+    id:         m.id,
+    authorName: m.user?.displayName ?? 'Anonyme',
+    body:       m.text,
+    createdAt:  DateTime.tryParse(m.createdAt ?? '') ?? DateTime.now(),
+  );
 }
 
 // ============================================================================
@@ -122,51 +132,129 @@ class _TestimonyDetailScreenState
   }
 
   Future<void> _loadComments() async {
+    final dao = CommentDao(DatabaseService());
+
+    // 1. Affichage immédiat depuis SQLite
     try {
-      final dao  = CommentDao(DatabaseService());
       final rows = await dao.getByTestimony(widget.testimonyId);
-      final list = rows.map((r) => _LocalComment(
-        id:         r['id'] as String,
-        authorName: r['author_name'] as String? ?? 'Anonyme',
-        body:       r['body'] as String? ?? '',
-        createdAt:  DateTime.tryParse(r['created_at'] as String? ?? '') ??
-                    DateTime.now(),
-      )).toList();
-      if (mounted) setState(() { _comments = list; _loadingComments = false; });
+      if (rows.isNotEmpty && mounted) {
+        setState(() {
+          _comments = rows.map((r) => _LocalComment(
+            id:         r['id'] as String,
+            authorName: r['author_name'] as String? ?? 'Anonyme',
+            body:       r['body'] as String? ?? '',
+            createdAt:  DateTime.tryParse(r['created_at'] as String? ?? '') ??
+                        DateTime.now(),
+          )).toList();
+          _loadingComments = false;
+        });
+      }
+    } catch (_) {}
+
+    // 2. Synchronisation depuis le serveur
+    try {
+      final api      = ref.read(apiServiceProvider);
+      final response = await api.get<dynamic>(
+        AppConstants.testimonyComments(widget.testimonyId),
+      );
+      final raw   = response.data;
+      final items = raw is List
+          ? raw
+          : raw is Map ? (raw['data'] as List? ?? []) : <dynamic>[];
+
+      final apiList = items
+          .whereType<Map>()
+          .map((e) => CommentModel.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+
+      if (mounted) {
+        setState(() {
+          _comments        = apiList.map(_LocalComment.fromModel).toList();
+          _loadingComments = false;
+        });
+      }
+
+      // Cache dans SQLite
+      for (final c in apiList) {
+        await dao.insert({
+          'id':           c.id,
+          'testimony_id': widget.testimonyId,
+          'user_id':      c.userId,
+          'author_name':  c.user?.displayName ?? '',
+          'parent_id':    c.parentId,
+          'body':         c.text,
+          'likes':        c.likesCount,
+          'reply_count':  c.repliesCount,
+          'created_at':   c.createdAt ?? DateTime.now().toIso8601String(),
+          'updated_at':   c.updatedAt ?? DateTime.now().toIso8601String(),
+          'synced_at':    DateTime.now().toIso8601String(),
+        });
+      }
     } catch (_) {
       if (mounted) setState(() => _loadingComments = false);
     }
   }
 
   Future<void> _addComment(String text) async {
-    final user = ref.read(currentUserProvider);
+    final user       = ref.read(currentUserProvider);
     final authorName = user?.displayName ?? 'Vous';
-    final now = DateTime.now();
-    final id  = 'comment_${now.millisecondsSinceEpoch}';
-
-    final newComment = _LocalComment(
-      id: id, authorName: authorName, body: text, createdAt: now,
-    );
+    final now        = DateTime.now();
+    final tempId     = 'tmp_${now.millisecondsSinceEpoch}';
+    final dao        = CommentDao(DatabaseService());
 
     // Optimistic UI
-    setState(() => _comments = [..._comments, newComment]);
+    setState(() => _comments = [
+      ..._comments,
+      _LocalComment(id: tempId, authorName: authorName, body: text, createdAt: now),
+    ]);
 
-    // SQLite
+    // Envoi au serveur
     try {
-      final dao = CommentDao(DatabaseService());
+      final api      = ref.read(apiServiceProvider);
+      final response = await api.post<Map<String, dynamic>>(
+        AppConstants.testimonyComments(widget.testimonyId),
+        data: {'text': text},
+      );
+      final saved = CommentModel.fromJson(response.data);
+
+      // Remplacer le commentaire temporaire par la version serveur
+      if (mounted) {
+        setState(() {
+          _comments = [
+            ..._comments.where((c) => c.id != tempId),
+            _LocalComment.fromModel(saved),
+          ];
+        });
+      }
+
       await dao.insert({
-        'id':           id,
+        'id':           saved.id,
         'testimony_id': widget.testimonyId,
-        'user_id':      user?.id ?? 'anon',
-        'author_name':  authorName,
-        'body':         text,
+        'user_id':      saved.userId,
+        'author_name':  saved.user?.displayName ?? authorName,
+        'parent_id':    saved.parentId,
+        'body':         saved.text,
         'likes':        0,
         'reply_count':  0,
-        'created_at':   now.toIso8601String(),
-        'updated_at':   now.toIso8601String(),
+        'created_at':   saved.createdAt ?? now.toIso8601String(),
+        'updated_at':   saved.updatedAt ?? now.toIso8601String(),
+        'synced_at':    now.toIso8601String(),
       });
     } catch (_) {
-      // échec silencieux — le commentaire reste en mémoire
+      // Conserver l'optimistic, sauver avec l'ID temporaire
+      try {
+        await dao.insert({
+          'id':           tempId,
+          'testimony_id': widget.testimonyId,
+          'user_id':      user?.id ?? 'anon',
+          'author_name':  authorName,
+          'body':         text,
+          'likes':        0,
+          'reply_count':  0,
+          'created_at':   now.toIso8601String(),
+          'updated_at':   now.toIso8601String(),
+        });
+      } catch (_) {}
     }
   }
 
@@ -178,6 +266,9 @@ class _TestimonyDetailScreenState
       (t) => t.id == widget.testimonyId,
       orElse: () => feed.first,
     );
+
+    final currentUser = ref.watch(currentUserProvider);
+    final isOwnProfile = testimony.author.uid == (currentUser?.id ?? '');
 
     final isAudio = testimony is AudioTestimony;
     final isVideo = testimony is VideoTestimony;
@@ -200,9 +291,7 @@ class _TestimonyDetailScreenState
               category:     testimony.category,
               isBookmarked: _isBookmarked,
               onBookmark:   () => setState(() => _isBookmarked = !_isBookmarked),
-              onShare:      () => SharePlus.instance.share(ShareParams(
-                text: '${testimony.title}\n\nPartagé depuis l\'app Témoignages ✝️',
-              )),
+              onShare:      () => _shareTestimony(testimony.title),
             ),
             SliverToBoxAdapter(
               child: Column(
@@ -212,9 +301,10 @@ class _TestimonyDetailScreenState
 
                   // Auteur
                   _AuthorCard(
-                    author:     testimony.author,
-                    isFollowing: _isFollowing,
-                    onFollow:   () => setState(() => _isFollowing = !_isFollowing),
+                    author:       testimony.author,
+                    isFollowing:  _isFollowing,
+                    isOwnProfile: isOwnProfile,
+                    onFollow:     () => setState(() => _isFollowing = !_isFollowing),
                   ),
 
                   // Catégorie + date
@@ -277,9 +367,7 @@ class _TestimonyDetailScreenState
           }),
           onComment:  () => _showCommentsSheet(context),
           onBookmark: () => setState(() => _isBookmarked = !_isBookmarked),
-          onShare: () => SharePlus.instance.share(ShareParams(
-            text: 'Témoignage — voir dans l\'app Témoignages ✝️',
-          )),
+          onShare: () => _shareTestimony(testimony.title),
         ),
       ),
     );
@@ -296,6 +384,15 @@ class _TestimonyDetailScreenState
         currentUser:  ref.read(currentUserProvider)?.displayName ?? 'Vous',
         onAdd:        _addComment,
       ),
+    );
+  }
+
+  void _shareTestimony(String title) {
+    final link = 'testi://app/testimony/${widget.testimonyId}';
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _ShareSheet(title: title, link: link),
     );
   }
 
@@ -470,11 +567,13 @@ class _AuthorCard extends StatelessWidget {
   const _AuthorCard({
     required this.author,
     required this.isFollowing,
+    required this.isOwnProfile,
     required this.onFollow,
   });
 
   final TestimonyAuthor author;
   final bool isFollowing;
+  final bool isOwnProfile;
   final VoidCallback onFollow;
 
   static String _initials(String name) {
@@ -520,32 +619,33 @@ class _AuthorCard extends StatelessWidget {
               ],
             ),
           ),
-          // Follow button
-          GestureDetector(
-            onTap: onFollow,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
-              decoration: BoxDecoration(
-                color: isFollowing ? Colors.transparent : AppColors.primary,
-                border: Border.all(
-                  color: isFollowing ? AppColors.border : AppColors.primary,
+          // Follow button — masqué si c'est le propre profil de l'utilisateur
+          if (!isOwnProfile)
+            GestureDetector(
+              onTap: onFollow,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+                decoration: BoxDecoration(
+                  color: isFollowing ? Colors.transparent : AppColors.primary,
+                  border: Border.all(
+                    color: isFollowing ? AppColors.border : AppColors.primary,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
                 ),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                isFollowing ? 'Suivi' : 'Suivre',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                  color:
-                      isFollowing ? AppColors.textSecondary : Colors.white,
+                child: Text(
+                  isFollowing ? AppLocalizations.of(context).detailFollowing : AppLocalizations.of(context).detailFollow,
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color:
+                        isFollowing ? AppColors.textSecondary : Colors.white,
+                  ),
                 ),
               ),
             ),
-          ),
         ],
       ),
     );
@@ -706,7 +806,7 @@ class _ContentBodyState extends State<_ContentBody> {
             GestureDetector(
               onTap: () => setState(() => _expanded = !_expanded),
               child: Text(
-                _expanded ? 'Voir moins' : 'Voir plus',
+                _expanded ? AppLocalizations.of(context).detailSeeLess : AppLocalizations.of(context).detailSeeMore,
                 style: const TextStyle(
                   fontFamily: 'Inter',
                   fontWeight: FontWeight.w600,
@@ -737,7 +837,7 @@ class _AudioPlayerEmbed extends StatefulWidget {
 
 class _AudioPlayerEmbedState extends State<_AudioPlayerEmbed> {
   bool _isPlaying = false;
-  double _progress = 0.31;
+  final double _progress = 0.31;
 
   @override
   Widget build(BuildContext context) {
@@ -785,9 +885,9 @@ class _AudioPlayerEmbedState extends State<_AudioPlayerEmbed> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Témoignage Audio',
-                        style: TextStyle(
+                      Text(
+                        AppLocalizations.of(context).detailAudioLabel,
+                        style: const TextStyle(
                           fontFamily: 'Poppins',
                           color: Colors.white,
                           fontWeight: FontWeight.w600,
@@ -795,7 +895,7 @@ class _AudioPlayerEmbedState extends State<_AudioPlayerEmbed> {
                         ),
                       ),
                       Text(
-                        '14:23 min  ·  appuyer pour ouvrir',
+                        '14:23 min  ·  ${AppLocalizations.of(context).detailTapToOpen}',
                         style: TextStyle(
                           fontFamily: 'Inter',
                           color: Colors.white.withValues(alpha: 0.8),
@@ -1008,7 +1108,7 @@ class _BibleVerseSection extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               Text(
-                'Que dit la Bible ?',
+                AppLocalizations.of(context).detailBibleTitle,
                 style: AppTextStyles.h4,
               ),
             ],
@@ -1064,7 +1164,9 @@ class _CommentsSection extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                count == 0 ? 'Commentaires' : 'Commentaires ($count)',
+                count == 0
+                    ? AppLocalizations.of(context).detailComments
+                    : '${AppLocalizations.of(context).detailComments} ($count)',
                 style: AppTextStyles.h4,
               ),
               if (count > 2)
@@ -1076,8 +1178,8 @@ class _CommentsSection extends StatelessWidget {
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
-                  child: const Text('Voir tous',
-                      style: TextStyle(fontFamily: 'Inter', fontSize: 13)),
+                  child: Text(AppLocalizations.of(context).detailSeeAll,
+                      style: const TextStyle(fontFamily: 'Inter', fontSize: 13)),
                 ),
             ],
           ),
@@ -1113,9 +1215,9 @@ class _CommentsSection extends StatelessWidget {
                       borderRadius: BorderRadius.circular(24),
                       border: Border.all(color: AppColors.border),
                     ),
-                    child: const Text(
-                      'Ajouter un commentaire...',
-                      style: TextStyle(
+                    child: Text(
+                      AppLocalizations.of(context).detailAddComment,
+                      style: const TextStyle(
                         fontFamily: 'Inter',
                         color: AppColors.textSecondary,
                         fontSize: 14,
@@ -1143,7 +1245,7 @@ class _CommentsSection extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: Text(
-              'Soyez le premier à commenter.',
+              AppLocalizations.of(context).detailFirstComment,
               style: AppTextStyles.bodySmall,
             ),
           )
@@ -1167,6 +1269,9 @@ class _CommentItem extends StatelessWidget {
     required this.text,
     required this.time,
     required this.likeCount,
+    this.isLiked = false,
+    this.onLike,
+    this.onReply,
   });
 
   final String name;
@@ -1174,6 +1279,9 @@ class _CommentItem extends StatelessWidget {
   final String text;
   final String time;
   final int likeCount;
+  final bool isLiked;
+  final VoidCallback? onLike;
+  final VoidCallback? onReply;
 
   @override
   Widget build(BuildContext context) {
@@ -1218,7 +1326,7 @@ class _CommentItem extends StatelessWidget {
                     children: [
                       Text(name, style: AppTextStyles.labelMedium),
                       const SizedBox(height: 4),
-                      Text(text, style: AppTextStyles.bodyMedium),
+                      _buildMentionText(text, AppTextStyles.bodyMedium),
                     ],
                   ),
                 ),
@@ -1228,11 +1336,18 @@ class _CommentItem extends StatelessWidget {
                     Text(time, style: AppTextStyles.bodySmall),
                     const SizedBox(width: 16),
                     GestureDetector(
-                      onTap: () {},
+                      onTap: onLike,
                       child: Row(
                         children: [
-                          const Icon(Icons.favorite_border_rounded,
-                              size: 13, color: AppColors.textSecondary),
+                          Icon(
+                            isLiked
+                                ? Icons.favorite_rounded
+                                : Icons.favorite_border_rounded,
+                            size: 13,
+                            color: isLiked
+                                ? Colors.redAccent
+                                : AppColors.textSecondary,
+                          ),
                           const SizedBox(width: 3),
                           Text('$likeCount',
                               style: AppTextStyles.bodySmall),
@@ -1241,13 +1356,13 @@ class _CommentItem extends StatelessWidget {
                     ),
                     const SizedBox(width: 16),
                     GestureDetector(
-                      onTap: () {},
-                      child: const Text(
-                        'Répondre',
-                        style: TextStyle(
+                      onTap: onReply,
+                      child: Text(
+                        AppLocalizations.of(context).detailReply,
+                        style: const TextStyle(
                           fontFamily: 'Inter',
                           fontSize: 12,
-                          color: AppColors.textSecondary,
+                          color: AppColors.primary,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -1278,7 +1393,7 @@ class _SimilarTestimonies extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-          child: Text('Témoignages similaires', style: AppTextStyles.h4),
+          child: Text(AppLocalizations.of(context).detailSimilar, style: AppTextStyles.h4),
         ),
         SizedBox(
           height: 168,
@@ -1286,7 +1401,7 @@ class _SimilarTestimonies extends StatelessWidget {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             itemCount: 5,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            separatorBuilder: (context, index) => const SizedBox(width: 12),
             itemBuilder: (context, index) =>
                 _SimilarCard(index: index),
           ),
@@ -1424,42 +1539,45 @@ class _StickyReactionBar extends StatelessWidget {
         top: false,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _ReactionButton(
-                emoji: '❤️',
-                label: "J'aime",
-                active: isLiked,
-                activeColor: AppColors.danger,
-                onTap: onLike,
-              ),
-              _ReactionButton(
-                emoji: '🙏',
-                label: 'Je prie',
-                active: isPraying,
-                activeColor: AppColors.primary,
-                onTap: onPray,
-              ),
-              _ReactionButton(
-                emoji: '💬',
-                label: 'Commenter',
-                onTap: onComment,
-              ),
-              _ReactionButton(
-                emoji: '🔖',
-                label: 'Sauvegarder',
-                active: isBookmarked,
-                activeColor: AppColors.secondary,
-                onTap: onBookmark,
-              ),
-              _ReactionButton(
-                emoji: '📤',
-                label: 'Partager',
-                onTap: onShare,
-              ),
-            ],
-          ),
+          child: Builder(builder: (context) {
+            final l10n = AppLocalizations.of(context);
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _ReactionButton(
+                  emoji: '❤️',
+                  label: l10n.detailLike,
+                  active: isLiked,
+                  activeColor: AppColors.danger,
+                  onTap: onLike,
+                ),
+                _ReactionButton(
+                  emoji: '🙏',
+                  label: l10n.detailPray,
+                  active: isPraying,
+                  activeColor: AppColors.primary,
+                  onTap: onPray,
+                ),
+                _ReactionButton(
+                  emoji: '💬',
+                  label: l10n.detailComment,
+                  onTap: onComment,
+                ),
+                _ReactionButton(
+                  emoji: '🔖',
+                  label: l10n.detailSave,
+                  active: isBookmarked,
+                  activeColor: AppColors.secondary,
+                  onTap: onBookmark,
+                ),
+                _ReactionButton(
+                  emoji: '📤',
+                  label: l10n.detailShare,
+                  onTap: onShare,
+                ),
+              ],
+            );
+          }),
         ),
       ),
     );
@@ -1549,17 +1667,100 @@ class _CommentsBottomSheetState extends State<_CommentsBottomSheet> {
   // Copie locale mise à jour immédiatement (optimistic UI)
   late List<_LocalComment> _local;
 
+  // ── Likes et réponses ─────────────────────────────────────────────────────
+  final Set<String> _likedIds = {};
+  String? _replyingToName;   // nom de l'auteur auquel on répond
+
+  // ── @mention ──────────────────────────────────────────────────────────────
+  String?      _mentionQuery;
+  List<String> _filteredUsers = const [];
+  static const _mockUsers = [
+    'Paul Mbeki', 'Sarah Diallo', 'John Osei', 'Grace Nwosu',
+    'David Kamau', 'Marie Dupont', 'Samuel Tchibozo', 'Ruth Mensah',
+    'Esther Yao', 'Elie Ndoumbe',
+  ];
+
   @override
   void initState() {
     super.initState();
     _local = List.from(widget.comments);
+    _ctrl.addListener(_onTextChanged);
+    // Auto-focus the input so keyboard appears immediately
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _focusNode.requestFocus();
+    });
   }
 
   @override
   void dispose() {
+    _ctrl.removeListener(_onTextChanged);
     _ctrl.dispose();
     _focusNode.dispose();
     super.dispose();
+  }
+
+  void _onTextChanged() {
+    final text   = _ctrl.text;
+    final cursor = _ctrl.selection.baseOffset;
+    if (cursor <= 0 || cursor > text.length) {
+      if (_mentionQuery != null) setState(() => _mentionQuery = null);
+      return;
+    }
+    final before = text.substring(0, cursor);
+    final match  = RegExp(r'@(\w*)$').firstMatch(before);
+    if (match != null) {
+      final query    = match.group(1) ?? '';
+      final filtered = _mockUsers
+          .where((u) => query.isEmpty ||
+              u.toLowerCase().startsWith(query.toLowerCase()))
+          .take(5)
+          .toList();
+      setState(() { _mentionQuery = query; _filteredUsers = filtered; });
+    } else {
+      if (_mentionQuery != null) setState(() => _mentionQuery = null);
+    }
+  }
+
+  void _insertMention(String username) {
+    final handle = '@${username.replaceAll(' ', '_')}';
+    final text   = _ctrl.text;
+    final cursor = _ctrl.selection.baseOffset.clamp(0, text.length);
+    final before = text.substring(0, cursor);
+    final after  = text.substring(cursor);
+    final newBefore = before.replaceFirstMapped(
+      RegExp(r'@\w*$'), (_) => '$handle ',
+    );
+    _ctrl.value = TextEditingValue(
+      text: newBefore + after,
+      selection: TextSelection.collapsed(offset: newBefore.length),
+    );
+    setState(() { _mentionQuery = null; _filteredUsers = []; });
+    _focusNode.requestFocus();
+  }
+
+  void _toggleLike(String commentId) {
+    setState(() {
+      if (_likedIds.contains(commentId)) {
+        _likedIds.remove(commentId);
+      } else {
+        _likedIds.add(commentId);
+      }
+    });
+  }
+
+  void _startReply(String authorName) {
+    final handle = '@${authorName.replaceAll(' ', '_')} ';
+    _ctrl.value = TextEditingValue(
+      text: handle,
+      selection: TextSelection.collapsed(offset: handle.length),
+    );
+    setState(() => _replyingToName = authorName);
+    _focusNode.requestFocus();
+  }
+
+  void _cancelReply() {
+    setState(() => _replyingToName = null);
+    _ctrl.clear();
   }
 
   Future<void> _send() async {
@@ -1585,6 +1786,7 @@ class _CommentsBottomSheetState extends State<_CommentsBottomSheet> {
           ),
         ];
         _sending = false;
+        _replyingToName = null;
       });
     }
   }
@@ -1592,9 +1794,9 @@ class _CommentsBottomSheetState extends State<_CommentsBottomSheet> {
   @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
-      initialChildSize: 0.72,
-      minChildSize: 0.4,
-      maxChildSize: 0.95,
+      initialChildSize: 0.92,
+      minChildSize: 0.5,
+      maxChildSize: 0.97,
       builder: (_, scrollCtrl) {
         return Container(
           decoration: const BoxDecoration(
@@ -1606,8 +1808,8 @@ class _CommentsBottomSheetState extends State<_CommentsBottomSheet> {
               const _DragHandle(),
               _BottomSheetHeader(
                 title: _local.isEmpty
-                    ? 'Commentaires'
-                    : 'Commentaires (${_local.length})',
+                    ? AppLocalizations.of(context).detailComments
+                    : '${AppLocalizations.of(context).detailComments} (${_local.length})',
                 onClose: () => Navigator.of(context).pop(),
               ),
               const Divider(height: 1, color: AppColors.border),
@@ -1623,10 +1825,10 @@ class _CommentsBottomSheetState extends State<_CommentsBottomSheet> {
                                 size: 48,
                                 color: AppColors.textSecondary.withAlpha(80)),
                             const SizedBox(height: 12),
-                            const Text(
-                              'Aucun commentaire.\nSoyez le premier !',
+                            Text(
+                              AppLocalizations.of(context).detailNoComments,
                               textAlign: TextAlign.center,
-                              style: TextStyle(
+                              style: const TextStyle(
                                 fontFamily: 'Inter',
                                 fontSize: 14,
                                 color: AppColors.textSecondary,
@@ -1642,18 +1844,60 @@ class _CommentsBottomSheetState extends State<_CommentsBottomSheet> {
                         itemCount: _local.length,
                         itemBuilder: (_, i) {
                           final c = _local[i];
+                          final isLiked = _likedIds.contains(c.id);
                           return _CommentItem(
                             name:      c.authorName,
                             initials:  c.initials,
                             text:      c.body,
                             time:      c.timeAgo,
-                            likeCount: c.likes,
+                            likeCount: c.likes + (isLiked ? 1 : 0),
+                            isLiked:   isLiked,
+                            onLike:    () => _toggleLike(c.id),
+                            onReply:   () => _startReply(c.authorName),
                           );
                         },
                       ),
               ),
 
               const Divider(height: 1, color: AppColors.border),
+
+              // ── Bandeau "En réponse à" ────────────────────────────────
+              if (_replyingToName != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 8),
+                  color: AppColors.primary.withAlpha(12),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.reply_rounded,
+                          size: 14, color: AppColors.primary),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          '${AppLocalizations.of(context).detailReplyingTo} @${_replyingToName!.replaceAll(' ', '_')}',
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 12,
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: _cancelReply,
+                        child: const Icon(Icons.close_rounded,
+                            size: 16, color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+
+              // ── Suggestions @mention ──────────────────────────────────
+              if (_mentionQuery != null && _filteredUsers.isNotEmpty)
+                _MentionSuggestions(
+                  users: _filteredUsers,
+                  onTap: _insertMention,
+                ),
 
               // ── Saisie ─────────────────────────────────────────────────
               _CommentInputBar(
@@ -1759,7 +2003,7 @@ class _CommentInputBar extends StatelessWidget {
               focusNode: focusNode,
               style: AppTextStyles.bodyMedium,
               decoration: InputDecoration(
-                hintText: 'Ajouter un commentaire...',
+                hintText: AppLocalizations.of(context).detailCommentHint,
                 hintStyle: const TextStyle(
                   fontFamily: 'Inter',
                   color: AppColors.textSecondary,
@@ -1803,6 +2047,254 @@ class _CommentInputBar extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// @mention helpers
+// ============================================================================
+
+Widget _buildMentionText(String text, TextStyle base) {
+  final spans   = <InlineSpan>[];
+  final pattern = RegExp(r'@\w+');
+  int   last    = 0;
+  for (final m in pattern.allMatches(text)) {
+    if (m.start > last) {
+      spans.add(TextSpan(text: text.substring(last, m.start), style: base));
+    }
+    spans.add(TextSpan(
+      text: m.group(0),
+      style: base.copyWith(color: AppColors.primary, fontWeight: FontWeight.w600),
+    ));
+    last = m.end;
+  }
+  if (last < text.length) {
+    spans.add(TextSpan(text: text.substring(last), style: base));
+  }
+  if (spans.isEmpty) return Text(text, style: base);
+  return RichText(text: TextSpan(children: spans));
+}
+
+// ── Mention suggestions panel ────────────────────────────────────────────────
+
+class _MentionSuggestions extends StatelessWidget {
+  const _MentionSuggestions({required this.users, required this.onTap});
+
+  final List<String>        users;
+  final void Function(String) onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppColors.surface,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Divider(height: 1, color: AppColors.border),
+          ...users.map((u) => _MentionTile(username: u, onTap: () => onTap(u))),
+        ],
+      ),
+    );
+  }
+}
+
+class _MentionTile extends StatelessWidget {
+  const _MentionTile({required this.username, required this.onTap});
+
+  final String       username;
+  final VoidCallback onTap;
+
+  String get _initials {
+    final parts = username.trim().split(' ');
+    if (parts.length >= 2) return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
+    return username.isNotEmpty ? username[0].toUpperCase() : '?';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 16,
+              backgroundColor: AppColors.primary.withAlpha(30),
+              child: Text(
+                _initials,
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                  fontFamily: 'Poppins',
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                '@${username.replaceAll(' ', '_')}',
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+            Text(
+              username,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// Share sheet (copier lien + partager)
+// ============================================================================
+
+class _ShareSheet extends StatelessWidget {
+  const _ShareSheet({required this.title, required this.link});
+
+  final String title;
+  final String link;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Drag handle
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            AppLocalizations.of(context).detailShareTitle,
+            style: const TextStyle(
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.w700,
+              fontSize: 16,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            link,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 12,
+              color: AppColors.textSecondary,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: _ShareOption(
+                  icon: Icons.copy_rounded,
+                  label: AppLocalizations.of(context).detailCopyLink,
+                  color: AppColors.primary,
+                  onTap: () {
+                    Clipboard.setData(ClipboardData(text: link));
+                    Navigator.of(context).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(AppLocalizations.of(context).detailLinkCopied),
+                        behavior: SnackBarBehavior.floating,
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _ShareOption(
+                  icon: Icons.share_rounded,
+                  label: AppLocalizations.of(context).detailShareOn,
+                  color: AppColors.secondary,
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    SharePlus.instance.share(ShareParams(
+                      text: '$title\n\n$link',
+                    ));
+                  },
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ShareOption extends StatelessWidget {
+  const _ShareOption({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  final IconData     icon;
+  final String       label;
+  final Color        color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: color.withAlpha(20),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: color.withAlpha(60)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 28),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+                color: color,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

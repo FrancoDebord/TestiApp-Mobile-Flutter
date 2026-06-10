@@ -6,10 +6,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../l10n/app_localizations.dart';
 import '../models/profile_models.dart';
 import '../providers/profile_provider.dart';
 
-// Liste des pays (reprend celle du phone_auth_screen)
 const _kCountries = [
   'Bénin', "Côte d'Ivoire", 'Cameroun', 'Sénégal', 'Mali', 'Burkina Faso',
   'Guinée', 'Togo', 'RDC', 'Congo', 'Gabon', 'Nigeria',
@@ -17,7 +17,8 @@ const _kCountries = [
   'Belgique', 'Canada', 'États-Unis', 'Autre',
 ];
 
-const _kGenders = ['Homme', 'Femme', 'Autre'];
+// Canonical stored gender values (language-neutral keys)
+const _kGenderValues = ['Homme', 'Femme', 'Autre'];
 
 const _kSuggestedTitles = [
   'Pasteur', 'Évangéliste', 'Ancien', 'Diacre', 'Missionnaire',
@@ -29,8 +30,7 @@ class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
 
   @override
-  ConsumerState<EditProfileScreen> createState() =>
-      _EditProfileScreenState();
+  ConsumerState<EditProfileScreen> createState() => _EditProfileScreenState();
 }
 
 class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
@@ -43,8 +43,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
   String? _gender;
   String? _country;
-  String? _selectedTitle;    // titre sélectionné dans la liste
-  String? _avatarPath;       // chemin local photo de profil
+  String? _selectedTitle;
+  String? _avatarPath;
   bool _isLoading   = false;
   bool _initialized = false;
 
@@ -78,6 +78,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   // ── Picker photo ──────────────────────────────────────────────────────────
 
   Future<void> _pickAvatar() async {
+    final l10n = AppLocalizations.of(context);
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
       backgroundColor: AppColors.surface,
@@ -98,8 +99,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   backgroundColor: Color(0xFFF3E8FF),
                   child: Icon(Icons.photo_library_rounded,
                       color: AppColors.primary)),
-              title: const Text('Galerie photos',
-                  style: TextStyle(fontFamily: 'Inter')),
+              title: Text(l10n.editGallery,
+                  style: const TextStyle(fontFamily: 'Inter')),
               onTap: () => Navigator.pop(context, ImageSource.gallery),
             ),
             ListTile(
@@ -107,8 +108,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   backgroundColor: Color(0xFFF3E8FF),
                   child: Icon(Icons.camera_alt_rounded,
                       color: AppColors.primary)),
-              title: const Text('Prendre une photo',
-                  style: TextStyle(fontFamily: 'Inter')),
+              title: Text(l10n.editCamera,
+                  style: const TextStyle(fontFamily: 'Inter')),
               onTap: () => Navigator.pop(context, ImageSource.camera),
             ),
             const SizedBox(height: 8),
@@ -124,16 +125,16 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     }
   }
 
-  // ── Sauvegarde ────────────────────────────────────────────────────────────
+  // ── Save ──────────────────────────────────────────────────────────────────
 
   Future<void> _save() async {
+    final l10n = AppLocalizations.of(context);
     final first = _firstCtrl.text.trim();
     if (first.isEmpty) {
-      _snack('Le prénom est obligatoire.');
+      _snack(l10n.editFirstRequired);
       return;
     }
 
-    // Résoudre le titre : suggestion OU texte libre
     final title = _selectedTitle == 'Autre' || _selectedTitle == null
         ? _customTitleCtrl.text.trim()
         : _selectedTitle!;
@@ -156,7 +157,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
     if (mounted) {
       setState(() => _isLoading = false);
-      _snack('Profil mis à jour ✓', success: true);
+      _snack(l10n.editSaved, success: true);
       Navigator.of(context).pop();
     }
   }
@@ -194,11 +195,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   }
 
   Widget _buildForm(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Modifier le profil',
-            style: TextStyle(
+        title: Text(l10n.profileEdit,
+            style: const TextStyle(
               fontFamily: 'Poppins',
               fontWeight: FontWeight.w600,
               fontSize: 17,
@@ -209,8 +212,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         elevation: 0,
         scrolledUnderElevation: 1,
         shadowColor: AppColors.border,
-        iconTheme:
-            const IconThemeData(color: AppColors.textPrimary),
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
         actions: [
           _isLoading
               ? const Padding(
@@ -226,8 +228,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 )
               : TextButton(
                   onPressed: _save,
-                  child: const Text('Sauvegarder',
-                      style: TextStyle(
+                  child: Text(l10n.detailSave,
+                      style: const TextStyle(
                         fontFamily: 'Poppins',
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
@@ -242,7 +244,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
 
-            // ── Photo de profil ──────────────────────────────────────────
+            // ── Avatar ──────────────────────────────────────────────────
             Center(
               child: GestureDetector(
                 onTap: _pickAvatar,
@@ -279,23 +281,23 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            const Center(
-              child: Text('Appuyez pour changer la photo',
-                  style: TextStyle(
+            Center(
+              child: Text(l10n.editTapToChange,
+                  style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 12,
                       color: AppColors.textSecondary)),
             ),
             const SizedBox(height: 28),
 
-            // ── Identité ────────────────────────────────────────────────
-            _SectionTitle('Identité'),
+            // ── Identity ────────────────────────────────────────────────
+            _SectionTitle(l10n.editIdentity),
             const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
                   child: _Field(
-                    label: 'Prénom *',
+                    label: '${l10n.authFirstNameLabel} *',
                     controller: _firstCtrl,
                     hint: 'Marie',
                     textCapitalization: TextCapitalization.words,
@@ -304,7 +306,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: _Field(
-                    label: 'Nom',
+                    label: l10n.authLastNameLabel,
                     controller: _lastCtrl,
                     hint: 'Dupont',
                     textCapitalization: TextCapitalization.words,
@@ -314,8 +316,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             ),
             const SizedBox(height: 16),
 
-            // ── Titre ecclésiastique / rôle ──────────────────────────────
-            _Label('Titre (optionnel)'),
+            // ── Title ────────────────────────────────────────────────────
+            _Label(l10n.editTitleOptional),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
@@ -356,21 +358,20 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 );
               }).toList(),
             ),
-            // Champ personnalisé si "Autre" ou aucun sélectionné
             if (_selectedTitle == 'Autre' || _selectedTitle == null) ...[
               const SizedBox(height: 10),
               _Field(
                 label: _selectedTitle == 'Autre'
-                    ? 'Précisez votre titre'
-                    : 'Titre personnalisé (optionnel)',
+                    ? l10n.editSpecifyTitle
+                    : l10n.editCustomTitle,
                 controller: _customTitleCtrl,
                 hint: 'Ex. : Responsable worship, Coordinatrice femmes…',
               ),
             ],
             const SizedBox(height: 16),
 
-            // Sexe
-            _Label('Sexe'),
+            // ── Gender ──────────────────────────────────────────────────
+            _Label(l10n.editGender),
             const SizedBox(height: 8),
             _GenderSelector(
               selected: _gender,
@@ -380,10 +381,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             const SizedBox(height: 28),
 
             // ── Contact ─────────────────────────────────────────────────
-            _SectionTitle('Contact'),
+            _SectionTitle(l10n.editContact),
             const SizedBox(height: 12),
             _Field(
-              label: 'Téléphone',
+              label: l10n.editPhoneLabel,
               controller: _phoneCtrl,
               hint: '+225 07 00 00 00',
               keyboardType: TextInputType.phone,
@@ -400,10 +401,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
             const SizedBox(height: 28),
 
-            // ── Localisation ─────────────────────────────────────────────
-            _SectionTitle('Localisation'),
+            // ── Location ─────────────────────────────────────────────────
+            _SectionTitle(l10n.editLocation),
             const SizedBox(height: 12),
-            _Label('Pays'),
+            _Label(l10n.authCountryLabel),
             const SizedBox(height: 8),
             _CountryDropdown(
               selected: _country,
@@ -413,20 +414,19 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             const SizedBox(height: 28),
 
             // ── Bio ──────────────────────────────────────────────────────
-            _SectionTitle('Bio'),
+            _SectionTitle(l10n.editBio),
             const SizedBox(height: 12),
             _Field(
-              label: 'À propos de vous (optionnel)',
+              label: l10n.editAboutOptional,
               controller: _bioCtrl,
-              hint:
-                  'Partagez quelque chose sur vous ou votre parcours de foi…',
+              hint: l10n.editBioHint,
               maxLines: 4,
               maxLength: 200,
             ),
 
             const SizedBox(height: 32),
 
-            // ── Bouton Sauvegarder ───────────────────────────────────────
+            // ── Save button ──────────────────────────────────────────────
             SizedBox(
               width: double.infinity,
               height: 52,
@@ -443,9 +443,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         width: 22, height: 22,
                         child: CircularProgressIndicator(
                             color: Colors.white, strokeWidth: 2.5))
-                    : const Text(
-                        'Sauvegarder le profil',
-                        style: TextStyle(
+                    : Text(
+                        l10n.editSaveProfile,
+                        style: const TextStyle(
                           fontFamily: 'Poppins',
                           fontWeight: FontWeight.w600,
                           fontSize: 16,
@@ -460,7 +460,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   }
 }
 
-// ── Sous-widgets ──────────────────────────────────────────────────────────
+// ── Sub-widgets ───────────────────────────────────────────────────────────────
 
 class _SectionTitle extends StatelessWidget {
   const _SectionTitle(this.text);
@@ -581,15 +581,20 @@ class _GenderSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final labels = [l10n.genderMale, l10n.genderFemale, l10n.genderOther];
+
     return Row(
-      children: _kGenders.map((g) {
-        final isSelected = g == selected;
+      children: List.generate(_kGenderValues.length, (i) {
+        final value = _kGenderValues[i];
+        final label = labels[i];
+        final isSelected = value == selected;
         return Expanded(
           child: Padding(
             padding: EdgeInsets.only(
-                right: g != _kGenders.last ? 8 : 0),
+                right: i < _kGenderValues.length - 1 ? 8 : 0),
             child: GestureDetector(
-              onTap: () => onChanged(isSelected ? null : g),
+              onTap: () => onChanged(isSelected ? null : value),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
                 padding: const EdgeInsets.symmetric(vertical: 11),
@@ -606,7 +611,7 @@ class _GenderSelector extends StatelessWidget {
                   ),
                 ),
                 child: Text(
-                  g,
+                  label,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontFamily: 'Inter',
@@ -621,7 +626,7 @@ class _GenderSelector extends StatelessWidget {
             ),
           ),
         );
-      }).toList(),
+      }),
     );
   }
 }
@@ -633,6 +638,7 @@ class _CountryDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return GestureDetector(
       onTap: () => _showSheet(context),
       child: Container(
@@ -650,7 +656,7 @@ class _CountryDropdown extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                selected ?? 'Sélectionner un pays',
+                selected ?? l10n.editSelectCountry,
                 style: TextStyle(
                   fontFamily: 'Inter',
                   fontSize: 14,
@@ -669,6 +675,7 @@ class _CountryDropdown extends StatelessWidget {
   }
 
   void _showSheet(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -694,12 +701,12 @@ class _CountryDropdown extends StatelessWidget {
                     borderRadius: BorderRadius.circular(2)),
               ),
               const SizedBox(height: 14),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Align(
                   alignment: Alignment.centerLeft,
-                  child: Text('Choisir un pays',
-                      style: TextStyle(
+                  child: Text(l10n.editPickCountry,
+                      style: const TextStyle(
                         fontFamily: 'Poppins',
                         fontWeight: FontWeight.w600,
                         fontSize: 16,

@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart' show ShareParams, SharePlus;
 
 import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../features/auth/providers/auth_notifier.dart'
     show authStateProvider;
+import '../../../l10n/app_localizations.dart';
 import '../models/profile_models.dart';
 import '../providers/profile_provider.dart';
 
@@ -17,12 +19,16 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(userSettingsProvider);
     final notifier = ref.read(userSettingsProvider.notifier);
+    final locale   = ref.watch(localeProvider);
+    final isFr     = locale.languageCode == 'fr';
+
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Paramètres',
-            style: TextStyle(
+        title: Text(l10n.settingsTitle,
+            style: const TextStyle(
               fontFamily: 'Poppins',
               fontWeight: FontWeight.w600,
               fontSize: 17,
@@ -37,43 +43,66 @@ class SettingsScreen extends ConsumerWidget {
       ),
       body: ListView(
         children: [
+          // ── Langue ─────────────────────────────────────────────────────
+          _SectionHeader(l10n.settingsLanguage),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+            child: Row(
+              children: [
+                _LangButton(
+                  label: l10n.settingsFrench,
+                  flag: '🇫🇷',
+                  selected: isFr,
+                  onTap: () => ref.read(localeProvider.notifier).setFrench(),
+                ),
+                const SizedBox(width: 12),
+                _LangButton(
+                  label: l10n.settingsEnglish,
+                  flag: '🇬🇧',
+                  selected: !isFr,
+                  onTap: () => ref.read(localeProvider.notifier).setEnglish(),
+                ),
+              ],
+            ),
+          ),
+
           // ── Notifications ──────────────────────────────────────────────
-          _SectionHeader('Notifications'),
+          _SectionHeader(l10n.settingsNotifs),
           _ToggleTile(
             icon: Icons.chat_bubble_outline_rounded,
-            title: 'Commentaires',
-            subtitle: 'Quand quelqu\'un commente',
+            title: l10n.detailComments,
+            subtitle: l10n.settingsNotifComment,
             value: settings.pushComments,
             onChanged: (_) => notifier.togglePushComments(),
           ),
           _ToggleTile(
             icon: Icons.favorite_outline_rounded,
-            title: "J'aime",
-            subtitle: 'Quand quelqu\'un aime votre témoignage',
+            title: l10n.detailLike,
+            subtitle: l10n.settingsNotifLike,
             value: settings.pushLikes,
             onChanged: (_) => notifier.togglePushLikes(),
           ),
           _ToggleTile(
             icon: Icons.volunteer_activism_outlined,
-            title: 'Prières',
-            subtitle: 'Quand quelqu\'un prie avec vous',
+            title: l10n.profilePrayers,
+            subtitle: l10n.settingsNotifPray,
             value: settings.pushPrayers,
             onChanged: (_) => notifier.togglePushPrayers(),
           ),
           _ToggleTile(
             icon: Icons.check_circle_outline_rounded,
-            title: 'Validation',
-            subtitle: 'Quand votre témoignage est approuvé',
+            title: isFr ? 'Validation' : 'Approval',
+            subtitle: l10n.settingsNotifApproved,
             value: settings.pushApproval,
             onChanged: (_) => notifier.togglePushApproval(),
             isLast: true,
           ),
 
           // ── Commentaires ───────────────────────────────────────────────
-          _SectionHeader('Commentaires'),
+          _SectionHeader(l10n.detailComments),
           _SelectTile<CommentPermission>(
             icon: Icons.lock_outline_rounded,
-            title: 'Qui peut commenter',
+            title: l10n.settingsWhoCanComment,
             value: settings.commentPermission,
             items: CommentPermission.values,
             labelOf: (v) => v.label,
@@ -82,10 +111,10 @@ class SettingsScreen extends ConsumerWidget {
           ),
 
           // ── Apparence ──────────────────────────────────────────────────
-          _SectionHeader('Apparence'),
+          _SectionHeader(l10n.settingsAppearance),
           _SelectTile<AppTheme>(
             icon: Icons.palette_outlined,
-            title: 'Thème',
+            title: l10n.settingsTheme,
             value: settings.appTheme,
             items: AppTheme.values,
             labelOf: (v) => v.label,
@@ -93,22 +122,44 @@ class SettingsScreen extends ConsumerWidget {
             isLast: true,
           ),
 
+          // ── Communauté ─────────────────────────────────────────────────
+          _SectionHeader(l10n.settingsCommunity),
+          _NavTile(
+            icon: Icons.group_add_rounded,
+            title: l10n.settingsInvite,
+            onTap: () => SharePlus.instance.share(
+              ShareParams(
+                subject: isFr
+                    ? 'Découvre l\'application Témoignages'
+                    : 'Discover the Testimonies app',
+                text: isFr
+                    ? 'Je t\'invite à rejoindre l\'application Témoignages — '
+                        'un espace pour partager et vivre les miracles de Dieu 🙏\n\n'
+                        'Télécharge-la ici : https://testi.app/download'
+                    : 'I invite you to join the Testimonies app — '
+                        'a space to share and live God\'s miracles 🙏\n\n'
+                        'Download it here: https://testi.app/download',
+              ),
+            ),
+            isLast: true,
+          ),
+
           // ── Compte ─────────────────────────────────────────────────────
-          _SectionHeader('Compte'),
+          _SectionHeader(l10n.settingsAccount),
           _NavTile(
             icon: Icons.person_outline_rounded,
-            title: 'Modifier le profil',
+            title: l10n.profileEdit,
             onTap: () => context.pushNamed(AppRoutes.editProfile),
           ),
           _NavTile(
             icon: Icons.logout_rounded,
-            title: 'Se déconnecter',
+            title: l10n.settingsLogout,
             color: AppColors.danger,
             onTap: () => _confirmLogout(context, ref),
           ),
           _NavTile(
             icon: Icons.delete_forever_rounded,
-            title: 'Supprimer le compte',
+            title: l10n.settingsDelete,
             color: AppColors.danger,
             onTap: () => context.pushNamed(AppRoutes.deleteAccount),
             isLast: true,
@@ -132,25 +183,25 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   Future<void> _confirmLogout(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Se déconnecter',
-            style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600)),
-        content: const Text(
-            'Voulez-vous vraiment vous déconnecter ?',
-            style: TextStyle(fontFamily: 'Inter')),
+        title: Text(l10n.settingsLogout,
+            style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600)),
+        content: Text(l10n.settingsLogoutConfirm,
+            style: const TextStyle(fontFamily: 'Inter')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Annuler'),
+            child: Text(l10n.commonCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             style: FilledButton.styleFrom(
                 backgroundColor: AppColors.danger),
-            child: const Text('Déconnecter',
-                style: TextStyle(fontFamily: 'Inter')),
+            child: Text(l10n.settingsLogout,
+                style: const TextStyle(fontFamily: 'Inter')),
           ),
         ],
         shape: RoundedRectangleBorder(
@@ -421,5 +472,55 @@ class _TileContainer extends StatelessWidget {
     return onTap != null
         ? Material(color: Colors.transparent, child: tile)
         : tile;
+  }
+}
+
+class _LangButton extends StatelessWidget {
+  const _LangButton({
+    required this.label,
+    required this.flag,
+    required this.selected,
+    required this.onTap,
+  });
+  final String label;
+  final String flag;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.primary : AppColors.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: selected ? AppColors.primary : AppColors.border,
+              width: selected ? 2 : 1,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(flag, style: const TextStyle(fontSize: 20)),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  color: selected ? Colors.white : AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

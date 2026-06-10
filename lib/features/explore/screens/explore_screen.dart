@@ -10,12 +10,14 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../home/models/testimony_model.dart';
 import '../../home/providers/home_providers.dart';
 import '../../home/widgets/audio_testimony_card.dart';
 import '../../home/widgets/text_testimony_card.dart';
 import '../../home/widgets/video_testimony_card.dart';
-import '../models/explore_models.dart';
+import '../../../core/providers/categories_provider.dart';
+import '../../home/widgets/skeleton_card.dart';
 import '../providers/explore_providers.dart';
 import '../widgets/filter_row.dart';
 import '../widgets/horizontal_testimony_card.dart';
@@ -56,10 +58,10 @@ class ExploreScreen extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('Explorer', style: AppTextStyles.h3),
+                        Text(AppLocalizations.of(context).exploreTitle, style: AppTextStyles.h3),
                         if (!isSearching)
                           Text(
-                            'Trouvez ce qui vous inspire',
+                            AppLocalizations.of(context).exploreSubtitle,
                             style: AppTextStyles.bodySmall,
                           ),
                       ],
@@ -73,9 +75,9 @@ class ExploreScreen extends ConsumerWidget {
                             .read(searchBarActiveProvider.notifier)
                             .update(false);
                       },
-                      child: const Text(
-                        'Annuler',
-                        style: TextStyle(
+                      child: Text(
+                        AppLocalizations.of(context).exploreCancel,
+                        style: const TextStyle(
                           fontFamily: 'Inter',
                           fontSize: 14,
                           color: AppColors.primary,
@@ -130,7 +132,7 @@ class _SearchContent extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
             child: Text(
               results.isEmpty
-                  ? 'Aucun résultat'
+                  ? AppLocalizations.of(context).exploreNoResults
                   : '${results.length} témoignage${results.length > 1 ? 's' : ''}',
               style: AppTextStyles.bodySmall.copyWith(
                 color: AppColors.textSecondary,
@@ -162,16 +164,18 @@ class _SearchContent extends ConsumerWidget {
 class _DiscoverContent extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isLoading  = ref.watch(feedIsLoadingProvider);
     final trending   = ref.watch(trendingProvider);
     final mostPrayed = ref.watch(mostPrayedProvider);
     final recent     = ref.watch(recentProvider);
+    final l10n       = AppLocalizations.of(context);
 
     return SliverMainAxisGroup(
       slivers: [
         // ── Rubriques ─────────────────────────────────────────────────────
-        const SliverToBoxAdapter(
+        SliverToBoxAdapter(
           child: _SectionHeader(
-            title: 'Rubriques',
+            title: l10n.exploreCategories,
             subtitle: 'Parcourez par thème',
             icon: Icons.grid_view_rounded,
           ),
@@ -182,65 +186,99 @@ class _DiscoverContent extends ConsumerWidget {
         ),
 
         // ── Tendances ─────────────────────────────────────────────────────
-        if (trending.isNotEmpty) ...[
+        if (isLoading || trending.isNotEmpty) ...[
           const SliverToBoxAdapter(child: SizedBox(height: 24)),
-          const SliverToBoxAdapter(
+          SliverToBoxAdapter(
             child: _SectionHeader(
-              title: 'Tendances 🔥',
+              title: l10n.exploreTrending,
               subtitle: 'Les plus consultés en ce moment',
               icon: null,
             ),
           ),
           SliverToBoxAdapter(
-            child: _HorizontalScroll(
-              testimonies: trending,
-              statLabel: 'vues',
-              statValue: (t) => t.stats.views,
-            ),
+            child: isLoading
+                ? const _SkeletonHorizontalScroll()
+                : _HorizontalScroll(
+                    testimonies: trending,
+                    statLabel: 'vues',
+                    statValue: (t) => t.stats.views,
+                  ),
           ),
         ],
 
         // ── Les plus priés ────────────────────────────────────────────────
-        if (mostPrayed.isNotEmpty) ...[
+        if (isLoading || mostPrayed.isNotEmpty) ...[
           const SliverToBoxAdapter(child: SizedBox(height: 24)),
-          const SliverToBoxAdapter(
+          SliverToBoxAdapter(
             child: _SectionHeader(
-              title: 'Les plus priés 🙏',
+              title: l10n.exploreMostPrayed,
               subtitle: 'Témoignages qui touchent le cœur',
               icon: null,
             ),
           ),
           SliverToBoxAdapter(
-            child: _HorizontalScroll(
-              testimonies: mostPrayed,
-              statLabel: 'prières',
-              statValue: (t) => t.stats.prayers,
-            ),
+            child: isLoading
+                ? const _SkeletonHorizontalScroll()
+                : _HorizontalScroll(
+                    testimonies: mostPrayed,
+                    statLabel: 'prières',
+                    statValue: (t) => t.stats.prayers,
+                  ),
           ),
         ],
 
         // ── Récents ───────────────────────────────────────────────────────
-        if (recent.isNotEmpty) ...[
+        if (isLoading || recent.isNotEmpty) ...[
           const SliverToBoxAdapter(child: SizedBox(height: 24)),
-          const SliverToBoxAdapter(
+          SliverToBoxAdapter(
             child: _SectionHeader(
-              title: 'Récents',
+              title: l10n.exploreRecent,
               subtitle: 'Derniers témoignages publiés',
               icon: Icons.access_time_rounded,
             ),
           ),
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            sliver: SliverList.separated(
-              itemCount: recent.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 12),
-              itemBuilder: (_, i) => _buildCard(recent[i]),
+          if (isLoading)
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverList.separated(
+                itemCount: 3,
+                separatorBuilder: (_, _) => const SizedBox(height: 12),
+                itemBuilder: (_, _) => const SkeletonCard(),
+              ),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverList.separated(
+                itemCount: recent.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 12),
+                itemBuilder: (_, i) => _buildCard(recent[i]),
+              ),
             ),
-          ),
         ],
 
         const SliverToBoxAdapter(child: SizedBox(height: 32)),
       ],
+    );
+  }
+}
+
+// ── Carousel squelette ────────────────────────────────────────────────────────
+
+class _SkeletonHorizontalScroll extends StatelessWidget {
+  const _SkeletonHorizontalScroll();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 220,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: 4,
+        separatorBuilder: (_, _) => const SizedBox(width: 12),
+        itemBuilder: (_, _) => const SkeletonHorizontalCard(),
+      ),
     );
   }
 }
@@ -284,6 +322,35 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
+// ── Visuel par slug ───────────────────────────────────────────────────────────
+
+class _CategoryVisual {
+  const _CategoryVisual(this.colorA, this.colorB, this.icon);
+  final int colorA, colorB, icon;
+}
+
+const _kVisualMap = <String, _CategoryVisual>{
+  'guerison':         _CategoryVisual(0xFF6B21A8, 0xFFA855F7, 0xe3f3),
+  'delivrance':       _CategoryVisual(0xFF1E3A8A, 0xFF3B82F6, 0xe1af),
+  'conversion':       _CategoryVisual(0xFF065F46, 0xFF10B981, 0xef6e),
+  'mariage':          _CategoryVisual(0xFF9D174D, 0xFFF43F5E, 0xe87d),
+  'famille':          _CategoryVisual(0xFF92400E, 0xFFF59E0B, 0xe533),
+  'finances':         _CategoryVisual(0xFF14532D, 0xFF22C55E, 0xe263),
+  'miracles':         _CategoryVisual(0xFF7C2D12, 0xFFF97316, 0xe518),
+  'protection':       _CategoryVisual(0xFF1E3A5F, 0xFF0EA5E9, 0xe32a),
+  'protection_divine':_CategoryVisual(0xFF1E3A5F, 0xFF0EA5E9, 0xe32a),
+  'ministere':        _CategoryVisual(0xFF4A1D96, 0xFF8B5CF6, 0xe547),
+  'salut':            _CategoryVisual(0xFF7F1D1D, 0xFFEF4444, 0xe838),
+};
+
+// Couleurs de secours pour les catégories inconnues (cycle)
+const _kFallbackVisuals = <_CategoryVisual>[
+  _CategoryVisual(0xFF374151, 0xFF6B7280, 0xe88a), // bookmark
+  _CategoryVisual(0xFF1F2937, 0xFF4B5563, 0xe7ef), // label
+  _CategoryVisual(0xFF312E81, 0xFF6366F1, 0xe54f), // star_border
+  _CategoryVisual(0xFF064E3B, 0xFF059669, 0xe1b0), // eco
+];
+
 // ── Grille catégories ─────────────────────────────────────────────────────────
 
 class _CategoriesGrid extends ConsumerWidget {
@@ -291,53 +358,54 @@ class _CategoriesGrid extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final all = ref.watch(feedNotifierProvider);
+    final feed = ref.watch(feedNotifierProvider);
+    final cats = ref.watch(categoriesListProvider);
 
     return SliverGrid.builder(
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         mainAxisSpacing: 12,
         crossAxisSpacing: 12,
-        // Hauteur fixe plutôt que ratio — évite l'overflow sur petits écrans
         mainAxisExtent: 76,
       ),
-      itemCount: CategoryCardData.all.length,
+      itemCount: cats.length,
       itemBuilder: (_, i) {
-        final data  = CategoryCardData.all[i];
-        final count =
-            all.where((t) => t.category == data.category).length;
-        return _CategoryCard(data: data, liveCount: count);
+        final cat   = cats[i];
+        final count = feed.where((t) => t.category.slug == cat.slug).length;
+        return _CategoryCard(cat: cat, liveCount: count, index: i);
       },
     );
   }
 }
 
 class _CategoryCard extends StatelessWidget {
-  const _CategoryCard({required this.data, required this.liveCount});
+  const _CategoryCard({
+    required this.cat,
+    required this.liveCount,
+    required this.index,
+  });
 
-  final CategoryCardData data;
+  final CategoryModel cat;
   final int liveCount;
+  final int index;
 
   @override
   Widget build(BuildContext context) {
-    final colors = data.gradientColors
-        .map((c) => Color(c))
-        .toList();
+    final visual = _kVisualMap[cat.slug] ??
+        _kFallbackVisuals[index % _kFallbackVisuals.length];
 
     return GestureDetector(
-      onTap: () => context.go('/explore/category/${data.category.slug}'),
+      onTap: () => context.go('/explore/category/${cat.slug}'),
       child: Container(
-        // height = mainAxisExtent = 76px
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: colors,
+            colors: [Color(visual.colorA), Color(visual.colorB)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(14),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-        // Centre verticalement dans les 76px fixes
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -349,7 +417,7 @@ class _CategoryCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(9),
               ),
               child: Icon(
-                IconData(data.iconCodePoint, fontFamily: 'MaterialIcons'),
+                IconData(visual.icon, fontFamily: 'MaterialIcons'),
                 color: Colors.white,
                 size: 18,
               ),
@@ -362,7 +430,7 @@ class _CategoryCard extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    data.category.label,
+                    cat.name,
                     style: const TextStyle(
                       fontFamily: 'Poppins',
                       fontWeight: FontWeight.w600,
@@ -377,7 +445,7 @@ class _CategoryCard extends StatelessWidget {
                   Text(
                     liveCount > 0
                         ? '$liveCount tém.${liveCount > 1 ? 's' : ''}'
-                        : '${data.count} téms.',
+                        : 'Aucun tém.',
                     style: TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 10,

@@ -6,6 +6,7 @@ import '../../../features/auth/providers/auth_notifier.dart'
     show currentUserProvider;
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../l10n/app_localizations.dart';
 import '../models/testimony_model.dart';
 import '../providers/home_providers.dart';
 import '../widgets/audio_testimony_card.dart';
@@ -81,6 +82,9 @@ class HomeScreen extends ConsumerWidget {
             // ── Daily verse banner ─────────────────────────────────────────────
             const SliverToBoxAdapter(child: DailyVerseBanner()),
 
+            // ── Bible shortcut ─────────────────────────────────────────────────
+            const SliverToBoxAdapter(child: _BibleBanner()),
+
             // ── Category chips ─────────────────────────────────────────────────
             const SliverToBoxAdapter(
               child: Padding(
@@ -98,9 +102,9 @@ class HomeScreen extends ConsumerWidget {
             ),
 
             // ── Feed header ────────────────────────────────────────────────────
-            const SliverToBoxAdapter(
+            SliverToBoxAdapter(
               child: Padding(
-                padding: EdgeInsets.fromLTRB(16, 20, 16, 4),
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
                 child: _FeedHeader(),
               ),
             ),
@@ -157,11 +161,10 @@ class _HomeAppBarContent extends ConsumerWidget {
               color: const Color(0xFFEF4444),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Row(
+            child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Point rouge pulsant simulé par un simple cercle
-                SizedBox(
+                const SizedBox(
                   width: 7, height: 7,
                   child: DecoratedBox(
                     decoration: BoxDecoration(
@@ -170,10 +173,10 @@ class _HomeAppBarContent extends ConsumerWidget {
                     ),
                   ),
                 ),
-                SizedBox(width: 4),
+                const SizedBox(width: 4),
                 Text(
-                  'LIVE',
-                  style: TextStyle(
+                  AppLocalizations.of(context).homeLive.toUpperCase(),
+                  style: const TextStyle(
                     color: Colors.white,
                     fontFamily: 'Poppins',
                     fontWeight: FontWeight.w700,
@@ -293,11 +296,12 @@ class _FeedHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text('Témoignages récents', style: AppTextStyles.h3),
-        Icon(Icons.tune_rounded, color: AppColors.textSecondary, size: 20),
+        Text('${l10n.homeTitle} récents', style: AppTextStyles.h3),
+        const Icon(Icons.tune_rounded, color: AppColors.textSecondary, size: 20),
       ],
     );
   }
@@ -312,10 +316,13 @@ class _FeedBody extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final feed = ref.watch(feedProvider);
+    final feed      = ref.watch(feedProvider);
+    final isLoading = ref.watch(feedIsLoadingProvider);
 
-    // Loading state — show skeletons
-    // In production wire to an AsyncNotifier; for now feed is sync stub data.
+    // Chargement initial — squelettes animés
+    if (isLoading) return const FeedLoadingSkeleton();
+
+    // Feed vide après chargement
     if (feed.isEmpty) {
       return SliverList(
         delegate: SliverChildListDelegate([
@@ -338,24 +345,32 @@ class _FeedBody extends ConsumerWidget {
   }
 
   Widget _buildCard(Testimony testimony) => switch (testimony) {
-        TextTestimony t => TextTestimonyCard(testimony: t),
+        TextTestimony t  => TextTestimonyCard(testimony: t),
         AudioTestimony a => AudioTestimonyCard(testimony: a),
         VideoTestimony v => VideoTestimonyCard(testimony: v),
       };
 }
 
-/// Reusable shimmer skeleton feed shown during initial load.
+/// Squelette shimmer du feed affiché pendant le chargement initial.
+/// Alterne texte / audio / vidéo pour ressembler à un vrai feed mixte.
 class FeedLoadingSkeleton extends StatelessWidget {
   const FeedLoadingSkeleton({super.key});
 
   @override
   Widget build(BuildContext context) {
+    const skeletons = [
+      SkeletonCard(),
+      SkeletonAudioCard(),
+      SkeletonVideoCard(),
+      SkeletonCard(),
+      SkeletonAudioCard(),
+    ];
     return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       sliver: SliverList.separated(
-        itemCount: 3,
+        itemCount: skeletons.length,
         separatorBuilder: (_, _) => const SizedBox(height: 12),
-        itemBuilder: (_, _) => const SkeletonCard(),
+        itemBuilder: (_, i) => skeletons[i],
       ),
     );
   }
@@ -380,6 +395,79 @@ class _EmptyFeed extends StatelessWidget {
           textAlign: TextAlign.center,
         ),
       ],
+    );
+  }
+}
+
+// ── Bible shortcut banner ─────────────────────────────────────────────────────
+
+class _BibleBanner extends StatelessWidget {
+  const _BibleBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: GestureDetector(
+        onTap: () => context.push('/bible'),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.white.withAlpha(30),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.menu_book_rounded,
+                  color: Colors.white,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Bible',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                    Text(
+                      'Télécharger et lire hors connexion',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 11,
+                        color: Colors.white70,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: Colors.white70,
+                size: 22,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

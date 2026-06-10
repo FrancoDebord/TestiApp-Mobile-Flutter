@@ -8,10 +8,15 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:share_plus/share_plus.dart' show ShareParams, SharePlus;
 import 'package:video_player/video_player.dart';
 
+import '../../../core/local_db/daos/comment_dao.dart';
+import '../../../core/local_db/database_service.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../features/auth/providers/auth_notifier.dart'
+    show currentUserProvider;
+import '../../../l10n/app_localizations.dart';
 import '../../home/models/testimony_model.dart';
 import '../../home/providers/home_providers.dart';
-import '../screens/testimony_comments_screen.dart';
 
 // ============================================================================
 // ShortsScreen
@@ -76,7 +81,7 @@ class _ShortsScreenState extends ConsumerState<ShortsScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
-          'Shorts',
+          AppLocalizations.of(context).navShorts,
           style: GoogleFonts.poppins(
             color: Colors.white,
             fontWeight: FontWeight.w600,
@@ -94,6 +99,13 @@ class _ShortsScreenState extends ConsumerState<ShortsScreen> {
           : PageView.builder(
               scrollDirection: Axis.vertical,
               controller: _pageController,
+              // BouncingScrollPhysics → rebond aux extrémités
+              // PageScrollPhysics (parent) → snap page par page
+              physics: const BouncingScrollPhysics(
+                parent: PageScrollPhysics(),
+              ),
+              // Pré-construit la page adjacente → vidéo prête avant le swipe
+              allowImplicitScrolling: true,
               itemCount: widget.testimonies.length,
               onPageChanged: _onPageChanged,
               itemBuilder: (context, index) {
@@ -140,7 +152,10 @@ class _ShortPageState extends State<_ShortPage> {
   @override
   void initState() {
     super.initState();
-    _initVideo();
+    // Décaler l'init après le premier frame pour ne pas bloquer l'animation de swipe
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _initVideo();
+    });
   }
 
   Future<void> _initVideo() async {
@@ -534,7 +549,7 @@ class _ShortActions extends ConsumerWidget {
         _ActionButton(
           icon: saved ? Icons.bookmark : Icons.bookmark_border,
           color: saved ? AppColors.secondary : Colors.white,
-          label: saved ? 'Sauvegardé' : 'Sauvegarder',
+          label: saved ? 'Sauvegardé' : AppLocalizations.of(context).detailSave,
           onTap: () =>
               ref.read(interactionProvider.notifier).toggleSave(testimony.id),
         ),
@@ -544,7 +559,7 @@ class _ShortActions extends ConsumerWidget {
         _ActionButton(
           icon: Icons.share_outlined,
           color: Colors.white,
-          label: 'Partager',
+          label: AppLocalizations.of(context).detailShare,
           onTap: () => SharePlus.instance.share(
             ShareParams(
               text: '${testimony.title}\n\nPartagé depuis l\'application Témoignages ✝️',
@@ -560,15 +575,8 @@ class _ShortActions extends ConsumerWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => DraggableScrollableSheet(
-        initialChildSize: 0.7,
-        minChildSize: 0.4,
-        maxChildSize: 0.95,
-        builder: (_, scrollController) => ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-          child: TestimonyCommentsScreen(testimonyId: testimony.id),
-        ),
-      ),
+      useSafeArea: true,
+      builder: (_) => _ShortsCommentsSheet(testimonyId: testimony.id),
     );
   }
 
@@ -655,4 +663,330 @@ class _EmojiActionButton extends StatelessWidget {
       ),
     );
   }
+}
+
+// ── Shorts comments bottom sheet ─────────────────────────────────────────────
+//
+// Fully self-contained: handles keyboard insets so the input field stays
+// visible above the keyboard at all times.
+
+class _ShortsCommentsSheet extends ConsumerStatefulWidget {
+  const _ShortsCommentsSheet({required this.testimonyId});
+  final String testimonyId;
+
+  @override
+  ConsumerState<_ShortsCommentsSheet> createState() =>
+      _ShortsCommentsSheetState();
+}
+
+class _ShortsCommentsSheetState
+    extends ConsumerState<_ShortsCommentsSheet> {
+  final _ctrl      = TextEditingController();
+  final _focus     = FocusNode();
+  final _scrollCtrl = ScrollController();
+  bool _sending    = false;
+
+  final List<_ShortsComment> _comments = [];
+
+  @override
+  void initState() {
+    super.initState();
+    // Auto-open keyboard immediately
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _focus.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    _focus.dispose();
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _send() async {
+    final text = _ctrl.text.trim();
+    if (text.isEmpty || _sending) return;
+    setState(() => _sending = true);
+
+    final user = ref.read(currentUserProvider);
+
+    // Persist to SQLite
+    try {
+      final dao = CommentDao(DatabaseService());
+      await dao.insert({
+        'id': 'sc_${DateTime.now().millisecondsSinceEpoch}',
+        'testimony_id': widget.testimonyId,
+        'user_id': user?.id ?? 'anon',
+        'author_name': user?.displayName ?? 'Moi',
+        'body': text,
+        'created_at': DateTime.now().toIso8601String(),
+        'like_count': 0,
+        'user_liked': 0,
+      });
+    } catch (_) {}
+
+    if (!mounted) return;
+    setState(() {
+      _comments.add(_ShortsComment(
+        author: user?.displayName ?? 'Moi',
+        text: text,
+        createdAt: DateTime.now(),
+      ));
+      _sending = false;
+    });
+    _ctrl.clear();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollCtrl.hasClients) {
+        _scrollCtrl.animateTo(
+          _scrollCtrl.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // viewInsets.bottom = keyboard height; animates with keyboard
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+
+    return Container(
+      // Sheet height: 70% of screen + keyboard height so it rises with keyboard
+      height: MediaQuery.of(context).size.height * 0.75 + keyboardHeight,
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        children: [
+          // Handle + header
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Column(
+              children: [
+                Container(
+                  width: 36, height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.border,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  AppLocalizations.of(context).detailComments,
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1, color: AppColors.border),
+
+          // Comments list
+          Expanded(
+            child: _comments.isEmpty
+                ? Center(
+                    child: Text(
+                      AppLocalizations.of(context).detailFirstComment,
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: AppColors.textSecondary,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  )
+                : ListView.builder(
+                    controller: _scrollCtrl,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 8),
+                    itemCount: _comments.length,
+                    itemBuilder: (_, i) =>
+                        _CommentTile(comment: _comments[i]),
+                  ),
+          ),
+
+          // Input bar — sits directly above keyboard via padding
+          Container(
+            padding: EdgeInsets.only(
+              left: 12,
+              right: 12,
+              top: 8,
+              // Push above keyboard; the Container itself is sized to include
+              // keyboard space, so we just need safe area bottom when no keyboard
+              bottom: keyboardHeight > 0 ? 8 : 8,
+            ),
+            decoration: const BoxDecoration(
+              color: AppColors.surface,
+              border: Border(top: BorderSide(color: AppColors.border)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _ctrl,
+                    focusNode: _focus,
+                    maxLines: 3,
+                    minLines: 1,
+                    style: AppTextStyles.bodyMedium,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: InputDecoration(
+                      hintText: AppLocalizations.of(context).detailAddComment,
+                      hintStyle: AppTextStyles.bodyMedium.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                      filled: true,
+                      fillColor: AppColors.background,
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(22),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(22),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(22),
+                        borderSide: const BorderSide(
+                            color: AppColors.primary, width: 1.5),
+                      ),
+                    ),
+                    onSubmitted: (_) => _send(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: _send,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: _sending
+                          ? AppColors.primary.withAlpha(120)
+                          : AppColors.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: _sending
+                        ? const Padding(
+                            padding: EdgeInsets.all(10),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.send_rounded,
+                            color: Colors.white, size: 18),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Bottom padding when no keyboard (safe area)
+          if (keyboardHeight == 0)
+            SizedBox(height: MediaQuery.of(context).padding.bottom),
+        ],
+      ),
+    );
+  }
+}
+
+class _CommentTile extends StatelessWidget {
+  const _CommentTile({required this.comment});
+  final _ShortsComment comment;
+
+  @override
+  Widget build(BuildContext context) {
+    final initials = comment.author.isNotEmpty
+        ? comment.author[0].toUpperCase()
+        : '?';
+    final diff = DateTime.now().difference(comment.createdAt);
+    final timeAgo = diff.inMinutes < 1
+        ? 'à l\'instant'
+        : diff.inMinutes < 60
+            ? 'il y a ${diff.inMinutes}min'
+            : 'il y a ${diff.inHours}h';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [AppColors.primary, Color(0xFF9333EA)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              initials,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      comment.author,
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(timeAgo,
+                        style: AppTextStyles.bodySmall),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  comment.text,
+                  style:
+                      AppTextStyles.bodyMedium.copyWith(height: 1.4),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ShortsComment {
+  const _ShortsComment({
+    required this.author,
+    required this.text,
+    required this.createdAt,
+  });
+  final String author;
+  final String text;
+  final DateTime createdAt;
 }

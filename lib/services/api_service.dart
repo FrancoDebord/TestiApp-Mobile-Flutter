@@ -76,6 +76,29 @@ class LaravelApiException implements Exception {
     return null;
   }
 
+  /// All field errors flattened into readable lines.
+  String get allFieldErrors {
+    if (errors == null || errors!.isEmpty) return '';
+    final lines = <String>[];
+    for (final entry in errors!.entries) {
+      final raw = entry.value;
+      if (raw is List) {
+        for (final msg in raw) {
+          if (msg is String) lines.add('• $msg');
+        }
+      } else if (raw is String) {
+        lines.add('• $raw');
+      }
+    }
+    return lines.join('\n');
+  }
+
+  /// Human-readable message: field errors if available, otherwise the top-level message.
+  String get displayMessage {
+    final detail = allFieldErrors;
+    return detail.isNotEmpty ? detail : message;
+  }
+
   @override
   String toString() => 'LaravelApiException($statusCode): $message';
 }
@@ -106,43 +129,52 @@ class AuthInterceptor extends Interceptor {
     ErrorInterceptorHandler handler,
   ) async {
     if (err.response?.statusCode == 401) {
+      // Éviter une boucle infinie si le retry lui-même revient en 401
+      final alreadyRetried =
+          err.requestOptions.extra['_auth_retry'] as bool? ?? false;
+      if (alreadyRetried) {
+        handler.next(err);
+        return;
+      }
+
+      String? newToken;
       try {
         final refreshToken =
             await _storage.read(key: AppConstants.keyRefreshToken);
-        if (refreshToken == null) {
-          handler.next(err);
-          return;
+
+        if (refreshToken != null) {
+          final refreshDio = Dio(BaseOptions(
+            baseUrl: AppConstants.baseUrl,
+            headers: {'Accept': 'application/json'},
+          ));
+          final res = await refreshDio.post(
+            AppConstants.authRefresh,
+            data: {'refresh_token': refreshToken},
+          );
+          final body = res.data as Map<String, dynamic>? ?? {};
+          final data = body['data'] as Map<String, dynamic>? ?? body;
+          newToken = data['access_token'] as String?;
+          final newRefresh = data['refresh_token'] as String?;
+          if (newToken != null) {
+            await _storage.write(
+                key: AppConstants.keyAccessToken, value: newToken);
+          }
+          if (newRefresh != null) {
+            await _storage.write(
+                key: AppConstants.keyRefreshToken, value: newRefresh);
+          }
         }
-
-        final refreshDio = Dio(BaseOptions(
-          baseUrl: AppConstants.baseUrl,
-          headers: {'Accept': 'application/json'},
-        ));
-
-        final response = await refreshDio.post(
-          AppConstants.authRefresh,
-          data: {'refresh_token': refreshToken},
-        );
-
-        final body = response.data as Map<String, dynamic>? ?? {};
-        final data = body['data'] as Map<String, dynamic>? ?? body;
-        final newAccess  = data['access_token']  as String?;
-        final newRefresh = data['refresh_token'] as String?;
-
-        if (newAccess != null) {
-          await _storage.write(
-              key: AppConstants.keyAccessToken, value: newAccess);
-        }
-        if (newRefresh != null) {
-          await _storage.write(
-              key: AppConstants.keyRefreshToken, value: newRefresh);
-        }
-
-        err.requestOptions.headers['Authorization'] = 'Bearer $newAccess';
-        final retried = await Dio().fetch(err.requestOptions);
-        handler.resolve(retried);
-        return;
       } catch (_) {}
+
+      if (newToken != null) {
+        err.requestOptions.headers['Authorization'] = 'Bearer $newToken';
+        err.requestOptions.extra['_auth_retry'] = true;
+        try {
+          final retried = await Dio().fetch(err.requestOptions);
+          handler.resolve(retried);
+          return;
+        } catch (_) {}
+      }
     }
     handler.next(err);
   }
@@ -191,6 +223,10 @@ class LoggingInterceptor extends Interceptor {
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
     // ignore: avoid_print
     print('[API] ▶ ${options.method} ${options.uri}');
+    if (options.data != null) {
+      // ignore: avoid_print
+      print('[API] ▶ body: ${options.data}');
+    }
     handler.next(options);
   }
 
@@ -198,6 +234,8 @@ class LoggingInterceptor extends Interceptor {
   void onResponse(Response response, ResponseInterceptorHandler handler) {
     // ignore: avoid_print
     print('[API] ◀ ${response.statusCode} ${response.requestOptions.uri}');
+    // ignore: avoid_print
+    print('[API] ◀ body: ${response.data}');
     handler.next(response);
   }
 
@@ -206,6 +244,8 @@ class LoggingInterceptor extends Interceptor {
     // ignore: avoid_print
     print('[API] ✖ ${err.response?.statusCode ?? err.type} '
         '${err.requestOptions.uri} — ${err.message}');
+    // ignore: avoid_print
+    print('[API] ✖ body: ${err.response?.data}');
     handler.next(err);
   }
 }
@@ -235,14 +275,49 @@ class ApiService {
 
   late final Dio _dio;
 
+  // ── Converts DioException 4xx → LaravelApiException ───────────────────────
+  //
+  // Dio throws DioException for any HTTP error status before LaravelResponse
+  // can parse the body. This wrapper catches 4xx (except 401 which is handled
+  // by AuthInterceptor for token refresh) and re-throws as LaravelApiException
+  // with the real message from the Laravel JSON body.
+
+  static Never _rethrowClientError(DioException e) {
+    final statusCode = e.response?.statusCode ?? 0;
+    final body       = e.response?.data as Map<String, dynamic>? ?? {};
+    final message    = body['message'] as String?;
+    final errors     = body['errors'];
+    throw LaravelApiException(
+      message:    message ?? 'Erreur serveur ($statusCode).',
+      errors:     errors is Map<String, dynamic> ? errors : null,
+      statusCode: statusCode,
+    );
+  }
+
+  Future<Response<Map<String, dynamic>>> _call(
+    Future<Response<Map<String, dynamic>>> Function() fn,
+  ) async {
+    try {
+      return await fn();
+    } on DioException catch (e) {
+      final status = e.response?.statusCode ?? 0;
+      // 4xx (except 401: handled by AuthInterceptor for token refresh)
+      if (status >= 400 && status < 500 && status != 401) {
+        _rethrowClientError(e);
+      }
+      rethrow;
+    }
+  }
+
   // ── Generic helpers ────────────────────────────────────────────────────────
 
   Future<LaravelResponse<T>> get<T>(
     String path, {
     Map<String, dynamic>? query,
   }) async {
-    final res = await _dio.get<Map<String, dynamic>>(
-        path, queryParameters: query);
+    final res = await _call(
+      () => _dio.get<Map<String, dynamic>>(path, queryParameters: query),
+    );
     return LaravelResponse.fromDio(res);
   }
 
@@ -251,8 +326,10 @@ class ApiService {
     dynamic data,
     Map<String, dynamic>? query,
   }) async {
-    final res = await _dio.post<Map<String, dynamic>>(
-        path, data: data, queryParameters: query);
+    final res = await _call(
+      () => _dio.post<Map<String, dynamic>>(path,
+          data: data, queryParameters: query),
+    );
     return LaravelResponse.fromDio(res);
   }
 
@@ -260,7 +337,9 @@ class ApiService {
     String path, {
     dynamic data,
   }) async {
-    final res = await _dio.put<Map<String, dynamic>>(path, data: data);
+    final res = await _call(
+      () => _dio.put<Map<String, dynamic>>(path, data: data),
+    );
     return LaravelResponse.fromDio(res);
   }
 
@@ -268,7 +347,9 @@ class ApiService {
     String path, {
     dynamic data,
   }) async {
-    final res = await _dio.delete<Map<String, dynamic>>(path, data: data);
+    final res = await _call(
+      () => _dio.delete<Map<String, dynamic>>(path, data: data),
+    );
     return LaravelResponse.fromDio(res);
   }
 
@@ -285,11 +366,13 @@ class ApiService {
       fieldName: await MultipartFile.fromFile(filePath, filename: fileName),
       ...extraFields,
     });
-    final res = await _dio.post<Map<String, dynamic>>(
-      path,
-      data: formData,
-      options: Options(contentType: 'multipart/form-data'),
-      onSendProgress: onProgress,
+    final res = await _call(
+      () => _dio.post<Map<String, dynamic>>(
+        path,
+        data: formData,
+        options: Options(contentType: 'multipart/form-data'),
+        onSendProgress: onProgress,
+      ),
     );
     return LaravelResponse.fromDio(res);
   }

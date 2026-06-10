@@ -1,12 +1,76 @@
 // lib/core/app_constants.dart
 //
 // Central constants for the Témoignages application.
-// The API follows Laravel conventions:
-//   • Base URL: https://api.testi-app.com/api/v1
-//   • All endpoints prefixed with /api/v1
-//   • Responses: { success, data, message, errors? }
-//   • Auth: Bearer JWT in Authorization header
-//   • Social auth: POST /auth/social { provider, token }
+//
+// API base: http://192.168.1.74:8000/api/v1
+// Auth: Bearer JWT via Laravel Sanctum (token returned by /auth/login)
+// Envelope: { "success": bool, "data": any, "message": string, "errors"?: map }
+//
+// ── Route map (from routes/api.php) ───────────────────────────────────────────
+// PUBLIC (no auth)
+//   POST   /auth/login                    { email, password }
+//   POST   /auth/register                 { display_name, email, password, password_confirmation, country? }
+//   POST   /auth/phone                    { firebase_token, phone, first_name?, last_name?, country? }
+//   POST   /auth/social                   { provider: 'google'|'facebook', token }
+//   POST   /auth/forgot-password          { email }
+//   GET    /categories
+//   GET    /testimonies                   ?featured&category&status&after&limit
+//   GET    /testimonies/featured
+//   GET    /testimonies/{id}
+//   GET    /testimonies/{id}/comments
+//   GET    /testimonies/{id}/reactions
+//   GET    /users/{id}
+//   GET    /users/{id}/testimonies
+//
+// AUTHENTICATED (Bearer token)
+//   GET    /auth/me                       → current user object
+//   POST   /auth/logout
+//   POST   /auth/refresh                  { refresh_token }
+//   POST   /testimonies                   { title, type, category, bodyText, bibleVerse?, verseReference?, visibility, tags? }
+//   PUT    /testimonies/{id}
+//   DELETE /testimonies/{id}
+//   PUT    /testimonies/{id}/save
+//   DELETE /testimonies/{id}/unsave
+//   GET    /testimonies/saved/list
+//   POST   /testimonies/{id}/reactions    { type: 'like'|'pray' }
+//   DELETE /testimonies/{id}/reactions/{reactionId}
+//   POST   /testimonies/{id}/comments     { text }
+//   PUT    /comments/{id}
+//   DELETE /comments/{id}
+//   PUT    /users/me                      { display_name?, country?, bio?, phone? }
+//   POST   /users/me/avatar              (multipart)
+//   PUT    /users/me/settings
+//   DELETE /users/me
+//   POST   /users/{id}/follow
+//   DELETE /users/{id}/unfollow
+//   GET    /notifications                 ?after
+//   POST   /notifications/{id}/read
+//   POST   /notifications/read-all
+//   POST   /media/upload                 (multipart)
+//   GET    /media/presigned-url
+//
+// MODERATOR + ADMIN
+//   GET    /moderation/stats
+//   GET    /moderation/pending
+//   GET    /moderation/{id}
+//   POST   /moderation/{id}/approve
+//   POST   /moderation/{id}/reject
+//
+// ADMIN ONLY
+//   GET    /admin/stats
+//   GET    /admin/users
+//   GET    /admin/users/{id}
+//   POST   /admin/users/{id}/ban
+//   POST   /admin/users/{id}/suspend
+//   POST   /admin/users/{id}/activate
+//   PUT    /admin/users/{id}/role         { role: 'utilisateur'|'moderateur'|'administrateur' }
+//   GET    /admin/testimonies
+//   GET    /admin/categories
+//   POST   /admin/categories
+//   PUT    /admin/categories/{id}
+//   DELETE /admin/categories/{id}
+//   GET    /admin/settings
+//   PUT    /admin/settings
 
 abstract final class AppConstants {
   // ── Network ──────────────────────────────────────────────────────────────
@@ -14,14 +78,15 @@ abstract final class AppConstants {
   /// Override at build time: --dart-define=API_BASE_URL=https://your-laravel.app/api/v1
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://10.0.2.2:8000/api/v1',
-    // 10.0.2.2 = localhost from Android emulator
-    // Replace with your production URL before release
+    defaultValue: 'http://192.168.1.74:8000/api/v1',
+    // Dev: http://192.168.1.74:8000/api/v1  (LAN server)
+    // Android emulator localhost alias: http://10.0.2.2:8000/api/v1
+    // Production: https://api.testi-app.com/api/v1
   );
 
-  static const int connectTimeoutMs = 15000;
-  static const int receiveTimeoutMs = 30000;
-  static const int maxRetries = 3;
+  static const int connectTimeoutMs = 8000;
+  static const int receiveTimeoutMs = 20000;
+  static const int maxRetries = 2;
 
   // ── Secure-storage keys ───────────────────────────────────────────────────
 
@@ -33,58 +98,61 @@ abstract final class AppConstants {
 
   static const int defaultPageSize = 20;
 
-  // ── Auth endpoints (Laravel Sanctum / Passport) ───────────────────────────
+  // ── Auth endpoints ────────────────────────────────────────────────────────
+  // Login body:    { email, password }
+  // Register body: { display_name, email, password, password_confirmation, country? }
 
   static const String authLogin          = '/auth/login';
   static const String authRegister       = '/auth/register';
+  static const String authPhone          = '/auth/phone';
+  static const String authSocial         = '/auth/social';
+  static const String authForgotPassword = '/auth/forgot-password';
   static const String authRefresh        = '/auth/refresh';
   static const String authLogout         = '/auth/logout';
-  static const String authVerifyEmail    = '/auth/verify-email';
-  static const String authForgotPassword = '/auth/forgot-password';
-  static const String authResetPassword  = '/auth/reset-password';
-  static const String authMe             = '/auth/me';
-
-  /// Connexion par téléphone — POST { firebase_token, phone, [first_name, last_name, country] }
-  /// Laravel vérifie le token Firebase et crée/retrouve l'utilisateur.
-  static const String authPhone         = '/auth/phone';
-
-  /// Social login — POST { provider: 'google'|'facebook', token: '...' }
-  static const String authSocial        = '/auth/social';
+  static const String authMe             = '/auth/me';   // GET only — current user
 
   // ── Testimonies ───────────────────────────────────────────────────────────
+  // Query params for GET /testimonies: featured, category, status, after, limit
 
-  static const String testimonies = '/testimonies';
+  static const String testimonies         = '/testimonies';
+  static const String testimoniesFeatured = '/testimonies/featured';
+  static const String testimoniesSaved    = '/testimonies/saved/list';
 
-  static String testimonyById(String id)       => '/testimonies/$id';
-  static String testimonyReactions(String id)  => '/testimonies/$id/reactions';
-  static String testimonyComments(String id)   => '/testimonies/$id/comments';
-  static String testimonySave(String id)       => '/testimonies/$id/save';
-  static String testimonyUnsave(String id)     => '/testimonies/$id/unsave';
+  static String testimonyById(String id)          => '/testimonies/$id';
+  static String testimonyReactions(String id)     => '/testimonies/$id/reactions';
+  static String testimonyReactionById(String testimonyId, String reactionId)
+      => '/testimonies/$testimonyId/reactions/$reactionId';
+  static String testimonyComments(String id)      => '/testimonies/$id/comments';
+  static String testimonySave(String id)          => '/testimonies/$id/save';   // PUT
+  static String testimonyUnsave(String id)        => '/testimonies/$id/unsave'; // DELETE
 
   // Delta sync: GET /testimonies?after=ISO8601&limit=N
   static String feedDelta({required String after, int limit = 20}) =>
       '/testimonies?after=$after&limit=$limit';
 
-  // ── Comments ──────────────────────────────────────────────────────────────
+  // ── Comments (body field: "text") ─────────────────────────────────────────
 
   static String commentById(String id) => '/comments/$id';
 
   // ── Users ─────────────────────────────────────────────────────────────────
 
   static String userById(String id)         => '/users/$id';
-  static String userFollow(String id)       => '/users/$id/follow';
-  static String userUnfollow(String id)     => '/users/$id/unfollow';
   static String userTestimonies(String id)  => '/users/$id/testimonies';
-  static const String updateProfile         = '/users/me';
-  static const String uploadAvatar          = '/users/me/avatar';
+  static String userFollow(String id)       => '/users/$id/follow';    // POST
+  static String userUnfollow(String id)     => '/users/$id/unfollow';  // DELETE
+
+  // Self management
+  static const String updateProfile    = '/users/me';          // PUT
+  static const String uploadAvatar     = '/users/me/avatar';   // POST multipart
+  static const String updateSettings   = '/users/me/settings'; // PUT
+  static const String deleteAccount    = '/users/me';          // DELETE
 
   // ── Notifications ─────────────────────────────────────────────────────────
 
-  static const String notifications        = '/notifications';
-  static String notificationRead(String id) => '/notifications/$id/read';
-  static const String notificationsReadAll  = '/notifications/read-all';
+  static const String notifications         = '/notifications';
+  static String notificationRead(String id) => '/notifications/$id/read'; // POST
+  static const String notificationsReadAll  = '/notifications/read-all';  // POST
 
-  // Delta sync: GET /notifications?after=ISO8601
   static String notificationsDelta({required String after}) =>
       '/notifications?after=$after';
 
@@ -92,27 +160,60 @@ abstract final class AppConstants {
 
   static const String categories = '/categories';
 
+  // ── Bible ─────────────────────────────────────────────────────────────────
+  // GET /bible/translations                         → [{code, name, language, booksCount, versesCount}]
+  // GET /bible/download/{code}                      → full Bible (books+chapters+verses)
+  // GET /bible/books?translation={code}             → books list
+  // GET /bible/{book}/{chapter}?translation={code}  → chapter verses (online)
+  // GET /bible/search?q=...&translation={code}      → search
+
+  static const String bibleTranslations = '/bible/translations';
+  static String bibleDownload(String code) => '/bible/download/$code';
+  static String bibleBooks(String code)    => '/bible/books?translation=$code';
+  static String bibleChapter(String code, int book, int chapter) =>
+      '/bible/$book/$chapter?translation=$code';
+  static const String bibleSearch = '/bible/search';
+
+  // ── Verset du jour ────────────────────────────────────────────────────────
+
+  static const String verseToday = '/daily-verse';
+  static String verseLike(int id)  => '/daily-verse/$id/like';
+  static String versePray(int id)  => '/daily-verse/$id/pray';
+  static String verseShare(int id) => '/daily-verse/$id/share';
+
   // ── Media upload (multipart/form-data) ────────────────────────────────────
 
-  static const String uploadMedia = '/media/upload';
-
-  // Presigned URL for direct S3/R2 upload
+  static const String uploadMedia  = '/media/upload';
   static const String presignedUrl = '/media/presigned-url';
 
-  // ── Moderation ────────────────────────────────────────────────────────────
+  // ── Moderation (role: moderateur | administrateur) ────────────────────────
 
-  static const String moderationPending = '/moderation/pending';
-  static String moderationApprove(String id) => '/moderation/$id/approve';
-  static String moderationReject(String id)  => '/moderation/$id/reject';
+  static const String moderationStats    = '/moderation/stats';
+  static const String moderationPending  = '/moderation/pending';
+  static String moderationById(String id)    => '/moderation/$id';
+  static String moderationApprove(String id) => '/moderation/$id/approve'; // POST
+  static String moderationReject(String id)  => '/moderation/$id/reject';  // POST
 
-  // ── Admin ─────────────────────────────────────────────────────────────────
+  // ── Admin (role: administrateur) ──────────────────────────────────────────
 
-  static const String adminUsers        = '/admin/users';
-  static const String adminTestimonies  = '/admin/testimonies';
-  static const String adminCategories   = '/admin/categories';
-  static const String adminStats        = '/admin/stats';
-  static String adminUserById(String id) => '/admin/users/$id';
-  static String adminBanUser(String id)  => '/admin/users/$id/ban';
+  static const String adminStats       = '/admin/stats';
+  static const String adminUsers       = '/admin/users';
+  static const String adminTestimonies = '/admin/testimonies';
+  static const String adminCategories  = '/admin/categories';
+  static const String adminSettings    = '/admin/settings';
+
+  static String adminUserById(String id)    => '/admin/users/$id';
+  static String adminBanUser(String id)     => '/admin/users/$id/ban';     // POST
+  static String adminSuspendUser(String id) => '/admin/users/$id/suspend'; // POST
+  static String adminActivateUser(String id)=> '/admin/users/$id/activate';// POST
+  static String adminUserRole(String id)    => '/admin/users/$id/role';    // PUT
+
+  // ── FCM device token ─────────────────────────────────────────────────────
+  // POST   /devices/token  { token, platform: 'android'|'ios' }
+  // DELETE /devices/token  { token }
+
+  static const String registerFcmToken   = '/devices/token';
+  static const String unregisterFcmToken = '/devices/token';
 
   // ── Validation limits ─────────────────────────────────────────────────────
 
@@ -127,18 +228,18 @@ abstract final class AppConstants {
   static const int maxAudioDurationMin  = 60;
   static const int maxVideoDurationMin  = 10;
 
-  // ── Categories (mirrors Laravel seeder slugs) ─────────────────────────────
+  // ── Category slugs (matches /categories API) ──────────────────────────────
 
   static const List<String> categorySlugs = [
     'guerison',
     'delivrance',
-    'conversion',
-    'mariage',
+    'protection',
+    'provision',
     'famille',
-    'finances',
-    'miracles',
-    'protection-divine',
-    'ministere',
     'salut',
+    'mariage',
+    'emploi',
+    'etudes',
+    'autre',
   ];
 }

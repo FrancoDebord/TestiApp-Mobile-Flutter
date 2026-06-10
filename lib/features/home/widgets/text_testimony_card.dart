@@ -33,35 +33,41 @@ class TextTestimonyCard extends ConsumerWidget {
         onTap: () => context.push('/testimony/${testimony.id}'),
         borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TestimonyCardHeader(
-                testimony: testimony,
-                trailing: _CardMenu(
-                  isSaved: saved,
-                  onSave: () => ref
-                      .read(interactionProvider.notifier)
-                      .toggleSave(testimony.id),
-                  shareText:
-                      '${testimony.title}\n\n${testimony.preview}\n\n'
-                      'Partagé depuis l\'application Témoignages ✝️',
-                  onReport: () => ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Signalement envoyé')),
+              // ── Top: catégorie + menu ─────────────────────────────────────
+              Row(
+                children: [
+                  CategoryBadge(category: testimony.category),
+                  const Spacer(),
+                  _CardMenu(
+                    isSaved: saved,
+                    onSave: () => ref
+                        .read(interactionProvider.notifier)
+                        .toggleSave(testimony.id),
+                    shareText:
+                        '${testimony.title}\n\n${testimony.preview}\n\n'
+                        'Partagé depuis l\'application Témoignages ✝️',
+                    onReport: () => ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Signalement envoyé')),
+                    ),
                   ),
-                ),
+                ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
 
+              // ── Titre — contenu principal ─────────────────────────────────
               Text(
                 testimony.title,
-                style: AppTextStyles.h4,
+                style: AppTextStyles.h4.copyWith(fontSize: 17),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
 
+              // ── Extrait texte ─────────────────────────────────────────────
               Text(
                 testimony.preview,
                 style: AppTextStyles.bodyMedium.copyWith(
@@ -71,6 +77,10 @@ class TextTestimonyCard extends ConsumerWidget {
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
               ),
+              const SizedBox(height: 12),
+
+              // ── Auteur compact ────────────────────────────────────────────
+              TestimonyAuthorRow(testimony: testimony),
               const SizedBox(height: 12),
 
               TestimonyStatsRow(stats: testimony.stats),
@@ -91,8 +101,8 @@ class TextTestimonyCard extends ConsumerWidget {
                     context.push('/testimony/${testimony.id}/comments'),
                 onShare: () => SharePlus.instance.share(
                   ShareParams(
-                    text: '${testimony.title}\n\n${testimony.preview}\n\n'
-                        'Partagé depuis l\'application Témoignages ✝️',
+                    text: '${testimony.title}\n\n'
+                        'testi://app/testimony/${testimony.id}',
                   ),
                 ),
               ),

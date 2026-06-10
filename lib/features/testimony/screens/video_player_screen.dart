@@ -10,6 +10,7 @@ import 'package:video_player/video_player.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../features/auth/providers/auth_notifier.dart' show currentUserProvider;
 import '../../../features/home/models/testimony_model.dart';
 import '../../../features/home/providers/home_providers.dart';
 
@@ -72,7 +73,6 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
   bool _isLiked        = false;
   bool _isPraying      = false;
   bool _isBookmarked   = false;
-  bool _descriptionExpanded = false;
   VideoTestimony? _testimony;
 
   Timer? _hideTimer;
@@ -134,6 +134,11 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final feed = ref.watch(feedNotifierProvider);
+    final testimony = feed.whereType<VideoTestimony>()
+        .where((t) => t.id == widget.testimonyId)
+        .firstOrNull;
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark,
       child: Scaffold(
@@ -146,7 +151,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
               child: _chewieCtrl != null
                   ? Chewie(controller: _chewieCtrl!)
                   : _VideoSurface(
-                      // Placeholder pendant l'initialisation
+                      title: testimony?.title ?? '',
                       isPlaying: false,
                       controlsVisible: true,
                       progress: 0,
@@ -166,9 +171,15 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 12),
-                    const _VideoMeta(),
-                    const _VideoStats(),
-                    _VideoAuthorRow(),
+                    _VideoMeta(
+                      title: testimony?.title ?? '',
+                      categoryLabel: testimony?.category.label ?? '',
+                    ),
+                    _VideoStats(
+                      views: testimony?.stats.views ?? 0,
+                      createdAt: testimony?.createdAt,
+                    ),
+                    _VideoAuthorRow(author: testimony?.author),
                     const Divider(height: 1, color: AppColors.border),
                     _VideoReactionBar(
                       isLiked: _isLiked,
@@ -182,11 +193,6 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
                       onShare: () {},
                     ),
                     const Divider(height: 1, color: AppColors.border),
-                    _VideoDescription(
-                      expanded: _descriptionExpanded,
-                      onToggle: () => setState(
-                          () => _descriptionExpanded = !_descriptionExpanded),
-                    ),
                     const Divider(height: 1, color: AppColors.border),
                     _CommentsPreview(
                       onTap: () => _showCommentsSheet(context),
@@ -221,6 +227,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
 
 class _VideoSurface extends StatelessWidget {
   const _VideoSurface({
+    required this.title,
     required this.isPlaying,
     required this.controlsVisible,
     required this.progress,
@@ -233,6 +240,7 @@ class _VideoSurface extends StatelessWidget {
     required this.onBack,
   });
 
+  final String title;
   final bool isPlaying;
   final bool controlsVisible;
   final double progress;
@@ -258,6 +266,7 @@ class _VideoSurface extends StatelessWidget {
               opacity: controlsVisible ? 1.0 : 0.0,
               duration: const Duration(milliseconds: 220),
               child: _VideoOverlay(
+                title: title,
                 isPlaying: isPlaying,
                 progress: progress,
                 elapsed: elapsed,
@@ -327,6 +336,7 @@ class _VideoPlaceholder extends StatelessWidget {
 
 class _VideoOverlay extends StatelessWidget {
   const _VideoOverlay({
+    required this.title,
     required this.isPlaying,
     required this.progress,
     required this.elapsed,
@@ -337,6 +347,7 @@ class _VideoOverlay extends StatelessWidget {
     required this.onBack,
   });
 
+  final String title;
   final bool isPlaying;
   final double progress;
   final String elapsed;
@@ -392,10 +403,10 @@ class _VideoOverlay extends StatelessWidget {
                 color: Colors.white,
                 iconSize: 22,
               ),
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'Comment Dieu a guéri ma fille',
-                  style: TextStyle(
+                  title,
+                  style: const TextStyle(
                     fontFamily: 'Poppins',
                     color: Colors.white,
                     fontWeight: FontWeight.w600,
@@ -552,7 +563,9 @@ class _VideoBadge extends StatelessWidget {
 // ============================================================================
 
 class _VideoMeta extends StatelessWidget {
-  const _VideoMeta();
+  const _VideoMeta({required this.title, required this.categoryLabel});
+  final String title;
+  final String categoryLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -561,12 +574,11 @@ class _VideoMeta extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Comment Dieu a miraculeusement guéri ma fille d\'une maladie incurable',
-            style: AppTextStyles.h3,
-          ),
-          const SizedBox(height: 8),
-          _CategoryChipSmall(label: 'Guérison'),
+          Text(title, style: AppTextStyles.h3),
+          if (categoryLabel.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            _CategoryChipSmall(label: categoryLabel),
+          ],
         ],
       ),
     );
@@ -605,7 +617,22 @@ class _CategoryChipSmall extends StatelessWidget {
 // ============================================================================
 
 class _VideoStats extends StatelessWidget {
-  const _VideoStats();
+  const _VideoStats({required this.views, required this.createdAt});
+  final int views;
+  final DateTime? createdAt;
+
+  String _fmtViews(int v) {
+    if (v >= 1000000) return '${(v / 1000000).toStringAsFixed(1)}M vues';
+    if (v >= 1000) return '${(v / 1000).toStringAsFixed(1)}k vues';
+    return '$v vues';
+  }
+
+  String _fmtDate(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inDays == 0) return "aujourd'hui";
+    if (diff.inDays == 1) return 'il y a 1 jour';
+    return 'il y a ${diff.inDays} jours';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -616,12 +643,14 @@ class _VideoStats extends StatelessWidget {
           const Icon(Icons.visibility_outlined,
               size: 15, color: AppColors.textSecondary),
           const SizedBox(width: 5),
-          Text('12.4k vues', style: AppTextStyles.bodySmall),
-          const SizedBox(width: 14),
-          const Icon(Icons.calendar_today_outlined,
-              size: 13, color: AppColors.textSecondary),
-          const SizedBox(width: 5),
-          Text('il y a 3 jours', style: AppTextStyles.bodySmall),
+          Text(_fmtViews(views), style: AppTextStyles.bodySmall),
+          if (createdAt != null) ...[
+            const SizedBox(width: 14),
+            const Icon(Icons.calendar_today_outlined,
+                size: 13, color: AppColors.textSecondary),
+            const SizedBox(width: 5),
+            Text(_fmtDate(createdAt!), style: AppTextStyles.bodySmall),
+          ],
         ],
       ),
     );
@@ -632,73 +661,83 @@ class _VideoStats extends StatelessWidget {
 // Video Author Row
 // ============================================================================
 
-class _VideoAuthorRow extends StatefulWidget {
+class _VideoAuthorRow extends ConsumerStatefulWidget {
+  const _VideoAuthorRow({this.author});
+  final TestimonyAuthor? author;
+
   @override
-  State<_VideoAuthorRow> createState() => _VideoAuthorRowState();
+  ConsumerState<_VideoAuthorRow> createState() => _VideoAuthorRowState();
 }
 
-class _VideoAuthorRowState extends State<_VideoAuthorRow> {
+class _VideoAuthorRowState extends ConsumerState<_VideoAuthorRow> {
   bool _following = false;
+
+  static String _initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.length >= 2) return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    return name.isNotEmpty ? name[0].toUpperCase() : '?';
+  }
 
   @override
   Widget build(BuildContext context) {
+    final currentUid = ref.watch(currentUserProvider)?.id;
+    final author = widget.author;
+    final isOwnProfile = author != null && author.uid == currentUid;
+    final displayName = author?.displayName ?? '';
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
       child: Row(
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(colors: AppColors.guerisonGradient),
-            ),
-            child: const Center(
-              child: Text('MN',
-                  style: TextStyle(
+          CircleAvatar(
+            radius: 22,
+            backgroundImage: author?.avatarUrl != null
+                ? NetworkImage(author!.avatarUrl!)
+                : null,
+            backgroundColor: AppColors.primary.withAlpha(40),
+            child: author?.avatarUrl == null
+                ? Text(
+                    _initials(displayName),
+                    style: const TextStyle(
                       fontFamily: 'Poppins',
-                      color: Colors.white,
+                      color: AppColors.primary,
                       fontWeight: FontWeight.w600,
-                      fontSize: 15)),
-            ),
+                      fontSize: 15,
+                    ),
+                  )
+                : null,
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Marie Nkosi', style: AppTextStyles.labelMedium),
-                Row(children: [
-                  const Text('🇨🇲', style: TextStyle(fontSize: 11)),
-                  const SizedBox(width: 4),
-                  Text('Cameroun', style: AppTextStyles.bodySmall),
-                ]),
-              ],
+            child: Text(
+              displayName.isNotEmpty ? displayName : 'Auteur inconnu',
+              style: AppTextStyles.labelMedium,
             ),
           ),
-          GestureDetector(
-            onTap: () => setState(() => _following = !_following),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
-              decoration: BoxDecoration(
-                color: _following ? Colors.transparent : AppColors.primary,
-                border: Border.all(
-                    color:
-                        _following ? AppColors.border : AppColors.primary),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                _following ? 'Suivi' : 'Suivre',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                  color: _following ? AppColors.textSecondary : Colors.white,
+          if (!isOwnProfile)
+            GestureDetector(
+              onTap: () => setState(() => _following = !_following),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+                decoration: BoxDecoration(
+                  color: _following ? Colors.transparent : AppColors.primary,
+                  border: Border.all(
+                      color:
+                          _following ? AppColors.border : AppColors.primary),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  _following ? 'Suivi' : 'Suivre',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: _following ? AppColors.textSecondary : Colors.white,
+                  ),
                 ),
               ),
             ),
-          ),
         ],
       ),
     );
@@ -809,56 +848,6 @@ class _VideoReactionBtn extends StatelessWidget {
   }
 }
 
-// ============================================================================
-// Video Description (collapsible)
-// ============================================================================
-
-class _VideoDescription extends StatelessWidget {
-  const _VideoDescription(
-      {required this.expanded, required this.onToggle});
-
-  final bool expanded;
-  final VoidCallback onToggle;
-
-  static const _short =
-      'Témoignage de guérison miraculeuse. Ma fille a été diagnostiquée avec une '
-      'leucémie de type B et guérie supernaturellement après 6 mois de lutte...';
-
-  static const _full =
-      'Témoignage de guérison miraculeuse. Ma fille a été diagnostiquée avec une '
-      'leucémie lymphoblastique aiguë de type B et guérie supernaturellement '
-      'après 6 mois de lutte. Nous partageons cette expérience pour fortifier '
-      'la foi de chacun. Dieu est le même hier, aujourd\'hui et éternellement.\n\n'
-      'Référence biblique : Psaumes 147:3\n'
-      '#Guérison #Miracle #FoiEnDieu #Témoignage';
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(expanded ? _full : _short,
-              style: AppTextStyles.bodyMedium),
-          const SizedBox(height: 6),
-          GestureDetector(
-            onTap: onToggle,
-            child: Text(
-              expanded ? 'Voir moins' : 'Voir plus',
-              style: const TextStyle(
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-                color: AppColors.primary,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 // ============================================================================
 // Comments Preview

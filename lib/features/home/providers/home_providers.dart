@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/app_constants.dart';
 import '../../../core/local_db/daos/testimony_dao.dart';
 import '../../../core/local_db/database_service.dart';
+import '../../../services/api_service.dart';
 import '../models/testimony_model.dart';
 
 // ============================================================================
@@ -48,97 +50,191 @@ extension ReactionTypeInfo on ReactionType {
         return 'Touché';
     }
   }
+
+  /// Valeur envoyée au backend (POST /testimonies/{id}/reactions).
+  String get apiValue => switch (this) {
+        ReactionType.like    => 'like',
+        ReactionType.pray    => 'pray',
+        ReactionType.love    => 'love',
+        ReactionType.glory   => 'amen',
+        ReactionType.strong  => 'fire',
+        ReactionType.fire    => 'fire',
+        ReactionType.touched => 'love',
+      };
 }
 
 // ============================================================================
-// Stub data initiale
+// Helpers : catégorie API slug ↔ enum Flutter
 // ============================================================================
 
-final _stubTestimonies = <Testimony>[
-  TextTestimony(
-    id: 't1',
-    author: const TestimonyAuthor(uid: 'u1', displayName: 'Marie Ndoumbe'),
-    title: 'Guérie d\'un cancer en phase terminale',
-    category: TestimonyCategory.guerison,
-    createdAt: DateTime.now().subtract(const Duration(hours: 2)),
-    stats: const TestimonyStats(views: 1243, comments: 34, likes: 89, prayers: 156),
-    preview:
-        'Après trois ans de combat contre un cancer du sein en phase 4, les médecins m\'avaient donné '
-        'six mois à vivre. C\'est alors que lors d\'une réunion de prière, quelque chose d\'extraordinaire s\'est produit…',
-    isFeatured: true,
-  ),
-  AudioTestimony(
-    id: 't2',
-    author: const TestimonyAuthor(uid: 'u2', displayName: 'Jean-Paul Essomba'),
-    title: 'Ma délivrance d\'une addiction de 15 ans',
-    category: TestimonyCategory.delivrance,
-    createdAt: DateTime.now().subtract(const Duration(hours: 5)),
-    stats: const TestimonyStats(views: 876, comments: 21, likes: 63, prayers: 98),
-    durationSeconds: 734,
-    transcriptPreview:
-        'Pendant quinze ans, j\'étais esclave de l\'alcool. Ma famille m\'avait abandonné, '
-        'j\'avais perdu mon emploi…',
-    isFeatured: true,
-  ),
-  VideoTestimony(
-    id: 't3',
-    author: const TestimonyAuthor(uid: 'u3', displayName: 'Esther Fokou'),
-    title: 'Comment Dieu a restauré mon mariage brisé',
-    category: TestimonyCategory.mariage,
-    createdAt: DateTime.now().subtract(const Duration(hours: 8)),
-    stats: const TestimonyStats(views: 2100, comments: 47, likes: 134, prayers: 210),
-    durationSeconds: 1245,
-    thumbnailUrl: 'https://picsum.photos/seed/testi3/600/340',
-    isFeatured: true,
-  ),
-  TextTestimony(
-    id: 't4',
-    author: const TestimonyAuthor(uid: 'u4', displayName: 'Samuel Biya'),
-    title: 'Miracle financier : dette effacée en une nuit',
-    category: TestimonyCategory.finances,
-    createdAt: DateTime.now().subtract(const Duration(hours: 12)),
-    stats: const TestimonyStats(views: 654, comments: 18, likes: 45, prayers: 77),
-    preview:
-        'Notre entreprise était au bord de la faillite avec une dette de 50 millions. '
-        'Après une nuit de jeûne et de prière, le lendemain matin…',
-  ),
-  AudioTestimony(
-    id: 't5',
-    author: const TestimonyAuthor(uid: 'u5', displayName: 'Grace Mballa'),
-    title: 'Protection miraculeuse lors d\'un accident',
-    category: TestimonyCategory.protection,
-    createdAt: DateTime.now().subtract(const Duration(hours: 18)),
-    stats: const TestimonyStats(views: 432, comments: 9, likes: 38, prayers: 55),
-    durationSeconds: 412,
-    transcriptPreview:
-        'Le car a fait plusieurs tonneaux. Tous les passagers ont été blessés gravement sauf moi…',
-  ),
-  TextTestimony(
-    id: 't6',
-    author: const TestimonyAuthor(uid: 'u6', displayName: 'Paul Nkeng'),
-    title: 'Conversion radicale : d\'imam à pasteur',
-    category: TestimonyCategory.conversion,
-    createdAt: DateTime.now().subtract(const Duration(days: 1)),
-    stats: const TestimonyStats(views: 3400, comments: 89, likes: 287, prayers: 401),
-    preview:
-        'J\'ai grandi dans une famille musulmane dévouée. Pendant 30 ans, j\'ai combattu le christianisme '
-        'avec toute mon énergie. Puis, une nuit, Jésus m\'est apparu en rêve…',
-  ),
-];
+TestimonyCategory _categoryFromApiSlug(String slug) => switch (slug) {
+      'guerison'          => TestimonyCategory.guerison,
+      'delivrance'        => TestimonyCategory.delivrance,
+      'conversion'        => TestimonyCategory.conversion,
+      'mariage'           => TestimonyCategory.mariage,
+      'famille'           => TestimonyCategory.famille,
+      'finances'          => TestimonyCategory.finances,
+      'miracles'          => TestimonyCategory.miracles,
+      'protection_divine' => TestimonyCategory.protection,
+      'protection'        => TestimonyCategory.protection,
+      'ministere'         => TestimonyCategory.ministere,
+      'salut'             => TestimonyCategory.salut,
+      _                   => TestimonyCategory.guerison,
+    };
+
+/// Slug envoyé au backend (protection → protection_divine).
+String toCategoryApiSlug(TestimonyCategory cat) =>
+    cat == TestimonyCategory.protection ? 'protection_divine' : cat.name;
 
 // ============================================================================
-// FeedNotifier — liste mutable (ajout depuis publish, filtrage par catégorie)
+// Helper : reconstruit un Testimony avec des stats modifiées (optimistic UI)
+// ============================================================================
+
+Testimony _applyStatsDelta(Testimony t, int likeDelta, int prayDelta) {
+  final s = t.stats;
+  final ns = TestimonyStats(
+    views:    s.views,
+    comments: s.comments,
+    likes:    (s.likes    + likeDelta).clamp(0, 999999),
+    prayers:  (s.prayers  + prayDelta).clamp(0, 999999),
+  );
+  if (t is TextTestimony) {
+    return TextTestimony(
+      id: t.id, author: t.author, title: t.title,
+      category: t.category, createdAt: t.createdAt, stats: ns,
+      preview: t.preview, coverImageUrl: t.coverImageUrl,
+      isFeatured: t.isFeatured, isLiked: t.isLiked, isPrayed: t.isPrayed,
+    );
+  }
+  if (t is AudioTestimony) {
+    return AudioTestimony(
+      id: t.id, author: t.author, title: t.title,
+      category: t.category, createdAt: t.createdAt, stats: ns,
+      durationSeconds: t.durationSeconds, transcriptPreview: t.transcriptPreview,
+      mediaPath: t.mediaPath, coverImageUrl: t.coverImageUrl,
+      isFeatured: t.isFeatured, isLiked: t.isLiked, isPrayed: t.isPrayed,
+    );
+  }
+  if (t is VideoTestimony) {
+    return VideoTestimony(
+      id: t.id, author: t.author, title: t.title,
+      category: t.category, createdAt: t.createdAt, stats: ns,
+      durationSeconds: t.durationSeconds, thumbnailUrl: t.thumbnailUrl,
+      mediaPath: t.mediaPath,
+      isFeatured: t.isFeatured, isLiked: t.isLiked, isPrayed: t.isPrayed,
+    );
+  }
+  return t;
+}
+
+// ============================================================================
+// JSON API → Testimony
+// ============================================================================
+
+Testimony? testimonyFromApiJson(dynamic raw) {
+  try {
+    final m        = raw as Map<String, dynamic>;
+    final userMap  = m['user']  as Map<String, dynamic>? ?? {};
+    final statsMap = m['stats'] as Map<String, dynamic>? ?? {};
+
+    final author = TestimonyAuthor(
+      uid:         userMap['id']          as String? ?? m['userId'] as String? ?? '',
+      displayName: userMap['displayName'] as String? ?? 'Anonyme',
+      avatarUrl:   userMap['avatarUrl']   as String?,
+    );
+    final id        = m['id']       as String? ?? '';
+    final title     = m['title']    as String? ?? '';
+    final category  = _categoryFromApiSlug(m['category'] as String? ?? '');
+    final createdAt = DateTime.tryParse(m['createdAt'] as String? ?? '') ?? DateTime.now();
+    final stats = TestimonyStats(
+      views:    (statsMap['viewsCount']     as int?) ?? 0,
+      likes:    (statsMap['likesCount']     as int?) ?? 0,
+      prayers:  (statsMap['bookmarksCount'] as int?) ?? 0,
+      comments: (statsMap['commentsCount']  as int?) ?? 0,
+    );
+    final isFeatured = m['isFeatured']  as bool? ?? false;
+    final isLiked    = m['isLikedByMe'] as bool? ?? false;
+    final isPrayed   = m['isPrayedByMe'] as bool? ?? false;
+    final type       = m['type']        as String? ?? 'text';
+
+    switch (type) {
+      case 'audio':
+        final body = m['bodyText'] as String? ?? '';
+        return AudioTestimony(
+          id: id, author: author, title: title,
+          category: category, createdAt: createdAt, stats: stats,
+          durationSeconds:   m['duration'] as int? ?? 0,
+          transcriptPreview: body.length > 180 ? '${body.substring(0, 180)}…' : body,
+          mediaPath:     m['mediaUrl'] as String?,
+          coverImageUrl: m['coverUrl'] as String?,
+          isFeatured: isFeatured, isLiked: isLiked, isPrayed: isPrayed,
+        );
+      case 'video':
+        return VideoTestimony(
+          id: id, author: author, title: title,
+          category: category, createdAt: createdAt, stats: stats,
+          durationSeconds: m['duration'] as int? ?? 0,
+          thumbnailUrl:    m['coverUrl'] as String? ?? '',
+          mediaPath:       m['mediaUrl'] as String?,
+          isFeatured: isFeatured, isLiked: isLiked, isPrayed: isPrayed,
+        );
+      default:
+        final body = m['bodyText'] as String? ?? '';
+        return TextTestimony(
+          id: id, author: author, title: title,
+          category: category, createdAt: createdAt, stats: stats,
+          preview: body.length > 220 ? '${body.substring(0, 220)}…' : body,
+          coverImageUrl: m['coverUrl'] as String?,
+          isFeatured: isFeatured, isLiked: isLiked, isPrayed: isPrayed,
+        );
+    }
+  } catch (_) {
+    return null;
+  }
+}
+
+// ============================================================================
+// FeedNotifier — liste mutable chargée depuis l'API (+ SQLite en fallback)
 // ============================================================================
 
 class FeedNotifier extends Notifier<List<Testimony>> {
   @override
   List<Testimony> build() {
-    // Démarrer avec les stubs puis enrichir depuis SQLite de façon asynchrone
-    Future.microtask(_loadFromDb);
-    return List<Testimony>.from(_stubTestimonies);
+    Future.microtask(_loadFromApi);
+    return const [];
   }
 
-  // ── Charger les témoignages publiés depuis SQLite ─────────────────────────
+  // ── Chargement depuis l'API ───────────────────────────────────────────────
+
+  Future<void> _loadFromApi() async {
+    try {
+      final api      = ref.read(apiServiceProvider);
+      final response = await api.get<List<dynamic>>(AppConstants.testimonies);
+      final items = response.data
+          .map(testimonyFromApiJson)
+          .whereType<Testimony>()
+          .toList();
+      state = items;
+      // Synchronise l'état liked/prayed depuis le serveur.
+      ref.read(interactionProvider.notifier).seedFromFeed(items);
+    } catch (_) {
+      // Hors-ligne ou non authentifié → fallback SQLite
+      await _loadFromDb();
+    } finally {
+      ref.read(feedIsLoadingProvider.notifier).done();
+    }
+  }
+
+  /// Ajuste les compteurs en mémoire sans attendre le serveur (optimistic UI).
+  void applyOptimisticDelta(String id, {int likes = 0, int prayers = 0}) {
+    if (likes == 0 && prayers == 0) return;
+    state = [
+      for (final t in state)
+        t.id == id ? _applyStatsDelta(t, likes, prayers) : t,
+    ];
+  }
+
+  // ── Fallback SQLite ───────────────────────────────────────────────────────
 
   Future<void> _loadFromDb() async {
     try {
@@ -150,27 +246,19 @@ class FeedNotifier extends Notifier<List<Testimony>> {
           .map(_rowToTestimony)
           .whereType<Testimony>()
           .toList();
-
-      if (fromDb.isEmpty) return;
-
-      // Fusionner : DB en tête, stubs à la fin (sans doublons)
-      final dbIds = fromDb.map((t) => t.id).toSet();
-      final stubs = state.where((t) => !dbIds.contains(t.id)).toList();
-      state = [...fromDb, ...stubs];
-    } catch (_) {
-      // SQLite non disponible (web, premier lancement) — continuer avec stubs
-    }
+      if (fromDb.isNotEmpty) state = fromDb;
+    } catch (_) {}
   }
 
-  // ── Convertir une ligne SQLite en objet Testimony ─────────────────────────
+  // ── SQLite row → Testimony ────────────────────────────────────────────────
 
   static Testimony? _rowToTestimony(Map<String, dynamic> row) {
     try {
-      final type   = row['type'] as String? ?? 'text';
-      final id     = row['id']   as String;
+      final type   = row['type']   as String? ?? 'text';
+      final id     = row['id']     as String;
       final author = TestimonyAuthor(
-        uid:         row['user_id']     as String? ?? '',
-        displayName: row['author_name'] as String? ?? 'Anonyme',
+        uid:         row['user_id']       as String? ?? '',
+        displayName: row['author_name']   as String? ?? 'Anonyme',
         avatarUrl:   row['author_avatar'] as String?,
       );
       final title    = row['title']    as String? ?? '';
@@ -178,8 +266,8 @@ class FeedNotifier extends Notifier<List<Testimony>> {
       final category = TestimonyCategory.values
           .firstWhere((c) => c.name == catName,
               orElse: () => TestimonyCategory.guerison);
-      final createdAt = DateTime.tryParse(row['created_at'] as String? ?? '') ??
-          DateTime.now();
+      final createdAt =
+          DateTime.tryParse(row['created_at'] as String? ?? '') ?? DateTime.now();
       final stats = TestimonyStats(
         views:    row['views']         as int? ?? 0,
         likes:    row['like_count']    as int? ?? 0,
@@ -192,19 +280,19 @@ class FeedNotifier extends Notifier<List<Testimony>> {
           return AudioTestimony(
             id: id, author: author, title: title,
             category: category, createdAt: createdAt, stats: stats,
-            durationSeconds: row['duration_sec'] as int? ?? 0,
-            transcriptPreview: row['body_text'] as String? ?? '',
-            mediaPath: row['media_url'] as String?,
+            durationSeconds:   row['duration_sec'] as int? ?? 0,
+            transcriptPreview: row['body_text']    as String? ?? '',
+            mediaPath:         row['media_url']    as String?,
           );
         case 'video':
           return VideoTestimony(
             id: id, author: author, title: title,
             category: category, createdAt: createdAt, stats: stats,
             durationSeconds: row['duration_sec'] as int? ?? 0,
-            thumbnailUrl:   row['cover_url']  as String? ?? '',
-            mediaPath:      row['media_url']  as String?,
+            thumbnailUrl:    row['cover_url']    as String? ?? '',
+            mediaPath:       row['media_url']    as String?,
           );
-        default: // text
+        default:
           final body = row['body_text'] as String? ?? '';
           return TextTestimony(
             id: id, author: author, title: title,
@@ -217,7 +305,7 @@ class FeedNotifier extends Notifier<List<Testimony>> {
     }
   }
 
-  // ── Ajouter (feed en mémoire ; SQLite géré par publish_provider) ──────────
+  // ── Mutations mémoire ─────────────────────────────────────────────────────
 
   void addTestimony(Testimony testimony) {
     state = [testimony, ...state];
@@ -226,17 +314,31 @@ class FeedNotifier extends Notifier<List<Testimony>> {
   void removeTestimony(String id) {
     state = state.where((t) => t.id != id).toList();
   }
+
+  /// Recharge le feed depuis l'API.
+  Future<void> refresh() => _loadFromApi();
 }
 
 final feedNotifierProvider =
     NotifierProvider<FeedNotifier, List<Testimony>>(FeedNotifier.new);
+
+/// `true` tant que le premier chargement (API ou SQLite) n'est pas terminé.
+/// Utilisé par HomeScreen pour afficher les skeleton cards plutôt que l'état vide.
+class _FeedLoadingNotifier extends Notifier<bool> {
+  @override
+  bool build() => true;
+  void done() => state = false;
+}
+
+final feedIsLoadingProvider =
+    NotifierProvider<_FeedLoadingNotifier, bool>(_FeedLoadingNotifier.new);
 
 // ============================================================================
 // Feed filtré par catégorie (utilisé par HomeScreen)
 // ============================================================================
 
 final feedProvider = Provider<List<Testimony>>((ref) {
-  final all = ref.watch(feedNotifierProvider);
+  final all      = ref.watch(feedNotifierProvider);
   final selected = ref.watch(selectedCategoryProvider);
   if (selected == null) return all;
   return all.where((t) => t.category == selected).toList();
@@ -251,53 +353,38 @@ final featuredProvider = Provider<List<Testimony>>((ref) {
 });
 
 // ============================================================================
-// Interactions : likes, prières, réactions emoji (par ID de témoignage)
+// Interactions : likes, prières, réactions emoji — avec appels API
 // ============================================================================
 
 class TestimonyInteractions {
   const TestimonyInteractions({
-    this.liked = const {},
-    this.prayed = const {},
-    this.saved = const {},
+    this.liked     = const {},
+    this.prayed    = const {},
+    this.saved     = const {},
     this.reactions = const {},
   });
 
-  /// IDs des témoignages aimés (rétrocompatibilité — miroir de reactions[id]==like).
   final Set<String> liked;
-
-  /// IDs des témoignages pour lesquels l'utilisateur a prié.
   final Set<String> prayed;
-
-  /// IDs des témoignages sauvegardés.
   final Set<String> saved;
-
-  /// Réaction emoji choisie par l'utilisateur, indexée par ID de témoignage.
   final Map<String, ReactionType> reactions;
 
-  // ── Mutation : réaction ───────────────────────────────────────────────────
-
-  /// Pose ou remplace la réaction de l'utilisateur sur [id].
-  /// Si [type] == [ReactionType.like], synchronise aussi [liked].
   TestimonyInteractions setReaction(String id, ReactionType type) {
     final newReactions = Map<String, ReactionType>.from(reactions)..[id] = type;
-    final newLiked = Set<String>.from(liked);
+    final newLiked     = Set<String>.from(liked);
     if (type == ReactionType.like) {
       newLiked.add(id);
     } else {
-      // Une autre réaction ne compte pas comme "like"
       newLiked.remove(id);
     }
     return copyWith(reactions: newReactions, liked: newLiked);
   }
 
-  /// Retire la réaction de l'utilisateur sur [id].
   TestimonyInteractions removeReaction(String id) {
     final newReactions = Map<String, ReactionType>.from(reactions)..remove(id);
-    final newLiked = Set<String>.from(liked)..remove(id);
+    final newLiked     = Set<String>.from(liked)..remove(id);
     return copyWith(reactions: newReactions, liked: newLiked);
   }
-
-  // ── copyWith ──────────────────────────────────────────────────────────────
 
   TestimonyInteractions copyWith({
     Set<String>? liked,
@@ -314,58 +401,138 @@ class TestimonyInteractions {
 }
 
 class InteractionNotifier extends Notifier<TestimonyInteractions> {
+  /// Réactions envoyées au serveur — stocke l'ID retourné pour pouvoir supprimer.
+  final _reactionIds = <String, String>{}; // testimonyId → reactionId
+  final _prayIds     = <String, String>{}; // testimonyId → reactionId (pray)
+
   @override
   TestimonyInteractions build() => const TestimonyInteractions();
 
+  // ── Seed depuis le serveur (appelé après chaque chargement du feed) ─────────
+
+  void seedFromFeed(List<Testimony> testimonies) {
+    final serverLiked  = <String>{};
+    final serverPrayed = <String>{};
+    for (final t in testimonies) {
+      if (t.isLiked)  serverLiked.add(t.id);
+      if (t.isPrayed) serverPrayed.add(t.id);
+    }
+    state = state.copyWith(
+      liked:  {...state.liked,  ...serverLiked},
+      prayed: {...state.prayed, ...serverPrayed},
+    );
+  }
+
   // ── Réactions emoji ───────────────────────────────────────────────────────
 
-  /// Pose ou remplace la réaction de l'utilisateur sur [id].
   void setReaction(String id, ReactionType type) {
+    final wasLiked = state.reactions[id] == ReactionType.like;
+    final isLike   = type == ReactionType.like;
     state = state.setReaction(id, type);
+    // Mise à jour optimiste du compteur dans le feed.
+    ref.read(feedNotifierProvider.notifier).applyOptimisticDelta(
+      id,
+      likes: isLike && !wasLiked ? 1 : (!isLike && wasLiked ? -1 : 0),
+    );
+    _postReaction(id, type.apiValue, ids: _reactionIds);
   }
 
-  /// Retire la réaction de l'utilisateur sur [id].
   void removeReaction(String id) {
+    final reactionId = _reactionIds.remove(id);
+    final wasLiked   = state.reactions[id] == ReactionType.like;
     state = state.removeReaction(id);
+    if (wasLiked) {
+      ref.read(feedNotifierProvider.notifier).applyOptimisticDelta(id, likes: -1);
+    }
+    if (reactionId != null) _deleteReaction(id, reactionId);
   }
 
-  /// Retourne la réaction courante de l'utilisateur pour [id], ou null.
   ReactionType? getReaction(String id) => state.reactions[id];
 
-  // ── Compatibilité ascendante ──────────────────────────────────────────────
+  // ── Like (rétrocompatibilité) ─────────────────────────────────────────────
 
   void toggleLike(String id) {
-    if (state.reactions.containsKey(id) &&
-        state.reactions[id] == ReactionType.like) {
-      state = state.removeReaction(id);
+    if (state.reactions[id] == ReactionType.like) {
+      removeReaction(id);
     } else {
-      state = state.setReaction(id, ReactionType.like);
+      setReaction(id, ReactionType.like);
     }
   }
+
+  // ── Prière ────────────────────────────────────────────────────────────────
 
   void togglePray(String id) {
     final prayed = {...state.prayed};
     if (prayed.contains(id)) {
       prayed.remove(id);
+      state = state.copyWith(prayed: prayed);
+      ref.read(feedNotifierProvider.notifier).applyOptimisticDelta(id, prayers: -1);
+      final reactionId = _prayIds.remove(id);
+      if (reactionId != null) _deleteReaction(id, reactionId);
     } else {
       prayed.add(id);
+      state = state.copyWith(prayed: prayed);
+      ref.read(feedNotifierProvider.notifier).applyOptimisticDelta(id, prayers: 1);
+      _postReaction(id, 'pray', ids: _prayIds);
     }
-    state = state.copyWith(prayed: prayed);
   }
+
+  // ── Sauvegarde ────────────────────────────────────────────────────────────
 
   void toggleSave(String id) {
     final saved = {...state.saved};
     if (saved.contains(id)) {
       saved.remove(id);
+      state = state.copyWith(saved: saved);
+      _callApi(() async {
+        final api = ref.read(apiServiceProvider);
+        await api.delete<void>(AppConstants.testimonyUnsave(id));
+      });
     } else {
       saved.add(id);
+      state = state.copyWith(saved: saved);
+      _callApi(() async {
+        final api = ref.read(apiServiceProvider);
+        await api.put<void>(AppConstants.testimonySave(id));
+      });
     }
-    state = state.copyWith(saved: saved);
   }
 
   bool isLiked(String id)  => state.liked.contains(id);
   bool isPrayed(String id) => state.prayed.contains(id);
   bool isSaved(String id)  => state.saved.contains(id);
+
+  // ── Helpers API (fire-and-forget, ignorent les erreurs réseau) ────────────
+
+  Future<void> _postReaction(
+    String testimonyId,
+    String type, {
+    required Map<String, String> ids,
+  }) async {
+    await _callApi(() async {
+      final api      = ref.read(apiServiceProvider);
+      final response = await api.post<Map<String, dynamic>>(
+        AppConstants.testimonyReactions(testimonyId),
+        data: {'type': type},
+      );
+      final reactionId = response.data['id'] as String?;
+      if (reactionId != null) ids[testimonyId] = reactionId;
+    });
+  }
+
+  Future<void> _deleteReaction(String testimonyId, String reactionId) async {
+    await _callApi(() async {
+      final api = ref.read(apiServiceProvider);
+      await api.delete<void>(
+          AppConstants.testimonyReactionById(testimonyId, reactionId));
+    });
+  }
+
+  Future<void> _callApi(Future<void> Function() fn) async {
+    try {
+      await fn();
+    } catch (_) {}
+  }
 }
 
 final interactionProvider =
@@ -373,16 +540,15 @@ final interactionProvider =
         InteractionNotifier.new);
 
 // Sélecteurs pratiques
-final likedIdsProvider = Provider<Set<String>>(
-    (ref) => ref.watch(interactionProvider).liked);
+final likedIdsProvider =
+    Provider<Set<String>>((ref) => ref.watch(interactionProvider).liked);
 
-final prayedIdsProvider = Provider<Set<String>>(
-    (ref) => ref.watch(interactionProvider).prayed);
+final prayedIdsProvider =
+    Provider<Set<String>>((ref) => ref.watch(interactionProvider).prayed);
 
-final savedIdsProvider = Provider<Set<String>>(
-    (ref) => ref.watch(interactionProvider).saved);
+final savedIdsProvider =
+    Provider<Set<String>>((ref) => ref.watch(interactionProvider).saved);
 
-/// Map complète testimony-id → ReactionType pour l'utilisateur courant.
 final reactionsMapProvider = Provider<Map<String, ReactionType>>(
     (ref) => ref.watch(interactionProvider).reactions);
 
@@ -390,14 +556,6 @@ final reactionsMapProvider = Provider<Map<String, ReactionType>>(
 // Statistiques effectives — intègre les interactions locales de l'utilisateur
 // ============================================================================
 
-/// Statistiques effectives d'un témoignage après application des interactions
-/// locales de l'utilisateur (like, prière, sauvegarde).
-///
-/// - [likes]   = stats.likes   + (isLiked  ? 1 : 0)
-/// - [prayers] = stats.prayers + (isPrayed ? 1 : 0)
-/// - [saves]   = 0             + (isSaved  ? 1 : 0)
-///
-/// Les champs [views] et [comments] sont repris tels quels depuis [TestimonyStats].
 class _EffectiveStats {
   const _EffectiveStats({
     required this.likes,
@@ -409,37 +567,21 @@ class _EffectiveStats {
 
   final int likes;
   final int prayers;
-
-  /// Nombre de sauvegardes (uniquement l'interaction locale pour l'instant).
   final int saves;
   final int views;
   final int comments;
 }
 
-/// Provider de famille qui calcule les [_EffectiveStats] pour un témoignage
-/// identifié par son [id].
-///
-/// Usage dans un widget :
-/// ```dart
-/// final stats = ref.watch(computedStatsProvider('t1'));
-/// Text('${stats.likes} likes');
-/// ```
 final computedStatsProvider =
     Provider.family<_EffectiveStats, String>((ref, id) {
-  // Localiser le témoignage dans le feed
   final feed = ref.watch(feedNotifierProvider);
-  final testimony = feed.cast<Testimony?>().firstWhere(
-        (t) => t?.id == id,
-        orElse: () => null,
-      );
+  final testimony = feed.where((t) => t.id == id).firstOrNull;
 
-  // Interactions locales de l'utilisateur courant
   final interactions = ref.watch(interactionProvider);
   final isLiked  = interactions.liked.contains(id);
   final isPrayed = interactions.prayed.contains(id);
   final isSaved  = interactions.saved.contains(id);
 
-  // Stats de base (zéro si le témoignage est introuvable)
   final base = testimony?.stats ?? TestimonyStats.zero;
 
   return _EffectiveStats(
@@ -470,14 +612,80 @@ final selectedCategoryProvider =
 // Verset du jour
 // ============================================================================
 
-final dailyVerseProvider = Provider<DailyVerse>((ref) {
-  return const DailyVerse(
-    text:
-        '« Car je connais les projets que j\'ai formés sur vous, dit l\'Éternel, '
-        'projets de paix et non de malheur, afin de vous donner un avenir et de l\'espérance. »',
-    reference: 'Jérémie 29 : 11',
-  );
-});
+const _kFallbackVerse = DailyVerse(
+  text: '« Car je connais les projets que j\'ai formés sur vous, dit l\'Éternel, '
+      'projets de paix et non de malheur, afin de vous donner un avenir et de l\'espérance. »',
+  reference: 'Jérémie 29 : 11',
+);
+
+class DailyVerseNotifier extends AsyncNotifier<DailyVerse> {
+  @override
+  Future<DailyVerse> build() async {
+    try {
+      final api    = ref.read(apiServiceProvider);
+      final result = await api.get<Map<String, dynamic>>(AppConstants.verseToday);
+      return DailyVerse.fromJson(result.data);
+    } catch (_) {
+      return _kFallbackVerse;
+    }
+  }
+
+  Future<void> toggleLike() async {
+    final verse = state.value;
+    if (verse == null) return;
+    final wasLiked = verse.isLiked;
+    // Mise à jour optimiste
+    state = AsyncValue.data(verse.copyWith(
+      isLiked:   !wasLiked,
+      likeCount: verse.likeCount + (wasLiked ? -1 : 1),
+    ));
+    try {
+      final api = ref.read(apiServiceProvider);
+      if (wasLiked) {
+        await api.delete<void>(AppConstants.verseLike(verse.id));
+      } else {
+        await api.post<void>(AppConstants.verseLike(verse.id));
+      }
+    } catch (_) {
+      // Annuler l'optimiste en cas d'erreur
+      state = AsyncValue.data(verse);
+    }
+  }
+
+  Future<void> togglePray() async {
+    final verse = state.value;
+    if (verse == null) return;
+    final wasPrayed = verse.isPrayed;
+    state = AsyncValue.data(verse.copyWith(
+      isPrayed:    !wasPrayed,
+      prayerCount: verse.prayerCount + (wasPrayed ? -1 : 1),
+    ));
+    try {
+      final api = ref.read(apiServiceProvider);
+      if (wasPrayed) {
+        await api.delete<void>(AppConstants.versePray(verse.id));
+      } else {
+        await api.post<void>(AppConstants.versePray(verse.id));
+      }
+    } catch (_) {
+      state = AsyncValue.data(verse);
+    }
+  }
+
+  Future<void> recordShare() async {
+    final verse = state.value;
+    if (verse == null) return;
+    try {
+      final api = ref.read(apiServiceProvider);
+      await api.post<void>(AppConstants.verseShare(verse.id));
+    } catch (_) {}
+  }
+}
+
+final dailyVerseProvider =
+    AsyncNotifierProvider<DailyVerseNotifier, DailyVerse>(
+  DailyVerseNotifier.new,
+);
 
 // ============================================================================
 // Bannière verset — état étendu/replié

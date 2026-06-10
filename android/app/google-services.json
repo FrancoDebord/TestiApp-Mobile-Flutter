@@ -12,7 +12,12 @@
           "package_name": "com.airid.testi_app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "78564751626-1q16u8b2ta5agj7l5i2ldfj5t6lotetj.apps.googleusercontent.com",
+          "client_type": 1
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCeH2GsD6-vW3j-2Nz00r8_pJm4XsACbvI"

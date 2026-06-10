@@ -197,10 +197,45 @@ final class VideoTestimony extends Testimony {
 
 class DailyVerse {
   const DailyVerse({
+    this.id = 0,
     required this.text,
     required this.reference,
+    this.likeCount  = 0,
+    this.prayerCount = 0,
+    this.isLiked  = false,
+    this.isPrayed = false,
   });
 
+  final int    id;
   final String text;
   final String reference;
+  final int    likeCount;
+  final int    prayerCount;
+  final bool   isLiked;
+  final bool   isPrayed;
+
+  factory DailyVerse.fromJson(Map<String, dynamic> j) => DailyVerse(
+    id:          (j['id'] as num?)?.toInt() ?? 0,
+    text:        j['text']      as String? ?? j['content'] as String? ?? '',
+    reference:   j['reference'] as String? ?? j['verse']   as String? ?? '',
+    likeCount:   (j['like_count']   as num?)?.toInt() ?? 0,
+    prayerCount: (j['prayer_count'] as num?)?.toInt() ?? 0,
+    isLiked:     j['is_liked']  as bool? ?? false,
+    isPrayed:    j['is_prayed'] as bool? ?? false,
+  );
+
+  DailyVerse copyWith({
+    int? likeCount,
+    int? prayerCount,
+    bool? isLiked,
+    bool? isPrayed,
+  }) => DailyVerse(
+    id:          id,
+    text:        text,
+    reference:   reference,
+    likeCount:   likeCount   ?? this.likeCount,
+    prayerCount: prayerCount ?? this.prayerCount,
+    isLiked:     isLiked     ?? this.isLiked,
+    isPrayed:    isPrayed    ?? this.isPrayed,
+  );
 }

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/router/app_routes.dart';
+import '../../../services/api_service.dart' show LaravelApiException;
 import '../providers/auth_notifier.dart';
 import '../widgets/auth_widgets.dart';
 
@@ -83,12 +84,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     setState(() => _isLoading = true);
     try {
-      // Redirigé vers PhoneAuthScreen — cet écran n'est plus utilisé directement
-      context.goNamed(AppRoutes.phoneAuth);
+      await ref.read(authStateProvider.notifier).loginWithEmail(
+            email:    _emailController.text.trim(),
+            password: _passwordController.text,
+          );
+      // La redirection vers /home est gérée par le router (auth state change)
     } catch (e) {
       if (mounted) {
-        setState(() => _errorMessage =
-            'Identifiants incorrects. Vérifiez votre e-mail et mot de passe.');
+        final msg = e is LaravelApiException
+            ? e.displayMessage
+            : e.toString().contains('): ')
+                ? e.toString().substring(e.toString().indexOf('): ') + 3)
+                : e.toString();
+        setState(() => _errorMessage = msg.isNotEmpty
+            ? msg
+            : 'Identifiants incorrects. Vérifiez votre e-mail et mot de passe.');
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

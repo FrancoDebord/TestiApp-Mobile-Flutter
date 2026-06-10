@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../models/notification_models.dart';
 import '../providers/notifications_provider.dart';
 
@@ -39,9 +40,9 @@ class NotificationsScreen extends ConsumerWidget {
             elevation: 0,
             surfaceTintColor: Colors.transparent,
             titleSpacing: 20,
-            title: const Text(
-              'Notifications',
-              style: TextStyle(
+            title: Text(
+              AppLocalizations.of(context).notifTitle,
+              style: const TextStyle(
                 fontFamily: 'Poppins',
                 fontWeight: FontWeight.w600,
                 fontSize: 20,
@@ -51,9 +52,9 @@ class NotificationsScreen extends ConsumerWidget {
             actions: [
               TextButton(
                 onPressed: notifier.markAllRead,
-                child: const Text(
-                  'Tout marquer lu',
-                  style: TextStyle(
+                child: Text(
+                  AppLocalizations.of(context).notifMarkAllRead,
+                  style: const TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 13,
                     color: AppColors.primary,
@@ -176,7 +177,7 @@ class _NotificationSliverList extends StatelessWidget {
 
   /// Returns label + items for each date bucket.
   List<({String label, List<AppNotification> items})> _group(
-      List<AppNotification> all) {
+      BuildContext context, List<AppNotification> all) {
     final now = DateTime.now();
     final todayStart = DateTime(now.year, now.month, now.day);
     final yesterdayStart = todayStart.subtract(const Duration(days: 1));
@@ -194,16 +195,17 @@ class _NotificationSliverList extends StatelessWidget {
             n.createdAt.isBefore(yesterdayStart))
         .toList();
 
+    final l10n = AppLocalizations.of(context);
     return [
-      if (today.isNotEmpty) (label: "Aujourd'hui", items: today),
-      if (yesterday.isNotEmpty) (label: 'Hier', items: yesterday),
-      if (thisWeek.isNotEmpty) (label: 'Cette semaine', items: thisWeek),
+      if (today.isNotEmpty) (label: l10n.notifToday, items: today),
+      if (yesterday.isNotEmpty) (label: l10n.notifYesterday, items: yesterday),
+      if (thisWeek.isNotEmpty) (label: l10n.notifThisWeek, items: thisWeek),
     ];
   }
 
   @override
   Widget build(BuildContext context) {
-    final groups = _group(notifications);
+    final groups = _group(context, notifications);
 
     // Flatten into a list of either header strings or notification items.
     final rows = <Object>[];
@@ -279,9 +281,10 @@ class _NotificationTile extends ConsumerWidget {
     NotificationType.pendingCorrection: Color(0xFFF97316),
   };
 
-  String _timeAgo(DateTime dt) {
+  String _timeAgo(BuildContext context, DateTime dt) {
     final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 1) return "À l'instant";
+    final l10n = AppLocalizations.of(context);
+    if (diff.inMinutes < 1) return l10n.notifToday;
     if (diff.inMinutes < 60) return 'il y a ${diff.inMinutes} min';
     if (diff.inHours < 24) return 'il y a ${diff.inHours} h';
     return 'il y a ${diff.inDays} j';
@@ -374,7 +377,7 @@ class _NotificationTile extends ConsumerWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    _timeAgo(notification.createdAt),
+                    _timeAgo(context, notification.createdAt),
                     style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 11,
@@ -444,9 +447,9 @@ class _EmptyState extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-            const Text(
-              'Aucune notification',
-              style: TextStyle(
+            Text(
+              AppLocalizations.of(context).notifEmpty,
+              style: const TextStyle(
                 fontFamily: 'Poppins',
                 fontWeight: FontWeight.w600,
                 fontSize: 17,
@@ -454,10 +457,10 @@ class _EmptyState extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Vous serez notifié lorsque quelqu\'un interagit avec vos témoignages.',
+            Text(
+              AppLocalizations.of(context).notifEmptyDesc,
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontFamily: 'Inter',
                 fontSize: 13,
                 color: AppColors.textSecondary,

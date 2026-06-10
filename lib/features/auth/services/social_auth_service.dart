@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -38,7 +40,20 @@ class SocialAuthService {
   SocialAuthService._();
   static final SocialAuthService instance = SocialAuthService._();
 
-  final _googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
+  static const _iosClientId =
+      '78564751626-tfc6p4rvivn2pt2hfanpvar336a8nud6.apps.googleusercontent.com';
+
+  // Web Client ID (auto-créé par Firebase quand Google Sign-In est activé).
+  // Retrouvez-le dans google-services.json → oauth_client → client_type: 3
+  // ou dans Google Cloud Console → APIs & Services → Credentials.
+  static const _webClientId =
+      ''; // ← collez ici votre Web Client ID
+
+  final _googleSignIn = GoogleSignIn(
+    clientId: Platform.isIOS ? _iosClientId : null,
+    serverClientId: _webClientId.isEmpty ? null : _webClientId,
+    scopes: ['email', 'profile'],
+  );
 
   // ── Google ─────────────────────────────────────────────────────────────────
 
@@ -50,16 +65,18 @@ class SocialAuthService {
       final account = await _googleSignIn.signIn();
       if (account == null) return const SocialAuthCancelled();
 
-      final auth = await account.authentication;
-      final idToken = auth.idToken;
-      if (idToken == null) {
+      final auth    = await account.authentication;
+      final token   = auth.idToken ?? auth.accessToken;
+      if (token == null) {
         return const SocialAuthError(
-            'Impossible de récupérer le token Google.');
+            'Impossible de récupérer le token Google. '
+            'Vérifiez que Google Sign-In est activé dans Firebase Console '
+            'et que le Web Client ID est configuré.');
       }
 
       return SocialAuthSuccess(
         provider: 'google',
-        token: idToken,
+        token: token,
         email: account.email,
         displayName: account.displayName,
         avatarUrl: account.photoUrl,

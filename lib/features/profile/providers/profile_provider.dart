@@ -1,11 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../../../core/app_constants.dart';
 import '../../../features/auth/providers/auth_notifier.dart'
     show currentUserProvider, authStateProvider;
 import '../../../features/home/models/testimony_model.dart';
 import '../../../features/home/providers/home_providers.dart';
-import '../../../services/api_service.dart' show secureStorageProvider;
+import '../../../services/api_service.dart';
 import '../models/profile_models.dart';
 
 // ── Clés de stockage ──────────────────────────────────────────────────────
@@ -48,9 +49,17 @@ class ProfileExtrasNotifier extends AsyncNotifier<ProfileExtras> {
     if (fn.isEmpty && ln.isEmpty) {
       final displayName = ref.read(currentUserProvider)?.displayName ?? '';
       final parts = displayName.trim().split(' ');
+      final firstName = parts.isNotEmpty ? parts.first : '';
+      final lastName  = parts.length > 1 ? parts.sublist(1).join(' ') : '';
+      // Persister pour que le prochain lancement n'ait pas la race condition
+      if (firstName.isNotEmpty || lastName.isNotEmpty) {
+        await Future.wait([
+          _storage.write(key: _kFirstName, value: firstName),
+          _storage.write(key: _kLastName,  value: lastName),
+        ]);
+      }
       return ProfileExtras(
-        firstName: parts.isNotEmpty ? parts.first : '',
-        lastName:  parts.length > 1 ? parts.sublist(1).join(' ') : '',
+        firstName: firstName, lastName: lastName,
         gender: gen, phone: ph, email: em, country: co, bio: bio,
         title: title, avatarPath: avatar,
       );
@@ -63,7 +72,29 @@ class ProfileExtrasNotifier extends AsyncNotifier<ProfileExtras> {
     );
   }
 
+  Future<void> updateAvatar(String filePath) async {
+    final current = state.value ?? const ProfileExtras();
+    final updated = current.copyWith(avatarPath: filePath);
+    state = AsyncValue.data(updated);
+    await _storage.write(key: _kAvatarPath, value: filePath);
+    _uploadAvatarToServer(filePath);
+  }
+
+  void _uploadAvatarToServer(String filePath) {
+    () async {
+      try {
+        final api = ref.read(apiServiceProvider);
+        await api.upload<void>(
+          AppConstants.uploadAvatar,
+          filePath:  filePath,
+          fieldName: 'avatar',
+        );
+      } catch (_) {}
+    }();
+  }
+
   Future<void> save(ProfileExtras extras) async {
+    // Persistance locale immédiate
     await Future.wait([
       _storage.write(key: _kFirstName,  value: extras.firstName),
       _storage.write(key: _kLastName,   value: extras.lastName),
@@ -75,9 +106,11 @@ class ProfileExtrasNotifier extends AsyncNotifier<ProfileExtras> {
       _storage.write(key: _kTitle,      value: extras.title),
       if (extras.avatarPath != null)
         _storage.write(key: _kAvatarPath, value: extras.avatarPath!),
-      // Mettre à jour le displayName utilisé à la restauration de session
       _storage.write(key: 'local_display_name', value: extras.displayName),
     ]);
+
+    // Synchronisation API (PUT /users/me) — fire-and-forget
+    _syncProfileToApi(extras);
 
     // Mettre à jour le displayName en mémoire dans l'état d'auth
     await ref
@@ -85,6 +118,24 @@ class ProfileExtrasNotifier extends AsyncNotifier<ProfileExtras> {
         .updateDisplayName(extras.displayName);
 
     state = AsyncValue.data(extras);
+  }
+
+  /// Envoie les données de profil au serveur ; erreurs ignorées silencieusement.
+  void _syncProfileToApi(ProfileExtras extras) {
+    () async {
+      try {
+        final api = ref.read(apiServiceProvider);
+        await api.put<void>(
+          AppConstants.updateProfile,
+          data: {
+            'display_name': extras.displayName,
+            'country'     : extras.country.isNotEmpty ? extras.country : null,
+            'bio'         : extras.bio.isNotEmpty     ? extras.bio     : null,
+            'phone'       : extras.phone.isNotEmpty   ? extras.phone   : null,
+          },
+        );
+      } catch (_) {}
+    }();
   }
 }
 
@@ -118,7 +169,7 @@ final userProfileProvider = Provider<UserProfile?>((ref) {
     try { memberSince = DateTime.parse(user.createdAt!); } catch (_) {}
   }
 
-  final displayName = (extras?.displayName.isNotEmpty == true)
+  final displayName = (extras?.firstName.isNotEmpty == true || extras?.lastName.isNotEmpty == true)
       ? extras!.displayName
       : user.displayName;
 
@@ -131,6 +182,8 @@ final userProfileProvider = Provider<UserProfile?>((ref) {
     testimonyCount: testimonyCount,
     likeCount:      likeCount,
     prayerCount:    prayerCount,
+    followersCount: 128,  // stub — à remplacer par API réelle
+    followingCount: 47,   // stub — à remplacer par API réelle
     bio:            extras?.bio.isNotEmpty == true ? extras!.bio : null,
     avatarUrl:      user.avatarUrl,
     extras:         extras ?? const ProfileExtras(),

@@ -5,6 +5,24 @@
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 
+	<!-- Deep links : testi://app/testimony/id -->
+	<!-- Google Sign-In reverse client ID (required for iOS OAuth redirect) -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array><string>testi</string></array>
+			<key>CFBundleURLName</key>
+			<string>com.testi.app</string>
+		</dict>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array><string>com.googleusercontent.apps.78564751626-tfc6p4rvivn2pt2hfanpvar336a8nud6</string></array>
+			<key>CFBundleURLName</key>
+			<string>google-sign-in</string>
+		</dict>
+	</array>
+
 	<!-- Caméra, microphone, galerie photos -->
 	<key>NSCameraUsageDescription</key>
 	<string>Témoignages a besoin d'accéder à votre caméra pour enregistrer vos témoignages vidéo.</string>

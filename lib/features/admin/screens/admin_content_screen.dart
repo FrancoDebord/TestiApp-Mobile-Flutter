@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../l10n/app_localizations.dart';
 import '../../moderation/widgets/testimony_type_badge.dart';
 import '../models/admin_models.dart';
 import '../providers/admin_provider.dart';
@@ -21,13 +22,17 @@ class AdminContentScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final testimonies = ref.watch(adminTestimoniesProvider);
+    final testimoniesAsync = ref.watch(adminTestimoniesProvider);
 
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      itemCount: testimonies.length,
-      itemBuilder: (context, index) =>
-          _PublishedTestimonyCard(testimony: testimonies[index]),
+    return testimoniesAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(child: Text('Erreur : $e')),
+      data: (testimonies) => ListView.builder(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        itemCount: testimonies.length,
+        itemBuilder: (context, index) =>
+            _PublishedTestimonyCard(testimony: testimonies[index]),
+      ),
     );
   }
 }
@@ -85,31 +90,33 @@ class _PublishedTestimonyCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           // Stats row
-          Row(
+          Builder(builder: (context) {
+            final l10n = AppLocalizations.of(context);
+            return Row(
             children: [
               _StatItem(
                 icon: Icons.remove_red_eye_outlined,
                 value: _formatNumber(testimony.views),
-                label: 'vues',
+                label: l10n.adminViews,
               ),
               const SizedBox(width: 16),
               _StatItem(
                 icon: Icons.favorite_border_rounded,
                 value: _formatNumber(testimony.likes),
-                label: 'j\'aime',
+                label: l10n.adminLikes,
               ),
               const SizedBox(width: 16),
               _StatItem(
                 icon: Icons.calendar_today_outlined,
                 value: _formatDate(testimony.publishedAt),
-                label: 'publié',
+                label: l10n.adminPublishedLabel,
               ),
               const Spacer(),
               // Unpublish button
               OutlinedButton.icon(
                 onPressed: () => _confirmUnpublish(context),
                 icon: const Icon(Icons.unpublished_outlined, size: 13),
-                label: const Text('Dépublier'),
+                label: Text(l10n.adminUnpublish),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: const Color(0xFFEF4444),
                   side: const BorderSide(color: Color(0xFFEF4444)),
@@ -127,7 +134,8 @@ class _PublishedTestimonyCard extends StatelessWidget {
                 ),
               ),
             ],
-          ),
+            );
+          }),
         ],
       ),
     );
@@ -142,22 +150,23 @@ class _PublishedTestimonyCard extends StatelessWidget {
       '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
 
   void _confirmUnpublish(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          'Dépublier ce témoignage ?',
-          style: TextStyle(
+        title: Text(
+          l10n.adminUnpublishConfirm,
+          style: const TextStyle(
             fontFamily: 'Poppins',
             fontWeight: FontWeight.w600,
             fontSize: 16,
             color: Color(0xFF0F172A),
           ),
         ),
-        content: const Text(
-          'Le témoignage sera masqué pour tous les utilisateurs.',
-          style: TextStyle(
+        content: Text(
+          l10n.adminUnpublishDesc,
+          style: const TextStyle(
             fontFamily: 'Inter',
             fontSize: 13,
             color: Color(0xFF64748B),
@@ -166,8 +175,8 @@ class _PublishedTestimonyCard extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Annuler',
-                style: TextStyle(fontFamily: 'Inter', color: Color(0xFF64748B))),
+            child: Text(l10n.commonCancel,
+                style: const TextStyle(fontFamily: 'Inter', color: Color(0xFF64748B))),
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -178,8 +187,8 @@ class _PublishedTestimonyCard extends StatelessWidget {
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8)),
             ),
-            child: const Text('Dépublier',
-                style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600)),
+            child: Text(l10n.adminUnpublish,
+                style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600)),
           ),
         ],
       ),
