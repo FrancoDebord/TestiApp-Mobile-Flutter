@@ -14,6 +14,8 @@ import '../../../features/home/models/testimony_model.dart';
 import '../../../features/home/widgets/audio_testimony_card.dart';
 import '../../../features/home/widgets/text_testimony_card.dart';
 import '../../../features/home/widgets/video_testimony_card.dart';
+import '../../../features/auth/providers/auth_notifier.dart'
+    show canModerateProvider, currentUserProvider;
 import '../../../features/prayer/screens/group_prayer_sessions_screen.dart';
 import '../../../features/prayer/screens/prayer_requests_screen.dart';
 import '../models/profile_models.dart';
@@ -608,13 +610,38 @@ class _EmptyMyTestimonies extends StatelessWidget {
 
 // ── Actions rapides ───────────────────────────────────────────────────────
 
-class _QuickActions extends StatelessWidget {
+class _QuickActions extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final canModerate = ref.watch(canModerateProvider);
+    final isAdmin     = ref.watch(currentUserProvider)?.isAdmin ?? false;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
       child: Column(
         children: [
+          // ── Espace modération (modérateur + admin) ─────────────────────
+          if (canModerate) ...[
+            _ActionTile(
+              icon: Icons.shield_outlined,
+              color: const Color(0xFF6B21A8),
+              title: 'Espace modération',
+              subtitle: 'Gérer les témoignages en attente',
+              onTap: () => context.push('/moderation'),
+            ),
+            const SizedBox(height: 10),
+          ],
+          // ── Tableau de bord admin ──────────────────────────────────────
+          if (isAdmin) ...[
+            _ActionTile(
+              icon: Icons.admin_panel_settings_outlined,
+              color: const Color(0xFFDC2626),
+              title: 'Administration',
+              subtitle: 'Gérer les utilisateurs et le contenu',
+              onTap: () => context.push('/admin'),
+            ),
+            const SizedBox(height: 10),
+          ],
           _ActionTile(
             icon: Icons.bookmark_outline_rounded,
             color: AppColors.secondary,

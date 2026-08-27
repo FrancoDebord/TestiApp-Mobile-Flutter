@@ -2,7 +2,7 @@
 // Admin domain models
 // =============================================================================
 
-import '../../../core/providers/auth_provider.dart';
+import '../../../shared/models/user_model.dart' show UserRole;
 import '../../moderation/models/moderation_models.dart';
 
 // ── App-wide metrics ──────────────────────────────────────────────────────────
@@ -53,6 +53,26 @@ class AdminUser {
   final String? avatarUrl;
   final String? country;
   final DateTime? joinedAt;
+
+  AdminUser copyWith({
+    String? uid,
+    String? displayName,
+    String? email,
+    UserRole? role,
+    UserAccountStatus? status,
+    String? avatarUrl,
+    String? country,
+    DateTime? joinedAt,
+  }) => AdminUser(
+    uid:         uid         ?? this.uid,
+    displayName: displayName ?? this.displayName,
+    email:       email       ?? this.email,
+    role:        role        ?? this.role,
+    status:      status      ?? this.status,
+    avatarUrl:   avatarUrl   ?? this.avatarUrl,
+    country:     country     ?? this.country,
+    joinedAt:    joinedAt    ?? this.joinedAt,
+  );
 }
 
 extension UserRoleLabel on UserRole {

@@ -47,12 +47,17 @@ class AudioTestimonyCard extends ConsumerWidget {
                     onSave: () => ref
                         .read(interactionProvider.notifier)
                         .toggleSave(testimony.id),
-                    shareText:
-                        '${testimony.title}\n\n${testimony.transcriptPreview}\n\n'
-                        'Partagé depuis l\'application Témoignages ✝️',
-                    onReport: () => ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Signalement envoyé')),
-                    ),
+                    onShare: () {
+                      SharePlus.instance.share(ShareParams(
+                        text: '${testimony.title}\n\n'
+                            '${testimony.transcriptPreview}\n\n'
+                            'Partagé depuis l\'application Témoignages ✝️',
+                      ));
+                      ref.read(interactionProvider.notifier)
+                          .recordShare(testimony.id);
+                    },
+                    onReport: () =>
+                        context.push('/testimony/${testimony.id}/report'),
                   ),
                 ],
               ),
@@ -104,12 +109,14 @@ class AudioTestimonyCard extends ConsumerWidget {
                     .togglePray(testimony.id),
                 onComment: () =>
                     context.push('/testimony/${testimony.id}/comments'),
-                onShare: () => SharePlus.instance.share(
-                  ShareParams(
+                onShare: () {
+                  SharePlus.instance.share(ShareParams(
                     text: '${testimony.title}\n\n'
                         'testi://app/testimony/${testimony.id}',
-                  ),
-                ),
+                  ));
+                  ref.read(interactionProvider.notifier)
+                      .recordShare(testimony.id);
+                },
               ),
             ],
           ),
@@ -241,13 +248,13 @@ class _CardMenu extends StatelessWidget {
   const _CardMenu({
     required this.isSaved,
     required this.onSave,
-    required this.shareText,
+    required this.onShare,
     required this.onReport,
   });
 
   final bool isSaved;
   final VoidCallback onSave;
-  final String shareText;
+  final VoidCallback onShare;
   final VoidCallback onReport;
 
   @override
@@ -262,7 +269,7 @@ class _CardMenu extends StatelessWidget {
           case 'save':
             onSave();
           case 'share':
-            SharePlus.instance.share(ShareParams(text: shareText));
+            onShare();
           case 'report':
             onReport();
         }

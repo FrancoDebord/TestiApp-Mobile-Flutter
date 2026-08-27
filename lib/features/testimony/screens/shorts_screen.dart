@@ -160,7 +160,11 @@ class _ShortPageState extends State<_ShortPage> {
 
   Future<void> _initVideo() async {
     final path = widget.testimony.mediaPath;
-    if (path == null || path.isEmpty) return;
+    debugPrint('⚡ _initVideo id=${widget.testimony.id} path=$path');
+    if (path == null || path.isEmpty) {
+      debugPrint('⚡ _initVideo: path null/empty → placeholder');
+      return;
+    }
 
     VideoPlayerController controller;
 
@@ -184,8 +188,8 @@ class _ShortPageState extends State<_ShortPage> {
           controller.play();
         }
       }
-    } catch (_) {
-      // Video could not be loaded; placeholder gradient will be shown.
+    } catch (e) {
+      debugPrint('⚡ _initVideo FAIL path=$path error=$e');
       if (mounted) setState(() => _controllerReady = false);
     }
   }

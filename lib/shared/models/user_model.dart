@@ -28,6 +28,8 @@ class UserModel {
     this.testimonyCount = 0,
     this.likeCount = 0,
     this.prayerCount = 0,
+    this.followerCount = 0,
+    this.followingCount = 0,
     this.createdAt,
     this.updatedAt,
   });
@@ -43,6 +45,8 @@ class UserModel {
   final int     testimonyCount;
   final int     likeCount;
   final int     prayerCount;
+  final int     followerCount;
+  final int     followingCount;
   final String? createdAt;
   final String? updatedAt;
 
@@ -73,11 +77,13 @@ class UserModel {
       country:          j['country']          as String? ?? '',
       role:             UserRole.fromJson(j['role'] as String?),
       isEmailVerified:  j['is_email_verified'] as bool? ?? true,
-      testimonyCount:   (j['testimony_count'] as num?)?.toInt() ?? 0,
-      likeCount:        (j['like_count']      as num?)?.toInt() ?? 0,
-      prayerCount:      (j['prayer_count']    as num?)?.toInt() ?? 0,
-      createdAt:        j['created_at']       as String?,
-      updatedAt:        j['updated_at']       as String?,
+      testimonyCount:   (j['testimony_count']  as num?)?.toInt() ?? 0,
+      likeCount:        (j['like_count']        as num?)?.toInt() ?? 0,
+      prayerCount:      (j['prayer_count']      as num?)?.toInt() ?? 0,
+      followerCount:    (j['follower_count']    as num?)?.toInt() ?? 0,
+      followingCount:   (j['following_count']   as num?)?.toInt() ?? 0,
+      createdAt:        j['created_at']         as String?,
+      updatedAt:        j['updated_at']         as String?,
     );
   }
 
@@ -94,6 +100,7 @@ class UserModel {
     String? id, String? displayName, String? email, String? phone,
     String? avatarUrl, String? country, UserRole? role, bool? isEmailVerified,
     int? testimonyCount, int? likeCount, int? prayerCount,
+    int? followerCount, int? followingCount,
     String? createdAt, String? updatedAt,
   }) => UserModel(
     id:              id              ?? this.id,
@@ -107,6 +114,8 @@ class UserModel {
     testimonyCount:  testimonyCount  ?? this.testimonyCount,
     likeCount:       likeCount       ?? this.likeCount,
     prayerCount:     prayerCount     ?? this.prayerCount,
+    followerCount:   followerCount   ?? this.followerCount,
+    followingCount:  followingCount  ?? this.followingCount,
     createdAt:       createdAt       ?? this.createdAt,
     updatedAt:       updatedAt       ?? this.updatedAt,
   );

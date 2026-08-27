@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/providers/auth_provider.dart';
+import '../../../shared/models/user_model.dart' show UserRole;
 import '../models/admin_models.dart';
 
 // =============================================================================

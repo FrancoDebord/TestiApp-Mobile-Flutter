@@ -74,8 +74,8 @@ class _PrayerRequestDetailScreenState
 
   @override
   Widget build(BuildContext context) {
-    final requests = ref.watch(prayerRequestsProvider);
-    final request = _findRequest(requests);
+    final request = _findRequest(
+        ref.watch(prayerRequestsProvider).asData?.value ?? []);
     final messages =
         ref.watch(inspirationMessagesProvider)[widget.requestId] ?? [];
 

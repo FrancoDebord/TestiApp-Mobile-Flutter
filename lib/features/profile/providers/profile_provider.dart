@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -8,6 +9,7 @@ import '../../../features/home/models/testimony_model.dart';
 import '../../../features/home/providers/home_providers.dart';
 import '../../../services/api_service.dart';
 import '../models/profile_models.dart';
+import '../models/user_testimony_model.dart';
 
 // ── Clés de stockage ──────────────────────────────────────────────────────
 
@@ -182,15 +184,15 @@ final userProfileProvider = Provider<UserProfile?>((ref) {
     testimonyCount: testimonyCount,
     likeCount:      likeCount,
     prayerCount:    prayerCount,
-    followersCount: 128,  // stub — à remplacer par API réelle
-    followingCount: 47,   // stub — à remplacer par API réelle
+    followersCount: user.followerCount,
+    followingCount: user.followingCount,
     bio:            extras?.bio.isNotEmpty == true ? extras!.bio : null,
     avatarUrl:      user.avatarUrl,
     extras:         extras ?? const ProfileExtras(),
   );
 });
 
-// ── Mes témoignages ───────────────────────────────────────────────────────
+// ── Mes témoignages (feed local seulement — utilisé par le profil stats) ─────
 
 final myTestimoniesProvider = Provider<List<Testimony>>((ref) {
   final user = ref.watch(currentUserProvider);
@@ -201,13 +203,107 @@ final myTestimoniesProvider = Provider<List<Testimony>>((ref) {
       .toList();
 });
 
-// ── Témoignages sauvegardés (stub — les plus priés pour l'instant) ────────
+// ── Mes témoignages complets (API, tous statuts) ──────────────────────────────
 
-final savedTestimoniesProvider = Provider<List<Testimony>>((ref) {
-  final all = List<Testimony>.from(ref.watch(feedNotifierProvider));
-  all.sort((a, b) => b.stats.prayers.compareTo(a.stats.prayers));
-  return all.take(3).toList();
-});
+class MyTestimoniesNotifier extends AsyncNotifier<List<UserTestimony>> {
+  @override
+  Future<List<UserTestimony>> build() => _fetch();
+
+  Future<List<UserTestimony>> _fetch() async {
+    final userId = ref.read(currentUserProvider)?.id;
+    if (userId == null || userId.isEmpty) return [];
+    try {
+      final api = ref.read(apiServiceProvider);
+      final res = await api.get<dynamic>(AppConstants.userTestimonies(userId));
+      final data = res.data;
+      if (data is List) {
+        return data
+            .whereType<Map<String, dynamic>>()
+            .map(UserTestimony.fromJson)
+            .toList();
+      }
+      return [];
+    } catch (e) {
+      debugPrint('myTestimonies ✗ $e');
+      return [];
+    }
+  }
+
+  Future<void> refresh() async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(_fetch);
+  }
+
+  Future<bool> deleteTestimony(String id) async {
+    try {
+      final api = ref.read(apiServiceProvider);
+      await api.delete<void>(AppConstants.testimonyById(id));
+      state = AsyncData(state.value?.where((t) => t.id != id).toList() ?? []);
+      ref.read(feedNotifierProvider.notifier).removeTestimony(id);
+      return true;
+    } catch (e) {
+      debugPrint('delete testimony ✗ $e');
+      return false;
+    }
+  }
+
+  Future<bool> updateTitle(String id, String newTitle) async {
+    try {
+      final api = ref.read(apiServiceProvider);
+      await api.put<void>(AppConstants.testimonyById(id), data: {'title': newTitle});
+      state = AsyncData(state.value?.map((t) {
+        return t.id == id
+            ? UserTestimony(
+                id: t.id, title: newTitle, type: t.type,
+                status: t.status, createdAt: t.createdAt, category: t.category,
+                durationSeconds: t.durationSeconds, thumbnailUrl: t.thumbnailUrl,
+                mediaPath: t.mediaPath, bodyPreview: t.bodyPreview,
+                rejectionReason: t.rejectionReason, views: t.views,
+              )
+            : t;
+      }).toList() ?? []);
+      return true;
+    } catch (e) {
+      debugPrint('updateTitle ✗ $e');
+      return false;
+    }
+  }
+}
+
+final myTestimoniesNotifierProvider =
+    AsyncNotifierProvider<MyTestimoniesNotifier, List<UserTestimony>>(
+  MyTestimoniesNotifier.new,
+);
+
+// ── Témoignages sauvegardés (GET /testimonies/saved/list) ────────────────────
+
+class SavedTestimoniesNotifier extends AsyncNotifier<List<Testimony>> {
+  @override
+  Future<List<Testimony>> build() => _fetch();
+
+  Future<List<Testimony>> _fetch() async {
+    final api = ref.read(apiServiceProvider);
+    final res = await api.get<dynamic>(AppConstants.testimoniesSaved);
+    final data = res.data;
+    final raw = data is List
+        ? data
+        : (data is Map ? (data['data'] as List? ?? []) : []);
+    return raw
+        .map(testimonyFromApiJson)
+        .whereType<Testimony>()
+        .toList();
+  }
+
+  Future<void> refresh() async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(_fetch);
+  }
+}
+
+final savedTestimoniesProvider =
+    AsyncNotifierProvider<SavedTestimoniesNotifier, List<Testimony>>(
+  SavedTestimoniesNotifier.new,
+);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // UserSettingsNotifier

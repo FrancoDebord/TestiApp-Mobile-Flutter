@@ -18,6 +18,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:dio/dio.dart' show DioException, DioExceptionType;
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -76,6 +77,17 @@ class FcmService {
     await _requestPermissions();
     await _initLocalNotifications();
     _setupMessageHandlers();
+
+    // Skip FCM token registration for offline/local sessions — the backend
+    // isn't reachable and would generate a connection error in the console.
+    final storage = _ref.read(secureStorageProvider);
+    final accessToken = await storage.read(key: AppConstants.keyAccessToken);
+    if (accessToken == null ||
+        accessToken == 'offline_mode' ||
+        accessToken == 'local_auth') {
+      return;
+    }
+
     await _registerToken();
     _messaging.onTokenRefresh.listen(_sendToken);
   }
@@ -229,7 +241,8 @@ class FcmService {
     try {
       final userId = _ref.read(currentUserProvider)?.id;
       await _ref.read(syncServiceProvider).deltaSync(userId: userId);
-      _ref.invalidate(feedNotifierProvider);
+      // Silent refresh — keeps current data visible, no loading flash.
+      _ref.read(feedNotifierProvider.notifier).refresh();
       _ref.invalidate(notificationsNotifierProvider);
     } catch (_) {}
   }
@@ -252,6 +265,9 @@ class FcmService {
           'platform': Platform.isAndroid ? 'android' : 'ios',
         },
       );
+    } on DioException catch (e) {
+      // Server unreachable at launch — swallow silently; no retry needed.
+      if (e.type == DioExceptionType.connectionError) return;
     } catch (_) {}
   }
 }

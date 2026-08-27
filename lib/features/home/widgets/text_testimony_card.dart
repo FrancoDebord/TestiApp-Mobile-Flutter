@@ -11,13 +11,22 @@ import 'testimony_action_bar.dart';
 import 'testimony_card_header.dart';
 import 'testimony_stats_row.dart';
 
-class TextTestimonyCard extends ConsumerWidget {
+class TextTestimonyCard extends ConsumerStatefulWidget {
   const TextTestimonyCard({required this.testimony, super.key});
 
   final TextTestimony testimony;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TextTestimonyCard> createState() => _TextTestimonyCardState();
+}
+
+class _TextTestimonyCardState extends ConsumerState<TextTestimonyCard> {
+  static const _kMaxLines = 3;
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final testimony = widget.testimony;
     final liked  = ref.watch(likedIdsProvider).contains(testimony.id);
     final prayed = ref.watch(prayedIdsProvider).contains(testimony.id);
     final saved  = ref.watch(savedIdsProvider).contains(testimony.id);
@@ -47,18 +56,22 @@ class TextTestimonyCard extends ConsumerWidget {
                     onSave: () => ref
                         .read(interactionProvider.notifier)
                         .toggleSave(testimony.id),
-                    shareText:
-                        '${testimony.title}\n\n${testimony.preview}\n\n'
-                        'Partagé depuis l\'application Témoignages ✝️',
-                    onReport: () => ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Signalement envoyé')),
-                    ),
+                    onShare: () {
+                      SharePlus.instance.share(ShareParams(
+                        text: '${testimony.title}\n\n${testimony.preview}\n\n'
+                            'Partagé depuis l\'application Témoignages ✝️',
+                      ));
+                      ref.read(interactionProvider.notifier)
+                          .recordShare(testimony.id);
+                    },
+                    onReport: () =>
+                        context.push('/testimony/${testimony.id}/report'),
                   ),
                 ],
               ),
               const SizedBox(height: 10),
 
-              // ── Titre — contenu principal ─────────────────────────────────
+              // ── Titre ─────────────────────────────────────────────────────
               Text(
                 testimony.title,
                 style: AppTextStyles.h4.copyWith(fontSize: 17),
@@ -67,15 +80,53 @@ class TextTestimonyCard extends ConsumerWidget {
               ),
               const SizedBox(height: 8),
 
-              // ── Extrait texte ─────────────────────────────────────────────
-              Text(
-                testimony.preview,
-                style: AppTextStyles.bodyMedium.copyWith(
-                  color: AppColors.textSecondary,
-                  height: 1.6,
-                ),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
+              // ── Extrait texte avec "Lire plus / Lire moins" ───────────────
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final textStyle = AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.textSecondary,
+                    height: 1.6,
+                  );
+                  final tp = TextPainter(
+                    text: TextSpan(
+                        text: testimony.preview, style: textStyle),
+                    maxLines: _kMaxLines,
+                    textDirection: TextDirection.ltr,
+                  )..layout(maxWidth: constraints.maxWidth);
+                  final hasOverflow = tp.didExceedMaxLines;
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        testimony.preview,
+                        style: textStyle,
+                        maxLines: _expanded ? null : _kMaxLines,
+                        overflow: _expanded
+                            ? TextOverflow.visible
+                            : TextOverflow.ellipsis,
+                      ),
+                      if (hasOverflow)
+                        GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () =>
+                              setState(() => _expanded = !_expanded),
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 6),
+                            child: Text(
+                              _expanded ? 'Lire moins ‹' : 'Lire plus ›',
+                              style: const TextStyle(
+                                fontFamily: 'Inter',
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: 12),
 
@@ -92,19 +143,26 @@ class TextTestimonyCard extends ConsumerWidget {
                 isPrayed: prayed,
                 currentReaction: ref.watch(reactionsMapProvider)[testimony.id],
                 onReact: (type) => type == null
-                    ? ref.read(interactionProvider.notifier).removeReaction(testimony.id)
-                    : ref.read(interactionProvider.notifier).setReaction(testimony.id, type),
+                    ? ref
+                        .read(interactionProvider.notifier)
+                        .removeReaction(testimony.id)
+                    : ref
+                        .read(interactionProvider.notifier)
+                        .setReaction(testimony.id, type),
                 onPray: () => ref
                     .read(interactionProvider.notifier)
                     .togglePray(testimony.id),
                 onComment: () =>
                     context.push('/testimony/${testimony.id}/comments'),
-                onShare: () => SharePlus.instance.share(
-                  ShareParams(
+                onShare: () {
+                  SharePlus.instance.share(ShareParams(
                     text: '${testimony.title}\n\n'
                         'testi://app/testimony/${testimony.id}',
-                  ),
-                ),
+                  ));
+                  ref
+                      .read(interactionProvider.notifier)
+                      .recordShare(testimony.id);
+                },
               ),
             ],
           ),
@@ -120,13 +178,13 @@ class _CardMenu extends StatelessWidget {
   const _CardMenu({
     required this.isSaved,
     required this.onSave,
-    required this.shareText,
+    required this.onShare,
     required this.onReport,
   });
 
   final bool isSaved;
   final VoidCallback onSave;
-  final String shareText;
+  final VoidCallback onShare;
   final VoidCallback onReport;
 
   @override
@@ -141,7 +199,7 @@ class _CardMenu extends StatelessWidget {
           case 'save':
             onSave();
           case 'share':
-            SharePlus.instance.share(ShareParams(text: shareText));
+            onShare();
           case 'report':
             onReport();
         }

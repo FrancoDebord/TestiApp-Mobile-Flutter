@@ -16,6 +16,14 @@ import '../../../features/home/providers/home_providers.dart';
 import '../../../services/api_service.dart';
 import '../models/publish_models.dart';
 
+// Converts a relative server URL (e.g. "/storage/videos/x.mp4") to absolute.
+String? _absoluteUrl(String? raw) {
+  if (raw == null || raw.isEmpty) return raw;
+  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+  final root = AppConstants.baseUrl.replaceFirst(RegExp(r'/api/v1.*$'), '');
+  return raw.startsWith('/') ? '$root$raw' : '$root/$raw';
+}
+
 // =============================================================================
 // Publish flow state — drives the multi-step stepper
 // =============================================================================
@@ -93,6 +101,32 @@ class PublishNotifier extends Notifier<PublishDraft> {
 
     final format = state.format ?? TestimonyFormat.text;
 
+    // ── Upload image de couverture si chemin local présent et pas encore envoyé ─
+    if ((state.coverImagePath ?? '').isNotEmpty &&
+        state.coverImageRemoteUrl == null) {
+      state = state.copyWith(isUploadingMedia: true);
+      try {
+        final api    = ref.read(apiServiceProvider);
+        final result = await api.upload<Map<String, dynamic>>(
+          AppConstants.uploadMedia,
+          filePath: state.coverImagePath!,
+          fieldName: 'file',
+          extraFields: {'type': 'image'},
+        );
+        final url = _absoluteUrl(result.data['url'] as String?);
+        debugPrint('═══ UPLOAD cover ✓ url=$url');
+        state = state.copyWith(coverImageRemoteUrl: url, isUploadingMedia: false);
+      } catch (e) {
+        debugPrint('═══ UPLOAD cover ✗ $e');
+        state = state.copyWith(
+          isUploadingMedia: false,
+          status: PublishStatus.draft,
+          uploadError: "Échec de l'envoi de l'image de couverture. Réessaie.",
+        );
+        return;
+      }
+    }
+
     // ── Upload média si chemin local présent et pas encore envoyé ─────────────
     if (format == TestimonyFormat.audio &&
         (state.audioPath ?? '').isNotEmpty &&
@@ -106,7 +140,7 @@ class PublishNotifier extends Notifier<PublishDraft> {
           fieldName: 'file',
           extraFields: {'type': 'audio'},
         );
-        final url = result.data['url'] as String?;
+        final url = _absoluteUrl(result.data['url'] as String?);
         debugPrint('═══ UPLOAD audio ✓ url=$url');
         state = state.copyWith(audioRemoteUrl: url, isUploadingMedia: false);
       } catch (e) {
@@ -132,7 +166,13 @@ class PublishNotifier extends Notifier<PublishDraft> {
           fieldName: 'file',
           extraFields: {'type': 'video'},
         );
-        final url = result.data['url'] as String?;
+        debugPrint('═══ UPLOAD video response keys=${result.data.keys.toList()} data=${result.data}');
+        final rawUrl = result.data['url']
+            ?? result.data['file_url']
+            ?? result.data['media_url']
+            ?? result.data['path']
+            ?? result.data['file_path'];
+        final url = _absoluteUrl(rawUrl as String?);
         debugPrint('═══ UPLOAD video ✓ url=$url');
         state = state.copyWith(videoRemoteUrl: url, isUploadingMedia: false);
       } catch (e) {
@@ -189,6 +229,7 @@ class PublishNotifier extends Notifier<PublishDraft> {
 
     // ── POST vers l'API ───────────────────────────────────────────────────
     String id = 'local_${DateTime.now().millisecondsSinceEpoch}';
+    var savedOffline = false;
 
     final postBody = <String, dynamic>{
       'title'       : state.title,
@@ -197,12 +238,14 @@ class PublishNotifier extends Notifier<PublishDraft> {
       'category_id' : catId,
       'body_text'   : bodyText,
       'media_url'   : mediaUrl,
-      'cover_url'   : state.coverImagePath,
+      'cover_url'   : state.coverImageRemoteUrl,
       'duration'    : durationSec,
       'bible_verse' : state.bibleVerse.isNotEmpty ? state.bibleVerse : null,
-      'visibility'  : state.visibility == TestimonyVisibility.private
-          ? 'private'
-          : 'public',
+      'visibility'  : switch (state.visibility) {
+        TestimonyVisibility.private => 'private',
+        TestimonyVisibility.friends => 'friends',
+        TestimonyVisibility.public  => 'public',
+      },
     };
 
     debugPrint('═══ PUBLISH → POST ${AppConstants.baseUrl}${AppConstants.testimonies}');
@@ -216,7 +259,7 @@ class PublishNotifier extends Notifier<PublishDraft> {
         data: postBody,
       );
       debugPrint('═══ PUBLISH ✓ id=${result.data['id']}');
-      id = result.data['id'] as String? ?? id;
+      id = result.data['id']?.toString() ?? id;
     } on DioException catch (e) {
       debugPrint('═══ PUBLISH DioException type=${e.type} status=${e.response?.statusCode} body=${e.response?.data}');
       final isOffline = e.type == DioExceptionType.connectionError ||
@@ -235,6 +278,7 @@ class PublishNotifier extends Notifier<PublishDraft> {
             body:     postBody,
           );
         } catch (_) {}
+        savedOffline = true;
       } else {
         // Erreur serveur (4xx/5xx) — informer l'utilisateur
         final serverMsg = (e.response?.data as Map?)?['message'] as String?;
@@ -260,21 +304,23 @@ class PublishNotifier extends Notifier<PublishDraft> {
     switch (format) {
       case TestimonyFormat.text:
         final body = bodyText ?? '';
+        final coverUrl = state.coverImageRemoteUrl;
         testimony = TextTestimony(
           id: id, author: author, title: state.title,
           category: category, createdAt: now, stats: TestimonyStats.zero,
           preview: body.substring(0, math.min(220, body.length)),
-          coverImageUrl: state.coverImagePath,
+          coverImageUrl: coverUrl,
         );
         dbRow = _buildRow(
           id: id, userId: userId, authorName: userName,
           title: state.title, type: 'text', category: category,
-          bodyText: body, mediaUrl: null, coverUrl: state.coverImagePath,
+          bodyText: body, mediaUrl: null, coverUrl: coverUrl,
           durationSec: 0, bibleVerse: state.bibleVerse, now: now,
         );
 
       case TestimonyFormat.audio:
         final transcript = bodyText ?? '';
+        final coverUrl = state.coverImageRemoteUrl;
         testimony = AudioTestimony(
           id: id, author: author, title: state.title,
           category: category, createdAt: now, stats: TestimonyStats.zero,
@@ -283,28 +329,30 @@ class PublishNotifier extends Notifier<PublishDraft> {
               ? transcript.substring(0, math.min(180, transcript.length))
               : 'Écoutez mon témoignage…',
           mediaPath: mediaUrl,
-          coverImageUrl: state.coverImagePath,
+          coverImageUrl: coverUrl,
         );
         dbRow = _buildRow(
           id: id, userId: userId, authorName: userName,
           title: state.title, type: 'audio', category: category,
           bodyText: transcript, mediaUrl: mediaUrl,
-          coverUrl: state.coverImagePath, durationSec: durationSec,
+          coverUrl: coverUrl, durationSec: durationSec,
           bibleVerse: state.bibleVerse, now: now,
         );
 
       case TestimonyFormat.video:
+        final coverUrl = state.coverImageRemoteUrl;
         testimony = VideoTestimony(
           id: id, author: author, title: state.title,
           category: category, createdAt: now, stats: TestimonyStats.zero,
           durationSeconds: durationSec,
-          thumbnailUrl: state.coverImagePath ?? '',
-          mediaPath: mediaUrl,
+          thumbnailUrl: coverUrl ?? '',
+          // Prefer remote URL; fall back to local file if upload URL was not returned.
+          mediaPath: mediaUrl ?? state.videoPath,
         );
         dbRow = _buildRow(
           id: id, userId: userId, authorName: userName,
           title: state.title, type: 'video', category: category,
-          bodyText: null, mediaUrl: mediaUrl, coverUrl: state.coverImagePath,
+          bodyText: null, mediaUrl: mediaUrl, coverUrl: coverUrl,
           durationSec: durationSec, bibleVerse: null, now: now,
         );
     }
@@ -316,8 +364,9 @@ class PublishNotifier extends Notifier<PublishDraft> {
     } catch (_) {}
 
     ref.read(feedNotifierProvider.notifier).addTestimony(testimony);
-    // Soumis à la modération (status API: pending) → inReview dans l'app
-    state = state.copyWith(status: PublishStatus.inReview);
+    state = state.copyWith(
+      status: savedOffline ? PublishStatus.pendingSync : PublishStatus.inReview,
+    );
   }
 
   static Map<String, dynamic> _buildRow({

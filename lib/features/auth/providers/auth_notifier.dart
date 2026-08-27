@@ -430,6 +430,15 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     state = AsyncValue.data(await _handleTokenResponse(response.data));
   }
 
+  // ── Mot de passe oublié ────────────────────────────────────────────────────
+
+  Future<void> forgotPassword(String email) async {
+    await _api.post<void>(
+      AppConstants.authForgotPassword,
+      data: {'email': email},
+    );
+  }
+
   // ── Social login (Google / Facebook) ───────────────────────────────────────
 
   Future<void> signInWithGoogle() async {

@@ -3,23 +3,26 @@
 // VIEWER perspective — discover and watch live testimonies.
 //
 // Widget tree:
-//   LiveDiscoveryScreen
+//   LiveDiscoveryScreen (ConsumerStatefulWidget)
 //   ├─ AppBar  ("En Direct" + red dot + go-live icon)
 //   └─ body
-//      ├─ GridView  (2-col, stub live cards)
+//      ├─ GridView  (live cards from API)
 //      │  └─ _LiveCard (thumbnail gradient, badges, author info)
-//      └─ on tap → _LiveViewerSheet (stub viewer mode)
+//      └─ on tap → _LiveViewerScreen
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../services/api_service.dart' show apiServiceProvider;
 import 'live_screen.dart';
 
-// ─── Stub data model ──────────────────────────────────────────────────────────
+// ─── Data model ──────────────────────────────────────────────────────────────
 
-class _StubLive {
-  const _StubLive({
+class LiveStream {
+  const LiveStream({
     required this.id,
     required this.authorName,
     required this.title,
@@ -27,6 +30,7 @@ class _StubLive {
     required this.viewerCount,
     required this.gradientColors,
     required this.initials,
+    this.thumbnailUrl,
   });
 
   final String id;
@@ -36,67 +40,91 @@ class _StubLive {
   final int viewerCount;
   final List<Color> gradientColors;
   final String initials;
+  final String? thumbnailUrl;
+
+  static String _initials(String name) {
+    final parts = name.trim().split(' ');
+    if (parts.length >= 2 && parts.last.isNotEmpty) {
+      return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
+    }
+    return name.isNotEmpty ? name[0].toUpperCase() : '?';
+  }
+
+  static List<Color> _gradientForCategory(String slug) => switch (slug) {
+    'guerison'          => AppColors.guerisonGradient,
+    'delivrance'        => AppColors.delivranceGradient,
+    'conversion'        => AppColors.conversionGradient,
+    'mariage'           => AppColors.mariageGradient,
+    'famille'           => AppColors.familleGradient,
+    'finances'          => AppColors.financesGradient,
+    'miracles'          => AppColors.miraclesGradient,
+    'protection_divine' => AppColors.protectionGradient,
+    'ministere'         => AppColors.ministereGradient,
+    'salut'             => AppColors.salutGradient,
+    _                   => AppColors.guerisonGradient,
+  };
+
+  factory LiveStream.fromJson(Map<String, dynamic> m) {
+    final author  = m['user'] as Map<String, dynamic>? ?? {};
+    final name    = (author['display_name'] ?? author['displayName'] ?? 'Anonyme') as String;
+    final catSlug = (m['category'] ?? '') as String;
+    return LiveStream(
+      id:           m['id']?.toString() ?? '',
+      authorName:   name,
+      title:        m['title'] as String? ?? '',
+      category:     m['category_label'] as String? ?? catSlug,
+      viewerCount:  (m['viewer_count'] ?? m['viewerCount'] ?? 0) as int,
+      gradientColors: _gradientForCategory(catSlug),
+      initials:     _initials(name),
+      thumbnailUrl: m['thumbnail_url'] as String?,
+    );
+  }
 }
 
-// ─── Stub live sessions ───────────────────────────────────────────────────────
+// ─── Provider ─────────────────────────────────────────────────────────────────
 
-const List<_StubLive> _kStubLives = [
-  _StubLive(
-    id: 'live-1',
-    authorName: 'Marie Nkosi',
-    title: 'Comment Dieu a guéri mon cancer en 3 mois',
-    category: 'Guérison',
-    viewerCount: 142,
-    gradientColors: AppColors.guerisonGradient,
-    initials: 'MN',
-  ),
-  _StubLive(
-    id: 'live-2',
-    authorName: 'Jean-Pierre Mbaye',
-    title: 'De la sorcellerie à la grâce de Christ',
-    category: 'Délivrance',
-    viewerCount: 87,
-    gradientColors: AppColors.delivranceGradient,
-    initials: 'JP',
-  ),
-  _StubLive(
-    id: 'live-3',
-    authorName: 'Esther Kamau',
-    title: 'Notre mariage restauré après 5 ans de crise',
-    category: 'Mariage',
-    viewerCount: 213,
-    gradientColors: AppColors.mariageGradient,
-    initials: 'EK',
-  ),
-  _StubLive(
-    id: 'live-4',
-    authorName: 'Samuel Balogun',
-    title: 'Dieu a pourvu : du chômage à l\'abondance',
-    category: 'Finances',
-    viewerCount: 59,
-    gradientColors: AppColors.financesGradient,
-    initials: 'SB',
-  ),
-  _StubLive(
-    id: 'live-5',
-    authorName: 'Grace Mensah',
-    title: 'Mon fils revenu à Dieu après 10 ans',
-    category: 'Famille',
-    viewerCount: 178,
-    gradientColors: AppColors.familleGradient,
-    initials: 'GM',
-  ),
-];
+final liveStreamsProvider =
+    AsyncNotifierProvider<_LiveStreamsNotifier, List<LiveStream>>(
+        _LiveStreamsNotifier.new);
+
+class _LiveStreamsNotifier extends AsyncNotifier<List<LiveStream>> {
+  @override
+  Future<List<LiveStream>> build() => _fetch();
+
+  Future<List<LiveStream>> _fetch() async {
+    try {
+      final api      = ref.read(apiServiceProvider);
+      final response = await api.get<dynamic>(AppConstants.liveStreams);
+      final raw      = response.data;
+      final items    = raw is List
+          ? raw
+          : raw is Map ? (raw['data'] as List? ?? []) : <dynamic>[];
+      return items
+          .whereType<Map<String, dynamic>>()
+          .map(LiveStream.fromJson)
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<void> refresh() async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(_fetch);
+  }
+}
 
 // =============================================================================
 // LiveDiscoveryScreen
 // =============================================================================
 
-class LiveDiscoveryScreen extends StatelessWidget {
+class LiveDiscoveryScreen extends ConsumerWidget {
   const LiveDiscoveryScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final asyncStreams = ref.watch(liveStreamsProvider);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -107,17 +135,12 @@ class LiveDiscoveryScreen extends StatelessWidget {
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Pulsing red dot
             const _PulsingDot(),
             const SizedBox(width: 8),
-            Text(
-              'En Direct',
-              style: AppTextStyles.h3,
-            ),
+            Text('En Direct', style: AppTextStyles.h3),
           ],
         ),
         actions: [
-          // Go live button
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: IconButton(
@@ -128,18 +151,17 @@ class LiveDiscoveryScreen extends StatelessWidget {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               ),
               icon: const Icon(Icons.add_a_photo_rounded, size: 20),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute<void>(
-                    builder: (_) => const LiveScreen(),
-                    fullscreenDialog: true,
-                  ),
-                );
-              },
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => const LiveScreen(),
+                  fullscreenDialog: true,
+                ),
+              ),
             ),
           ),
         ],
@@ -148,71 +170,110 @@ class LiveDiscoveryScreen extends StatelessWidget {
           child: Container(height: 1, color: AppColors.border),
         ),
       ),
-      body: CustomScrollView(
-        slivers: [
-          // ── Header info bar ──────────────────────────────────────────────
-          SliverToBoxAdapter(
-            child: Container(
-              margin: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: AppColors.danger.withAlpha(15),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.danger.withAlpha(40)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.info_outline_rounded,
-                    color: AppColors.danger,
-                    size: 16,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      '${_kStubLives.length} témoignages en direct maintenant',
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.danger,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+      body: asyncStreams.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error:   (err, st) => _buildEmptyState(context, ref),
+        data:    (lives) => lives.isEmpty
+            ? _buildEmptyState(context, ref)
+            : _buildGrid(context, lives),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context, WidgetRef ref) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.live_tv_outlined,
+              size: 64, color: AppColors.textSecondary.withAlpha(80)),
+          const SizedBox(height: 16),
+          Text(
+            'Aucun live en cours',
+            style: AppTextStyles.h4.copyWith(color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Revenez plus tard ou démarrez votre propre live.',
+            style: AppTextStyles.bodySmall,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          FilledButton.icon(
+            onPressed: () =>
+                ref.read(liveStreamsProvider.notifier).refresh(),
+            icon: const Icon(Icons.refresh_rounded, size: 18),
+            label: const Text('Actualiser',
+                style: TextStyle(fontFamily: 'Inter')),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
             ),
           ),
-
-          // ── Grid of live cards ───────────────────────────────────────────
-          SliverPadding(
-            padding: const EdgeInsets.all(16),
-            sliver: SliverGrid(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 9 / 16,
-              ),
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  final live = _kStubLives[index];
-                  return _LiveCard(
-                    live: live,
-                    onTap: () => _openViewerMode(context, live),
-                  );
-                },
-                childCount: _kStubLives.length,
-              ),
-            ),
-          ),
-
-          // Bottom padding
-          const SliverToBoxAdapter(child: SizedBox(height: 24)),
         ],
       ),
     );
   }
 
-  void _openViewerMode(BuildContext context, _StubLive live) {
+  Widget _buildGrid(BuildContext context, List<LiveStream> lives) {
+    return CustomScrollView(
+      slivers: [
+        SliverToBoxAdapter(
+          child: Container(
+            margin: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.danger.withAlpha(15),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.danger.withAlpha(40)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.info_outline_rounded,
+                    color: AppColors.danger, size: 16),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '${lives.length} témoignage${lives.length > 1 ? 's' : ''} en direct maintenant',
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: AppColors.danger,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.all(16),
+          sliver: SliverGrid(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: 9 / 16,
+            ),
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                final live = lives[index];
+                return _LiveCard(
+                  live: live,
+                  onTap: () => _openViewerMode(context, live),
+                );
+              },
+              childCount: lives.length,
+            ),
+          ),
+        ),
+        const SliverToBoxAdapter(child: SizedBox(height: 24)),
+      ],
+    );
+  }
+
+  void _openViewerMode(BuildContext context, LiveStream live) {
     Navigator.push(
       context,
       MaterialPageRoute<void>(
@@ -230,7 +291,7 @@ class LiveDiscoveryScreen extends StatelessWidget {
 class _LiveCard extends StatelessWidget {
   const _LiveCard({required this.live, required this.onTap});
 
-  final _StubLive live;
+  final LiveStream live;
   final VoidCallback onTap;
 
   @override
@@ -498,7 +559,7 @@ class _PulsingDotState extends State<_PulsingDot>
 
 class _LiveViewerScreen extends StatefulWidget {
   const _LiveViewerScreen({required this.live});
-  final _StubLive live;
+  final LiveStream live;
 
   @override
   State<_LiveViewerScreen> createState() => _LiveViewerScreenState();

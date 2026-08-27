@@ -18,7 +18,7 @@ class PrayerRequestsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final requests = ref.watch(prayerRequestsProvider);
+    final asyncRequests = ref.watch(prayerRequestsProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -51,22 +51,44 @@ class PrayerRequestsScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: requests.isEmpty
-          ? _EmptyState(
-              onAdd: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  fullscreenDialog: true,
-                  builder: (_) => const SubmitPrayerRequestScreen(),
-                ),
+      body: asyncRequests.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, st) => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.cloud_off_rounded, size: 48, color: Colors.grey),
+              const SizedBox(height: 12),
+              const Text('Impossible de charger les requêtes'),
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                onPressed: () =>
+                    ref.read(prayerRequestsProvider.notifier).refresh(),
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: const Text('Réessayer',
+                    style: TextStyle(fontFamily: 'Inter')),
               ),
-            )
-          : ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: requests.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 12),
-              itemBuilder: (context, i) =>
-                  _RequestCard(request: requests[i]),
-            ),
+            ],
+          ),
+        ),
+        data: (requests) => requests.isEmpty
+            ? _EmptyState(
+                onAdd: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    fullscreenDialog: true,
+                    builder: (_) => const SubmitPrayerRequestScreen(),
+                  ),
+                ),
+              )
+            : ListView.separated(
+                padding: const EdgeInsets.all(16),
+                itemCount: requests.length,
+                separatorBuilder: (context, index) =>
+                    const SizedBox(height: 12),
+                itemBuilder: (context, i) =>
+                    _RequestCard(request: requests[i]),
+              ),
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => Navigator.of(context).push(
           MaterialPageRoute<void>(

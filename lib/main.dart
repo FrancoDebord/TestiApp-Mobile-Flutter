@@ -46,11 +46,10 @@ Future<void> main() async {
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
   final db = DatabaseService();
-  try {
-    await DatabaseSeedService(db).seedIfEmpty();
-  } catch (e) {
-    debugPrint('DB seed skipped: $e');
-  }
+  // Seed runs in background — does not block the first frame.
+  unawaited(DatabaseSeedService(db).seedIfEmpty().catchError(
+    (Object e) => debugPrint('DB seed skipped: $e'),
+  ));
 
   runApp(const ProviderScope(child: TemoignagesApp()));
 }

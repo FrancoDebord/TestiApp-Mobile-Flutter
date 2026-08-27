@@ -8,11 +8,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../../core/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../features/auth/providers/auth_notifier.dart' show currentUserProvider;
 import '../../../features/home/models/testimony_model.dart';
 import '../../../features/home/providers/home_providers.dart';
+import '../../../services/api_service.dart' show apiServiceProvider;
 
 // ============================================================================
 // Video Player Screen — YouTube-inspired
@@ -59,9 +61,15 @@ import '../../../features/home/providers/home_providers.dart';
 //            └─ _MiniCloseButton
 
 class VideoPlayerScreen extends ConsumerStatefulWidget {
-  const VideoPlayerScreen({required this.testimonyId, super.key});
+  const VideoPlayerScreen({
+    required this.testimonyId,
+    this.mediaPath,
+    super.key,
+  });
 
-  final String testimonyId;
+  final String  testimonyId;
+  /// URL directe passée depuis l'écran appelant (évite une recherche dans le feed).
+  final String? mediaPath;
 
   @override
   ConsumerState<VideoPlayerScreen> createState() => _VideoPlayerScreenState();
@@ -84,20 +92,50 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
   }
 
   Future<void> _initPlayer() async {
-    final feed = ref.read(feedNotifierProvider);
-    _testimony = feed.whereType<VideoTestimony>()
-        .where((t) => t.id == widget.testimonyId)
-        .firstOrNull;
+    // 1. URL passée directement par l'appelant
+    String? source = widget.mediaPath;
 
-    final source = _testimony?.mediaPath;
+    // 2. Chercher dans le feed local
     if (source == null || source.isEmpty) {
-      if (mounted) setState(() {});
+      final feed = ref.read(feedNotifierProvider);
+      _testimony = feed.whereType<VideoTestimony>()
+          .where((t) => t.id == widget.testimonyId)
+          .firstOrNull;
+      source = _testimony?.mediaPath;
+    }
+
+    // 3. Fallback : récupérer le témoignage complet depuis l'API
+    if (source == null || source.isEmpty) {
+      await _fetchFromApi();
       return;
     }
 
+    await _buildPlayer(source);
+  }
+
+  Future<void> _fetchFromApi() async {
+    try {
+      final api = ref.read(apiServiceProvider);
+      final response = await api.get<dynamic>(
+        AppConstants.testimonyById(widget.testimonyId),
+      );
+      final t = testimonyFromApiJson(response.data);
+      if (t is VideoTestimony) {
+        _testimony = t;
+        final url = t.mediaPath;
+        if (url != null && url.isNotEmpty && mounted) {
+          await _buildPlayer(url);
+          return;
+        }
+      }
+    } catch (_) {}
+    if (mounted) setState(() {}); // afficher l'état vide
+  }
+
+  Future<void> _buildPlayer(String source) async {
     final bool isNetwork = source.startsWith('http://') ||
                            source.startsWith('https://');
-    VideoPlayerController ctrl;
+    final VideoPlayerController ctrl;
 
     if (kIsWeb || isNetwork) {
       ctrl = VideoPlayerController.networkUrl(Uri.parse(source));
@@ -198,7 +236,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
                       onTap: () => _showCommentsSheet(context),
                     ),
                     const Divider(height: 1, color: AppColors.border),
-                    const _RelatedVideosList(),
+                    _RelatedVideosList(currentTestimonyId: widget.testimonyId),
                     const SizedBox(height: 24),
                   ],
                 ),
@@ -886,27 +924,21 @@ class _CommentsPreview extends StatelessWidget {
 // Related Videos List
 // ============================================================================
 
-class _RelatedVideosList extends StatelessWidget {
-  const _RelatedVideosList();
-
-  static const _titles = [
-    'Délivrance d\'une addiction de 15 ans',
-    'Conversion d\'un chef de secte',
-    'Miracle financier au dernier moment',
-    'Protection divine dans un accident',
-    'Guérison d\'une paralysie totale',
-  ];
-
-  static const _authors = [
-    'Samuel Obi', 'Grace Nwosu', 'David Kamau', 'Esther Mensah', 'Paul Mbeki'
-  ];
-
-  static const _durations = ['12:34', '7:21', '9:48', '5:16', '15:02'];
-
-  static const _views = ['8.2k', '5.7k', '11.3k', '3.9k', '18.6k'];
+class _RelatedVideosList extends ConsumerWidget {
+  const _RelatedVideosList({required this.currentTestimonyId});
+  final String currentTestimonyId;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final related = ref
+        .watch(feedNotifierProvider)
+        .whereType<VideoTestimony>()
+        .where((t) => t.id != currentTestimonyId)
+        .take(5)
+        .toList();
+
+    if (related.isEmpty) return const SizedBox.shrink();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -914,36 +946,29 @@ class _RelatedVideosList extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
           child: Text('Vidéos similaires', style: AppTextStyles.h4),
         ),
-        ...List.generate(
-          _titles.length,
-          (i) => _RelatedVideoCard(
-            title: _titles[i],
-            author: _authors[i],
-            duration: _durations[i],
-            views: _views[i],
-            index: i,
+        ...related.map((t) => _RelatedVideoCard(
+          testimony: t,
+          onTap: () => Navigator.of(context).pushReplacement(
+            MaterialPageRoute<void>(
+              builder: (_) => VideoPlayerScreen(testimonyId: t.id),
+            ),
           ),
-        ),
+        )),
       ],
     );
   }
 }
 
-class _RelatedVideoCard extends StatelessWidget {
-  const _RelatedVideoCard({
-    required this.title,
-    required this.author,
-    required this.duration,
-    required this.views,
-    required this.index,
-  });
+class _RelatedVideoCard extends StatefulWidget {
+  const _RelatedVideoCard({required this.testimony, required this.onTap});
+  final VideoTestimony testimony;
+  final VoidCallback onTap;
 
-  final String title;
-  final String author;
-  final String duration;
-  final String views;
-  final int index;
+  @override
+  State<_RelatedVideoCard> createState() => _RelatedVideoCardState();
+}
 
+class _RelatedVideoCardState extends State<_RelatedVideoCard> {
   static const _gradients = [
     AppColors.delivranceGradient,
     AppColors.conversionGradient,
@@ -952,91 +977,147 @@ class _RelatedVideoCard extends StatelessWidget {
     AppColors.guerisonGradient,
   ];
 
+  late int _secs;
+
+  @override
+  void initState() {
+    super.initState();
+    _secs = widget.testimony.durationSeconds;
+    if (_secs == 0) _loadDuration();
+  }
+
+  Future<void> _loadDuration() async {
+    final path = widget.testimony.mediaPath;
+    if (path == null || path.isEmpty) return;
+    try {
+      final ctrl = path.startsWith('http')
+          ? VideoPlayerController.networkUrl(Uri.parse(path))
+          : VideoPlayerController.file(File(path));
+      await ctrl.initialize();
+      final secs = ctrl.value.duration.inSeconds;
+      ctrl.dispose();
+      if (mounted && secs > 0) setState(() => _secs = secs);
+    } catch (_) {}
+  }
+
+  static String _fmtDuration(int s) =>
+      '${(s ~/ 60).toString().padLeft(2, '0')}:${(s % 60).toString().padLeft(2, '0')}';
+
+  static String _fmtViews(int v) {
+    if (v >= 1000000) return '${(v / 1000000).toStringAsFixed(1)}M vues';
+    if (v >= 1000) return '${(v / 1000).toStringAsFixed(1)}k vues';
+    return '$v vues';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final gradient = _gradients[index % _gradients.length];
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Thumbnail
-          Stack(
-            children: [
-              Container(
-                width: 128,
-                height: 72,
-                decoration: BoxDecoration(
+    final testimony = widget.testimony;
+    final gradient = _gradients[testimony.id.hashCode.abs() % _gradients.length];
+    return InkWell(
+      onTap: widget.onTap,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Thumbnail
+            Stack(
+              children: [
+                ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  gradient: LinearGradient(colors: gradient),
-                ),
-                child: const Center(
-                  child: Icon(Icons.play_circle_outline_rounded,
-                      color: Colors.white54, size: 30),
-                ),
-              ),
-              Positioned(
-                bottom: 5,
-                right: 6,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 5, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.7),
-                    borderRadius: BorderRadius.circular(3),
+                  child: SizedBox(
+                    width: 128,
+                    height: 72,
+                    child: testimony.thumbnailUrl.isNotEmpty
+                        ? Image.network(
+                            testimony.thumbnailUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => _GradientThumb(gradient: gradient),
+                          )
+                        : _GradientThumb(gradient: gradient),
                   ),
-                  child: Text(
-                    duration,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontFamily: 'Inter',
+                ),
+                Positioned(
+                  bottom: 5,
+                  right: 6,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.7),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                    child: Text(
+                      _fmtDuration(_secs),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontFamily: 'Inter',
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 10),
-          // Info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                    color: AppColors.textPrimary,
-                    height: 1.35,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  author,
-                  style: AppTextStyles.bodySmall,
-                  maxLines: 1,
-                ),
-                const SizedBox(height: 2),
-                Row(
-                  children: [
-                    const Icon(Icons.visibility_outlined,
-                        size: 11, color: AppColors.textSecondary),
-                    const SizedBox(width: 3),
-                    Text('$views vues',
-                        style: AppTextStyles.bodySmall),
-                  ],
-                ),
               ],
             ),
-          ),
-          const Icon(Icons.more_vert_rounded,
-              color: AppColors.textSecondary, size: 18),
-        ],
+            const SizedBox(width: 10),
+            // Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    testimony.title,
+                    style: const TextStyle(
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      color: AppColors.textPrimary,
+                      height: 1.35,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    testimony.author.displayName,
+                    style: AppTextStyles.bodySmall,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      const Icon(Icons.visibility_outlined,
+                          size: 11, color: AppColors.textSecondary),
+                      const SizedBox(width: 3),
+                      Text(_fmtViews(testimony.stats.views),
+                          style: AppTextStyles.bodySmall),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.more_vert_rounded,
+                color: AppColors.textSecondary, size: 18),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GradientThumb extends StatelessWidget {
+  const _GradientThumb({required this.gradient});
+  final List<Color> gradient;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: gradient),
+      ),
+      child: const Center(
+        child: Icon(Icons.play_circle_outline_rounded,
+            color: Colors.white54, size: 30),
       ),
     );
   }

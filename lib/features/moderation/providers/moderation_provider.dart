@@ -4,35 +4,38 @@ import '../../../core/app_constants.dart';
 import '../../../services/api_service.dart';
 import '../models/moderation_models.dart';
 
-// ============================================================================
-// Helpers : JSON API → modèles de modération
-// ============================================================================
+// =============================================================================
+// JSON helpers
+// =============================================================================
 
-ModerationItem? _itemFromJson(dynamic raw) {
+ModerationItem? _fromJson(dynamic raw) {
   try {
-    final m      = raw as Map<String, dynamic>;
-    final author = m['author'] as Map<String, dynamic>? ?? {};
-
+    final m    = raw as Map<String, dynamic>;
+    final user = m['user'] as Map<String, dynamic>? ?? {};
     return ModerationItem(
-      id:             m['id']             as String,
-      title:          m['title']          as String? ?? '',
-      category:       m['category']       as String? ?? '',
-      type:           _parseType(m['type'] as String? ?? 'text'),
-      status:         _parseStatus(m['status'] as String? ?? 'pending'),
-      submittedAt:    DateTime.tryParse(m['submittedAt'] as String? ?? '') ?? DateTime.now(),
-      contentPreview: m['contentPreview'] as String?,
-      rejectionReason: _parseRejectionReason(m['rejectionReason'] as String?),
-      moderatorNote:  m['moderatorNote']  as String?,
+      id: m['id'] as String,
       author: ModerationAuthor(
-        uid:         author['uid']         as String? ?? '',
-        displayName: author['displayName'] as String? ?? 'Anonyme',
-        country:     author['country']     as String? ?? '',
-        avatarUrl:   author['avatarUrl']   as String?,
+        uid:         user['id']           as String? ?? '',
+        displayName: user['display_name'] as String? ?? '',
+        country:     user['country']      as String? ?? '',
+        avatarUrl:   user['avatar_url']   as String?,
       ),
+      title:          m['title']    as String? ?? '',
+      category:       _categoryLabel(m['category']),
+      type:           _parseType(m['type']   as String? ?? 'text'),
+      status:         _parseStatus(m['status'] as String? ?? 'pending'),
+      submittedAt:    DateTime.tryParse(m['created_at'] as String? ?? '') ?? DateTime.now(),
+      contentPreview: m['body_text'] as String?,
     );
   } catch (_) {
     return null;
   }
+}
+
+String _categoryLabel(dynamic raw) {
+  if (raw is String) return raw;
+  if (raw is Map) return raw['name'] as String? ?? '';
+  return '';
 }
 
 TestimonyType _parseType(String v) => switch (v) {
@@ -42,31 +45,41 @@ TestimonyType _parseType(String v) => switch (v) {
     };
 
 ModerationStatus _parseStatus(String v) => switch (v) {
-      'in_review' => ModerationStatus.inReview,
       'approved'  => ModerationStatus.approved,
       'rejected'  => ModerationStatus.rejected,
+      'in_review' => ModerationStatus.inReview,
       _           => ModerationStatus.pending,
     };
 
-RejectionReason? _parseRejectionReason(String? v) => switch (v) {
-      'inappropriate_content' => RejectionReason.inappropriateContent,
-      'false_testimony'       => RejectionReason.falseTestimony,
-      'hate_speech'           => RejectionReason.hateSpeech,
-      'spam'                  => RejectionReason.spam,
-      'other'                 => RejectionReason.other,
-      _                       => null,
+String _reasonToString(RejectionReason r) => switch (r) {
+      RejectionReason.inappropriateContent => 'inappropriate_content',
+      RejectionReason.falseTestimony       => 'false_testimony',
+      RejectionReason.hateSpeech           => 'hate_speech',
+      RejectionReason.spam                 => 'spam',
+      RejectionReason.other                => 'other',
     };
 
-ModerationStats _statsFromJson(Map<String, dynamic> m) => ModerationStats(
-      pending:        (m['pending']        as int?) ?? 0,
-      approvedToday:  (m['approvedToday']  as int?) ?? 0,
-      rejectedToday:  (m['rejectedToday']  as int?) ?? 0,
-      totalThisMonth: (m['totalThisMonth'] as int?) ?? 0,
-    );
+// =============================================================================
+// Filter tab state
+// =============================================================================
 
-// ============================================================================
-// Notifier principal — charge et met à jour les items de modération
-// ============================================================================
+enum ModerationFilterTab { pending, inReview, all }
+
+class ModerationFilterNotifier extends Notifier<ModerationFilterTab> {
+  @override
+  ModerationFilterTab build() => ModerationFilterTab.pending;
+
+  void setTab(ModerationFilterTab tab) => state = tab;
+}
+
+final moderationFilterProvider =
+    NotifierProvider<ModerationFilterNotifier, ModerationFilterTab>(
+  ModerationFilterNotifier.new,
+);
+
+// =============================================================================
+// Main state notifier — AsyncNotifier backed by real API
+// =============================================================================
 
 class ModerationNotifier extends AsyncNotifier<List<ModerationItem>> {
   @override
@@ -76,31 +89,9 @@ class ModerationNotifier extends AsyncNotifier<List<ModerationItem>> {
     final api      = ref.read(apiServiceProvider);
     final response = await api.get<List<dynamic>>(AppConstants.moderationPending);
     return response.data
-        .map(_itemFromJson)
+        .map(_fromJson)
         .whereType<ModerationItem>()
         .toList();
-  }
-
-  Future<void> approve(String id) async {
-    final api = ref.read(apiServiceProvider);
-    await api.post<void>(AppConstants.moderationApprove(id));
-    state = AsyncValue.data(
-      state.value?.where((i) => i.id != id).toList() ?? [],
-    );
-  }
-
-  Future<void> reject(String id, RejectionReason reason, String note) async {
-    final api = ref.read(apiServiceProvider);
-    await api.post<void>(
-      AppConstants.moderationReject(id),
-      data: {
-        'rejection_reason': _rejectionReasonToApi(reason),
-        if (note.isNotEmpty) 'moderator_note': note,
-      },
-    );
-    state = AsyncValue.data(
-      state.value?.where((i) => i.id != id).toList() ?? [],
-    );
   }
 
   Future<void> refresh() async {
@@ -108,13 +99,55 @@ class ModerationNotifier extends AsyncNotifier<List<ModerationItem>> {
     state = await AsyncValue.guard(_fetchPending);
   }
 
-  static String _rejectionReasonToApi(RejectionReason r) => switch (r) {
-        RejectionReason.inappropriateContent => 'inappropriate_content',
-        RejectionReason.falseTestimony       => 'false_testimony',
-        RejectionReason.hateSpeech           => 'hate_speech',
-        RejectionReason.spam                 => 'spam',
-        RejectionReason.other                => 'other',
-      };
+  Future<void> approve(String id) async {
+    // Optimistic update
+    final current = state.value ?? [];
+    state = AsyncValue.data([
+      for (final item in current)
+        if (item.id == id)
+          item.copyWith(status: ModerationStatus.approved)
+        else
+          item,
+    ]);
+    try {
+      await ref
+          .read(apiServiceProvider)
+          .post<void>(AppConstants.moderationApprove(id));
+    } catch (_) {
+      state = await AsyncValue.guard(_fetchPending);
+    }
+  }
+
+  Future<void> reject(
+    String id, {
+    RejectionReason? reason,
+    String? note,
+  }) async {
+    // Optimistic update
+    final current = state.value ?? [];
+    state = AsyncValue.data([
+      for (final item in current)
+        if (item.id == id)
+          item.copyWith(
+            status: ModerationStatus.rejected,
+            rejectionReason: reason,
+            moderatorNote: note,
+          )
+        else
+          item,
+    ]);
+    try {
+      await ref.read(apiServiceProvider).post<void>(
+        AppConstants.moderationReject(id),
+        data: {
+          if (reason != null) 'reason': _reasonToString(reason),
+          if (note != null && note.isNotEmpty) 'note': note,
+        },
+      );
+    } catch (_) {
+      state = await AsyncValue.guard(_fetchPending);
+    }
+  }
 }
 
 final moderationNotifierProvider =
@@ -122,55 +155,43 @@ final moderationNotifierProvider =
   ModerationNotifier.new,
 );
 
-// ============================================================================
-// Filter state notifier
-// ============================================================================
-
-enum ModerationFilterTab { pending, inReview, all }
-
-class ModerationFilterNotifier extends Notifier<ModerationFilterTab> {
-  @override
-  ModerationFilterTab build() => ModerationFilterTab.pending;
-  void setTab(ModerationFilterTab tab) => state = tab;
-}
-
-final moderationFilterProvider =
-    NotifierProvider<ModerationFilterNotifier, ModerationFilterTab>(
-  ModerationFilterNotifier.new,
-);
-
-// ============================================================================
-// Items filtrés (dérivé du notifier async)
-// ============================================================================
+// =============================================================================
+// Filtered list (for the moderation screen list)
+// =============================================================================
 
 final moderationItemsProvider = Provider<List<ModerationItem>>((ref) {
   final filter = ref.watch(moderationFilterProvider);
   final items  = ref.watch(moderationNotifierProvider).value ?? const [];
-
   return switch (filter) {
-    ModerationFilterTab.pending  => items.where((i) => i.status == ModerationStatus.pending).toList(),
-    ModerationFilterTab.inReview => items.where((i) => i.status == ModerationStatus.inReview).toList(),
+    ModerationFilterTab.pending  =>
+        items.where((i) => i.status == ModerationStatus.pending).toList(),
+    ModerationFilterTab.inReview =>
+        items.where((i) => i.status == ModerationStatus.inReview).toList(),
     ModerationFilterTab.all      => items,
   };
 });
 
-// ============================================================================
-// Stats provider
-// ============================================================================
+// =============================================================================
+// Reactive stats (auto-updates when state changes)
+// =============================================================================
 
-final moderationStatsProvider =
-    FutureProvider<ModerationStats>((ref) async {
-  final api      = ref.read(apiServiceProvider);
-  final response = await api.get<Map<String, dynamic>>(AppConstants.moderationStats);
-  return _statsFromJson(response.data);
+final moderationStatsProvider = Provider<ModerationStats>((ref) {
+  final items = ref.watch(moderationNotifierProvider).value ?? const [];
+  return ModerationStats(
+    pending:        items.where((i) => i.status == ModerationStatus.pending).length,
+    approvedToday:  items.where((i) => i.status == ModerationStatus.approved).length,
+    rejectedToday:  items.where((i) => i.status == ModerationStatus.rejected).length,
+    totalThisMonth: items.length,
+  );
 });
 
-// ============================================================================
-// Item par ID (lecture locale dans la liste déjà chargée)
-// ============================================================================
+// =============================================================================
+// Single item (for detail screen — reactive to state changes)
+// =============================================================================
 
 final moderationItemByIdProvider =
     Provider.family<ModerationItem?, String>((ref, id) {
-  final all = ref.watch(moderationNotifierProvider).value ?? const [];
-  return all.where((i) => i.id == id).firstOrNull;
+  return (ref.watch(moderationNotifierProvider).value ?? const [])
+      .where((i) => i.id == id)
+      .firstOrNull;
 });

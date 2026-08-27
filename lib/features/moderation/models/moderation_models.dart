@@ -72,6 +72,30 @@ class ModerationItem {
 
   String get truncatedTitle =>
       title.length > 60 ? '${title.substring(0, 60)}…' : title;
+
+  ModerationItem copyWith({
+    String? id,
+    ModerationAuthor? author,
+    String? title,
+    String? category,
+    TestimonyType? type,
+    ModerationStatus? status,
+    DateTime? submittedAt,
+    String? contentPreview,
+    RejectionReason? rejectionReason,
+    String? moderatorNote,
+  }) => ModerationItem(
+    id:             id             ?? this.id,
+    author:         author         ?? this.author,
+    title:          title          ?? this.title,
+    category:       category       ?? this.category,
+    type:           type           ?? this.type,
+    status:         status         ?? this.status,
+    submittedAt:    submittedAt    ?? this.submittedAt,
+    contentPreview: contentPreview ?? this.contentPreview,
+    rejectionReason: rejectionReason ?? this.rejectionReason,
+    moderatorNote:  moderatorNote  ?? this.moderatorNote,
+  );
 }
 
 class ModerationStats {

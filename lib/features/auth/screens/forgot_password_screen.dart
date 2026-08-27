@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/router/app_routes.dart';
+import '../providers/auth_notifier.dart';
 import '../widgets/auth_widgets.dart';
 
 // =============================================================================
@@ -76,7 +77,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
     setState(() => _isLoading = true);
     try {
-      await Future<void>.delayed(const Duration(milliseconds: 900));
+      await ref
+          .read(authStateProvider.notifier)
+          .forgotPassword(_emailController.text.trim());
       if (mounted) setState(() => _isSent = true);
     } catch (e) {
       if (mounted) {

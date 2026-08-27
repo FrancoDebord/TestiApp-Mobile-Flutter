@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/providers/auth_provider.dart' show UserRole;
+import '../../../shared/models/user_model.dart' show UserRole;
 import '../models/admin_models.dart';
 import '../providers/admin_provider.dart';
 
@@ -44,6 +44,9 @@ class AdminModeratorsScreen extends ConsumerWidget {
               'Retirer le rôle de modérateur ?',
               '${u.displayName} redeviendra un utilisateur standard.',
               const Color(0xFFEF4444),
+              () => ref
+                  .read(adminUsersNotifierProvider.notifier)
+                  .updateRole(u.uid, UserRole.utilisateur),
             ),
           ),
         ),
@@ -62,6 +65,9 @@ class AdminModeratorsScreen extends ConsumerWidget {
               'Promouvoir ${u.displayName} ?',
               'Cet utilisateur pourra modérer les témoignages soumis.',
               const Color(0xFF6B21A8),
+              () => ref
+                  .read(adminUsersNotifierProvider.notifier)
+                  .updateRole(u.uid, UserRole.moderateur),
             ),
           ),
         ),
@@ -70,7 +76,12 @@ class AdminModeratorsScreen extends ConsumerWidget {
   }
 
   void _confirmAction(
-      BuildContext context, String title, String message, Color color) {
+    BuildContext context,
+    String title,
+    String message,
+    Color color,
+    VoidCallback onConfirm,
+  ) {
     showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
@@ -92,7 +103,10 @@ class AdminModeratorsScreen extends ConsumerWidget {
                     TextStyle(fontFamily: 'Inter', color: Color(0xFF64748B))),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () {
+              Navigator.of(context).pop();
+              onConfirm();
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: color,
               foregroundColor: Colors.white,

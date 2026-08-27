@@ -327,12 +327,12 @@ class _MediaPlaceholder extends StatelessWidget {
 
 // ─── Action section ───────────────────────────────────────────────────────────
 
-class _ActionSection extends StatelessWidget {
+class _ActionSection extends ConsumerWidget {
   const _ActionSection({required this.item});
   final ModerationItem item;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -346,44 +346,59 @@ class _ActionSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        // Approve
         _FullActionButton(
           label: 'Approuver le témoignage',
           icon: Icons.check_circle_rounded,
           backgroundColor: const Color(0xFF22C55E),
-          onTap: () {
-            Navigator.of(context).pop();
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Témoignage approuvé',
-                    style: TextStyle(fontFamily: 'Inter')),
-                backgroundColor: Color(0xFF22C55E),
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
-          },
+          onTap: () => _doApprove(context, ref),
         ),
         const SizedBox(height: 10),
-        // Request edit
         _FullActionButton(
           label: 'Demander une modification',
           icon: Icons.edit_rounded,
           backgroundColor: const Color(0xFFF59E0B),
-          onTap: () => _showSheet(context, ReviewAction.requestEdit),
+          onTap: () => _showSheet(context, ref, ReviewAction.requestEdit),
         ),
         const SizedBox(height: 10),
-        // Reject
         _FullActionButton(
           label: 'Rejeter le témoignage',
           icon: Icons.cancel_rounded,
           backgroundColor: const Color(0xFFEF4444),
-          onTap: () => _showSheet(context, ReviewAction.reject),
+          onTap: () => _showSheet(context, ref, ReviewAction.reject),
         ),
       ],
     );
   }
 
-  void _showSheet(BuildContext context, ReviewAction action) {
+  Future<void> _doApprove(BuildContext context, WidgetRef ref) async {
+    try {
+      await ref.read(moderationNotifierProvider.notifier).approve(item.id);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Témoignage approuvé',
+                style: TextStyle(fontFamily: 'Inter', fontSize: 13)),
+            backgroundColor: Color(0xFF22C55E),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur : $e',
+                style: const TextStyle(fontFamily: 'Inter', fontSize: 13)),
+            backgroundColor: const Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showSheet(BuildContext context, WidgetRef ref, ReviewAction action) {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -391,8 +406,15 @@ class _ActionSection extends StatelessWidget {
       builder: (_) => ReviewBottomSheet(
         item: item,
         action: action,
-        onConfirm: (reason, note) {
-          Navigator.of(context).pop();
+        onConfirm: (reason, note) async {
+          if (action == ReviewAction.reject && reason != null) {
+            try {
+              await ref
+                  .read(moderationNotifierProvider.notifier)
+                  .reject(item.id, reason: reason, note: note);
+            } catch (_) {}
+          }
+          if (context.mounted) Navigator.of(context).pop();
         },
       ),
     );

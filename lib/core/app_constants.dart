@@ -2,7 +2,7 @@
 //
 // Central constants for the Témoignages application.
 //
-// API base: http://192.168.1.74:8000/api/v1
+// API base: http://192.168.0.4:8000/api/v1
 // Auth: Bearer JWT via Laravel Sanctum (token returned by /auth/login)
 // Envelope: { "success": bool, "data": any, "message": string, "errors"?: map }
 //
@@ -79,7 +79,7 @@ abstract final class AppConstants {
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
     defaultValue: 'http://192.168.1.74:8000/api/v1',
-    // Dev: http://192.168.1.74:8000/api/v1  (LAN server)
+    // Dev: http://192.168.0.4:8000/api/v1  (LAN server)
     // Android emulator localhost alias: http://10.0.2.2:8000/api/v1
     // Production: https://api.testi-app.com/api/v1
   );
@@ -123,8 +123,10 @@ abstract final class AppConstants {
   static String testimonyReactionById(String testimonyId, String reactionId)
       => '/testimonies/$testimonyId/reactions/$reactionId';
   static String testimonyComments(String id)      => '/testimonies/$id/comments';
-  static String testimonySave(String id)          => '/testimonies/$id/save';   // PUT
-  static String testimonyUnsave(String id)        => '/testimonies/$id/unsave'; // DELETE
+  static String testimonySave(String id)   => '/testimonies/$id/save';    // PUT
+  static String testimonyUnsave(String id) => '/testimonies/$id/unsave'; // DELETE
+  static String testimonyShare(String id)  => '/testimonies/$id/share';  // POST
+  static String testimonyReport(String id) => '/testimonies/$id/report'; // POST
 
   // Delta sync: GET /testimonies?after=ISO8601&limit=N
   static String feedDelta({required String after, int limit = 20}) =>
@@ -175,11 +177,13 @@ abstract final class AppConstants {
   static const String bibleSearch = '/bible/search';
 
   // ── Verset du jour ────────────────────────────────────────────────────────
+  // POST /daily-verse/react  { type: "like"|"pray"|"amen" }
+  // DELETE /daily-verse/react  { type: "like"|"pray"|"amen" }
+  // POST /daily-verse/share
 
-  static const String verseToday = '/daily-verse';
-  static String verseLike(int id)  => '/daily-verse/$id/like';
-  static String versePray(int id)  => '/daily-verse/$id/pray';
-  static String verseShare(int id) => '/daily-verse/$id/share';
+  static const String verseToday  = '/daily-verse';
+  static const String verseReact  = '/daily-verse/react';  // POST + DELETE
+  static const String verseShare  = '/daily-verse/share';  // POST
 
   // ── Media upload (multipart/form-data) ────────────────────────────────────
 
@@ -202,11 +206,34 @@ abstract final class AppConstants {
   static const String adminCategories  = '/admin/categories';
   static const String adminSettings    = '/admin/settings';
 
+  static String adminCategoryById(String id) => '/admin/categories/$id'; // PUT / DELETE
+
   static String adminUserById(String id)    => '/admin/users/$id';
   static String adminBanUser(String id)     => '/admin/users/$id/ban';     // POST
   static String adminSuspendUser(String id) => '/admin/users/$id/suspend'; // POST
   static String adminActivateUser(String id)=> '/admin/users/$id/activate';// POST
   static String adminUserRole(String id)    => '/admin/users/$id/role';    // PUT
+
+  // ── Live streaming ────────────────────────────────────────────────────────
+  // GET    /live/streams              → [{id, title, author, category, viewer_count}]
+  // POST   /live/streams             → create broadcast session
+  // DELETE /live/streams/{id}        → end session
+
+  static const String liveStreams  = '/live/streams';
+  static String liveStream(String id) => '/live/streams/$id';
+
+  // ── Prayer ────────────────────────────────────────────────────────────────
+  // GET    /prayer/requests              → [{id, author, body, prayer_count, message_count, ...}]
+  // POST   /prayer/requests             { body, visibility }
+  // POST   /prayer/requests/{id}/pray   → toggle pray
+  // GET    /prayer/sessions             → [{id, host, title, scheduled_at, status, participant_count}]
+  // POST   /prayer/sessions             { title, description, scheduled_at, visibility }
+
+  static const String prayerRequests = '/prayer/requests';
+  static String prayerRequestById(String id)  => '/prayer/requests/$id';
+  static String prayerRequestPray(String id)  => '/prayer/requests/$id/pray';
+  static const String prayerSessions = '/prayer/sessions';
+  static String prayerSessionById(String id)  => '/prayer/sessions/$id';
 
   // ── FCM device token ─────────────────────────────────────────────────────
   // POST   /devices/token  { token, platform: 'android'|'ios' }

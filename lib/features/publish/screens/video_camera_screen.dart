@@ -307,28 +307,99 @@ class _VideoCameraScreenState extends State<VideoCameraScreen>
 // Sous-widgets
 // ═══════════════════════════════════════════════════════════════════════════
 
-// ── Prévisualisation live ─────────────────────────────────────────────────
+// ── Prévisualisation live avec pinch-to-zoom ─────────────────────────────
 
-class _LivePreview extends StatelessWidget {
+class _LivePreview extends StatefulWidget {
   const _LivePreview({required this.controller});
   final CameraController controller;
 
   @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // Scale pour remplir l'écran sans déformer
-        final camRatio = controller.value.aspectRatio;
-        final screenRatio = constraints.maxWidth / constraints.maxHeight;
-        final scale = screenRatio < camRatio
-            ? constraints.maxHeight * camRatio / constraints.maxWidth
-            : constraints.maxWidth / (constraints.maxHeight * camRatio);
+  State<_LivePreview> createState() => _LivePreviewState();
+}
 
-        return Transform.scale(
-          scale: scale,
-          child: Center(child: CameraPreview(controller)),
-        );
-      },
+class _LivePreviewState extends State<_LivePreview> {
+  double _currentZoom = 1.0;
+  double _baseZoom    = 1.0;
+  double _minZoom     = 1.0;
+  double _maxZoom     = 8.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadZoomBounds();
+  }
+
+  Future<void> _loadZoomBounds() async {
+    try {
+      final min = await widget.controller.getMinZoomLevel();
+      final max = await widget.controller.getMaxZoomLevel();
+      if (mounted) setState(() { _minZoom = min; _maxZoom = max; });
+    } catch (_) {}
+  }
+
+  void _handleScaleStart(ScaleStartDetails _) {
+    _baseZoom = _currentZoom;
+  }
+
+  Future<void> _handleScaleUpdate(ScaleUpdateDetails details) async {
+    final zoom = (_baseZoom * details.scale).clamp(_minZoom, _maxZoom);
+    if ((zoom - _currentZoom).abs() < 0.01) return;
+    setState(() => _currentZoom = zoom);
+    try {
+      await widget.controller.setZoomLevel(zoom);
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onScaleStart:  _handleScaleStart,
+      onScaleUpdate: _handleScaleUpdate,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final camRatio    = widget.controller.value.aspectRatio;
+          final screenRatio = constraints.maxWidth / constraints.maxHeight;
+          final scale = screenRatio < camRatio
+              ? constraints.maxHeight * camRatio / constraints.maxWidth
+              : constraints.maxWidth / (constraints.maxHeight * camRatio);
+
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              Transform.scale(
+                scale: scale,
+                child: Center(child: CameraPreview(widget.controller)),
+              ),
+              // Zoom level indicator
+              if (_currentZoom > _minZoom + 0.05)
+                Positioned(
+                  bottom: 160,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        '${_currentZoom.toStringAsFixed(1)}×',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontFamily: 'Inter',
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
     );
   }
 }

@@ -412,8 +412,11 @@ class _ShortRecordScreenState extends State<ShortRecordScreen>
                   // UTILISER
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: () =>
-                          Navigator.of(context).pop(_recordedPath),
+                      onPressed: () => Navigator.of(context).pop(
+                          <String, dynamic>{
+                            'path': _recordedPath,
+                            'duration': _elapsedSeconds,
+                          }),
                       icon: const Icon(Icons.check),
                       label: const Text('UTILISER'),
                       style: ElevatedButton.styleFrom(

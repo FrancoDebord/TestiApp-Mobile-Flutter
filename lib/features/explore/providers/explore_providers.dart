@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/app_constants.dart';
+import '../../../services/api_service.dart';
 import '../../home/models/testimony_model.dart';
 import '../../home/providers/home_providers.dart';
 import '../models/explore_models.dart';
@@ -101,19 +103,53 @@ final exploreResultsProvider = Provider<List<Testimony>>((ref) {
   return _applySortOrder(results, sortOrder);
 });
 
-// ── Résultats par catégorie ───────────────────────────────────────────────────
+// ── Chargement API par catégorie ──────────────────────────────────────────────
+
+final categoryApiProvider =
+    FutureProvider.family<List<Testimony>, TestimonyCategory>((ref, cat) async {
+  final api  = ref.read(apiServiceProvider);
+  final slug = toCategoryApiSlug(cat);
+  try {
+    final response = await api.get<dynamic>(
+      '${AppConstants.testimonies}?category=$slug&limit=50',
+    );
+    final raw  = response.data;
+    final list = raw is List
+        ? raw
+        : raw is Map
+            ? (raw['data'] as List? ?? [])
+            : <dynamic>[];
+    final items =
+        list.map(testimonyFromApiJson).whereType<Testimony>().toList();
+    if (items.isNotEmpty) return items;
+  } catch (_) {}
+  // Fallback : données déjà en mémoire
+  return ref.read(feedNotifierProvider).where((t) => t.category == cat).toList();
+});
+
+// ── Résultats par catégorie (API + filtres locaux) ────────────────────────────
 
 final categoryResultsProvider =
     Provider.family<List<Testimony>, TestimonyCategory>((ref, cat) {
   final typeFilter = ref.watch(categoryTypeFilterProvider);
   final sortOrder  = ref.watch(categorySortOrderProvider);
 
-  final all = ref.watch(feedNotifierProvider)
-      .where((t) => t.category == cat)
-      .toList();
+  // Utilise les données API si disponibles, sinon le feed en mémoire.
+  final apiState = ref.watch(categoryApiProvider(cat));
+  final all = apiState.when(
+    data:    (items) => items,
+    loading: () => ref.read(feedNotifierProvider).where((t) => t.category == cat).toList(),
+    error:   (_, _)  => ref.read(feedNotifierProvider).where((t) => t.category == cat).toList(),
+  );
 
   final filtered = _applyTypeFilter(all, typeFilter);
   return _applySortOrder(filtered, sortOrder);
+});
+
+/// `true` pendant le chargement initial de la catégorie depuis l'API.
+final categoryLoadingProvider =
+    Provider.family<bool, TestimonyCategory>((ref, cat) {
+  return ref.watch(categoryApiProvider(cat)).isLoading;
 });
 
 // ── Sections de découverte ────────────────────────────────────────────────────

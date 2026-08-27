@@ -17,12 +17,7 @@ class GroupPrayerSessionsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final sessions = ref.watch(groupSessionsProvider);
-    final live = sessions.where((s) => s.isLive).toList();
-    final upcoming = sessions
-        .where((s) => s.status == PrayerSessionStatus.scheduled)
-        .toList();
-    final past = sessions.where((s) => s.isEnded).toList();
+    final asyncSessions = ref.watch(groupSessionsProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -55,56 +50,71 @@ class GroupPrayerSessionsScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          // ── Live sessions ───────────────────────────────────────────────
-          if (live.isNotEmpty) ...[
-            _SectionHeader(
-              title: 'En direct 🔴',
-              count: live.length,
-            ),
-            const SizedBox(height: 8),
-            ...live.map((s) => _SessionCard(
-                  session: s,
-                  onTap: () => _joinSession(context, s),
-                )),
-            const SizedBox(height: 20),
-          ],
-
-          // ── Upcoming sessions ────────────────────────────────────────────
-          _SectionHeader(
-            title: 'À venir',
-            count: upcoming.length,
-          ),
-          const SizedBox(height: 8),
-          if (upcoming.isEmpty)
-            _EmptySectionHint(
-              label: 'Aucune session prévue',
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  fullscreenDialog: true,
-                  builder: (_) => const CreatePrayerSessionScreen(),
-                ),
+      body: asyncSessions.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, st) => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.cloud_off_rounded,
+                  size: 48, color: Colors.grey),
+              const SizedBox(height: 12),
+              const Text('Impossible de charger les sessions'),
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                onPressed: () =>
+                    ref.read(groupSessionsProvider.notifier).refresh(),
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: const Text('Réessayer',
+                    style: TextStyle(fontFamily: 'Inter')),
               ),
-            )
-          else
-            ...upcoming.map((s) => _SessionCard(
-                  session: s,
-                  onTap: () => _joinSession(context, s),
-                )),
-          const SizedBox(height: 20),
-
-          // ── Past sessions ───────────────────────────────────────────────
-          if (past.isNotEmpty) ...[
-            _SectionHeader(title: 'Terminées', count: past.length),
-            const SizedBox(height: 8),
-            ...past.map((s) => _SessionCard(
-                  session: s,
-                  onTap: null,
-                )),
-          ],
-        ],
+            ],
+          ),
+        ),
+        data: (sessions) {
+          final live     = sessions.where((s) => s.isLive).toList();
+          final upcoming = sessions
+              .where((s) => s.status == PrayerSessionStatus.scheduled)
+              .toList();
+          final past = sessions.where((s) => s.isEnded).toList();
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              if (live.isNotEmpty) ...[
+                _SectionHeader(title: 'En direct 🔴', count: live.length),
+                const SizedBox(height: 8),
+                ...live.map((s) => _SessionCard(
+                      session: s,
+                      onTap: () => _joinSession(context, s),
+                    )),
+                const SizedBox(height: 20),
+              ],
+              _SectionHeader(title: 'À venir', count: upcoming.length),
+              const SizedBox(height: 8),
+              if (upcoming.isEmpty)
+                _EmptySectionHint(
+                  label: 'Aucune session prévue',
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      fullscreenDialog: true,
+                      builder: (_) => const CreatePrayerSessionScreen(),
+                    ),
+                  ),
+                )
+              else
+                ...upcoming.map((s) => _SessionCard(
+                      session: s,
+                      onTap: () => _joinSession(context, s),
+                    )),
+              const SizedBox(height: 20),
+              if (past.isNotEmpty) ...[
+                _SectionHeader(title: 'Terminées', count: past.length),
+                const SizedBox(height: 8),
+                ...past.map((s) => _SessionCard(session: s, onTap: null)),
+              ],
+            ],
+          );
+        },
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => Navigator.of(context).push(

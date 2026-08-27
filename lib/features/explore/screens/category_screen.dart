@@ -59,7 +59,8 @@ class CategoryScreen extends ConsumerWidget {
           colors: [Color(0xFF6B21A8), Color(0xFFA855F7)],
           icon: Icons.star_rounded,
         );
-    final results  = ref.watch(categoryResultsProvider(cat));
+    final results    = ref.watch(categoryResultsProvider(cat));
+    final isLoading  = ref.watch(categoryLoadingProvider(cat));
     final typeFilter = ref.watch(categoryTypeFilterProvider);
     final sortOrder  = ref.watch(categorySortOrderProvider);
 
@@ -142,7 +143,11 @@ class CategoryScreen extends ConsumerWidget {
           ),
 
           // ── Liste ───────────────────────────────────────────────────────
-          if (results.isEmpty)
+          if (isLoading && results.isEmpty)
+            const SliverFillRemaining(
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (results.isEmpty)
             const SliverFillRemaining(child: _EmptyCategory())
           else
             SliverPadding(

@@ -67,6 +67,42 @@ class BibleScreen extends ConsumerWidget {
   }
 }
 
+// ── Language helpers ──────────────────────────────────────────────────────────
+
+String _languageLabel(String lang) => switch (lang.toLowerCase()) {
+      'fr' => 'Français',
+      'en' => 'English',
+      'es' => 'Español',
+      'pt' => 'Português',
+      'de' => 'Deutsch',
+      'it' => 'Italiano',
+      'ar' => 'العربية',
+      'sw' => 'Kiswahili',
+      'ln' => 'Lingala',
+      'yo' => 'Yoruba',
+      'ha' => 'Hausa',
+      'ig' => 'Igbo',
+      'am' => 'Amharique',
+      'rw' => 'Kinyarwanda',
+      'wo' => 'Wolof',
+      _    => lang.toUpperCase(),
+    };
+
+/// Trie les langues : fr en premier, en deuxième, puis les autres par label.
+List<String> _sortedLanguages(Iterable<String> langs) {
+  const priority = ['fr', 'en', 'es', 'pt'];
+  final result = langs.toList()
+    ..sort((a, b) {
+      final ai = priority.indexOf(a);
+      final bi = priority.indexOf(b);
+      if (ai != -1 && bi != -1) return ai.compareTo(bi);
+      if (ai != -1) return -1;
+      if (bi != -1) return 1;
+      return _languageLabel(a).compareTo(_languageLabel(b));
+    });
+  return result;
+}
+
 // ── Translation list ──────────────────────────────────────────────────────────
 
 class _TranslationList extends ConsumerWidget {
@@ -75,12 +111,57 @@ class _TranslationList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return ListView.separated(
+    // Group by language
+    final grouped = <String, List<BibleTranslation>>{};
+    for (final t in translations) {
+      grouped.putIfAbsent(t.language, () => []).add(t);
+    }
+    final langs = _sortedLanguages(grouped.keys);
+
+    // Flatten into a widget list: header → cards
+    final children = <Widget>[];
+    for (var li = 0; li < langs.length; li++) {
+      if (li > 0) children.add(const SizedBox(height: 8));
+      children.add(_LangHeader(language: langs[li]));
+      children.add(const SizedBox(height: 10));
+      final cards = grouped[langs[li]]!;
+      for (var ci = 0; ci < cards.length; ci++) {
+        children.add(_TranslationCard(translation: cards[ci]));
+        if (ci < cards.length - 1) children.add(const SizedBox(height: 12));
+      }
+    }
+
+    return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-      itemCount: translations.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 12),
-      itemBuilder: (context, i) =>
-          _TranslationCard(translation: translations[i]),
+      children: children,
+    );
+  }
+}
+
+// ── Language section header ───────────────────────────────────────────────────
+
+class _LangHeader extends StatelessWidget {
+  const _LangHeader({required this.language});
+  final String language;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Text(
+          _languageLabel(language).toUpperCase(),
+          style: AppTextStyles.labelSmall.copyWith(
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1,
+            fontSize: 11,
+          ),
+        ),
+        const SizedBox(width: 8),
+        const Expanded(
+          child: Divider(color: AppColors.border, height: 1),
+        ),
+      ],
     );
   }
 }
@@ -294,14 +375,6 @@ class _TranslationCard extends ConsumerWidget {
       ),
     );
   }
-
-  static String _languageLabel(String lang) => switch (lang) {
-        'fr' => 'Français',
-        'en' => 'English',
-        'es' => 'Español',
-        'pt' => 'Português',
-        _    => lang.toUpperCase(),
-      };
 
   static String _formatCount(int n) =>
       n >= 1000 ? '${(n / 1000).toStringAsFixed(0)}k' : '$n';

@@ -29,6 +29,70 @@ final bibleHighlightsProvider =
   },
 );
 
+// ── Structured Bible verse reference (from multi-select in reader) ────────────
+
+class BibleVerseRef {
+  const BibleVerseRef({
+    required this.translationCode,
+    required this.bookNumber,
+    required this.bookName,
+    required this.chapter,
+    required this.verseNumbers,
+  });
+
+  final String    translationCode;
+  final int       bookNumber;
+  final String    bookName;
+  final int       chapter;
+  final List<int> verseNumbers;
+
+  /// Short display string: "Jean 3:16-18" or "Jean 3:1,4,7"
+  String get displayRef {
+    if (verseNumbers.isEmpty) return '$bookName $chapter';
+    final sorted = [...verseNumbers]..sort();
+    if (sorted.length == 1) return '$bookName $chapter:${sorted.first}';
+    bool isContiguous = true;
+    for (var i = 1; i < sorted.length; i++) {
+      if (sorted[i] != sorted[i - 1] + 1) { isContiguous = false; break; }
+    }
+    return isContiguous
+        ? '$bookName $chapter:${sorted.first}-${sorted.last}'
+        : '$bookName $chapter:${sorted.join(",")}';
+  }
+}
+
+class BibleVerseRefNotifier extends Notifier<BibleVerseRef?> {
+  @override
+  BibleVerseRef? build() => null;
+
+  void set(BibleVerseRef ref) => state = ref;
+  void clear() => state = null;
+}
+
+/// Carries structured selection data (translation + book + chapter + verse numbers)
+/// so the publish form can look up and preview the full verse text.
+final bibleVerseRefProvider =
+    NotifierProvider<BibleVerseRefNotifier, BibleVerseRef?>(
+  BibleVerseRefNotifier.new,
+);
+
+/// Resolves a [BibleVerseRef] into the concatenated verse text from local SQLite.
+/// Returns null if no ref is set or the translation isn't downloaded.
+final bibleVerseTextProvider =
+    FutureProvider.autoDispose<String?>((ref) async {
+  final vRef = ref.watch(bibleVerseRefProvider);
+  if (vRef == null || vRef.verseNumbers.isEmpty) return null;
+  final dao  = ref.watch(bibleDaoProvider);
+  final all  = await dao.getVerses(
+      vRef.translationCode, vRef.bookNumber, vRef.chapter);
+  final kept = all
+      .where((v) => vRef.verseNumbers.contains(v.verseNumber))
+      .toList()
+    ..sort((a, b) => a.verseNumber.compareTo(b.verseNumber));
+  if (kept.isEmpty) return null;
+  return kept.map((v) => v.text).join(' ');
+});
+
 // ── Verse to pre-fill in the publish screen ────────────────────────────────────
 
 class BibleVerseToInsertNotifier extends Notifier<String?> {

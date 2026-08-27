@@ -86,6 +86,7 @@ sealed class Testimony {
     this.isFeatured = false,
     this.isLiked = false,
     this.isPrayed = false,
+    this.isSaved = false,
   });
 
   final String id;
@@ -97,6 +98,7 @@ sealed class Testimony {
   final bool isFeatured;
   final bool isLiked;
   final bool isPrayed;
+  final bool isSaved;
 
   TestimonyType get type;
 }
@@ -113,15 +115,18 @@ final class TextTestimony extends Testimony {
     required super.stats,
     required this.preview,
     this.coverImageUrl,
+    this.bibleVerse,
+    this.bibleVerseRef,
     super.isFeatured,
     super.isLiked,
     super.isPrayed,
+    super.isSaved,
   });
 
   final String preview;
-
-  /// Optional hero image for featured cards.
   final String? coverImageUrl;
+  final String? bibleVerse;
+  final String? bibleVerseRef;
 
   @override
   TestimonyType get type => TestimonyType.text;
@@ -139,17 +144,22 @@ final class AudioTestimony extends Testimony {
     required super.stats,
     required this.durationSeconds,
     required this.transcriptPreview,
-    this.mediaPath,        // chemin local (enregistrement / import)
+    this.mediaPath,
     this.coverImageUrl,
+    this.bibleVerse,
+    this.bibleVerseRef,
     super.isFeatured,
     super.isLiked,
     super.isPrayed,
+    super.isSaved,
   });
 
   final int     durationSeconds;
   final String  transcriptPreview;
-  final String? mediaPath;       // fichier audio local
+  final String? mediaPath;
   final String? coverImageUrl;
+  final String? bibleVerse;
+  final String? bibleVerseRef;
 
   String get formattedDuration {
     final m = durationSeconds ~/ 60;
@@ -173,15 +183,20 @@ final class VideoTestimony extends Testimony {
     required super.stats,
     required this.durationSeconds,
     required this.thumbnailUrl,
-    this.mediaPath,        // chemin local ou URL de la vidéo
+    this.mediaPath,
+    this.bibleVerse,
+    this.bibleVerseRef,
     super.isFeatured,
     super.isLiked,
     super.isPrayed,
+    super.isSaved,
   });
 
   final int     durationSeconds;
   final String  thumbnailUrl;
-  final String? mediaPath;       // fichier vidéo local ou URL réseau
+  final String? mediaPath;
+  final String? bibleVerse;
+  final String? bibleVerseRef;
 
   String get formattedDuration {
     final m = durationSeconds ~/ 60;
@@ -214,15 +229,30 @@ class DailyVerse {
   final bool   isLiked;
   final bool   isPrayed;
 
-  factory DailyVerse.fromJson(Map<String, dynamic> j) => DailyVerse(
-    id:          (j['id'] as num?)?.toInt() ?? 0,
-    text:        j['text']      as String? ?? j['content'] as String? ?? '',
-    reference:   j['reference'] as String? ?? j['verse']   as String? ?? '',
-    likeCount:   (j['like_count']   as num?)?.toInt() ?? 0,
-    prayerCount: (j['prayer_count'] as num?)?.toInt() ?? 0,
-    isLiked:     j['is_liked']  as bool? ?? false,
-    isPrayed:    j['is_prayed'] as bool? ?? false,
-  );
+  factory DailyVerse.fromJson(Map<String, dynamic> j) {
+    String str(List<String> keys) {
+      for (final k in keys) {
+        final v = j[k];
+        if (v is String && v.isNotEmpty) return v;
+      }
+      return '';
+    }
+
+    return DailyVerse(
+      id: (j['id'] as num?)?.toInt() ?? 0,
+      text: str(['text', 'content', 'verse_text', 'verseText', 'body',
+                  'scripture', 'passage']),
+      reference: str(['reference', 'verse', 'citation', 'ref',
+                       'verse_reference', 'verseReference', 'address',
+                       'book_chapter_verse', 'location']),
+      likeCount:   (j['like_count']   as num?)?.toInt() ??
+                   (j['likes_count']  as num?)?.toInt() ?? 0,
+      prayerCount: (j['prayer_count'] as num?)?.toInt() ??
+                   (j['prayers_count'] as num?)?.toInt() ?? 0,
+      isLiked:  j['is_liked']  as bool? ?? j['isLiked']  as bool? ?? false,
+      isPrayed: j['is_prayed'] as bool? ?? j['isPrayed'] as bool? ?? false,
+    );
+  }
 
   DailyVerse copyWith({
     int? likeCount,

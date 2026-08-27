@@ -24,55 +24,41 @@ class AdminCategoriesScreen extends ConsumerWidget {
     return Column(
       children: [
         _AddCategoryBar(
-          onAdd: (name) {
-            final newCat = AppCategory(
-              id: 'c${categories.length + 1}',
-              name: name,
-              slug: name.toLowerCase().replaceAll(' ', '-'),
-              order: categories.length + 1,
-              testimonyCount: 0,
-            );
-            ref.read(adminCategoriesProvider.notifier).update([
-              ...categories,
-              newCat,
-            ]);
-          },
+          onAdd: (name) =>
+              ref.read(adminCategoriesNotifierProvider.notifier).create(name),
         ),
         Expanded(
-          child: ReorderableListView.builder(
-            padding: const EdgeInsets.only(bottom: 24),
-            itemCount: categories.length,
-            onReorder: (oldIndex, newIndex) {
-              final updated = [...categories];
-              if (newIndex > oldIndex) newIndex--;
-              final item = updated.removeAt(oldIndex);
-              updated.insert(newIndex, item);
-              ref.read(adminCategoriesProvider.notifier).update(updated);
-            },
-            itemBuilder: (context, index) {
-              final cat = categories[index];
-              return _CategoryTile(
-                key: ValueKey(cat.id),
-                category: cat,
-                onEdit: () => _showEditDialog(context, ref, cat, categories),
-                onToggle: () {
-                  final updated = categories
-                      .map((c) => c.id == cat.id
-                          ? AppCategory(
-                              id: c.id,
-                              name: c.name,
-                              slug: c.slug,
-                              order: c.order,
-                              testimonyCount: c.testimonyCount,
-                              isActive: !c.isActive,
-                            )
-                          : c)
-                      .toList();
-                  ref.read(adminCategoriesProvider.notifier).update(updated);
-                },
-              );
-            },
-          ),
+          child: categories.isEmpty
+              ? const Center(
+                  child: CircularProgressIndicator(
+                    color: Color(0xFF6B21A8),
+                    strokeWidth: 2.5,
+                  ),
+                )
+              : ReorderableListView.builder(
+                  padding: const EdgeInsets.only(bottom: 24),
+                  itemCount: categories.length,
+                  onReorder: (oldIndex, newIndex) {
+                    final updated = [...categories];
+                    if (newIndex > oldIndex) newIndex--;
+                    final item = updated.removeAt(oldIndex);
+                    updated.insert(newIndex, item);
+                    ref
+                        .read(adminCategoriesNotifierProvider.notifier)
+                        .reorder(updated);
+                  },
+                  itemBuilder: (context, index) {
+                    final cat = categories[index];
+                    return _CategoryTile(
+                      key: ValueKey(cat.id),
+                      category: cat,
+                      onEdit: () => _showEditDialog(context, ref, cat),
+                      onToggle: () => ref
+                          .read(adminCategoriesNotifierProvider.notifier)
+                          .toggleActive(cat.id, isActive: !cat.isActive),
+                    );
+                  },
+                ),
         ),
       ],
     );
@@ -82,19 +68,20 @@ class AdminCategoriesScreen extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     AppCategory cat,
-    List<AppCategory> categories,
   ) {
     final controller = TextEditingController(text: cat.name);
     showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Modifier la catégorie',
-            style: TextStyle(
-                fontFamily: 'Poppins',
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
-                color: Color(0xFF0F172A))),
+        title: const Text(
+          'Modifier la catégorie',
+          style: TextStyle(
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.w600,
+              fontSize: 16,
+              color: Color(0xFF0F172A)),
+        ),
         content: TextField(
           controller: controller,
           autofocus: true,
@@ -118,25 +105,16 @@ class AdminCategoriesScreen extends ConsumerWidget {
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('Annuler',
-                style: TextStyle(fontFamily: 'Inter', color: Color(0xFF64748B))),
+                style:
+                    TextStyle(fontFamily: 'Inter', color: Color(0xFF64748B))),
           ),
           ElevatedButton(
             onPressed: () {
               final newName = controller.text.trim();
-              if (newName.isNotEmpty) {
-                final updated = categories
-                    .map((c) => c.id == cat.id
-                        ? AppCategory(
-                            id: c.id,
-                            name: newName,
-                            slug: newName.toLowerCase().replaceAll(' ', '-'),
-                            order: c.order,
-                            testimonyCount: c.testimonyCount,
-                            isActive: c.isActive,
-                          )
-                        : c)
-                    .toList();
-                ref.read(adminCategoriesProvider.notifier).update(updated);
+              if (newName.isNotEmpty && newName != cat.name) {
+                ref
+                    .read(adminCategoriesNotifierProvider.notifier)
+                    .updateName(cat.id, newName);
               }
               Navigator.of(context).pop();
             },

@@ -1,107 +1,84 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/app_constants.dart';
+import '../../../services/api_service.dart';
 import '../models/prayer_models.dart';
-
-// ── Seed data ─────────────────────────────────────────────────────────────────
-
-final _seedRequests = <PrayerRequest>[
-  PrayerRequest(
-    id: 'pr1',
-    authorId: 'u1',
-    authorName: 'Marie Dupont',
-    body: 'Priez pour ma mère qui est hospitalisée depuis 3 jours. '
-        'Les médecins cherchent encore le diagnostic. Que Dieu intervienne !',
-    createdAt: DateTime.now().subtract(const Duration(hours: 2)),
-    prayerCount: 47,
-    messageCount: 12,
-  ),
-  PrayerRequest(
-    id: 'pr2',
-    authorId: 'u2',
-    authorName: 'Jean-Pierre Koffi',
-    body: 'Besoin de prière pour trouver un emploi stable. '
-        'Cela fait 6 mois que je cherche. Je crois que Dieu a un plan.',
-    createdAt: DateTime.now().subtract(const Duration(hours: 5)),
-    prayerCount: 31,
-    messageCount: 8,
-  ),
-  PrayerRequest(
-    id: 'pr3',
-    authorId: 'u3',
-    authorName: 'Esther Ngoula',
-    body: 'Priez pour la réconciliation dans ma famille. '
-        'Il y a beaucoup de conflits depuis l\'héritage. Dieu peut guérir tout ça.',
-    createdAt: DateTime.now().subtract(const Duration(days: 1)),
-    prayerCount: 89,
-    messageCount: 23,
-  ),
-  PrayerRequest(
-    id: 'pr4',
-    authorId: 'u4',
-    authorName: 'Samuel Tchemou',
-    body: 'Je demande la prière pour mon fils qui s\'est éloigné de la foi. '
-        'Que le Saint-Esprit le touche.',
-    createdAt: DateTime.now().subtract(const Duration(days: 2)),
-    prayerCount: 124,
-    messageCount: 34,
-  ),
-];
-
-final _seedSessions = <GroupPrayerSession>[
-  GroupPrayerSession(
-    id: 'gs1',
-    hostId: 'u5',
-    hostName: 'Pasteur Emmanuel',
-    title: 'Prière du mercredi soir',
-    description: 'Rejoignez-nous pour une heure de prière collective.',
-    scheduledAt: DateTime.now().add(const Duration(hours: 3)),
-    visibility: PrayerVisibility.public,
-    participantCount: 28,
-  ),
-  GroupPrayerSession(
-    id: 'gs2',
-    hostId: 'u6',
-    hostName: 'Sœur Céleste',
-    title: 'Intercession pour les malades',
-    description: 'Session dédiée à la prière pour la guérison.',
-    scheduledAt: DateTime.now().subtract(const Duration(minutes: 10)),
-    visibility: PrayerVisibility.public,
-    status: PrayerSessionStatus.live,
-    participantCount: 15,
-  ),
-];
 
 // ── Prayer Requests notifier ──────────────────────────────────────────────────
 
-class PrayerRequestsNotifier extends Notifier<List<PrayerRequest>> {
+class PrayerRequestsNotifier
+    extends AsyncNotifier<List<PrayerRequest>> {
   @override
-  List<PrayerRequest> build() => List.from(_seedRequests);
+  Future<List<PrayerRequest>> build() => _fetch();
 
-  void addRequest(PrayerRequest req) {
-    state = [req, ...state];
+  Future<List<PrayerRequest>> _fetch() async {
+    try {
+      final api = ref.read(apiServiceProvider);
+      final response =
+          await api.get<dynamic>(AppConstants.prayerRequests);
+      final raw = response.data;
+      final list = raw is List
+          ? raw
+          : (raw is Map && raw['data'] is List ? raw['data'] as List : []);
+      return list
+          .map((e) => PrayerRequest.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<void> refresh() async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(_fetch);
+  }
+
+  // Optimistic: prepend locally then sync
+  Future<void> addRequest(PrayerRequest req) async {
+    final prev = state.asData?.value ?? [];
+    state = AsyncData([req, ...prev]);
+    try {
+      final api = ref.read(apiServiceProvider);
+      await api.post<void>(
+        AppConstants.prayerRequests,
+        data: {
+          'body': req.body,
+          'visibility': req.visibility.name,
+        },
+      );
+    } catch (_) {
+      await refresh();
+    }
   }
 
   void togglePray(String requestId, String userId) {
-    state = state.map((r) {
+    final prev = state.asData?.value;
+    if (prev == null) return;
+    state = AsyncData(prev.map((r) {
       if (r.id != requestId) return r;
       final hasPrayed = r.userHasPrayed;
       return r.copyWith(
         userHasPrayed: !hasPrayed,
         prayerCount: hasPrayed ? r.prayerCount - 1 : r.prayerCount + 1,
       );
-    }).toList();
+    }).toList());
+    ref.read(apiServiceProvider).post<void>(
+      AppConstants.prayerRequestPray(requestId),
+    );
   }
 
   void incrementMessages(String requestId) {
-    state = state.map((r) {
+    final prev = state.asData?.value;
+    if (prev == null) return;
+    state = AsyncData(prev.map((r) {
       if (r.id != requestId) return r;
       return r.copyWith(messageCount: r.messageCount + 1);
-    }).toList();
+    }).toList());
   }
 }
 
 final prayerRequestsProvider =
-    NotifierProvider<PrayerRequestsNotifier, List<PrayerRequest>>(
+    AsyncNotifierProvider<PrayerRequestsNotifier, List<PrayerRequest>>(
   PrayerRequestsNotifier.new,
 );
 
@@ -110,20 +87,7 @@ final prayerRequestsProvider =
 class InspirationMessagesNotifier
     extends Notifier<Map<String, List<InspirationMessage>>> {
   @override
-  Map<String, List<InspirationMessage>> build() => {
-        'pr1': [
-          InspirationMessage(
-            id: 'im1',
-            requestId: 'pr1',
-            authorId: 'u7',
-            authorName: 'Frère Caleb',
-            body: 'Je prie avec toi. "Car je suis l\'Éternel, ton médecin." '
-                'Dieu guérit et Il entend ta prière.',
-            createdAt: DateTime.now().subtract(const Duration(hours: 1)),
-            bibleVerse: 'Exode 15:26',
-          ),
-        ],
-      };
+  Map<String, List<InspirationMessage>> build() => {};
 
   List<InspirationMessage> forRequest(String requestId) =>
       state[requestId] ?? [];
@@ -142,23 +106,63 @@ final inspirationMessagesProvider = NotifierProvider<
 
 // ── Group Prayer Sessions notifier ────────────────────────────────────────────
 
-class GroupSessionsNotifier extends Notifier<List<GroupPrayerSession>> {
+class GroupSessionsNotifier
+    extends AsyncNotifier<List<GroupPrayerSession>> {
   @override
-  List<GroupPrayerSession> build() => List.from(_seedSessions);
+  Future<List<GroupPrayerSession>> build() => _fetch();
 
-  void addSession(GroupPrayerSession session) {
-    state = [session, ...state];
+  Future<List<GroupPrayerSession>> _fetch() async {
+    try {
+      final api = ref.read(apiServiceProvider);
+      final response =
+          await api.get<dynamic>(AppConstants.prayerSessions);
+      final raw = response.data;
+      final list = raw is List
+          ? raw
+          : (raw is Map && raw['data'] is List ? raw['data'] as List : []);
+      return list
+          .map((e) => GroupPrayerSession.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<void> refresh() async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(_fetch);
+  }
+
+  Future<void> addSession(GroupPrayerSession session) async {
+    final prev = state.asData?.value ?? [];
+    state = AsyncData([session, ...prev]);
+    try {
+      final api = ref.read(apiServiceProvider);
+      await api.post<void>(
+        AppConstants.prayerSessions,
+        data: {
+          'title': session.title,
+          'description': session.description,
+          'scheduled_at': session.scheduledAt.toIso8601String(),
+          'visibility': session.visibility.name,
+        },
+      );
+    } catch (_) {
+      await refresh();
+    }
   }
 
   void updateStatus(String sessionId, PrayerSessionStatus status) {
-    state = state.map((s) {
+    final prev = state.asData?.value;
+    if (prev == null) return;
+    state = AsyncData(prev.map((s) {
       if (s.id != sessionId) return s;
       return s.copyWith(status: status);
-    }).toList();
+    }).toList());
   }
 }
 
 final groupSessionsProvider =
-    NotifierProvider<GroupSessionsNotifier, List<GroupPrayerSession>>(
+    AsyncNotifierProvider<GroupSessionsNotifier, List<GroupPrayerSession>>(
   GroupSessionsNotifier.new,
 );

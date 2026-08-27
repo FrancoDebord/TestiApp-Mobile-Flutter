@@ -30,7 +30,7 @@ extension TestimonyFormatLabel on TestimonyFormat {
 }
 
 /// Workflow status chips shown in the status bar.
-enum PublishStatus { draft, submitted, inReview, published }
+enum PublishStatus { draft, submitted, inReview, published, pendingSync }
 
 extension PublishStatusLabel on PublishStatus {
   String get label {
@@ -43,12 +43,14 @@ extension PublishStatusLabel on PublishStatus {
         return 'En validation';
       case PublishStatus.published:
         return 'Publié';
+      case PublishStatus.pendingSync:
+        return 'Hors ligne';
     }
   }
 }
 
 /// Visibility of a published testimony.
-enum TestimonyVisibility { public, private }
+enum TestimonyVisibility { public, friends, private }
 
 /// All available testimony categories.
 const List<String> kTestimonyCategories = [
@@ -75,6 +77,7 @@ class PublishDraft {
     this.title = '',
     this.category,
     this.coverImagePath,
+    this.coverImageRemoteUrl,
     this.bodyText = '',
     this.bibleVerse = '',
     this.audioPath,
@@ -101,6 +104,8 @@ class PublishDraft {
   String title;
   String? category;
   String? coverImagePath;
+  /// URL distante de l'image de couverture après upload (null = pas encore uploadée).
+  String? coverImageRemoteUrl;
 
   // text
   String bodyText;
@@ -154,6 +159,7 @@ class PublishDraft {
     int? categoryId,
     bool? isUploadingMedia,
     Object? errorMessage = _sentinel,
+    Object? coverImageRemoteUrl = _sentinel,
     Object? audioRemoteUrl = _sentinel,
     Object? videoRemoteUrl = _sentinel,
     Object? uploadError = _sentinel,
@@ -163,6 +169,9 @@ class PublishDraft {
       title: title ?? this.title,
       category: category ?? this.category,
       coverImagePath: coverImagePath ?? this.coverImagePath,
+      coverImageRemoteUrl: coverImageRemoteUrl == _sentinel
+          ? this.coverImageRemoteUrl
+          : coverImageRemoteUrl as String?,
       bodyText: bodyText ?? this.bodyText,
       bibleVerse: bibleVerse ?? this.bibleVerse,
       audioPath: audioPath ?? this.audioPath,

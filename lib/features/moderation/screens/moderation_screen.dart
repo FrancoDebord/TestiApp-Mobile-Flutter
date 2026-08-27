@@ -28,10 +28,7 @@ class ModerationScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final stats = ref.watch(moderationStatsProvider).value ??
-        const ModerationStats(
-            pending: 0, approvedToday: 0,
-            rejectedToday: 0, totalThisMonth: 0);
+    final stats = ref.watch(moderationStatsProvider);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -102,11 +99,11 @@ class ModerationScreen extends ConsumerWidget {
                 final item = items[index];
                 return ModerationItemCard(
                   item: item,
-                  onApprove: () => _onApprove(context, item),
+                  onApprove: () => _doApprove(context, ref, item),
                   onRequestEdit: () =>
-                      _showReviewSheet(context, item, ReviewAction.requestEdit),
+                      _showReviewSheet(context, ref, item, ReviewAction.requestEdit),
                   onReject: () =>
-                      _showReviewSheet(context, item, ReviewAction.reject),
+                      _showReviewSheet(context, ref, item, ReviewAction.reject),
                   onPreview: () =>
                       context.push('/moderation/${item.id}'),
                 );
@@ -118,23 +115,46 @@ class ModerationScreen extends ConsumerWidget {
     );
   }
 
-  void _onApprove(BuildContext context, ModerationItem item) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Témoignage approuvé : ${item.truncatedTitle}',
-          style: const TextStyle(fontFamily: 'Inter', fontSize: 13),
-        ),
-        backgroundColor: const Color(0xFF22C55E),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        margin: const EdgeInsets.all(16),
-      ),
-    );
+  Future<void> _doApprove(
+    BuildContext context,
+    WidgetRef ref,
+    ModerationItem item,
+  ) async {
+    try {
+      await ref.read(moderationNotifierProvider.notifier).approve(item.id);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Approuvé : ${item.truncatedTitle}',
+              style: const TextStyle(fontFamily: 'Inter', fontSize: 13),
+            ),
+            backgroundColor: const Color(0xFF22C55E),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur : $e',
+                style: const TextStyle(fontFamily: 'Inter', fontSize: 13)),
+            backgroundColor: const Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      }
+    }
   }
 
   void _showReviewSheet(
     BuildContext context,
+    WidgetRef ref,
     ModerationItem item,
     ReviewAction action,
   ) {
@@ -145,23 +165,32 @@ class ModerationScreen extends ConsumerWidget {
       builder: (_) => ReviewBottomSheet(
         item: item,
         action: action,
-        onConfirm: (reason, note) {
+        onConfirm: (reason, note) async {
+          if (action == ReviewAction.reject && reason != null) {
+            try {
+              await ref
+                  .read(moderationNotifierProvider.notifier)
+                  .reject(item.id, reason: reason, note: note);
+            } catch (_) {}
+          }
           final msg = action == ReviewAction.reject
               ? 'Témoignage rejeté'
               : 'Demande de modification envoyée';
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(msg,
-                  style: const TextStyle(fontFamily: 'Inter', fontSize: 13)),
-              backgroundColor: action == ReviewAction.reject
-                  ? const Color(0xFFEF4444)
-                  : const Color(0xFFF59E0B),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-              margin: const EdgeInsets.all(16),
-            ),
-          );
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(msg,
+                    style: const TextStyle(fontFamily: 'Inter', fontSize: 13)),
+                backgroundColor: action == ReviewAction.reject
+                    ? const Color(0xFFEF4444)
+                    : const Color(0xFFF59E0B),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+                margin: const EdgeInsets.all(16),
+              ),
+            );
+          }
         },
       ),
     );

@@ -201,6 +201,29 @@ class _ReaderBodyState extends ConsumerState<_ReaderBody> {
           ),
         ),
         actions: [
+          // Translation switcher chip
+          GestureDetector(
+            onTap: () => _showTranslationPicker(context),
+            child: Container(
+              margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withAlpha(20),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.primary.withAlpha(60)),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                widget.translationCode.toUpperCase(),
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+          ),
           IconButton(
             icon: Icon(
               _isSpeaking
@@ -358,6 +381,35 @@ class _ReaderBodyState extends ConsumerState<_ReaderBody> {
       ),
     );
   }
+
+  void _showTranslationPicker(BuildContext context) {
+    final allTranslations =
+        ref.read(bibleTranslationsProvider).value ?? [];
+    final downloaded =
+        allTranslations.where((t) => t.isDownloaded).toList();
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _TranslationPickerSheet(
+        translations: downloaded,
+        currentCode: widget.translationCode,
+        onSelect: (newCode) {
+          // Carry current position over to the new translation
+          ref.read(bibleReaderPositionProvider.notifier).setPosition(
+            newCode,
+            _currentBook.bookNumber,
+            _chapter,
+          );
+          context.go('/bible/$newCode');
+        },
+      ),
+    );
+  }
 }
 
 // ── Chapter chip bar ──────────────────────────────────────────────────────────
@@ -417,7 +469,7 @@ class _ChapterBar extends StatelessWidget {
 
 // ── Verse list ────────────────────────────────────────────────────────────────
 
-class _VerseList extends ConsumerWidget {
+class _VerseList extends ConsumerStatefulWidget {
   const _VerseList({
     required this.translationCode,
     required this.bookNumber,
@@ -430,53 +482,138 @@ class _VerseList extends ConsumerWidget {
   final int    chapter;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_VerseList> createState() => _VerseListState();
+}
+
+class _VerseListState extends ConsumerState<_VerseList> {
+  // Multi-selection state
+  final Set<int> _selected = {};
+  bool get _isSelectionMode => _selected.isNotEmpty;
+
+  void _toggleSelection(int verseNumber) {
+    setState(() {
+      if (_selected.contains(verseNumber)) {
+        _selected.remove(verseNumber);
+      } else {
+        _selected.add(verseNumber);
+      }
+    });
+  }
+
+  void _selectRange(List<BibleVerse> verses, int verseNumber) {
+    if (_selected.isEmpty) {
+      setState(() => _selected.add(verseNumber));
+      return;
+    }
+    // Sélectionner la plage entre le min actuel et ce verset
+    final allNums = verses.map((v) => v.verseNumber).toList();
+    final touched = verseNumber;
+    final minSel  = _selected.reduce((a, b) => a < b ? a : b);
+    final maxSel  = _selected.reduce((a, b) => a > b ? a : b);
+    final lo = touched < minSel ? touched : minSel;
+    final hi = touched > maxSel ? touched : maxSel;
+    setState(() {
+      for (final n in allNums) {
+        if (n >= lo && n <= hi) _selected.add(n);
+      }
+    });
+  }
+
+  void _clearSelection() => setState(() => _selected.clear());
+
+  @override
+  void didUpdateWidget(_VerseList old) {
+    super.didUpdateWidget(old);
+    // Réinitialiser la sélection lors d'un changement de chapitre
+    if (old.chapter != widget.chapter ||
+        old.bookNumber != widget.bookNumber ||
+        old.translationCode != widget.translationCode) {
+      _selected.clear();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final key = (
-      translationCode: translationCode,
-      bookNumber:      bookNumber,
-      chapter:         chapter,
+      translationCode: widget.translationCode,
+      bookNumber:      widget.bookNumber,
+      chapter:         widget.chapter,
     );
     final versesAsync = ref.watch(bibleVerseListProvider(key));
     final highlights  = ref.watch(bibleHighlightsProvider(key)).value ?? {};
 
-    return versesAsync.when(
-      loading: () => const Center(
-        child: CircularProgressIndicator(color: AppColors.primary),
-      ),
-      error: (e, _) => Center(
-        child: Text('Erreur : $e',
-            style: AppTextStyles.bodyMedium
-                .copyWith(color: AppColors.danger)),
-      ),
-      data: (verses) {
-        if (verses.isEmpty) {
-          return const Center(
-            child: Text('Ce chapitre ne contient aucun verset.'),
-          );
-        }
-        return ListView.builder(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-          itemCount: verses.length,
-          itemBuilder: (_, i) => _VerseRow(
-            verse:      verses[i],
-            highlight:  highlights[verses[i].verseNumber],
-            onTap:      () => _showVerseActions(context, ref, verses[i], highlights),
+    return Column(
+      children: [
+        Expanded(
+          child: versesAsync.when(
+            loading: () => const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            ),
+            error: (e, _) => Center(
+              child: Text('Erreur : $e',
+                  style: AppTextStyles.bodyMedium
+                      .copyWith(color: AppColors.danger)),
+            ),
+            data: (verses) {
+              if (verses.isEmpty) {
+                return const Center(
+                  child: Text('Ce chapitre ne contient aucun verset.'),
+                );
+              }
+              return ListView.builder(
+                padding: EdgeInsets.fromLTRB(
+                    20, 16, 20, _isSelectionMode ? 4 : 24),
+                itemCount: verses.length,
+                itemBuilder: (_, i) {
+                  final v = verses[i];
+                  return _VerseRow(
+                    verse:            v,
+                    highlight:        highlights[v.verseNumber],
+                    isSelected:       _selected.contains(v.verseNumber),
+                    isSelectionMode:  _isSelectionMode,
+                    onTap: _isSelectionMode
+                        ? () => _toggleSelection(v.verseNumber)
+                        : () => _showVerseActions(context, v, highlights),
+                    onLongPress: () {
+                      if (_isSelectionMode) {
+                        _selectRange(verses, v.verseNumber);
+                      } else {
+                        setState(() => _selected.add(v.verseNumber));
+                      }
+                    },
+                  );
+                },
+              );
+            },
           ),
-        );
-      },
+        ),
+
+        // ── Selection action bar ───────────────────────────────────────────
+        AnimatedSize(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeInOut,
+          child: _isSelectionMode
+              ? _SelectionBar(
+                  selectedCount: _selected.length,
+                  onClear: _clearSelection,
+                  onShare: () => _shareSelection(versesAsync.value ?? []),
+                  onInsert: () => _insertSelection(versesAsync.value ?? []),
+                )
+              : const SizedBox.shrink(),
+        ),
+      ],
     );
   }
 
   void _showVerseActions(
     BuildContext context,
-    WidgetRef ref,
     BibleVerse verse,
     Map<int, String> highlights,
   ) {
     final key = (
-      translationCode: translationCode,
-      bookNumber:      bookNumber,
-      chapter:         chapter,
+      translationCode: widget.translationCode,
+      bookNumber:      widget.bookNumber,
+      chapter:         widget.chapter,
     );
     showModalBottomSheet<void>(
       context: context,
@@ -487,14 +624,65 @@ class _VerseList extends ConsumerWidget {
       ),
       builder: (_) => _VerseActionSheet(
         verse:              verse,
-        bookName:           bookName,
-        chapter:            chapter,
-        translationCode:    translationCode,
-        bookNumber:         bookNumber,
+        bookName:           widget.bookName,
+        chapter:            widget.chapter,
+        translationCode:    widget.translationCode,
+        bookNumber:         widget.bookNumber,
         currentColor:       highlights[verse.verseNumber],
         onHighlightChanged: () => ref.invalidate(bibleHighlightsProvider(key)),
       ),
     );
+  }
+
+  void _shareSelection(List<BibleVerse> allVerses) {
+    final sorted = allVerses
+        .where((v) => _selected.contains(v.verseNumber))
+        .toList()
+      ..sort((a, b) => a.verseNumber.compareTo(b.verseNumber));
+    if (sorted.isEmpty) return;
+    final text = sorted
+        .map((v) => '${v.verseNumber}. ${v.text}')
+        .join('\n');
+    final ref2 = '${widget.bookName} ${widget.chapter}';
+    _clearSelection();
+    // Réutilise le SharePlus ou passe via la feuille d'actions
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _MultiVerseShareSheet(
+        verseText: text,
+        reference: ref2,
+        versNumbers: sorted.map((v) => v.verseNumber).toList(),
+      ),
+    );
+  }
+
+  void _insertSelection(List<BibleVerse> allVerses) {
+    final sorted = allVerses
+        .where((v) => _selected.contains(v.verseNumber))
+        .toList()
+      ..sort((a, b) => a.verseNumber.compareTo(b.verseNumber));
+    if (sorted.isEmpty) return;
+
+    // Construire la référence structurée — on ne stocke PAS le texte intégral
+    final verseRef = BibleVerseRef(
+      translationCode: widget.translationCode,
+      bookNumber:      widget.bookNumber,
+      bookName:        widget.bookName,
+      chapter:         widget.chapter,
+      verseNumbers:    sorted.map((v) => v.verseNumber).toList(),
+    );
+
+    // bibleVerseToInsertProvider ← courte référence (ex : "Jean 3:16-18")
+    ref.read(bibleVerseToInsertProvider.notifier).set(verseRef.displayRef);
+    // bibleVerseRefProvider ← données structurées pour l'aperçu dans le formulaire
+    ref.read(bibleVerseRefProvider.notifier).set(verseRef);
+
+    _clearSelection();
+    context.go('/publish/preview');
   }
 }
 
@@ -502,11 +690,17 @@ class _VerseRow extends StatelessWidget {
   const _VerseRow({
     required this.verse,
     required this.onTap,
+    required this.onLongPress,
+    required this.isSelected,
+    required this.isSelectionMode,
     this.highlight,
   });
   final BibleVerse   verse;
-  final String?      highlight;
   final VoidCallback onTap;
+  final VoidCallback onLongPress;
+  final bool         isSelected;
+  final bool         isSelectionMode;
+  final String?      highlight;
 
   @override
   Widget build(BuildContext context) {
@@ -519,32 +713,44 @@ class _VerseRow extends StatelessWidget {
       } catch (_) {}
     }
 
+    // In selection mode, selected verses get a primary-tinted background
+    if (isSelected) {
+      bg = AppColors.primary.withAlpha(40);
+    }
+
+    final numColor = isSelected ? AppColors.primary : AppColors.primary;
+
     final content = RichText(
       text: TextSpan(
-        style: const TextStyle(
+        style: TextStyle(
           fontFamily: 'Inter',
           fontSize: 16,
           height: 1.75,
-          color: AppColors.textPrimary,
+          color: isSelected
+              ? AppColors.textPrimary
+              : AppColors.textPrimary,
         ),
         children: [
           WidgetSpan(
             baseline:  TextBaseline.alphabetic,
             alignment: PlaceholderAlignment.baseline,
-            child: Container(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
               margin:  const EdgeInsets.only(right: 6),
               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
               decoration: BoxDecoration(
-                color:        AppColors.primary.withAlpha(20),
+                color: isSelected
+                    ? AppColors.primary.withAlpha(60)
+                    : AppColors.primary.withAlpha(20),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
                 '${verse.verseNumber}',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily:  'Inter',
                   fontSize:    10,
                   fontWeight:  FontWeight.w700,
-                  color:       AppColors.primary,
+                  color:       numColor,
                 ),
               ),
             ),
@@ -556,16 +762,257 @@ class _VerseRow extends StatelessWidget {
 
     return GestureDetector(
       onTap: onTap,
+      onLongPress: onLongPress,
       child: AnimatedContainer(
-        duration:    const Duration(milliseconds: 200),
-        margin:      const EdgeInsets.only(bottom: 14),
-        padding:     bg != null
+        duration: const Duration(milliseconds: 200),
+        margin:   const EdgeInsets.only(bottom: 14),
+        padding:  bg != null
             ? const EdgeInsets.symmetric(horizontal: 8, vertical: 6)
             : EdgeInsets.zero,
-        decoration:  bg != null
+        decoration: bg != null
             ? BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8))
             : null,
-        child: content,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (isSelectionMode) ...[
+              Padding(
+                padding: const EdgeInsets.only(top: 2, right: 8),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  width: 20, height: 20,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isSelected
+                        ? AppColors.primary
+                        : Colors.transparent,
+                    border: Border.all(
+                      color: isSelected
+                          ? AppColors.primary
+                          : AppColors.border,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: isSelected
+                      ? const Icon(Icons.check_rounded,
+                          size: 12, color: Colors.white)
+                      : null,
+                ),
+              ),
+            ],
+            Expanded(child: content),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Selection action bar ──────────────────────────────────────────────────────
+
+class _SelectionBar extends StatelessWidget {
+  const _SelectionBar({
+    required this.selectedCount,
+    required this.onClear,
+    required this.onShare,
+    required this.onInsert,
+  });
+  final int          selectedCount;
+  final VoidCallback onClear;
+  final VoidCallback onShare;
+  final VoidCallback onInsert;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.border)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: [
+            // Cancel
+            GestureDetector(
+              onTap: onClear,
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.close_rounded,
+                    size: 18, color: AppColors.textSecondary),
+              ),
+            ),
+            const SizedBox(width: 10),
+            // Count chip
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withAlpha(20),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                '$selectedCount verset${selectedCount > 1 ? 's' : ''}',
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+            const Spacer(),
+            // Insert
+            _BarAction(
+              icon: Icons.add_circle_outline_rounded,
+              label: 'Insérer',
+              onTap: onInsert,
+            ),
+            const SizedBox(width: 8),
+            // Share
+            _BarAction(
+              icon: Icons.share_rounded,
+              label: 'Partager',
+              onTap: onShare,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BarAction extends StatelessWidget {
+  const _BarAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+  final IconData     icon;
+  final String       label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withAlpha(12),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.primary.withAlpha(60)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 15, color: AppColors.primary),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Multi-verse share sheet ───────────────────────────────────────────────────
+
+class _MultiVerseShareSheet extends StatelessWidget {
+  const _MultiVerseShareSheet({
+    required this.verseText,
+    required this.reference,
+    required this.versNumbers,
+  });
+  final String    verseText;
+  final String    reference;
+  final List<int> versNumbers;
+
+  String get _versLabel {
+    if (versNumbers.isEmpty) return '';
+    // Détecte plage contiguë vs éparse
+    versNumbers.sort();
+    bool isRange = true;
+    for (var i = 1; i < versNumbers.length; i++) {
+      if (versNumbers[i] != versNumbers[i - 1] + 1) { isRange = false; break; }
+    }
+    if (isRange && versNumbers.length > 1) {
+      return '$reference:${versNumbers.first}-${versNumbers.last}';
+    }
+    return '$reference:${versNumbers.join(',')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 36, height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(_versLabel,
+                style: AppTextStyles.h4.copyWith(color: AppColors.primary)),
+            const SizedBox(height: 10),
+            Text(
+              verseText,
+              style: const TextStyle(
+                fontFamily: 'Playfair Display',
+                fontSize: 15,
+                height: 1.6,
+                fontStyle: FontStyle.italic,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Divider(height: 1, color: AppColors.border),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      SharePlus.instance.share(
+                        ShareParams(text: '$_versLabel\n$verseText'),
+                      );
+                    },
+                    icon: const Icon(Icons.share_rounded, size: 16),
+                    label: const Text('Partager'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      side: const BorderSide(color: AppColors.primary),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -994,6 +1441,207 @@ class _NavigationBar extends StatelessWidget {
             const Expanded(child: SizedBox()),
         ],
       ),
+    );
+  }
+}
+
+// ── Language helpers ──────────────────────────────────────────────────────────
+
+String _languageLabel(String lang) => switch (lang.toLowerCase()) {
+      'fr' => 'Français',
+      'en' => 'English',
+      'es' => 'Español',
+      'pt' => 'Português',
+      'de' => 'Deutsch',
+      'it' => 'Italiano',
+      'ar' => 'العربية',
+      'sw' => 'Kiswahili',
+      'ln' => 'Lingala',
+      'yo' => 'Yoruba',
+      'ha' => 'Hausa',
+      'ig' => 'Igbo',
+      'am' => 'Amharique',
+      'rw' => 'Kinyarwanda',
+      'wo' => 'Wolof',
+      _    => lang.toUpperCase(),
+    };
+
+List<String> _sortedLanguages(Iterable<String> langs) {
+  const priority = ['fr', 'en', 'es', 'pt'];
+  final result = langs.toList()
+    ..sort((a, b) {
+      final ai = priority.indexOf(a);
+      final bi = priority.indexOf(b);
+      if (ai != -1 && bi != -1) return ai.compareTo(bi);
+      if (ai != -1) return -1;
+      if (bi != -1) return 1;
+      return _languageLabel(a).compareTo(_languageLabel(b));
+    });
+  return result;
+}
+
+// ── Translation picker sheet ──────────────────────────────────────────────────
+
+class _TranslationPickerSheet extends StatelessWidget {
+  const _TranslationPickerSheet({
+    required this.translations,
+    required this.currentCode,
+    required this.onSelect,
+  });
+
+  final List<BibleTranslation> translations;
+  final String                 currentCode;
+  final ValueChanged<String>   onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    // Group by language
+    final grouped = <String, List<BibleTranslation>>{};
+    for (final t in translations) {
+      grouped.putIfAbsent(t.language, () => []).add(t);
+    }
+    final langs = _sortedLanguages(grouped.keys);
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Drag handle
+            Center(
+              child: Container(
+                width: 36, height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text('Choisir une traduction', style: AppTextStyles.h3),
+            const SizedBox(height: 4),
+            Text(
+              'Traductions téléchargées',
+              style: AppTextStyles.bodySmall
+                  .copyWith(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 12),
+            const Divider(height: 1, color: AppColors.border),
+
+            if (translations.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Center(
+                  child: Text(
+                    'Aucune traduction disponible.\n'
+                    'Téléchargez-en depuis l\'onglet Bible.',
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.bodySmall
+                        .copyWith(color: AppColors.textSecondary),
+                  ),
+                ),
+              )
+            else
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (var li = 0; li < langs.length; li++) ...[
+                        Padding(
+                          padding: EdgeInsets.only(
+                            top: li == 0 ? 12 : 10,
+                            bottom: 2,
+                          ),
+                          child: Row(
+                            children: [
+                              Text(
+                                _languageLabel(langs[li]).toUpperCase(),
+                                style: AppTextStyles.labelSmall.copyWith(
+                                  color: AppColors.textSecondary,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 1,
+                                  fontSize: 10,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Expanded(
+                                child: Divider(
+                                  color: AppColors.border,
+                                  height: 1,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        for (final t in grouped[langs[li]]!)
+                          _buildTile(context, t),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTile(BuildContext context, BibleTranslation t) {
+    final isActive = t.code == currentCode;
+    return ListTile(
+      onTap: () {
+        Navigator.pop(context);
+        onSelect(t.code);
+      },
+      contentPadding: EdgeInsets.zero,
+      leading: Container(
+        width: 46, height: 46,
+        decoration: BoxDecoration(
+          color: isActive
+              ? AppColors.primary.withAlpha(20)
+              : AppColors.background,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isActive ? AppColors.primary : AppColors.border,
+            width: isActive ? 1.5 : 1,
+          ),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          t.abbreviation.toUpperCase(),
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w700,
+            fontSize: 11,
+            color: isActive ? AppColors.primary : AppColors.textSecondary,
+          ),
+        ),
+      ),
+      title: Text(
+        t.name,
+        style: TextStyle(
+          fontFamily: 'Inter',
+          fontSize: 14,
+          fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+          color: isActive ? AppColors.primary : AppColors.textPrimary,
+        ),
+      ),
+      subtitle: Text(
+        _languageLabel(t.language),
+        style: const TextStyle(
+          fontFamily: 'Inter',
+          fontSize: 12,
+          color: AppColors.textSecondary,
+        ),
+      ),
+      trailing: isActive
+          ? const Icon(Icons.check_circle_rounded,
+              color: AppColors.primary, size: 20)
+          : const Icon(Icons.chevron_right_rounded,
+              color: AppColors.border, size: 20),
     );
   }
 }

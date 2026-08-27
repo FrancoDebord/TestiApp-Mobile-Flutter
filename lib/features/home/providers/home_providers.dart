@@ -1,4 +1,9 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../../core/app_constants.dart';
 import '../../../core/local_db/daos/testimony_dao.dart';
@@ -90,11 +95,12 @@ String toCategoryApiSlug(TestimonyCategory cat) =>
 // Helper : reconstruit un Testimony avec des stats modifiées (optimistic UI)
 // ============================================================================
 
-Testimony _applyStatsDelta(Testimony t, int likeDelta, int prayDelta) {
+Testimony _applyStatsDelta(
+    Testimony t, int likeDelta, int prayDelta, int commentDelta) {
   final s = t.stats;
   final ns = TestimonyStats(
     views:    s.views,
-    comments: s.comments,
+    comments: (s.comments + commentDelta).clamp(0, 999999),
     likes:    (s.likes    + likeDelta).clamp(0, 999999),
     prayers:  (s.prayers  + prayDelta).clamp(0, 999999),
   );
@@ -103,7 +109,9 @@ Testimony _applyStatsDelta(Testimony t, int likeDelta, int prayDelta) {
       id: t.id, author: t.author, title: t.title,
       category: t.category, createdAt: t.createdAt, stats: ns,
       preview: t.preview, coverImageUrl: t.coverImageUrl,
-      isFeatured: t.isFeatured, isLiked: t.isLiked, isPrayed: t.isPrayed,
+      bibleVerse: t.bibleVerse, bibleVerseRef: t.bibleVerseRef,
+      isFeatured: t.isFeatured, isLiked: t.isLiked,
+      isPrayed: t.isPrayed, isSaved: t.isSaved,
     );
   }
   if (t is AudioTestimony) {
@@ -112,7 +120,9 @@ Testimony _applyStatsDelta(Testimony t, int likeDelta, int prayDelta) {
       category: t.category, createdAt: t.createdAt, stats: ns,
       durationSeconds: t.durationSeconds, transcriptPreview: t.transcriptPreview,
       mediaPath: t.mediaPath, coverImageUrl: t.coverImageUrl,
-      isFeatured: t.isFeatured, isLiked: t.isLiked, isPrayed: t.isPrayed,
+      bibleVerse: t.bibleVerse, bibleVerseRef: t.bibleVerseRef,
+      isFeatured: t.isFeatured, isLiked: t.isLiked,
+      isPrayed: t.isPrayed, isSaved: t.isSaved,
     );
   }
   if (t is VideoTestimony) {
@@ -121,7 +131,9 @@ Testimony _applyStatsDelta(Testimony t, int likeDelta, int prayDelta) {
       category: t.category, createdAt: t.createdAt, stats: ns,
       durationSeconds: t.durationSeconds, thumbnailUrl: t.thumbnailUrl,
       mediaPath: t.mediaPath,
-      isFeatured: t.isFeatured, isLiked: t.isLiked, isPrayed: t.isPrayed,
+      bibleVerse: t.bibleVerse, bibleVerseRef: t.bibleVerseRef,
+      isFeatured: t.isFeatured, isLiked: t.isLiked,
+      isPrayed: t.isPrayed, isSaved: t.isSaved,
     );
   }
   return t;
@@ -131,61 +143,85 @@ Testimony _applyStatsDelta(Testimony t, int likeDelta, int prayDelta) {
 // JSON API → Testimony
 // ============================================================================
 
+// Convertit int, double ou String en int (robuste face aux types variables de l'API).
+int _parseInt(dynamic v) {
+  if (v is int) return v;
+  if (v is num) return v.toInt();
+  return int.tryParse(v?.toString() ?? '') ?? 0;
+}
+
+// Convertit une URL relative serveur ("/storage/…") en URL absolue.
+String? _absUrl(String? raw) {
+  if (raw == null || raw.isEmpty) return raw;
+  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+  final root = AppConstants.baseUrl.replaceFirst(RegExp(r'/api/v1.*$'), '');
+  return raw.startsWith('/') ? '$root$raw' : '$root/$raw';
+}
+
 Testimony? testimonyFromApiJson(dynamic raw) {
   try {
     final m        = raw as Map<String, dynamic>;
     final userMap  = m['user']  as Map<String, dynamic>? ?? {};
     final statsMap = m['stats'] as Map<String, dynamic>? ?? {};
 
+    // Laravel peut renvoyer camelCase ou snake_case selon la version — on essaie les deux.
     final author = TestimonyAuthor(
-      uid:         userMap['id']          as String? ?? m['userId'] as String? ?? '',
-      displayName: userMap['displayName'] as String? ?? 'Anonyme',
-      avatarUrl:   userMap['avatarUrl']   as String?,
+      uid:         (userMap['id'] ?? m['userId'] ?? m['user_id'])?.toString() ?? '',
+      displayName: (userMap['displayName'] ?? userMap['display_name'])  as String? ?? 'Anonyme',
+      avatarUrl:   (userMap['avatarUrl']   ?? userMap['avatar_url'])    as String?,
     );
-    final id        = m['id']       as String? ?? '';
+    final id        = m['id']?.toString() ?? '';
     final title     = m['title']    as String? ?? '';
-    final category  = _categoryFromApiSlug(m['category'] as String? ?? '');
-    final createdAt = DateTime.tryParse(m['createdAt'] as String? ?? '') ?? DateTime.now();
+    final category  = _categoryFromApiSlug(
+        (m['category'] ?? m['category_slug']) as String? ?? '');
+    final createdAt = DateTime.tryParse(
+        (m['createdAt'] ?? m['created_at']) as String? ?? '') ?? DateTime.now();
     final stats = TestimonyStats(
-      views:    (statsMap['viewsCount']     as int?) ?? 0,
-      likes:    (statsMap['likesCount']     as int?) ?? 0,
-      prayers:  (statsMap['bookmarksCount'] as int?) ?? 0,
-      comments: (statsMap['commentsCount']  as int?) ?? 0,
+      views:    ((statsMap['viewsCount']    ?? statsMap['views_count'])    as int?) ?? 0,
+      likes:    ((statsMap['likesCount']    ?? statsMap['likes_count'])    as int?) ?? 0,
+      prayers:  ((statsMap['prayersCount']  ?? statsMap['prayers_count'])  as int?) ?? 0,
+      comments: ((statsMap['commentsCount'] ?? statsMap['comments_count']) as int?) ?? 0,
     );
-    final isFeatured = m['isFeatured']  as bool? ?? false;
-    final isLiked    = m['isLikedByMe'] as bool? ?? false;
-    final isPrayed   = m['isPrayedByMe'] as bool? ?? false;
-    final type       = m['type']        as String? ?? 'text';
+    final isFeatured = (m['isFeatured']       ?? m['is_featured'])                              as bool? ?? false;
+    final isLiked    = (m['isLikedByMe']      ?? m['is_liked_by_me']  ?? m['is_liked'])        as bool? ?? false;
+    final isPrayed   = (m['isPrayedByMe']     ?? m['is_prayed_by_me'] ?? m['is_prayed'])       as bool? ?? false;
+    final isSaved    = (m['isBookmarkedByMe'] ?? m['is_bookmarked_by_me'])                     as bool? ?? false;
+    final type          = m['type']                                                            as String? ?? 'text';
+    final bibleVerse    = (m['bibleVerse']      ?? m['bible_verse'])                          as String?;
+    final bibleVerseRef = (m['verseReference']  ?? m['verse_reference'])                      as String?;
 
     switch (type) {
       case 'audio':
-        final body = m['bodyText'] as String? ?? '';
+        final body = (m['bodyText'] ?? m['body_text']) as String? ?? '';
         return AudioTestimony(
           id: id, author: author, title: title,
           category: category, createdAt: createdAt, stats: stats,
-          durationSeconds:   m['duration'] as int? ?? 0,
+          durationSeconds:   _parseInt(m['duration'] ?? m['duration_seconds']),
           transcriptPreview: body.length > 180 ? '${body.substring(0, 180)}…' : body,
-          mediaPath:     m['mediaUrl'] as String?,
-          coverImageUrl: m['coverUrl'] as String?,
-          isFeatured: isFeatured, isLiked: isLiked, isPrayed: isPrayed,
+          mediaPath:     _absUrl((m['mediaUrl'] ?? m['media_url']) as String?),
+          coverImageUrl: (m['coverUrl'] ?? m['cover_url']) as String?,
+          bibleVerse: bibleVerse, bibleVerseRef: bibleVerseRef,
+          isFeatured: isFeatured, isLiked: isLiked, isPrayed: isPrayed, isSaved: isSaved,
         );
       case 'video':
         return VideoTestimony(
           id: id, author: author, title: title,
           category: category, createdAt: createdAt, stats: stats,
-          durationSeconds: m['duration'] as int? ?? 0,
-          thumbnailUrl:    m['coverUrl'] as String? ?? '',
-          mediaPath:       m['mediaUrl'] as String?,
-          isFeatured: isFeatured, isLiked: isLiked, isPrayed: isPrayed,
+          durationSeconds: _parseInt(m['duration'] ?? m['duration_seconds']),
+          thumbnailUrl:    (m['coverUrl'] ?? m['cover_url']) as String? ?? '',
+          mediaPath:       _absUrl((m['mediaUrl'] ?? m['media_url']) as String?),
+          bibleVerse: bibleVerse, bibleVerseRef: bibleVerseRef,
+          isFeatured: isFeatured, isLiked: isLiked, isPrayed: isPrayed, isSaved: isSaved,
         );
       default:
-        final body = m['bodyText'] as String? ?? '';
+        final body = (m['bodyText'] ?? m['body_text']) as String? ?? '';
         return TextTestimony(
           id: id, author: author, title: title,
           category: category, createdAt: createdAt, stats: stats,
           preview: body.length > 220 ? '${body.substring(0, 220)}…' : body,
-          coverImageUrl: m['coverUrl'] as String?,
-          isFeatured: isFeatured, isLiked: isLiked, isPrayed: isPrayed,
+          coverImageUrl: (m['coverUrl'] ?? m['cover_url']) as String?,
+          bibleVerse: bibleVerse, bibleVerseRef: bibleVerseRef,
+          isFeatured: isFeatured, isLiked: isLiked, isPrayed: isPrayed, isSaved: isSaved,
         );
     }
   } catch (_) {
@@ -206,7 +242,7 @@ class FeedNotifier extends Notifier<List<Testimony>> {
 
   // ── Chargement depuis l'API ───────────────────────────────────────────────
 
-  Future<void> _loadFromApi() async {
+  Future<void> _loadFromApi({bool silent = false}) async {
     try {
       final api      = ref.read(apiServiceProvider);
       final response = await api.get<List<dynamic>>(AppConstants.testimonies);
@@ -218,19 +254,20 @@ class FeedNotifier extends Notifier<List<Testimony>> {
       // Synchronise l'état liked/prayed depuis le serveur.
       ref.read(interactionProvider.notifier).seedFromFeed(items);
     } catch (_) {
-      // Hors-ligne ou non authentifié → fallback SQLite
-      await _loadFromDb();
+      // Hors-ligne ou non authentifié → fallback SQLite (seulement au premier chargement)
+      if (!silent) await _loadFromDb();
     } finally {
-      ref.read(feedIsLoadingProvider.notifier).done();
+      if (!silent) ref.read(feedIsLoadingProvider.notifier).done();
     }
   }
 
   /// Ajuste les compteurs en mémoire sans attendre le serveur (optimistic UI).
-  void applyOptimisticDelta(String id, {int likes = 0, int prayers = 0}) {
-    if (likes == 0 && prayers == 0) return;
+  void applyOptimisticDelta(String id,
+      {int likes = 0, int prayers = 0, int comments = 0}) {
+    if (likes == 0 && prayers == 0 && comments == 0) return;
     state = [
       for (final t in state)
-        t.id == id ? _applyStatsDelta(t, likes, prayers) : t,
+        t.id == id ? _applyStatsDelta(t, likes, prayers, comments) : t,
     ];
   }
 
@@ -255,9 +292,9 @@ class FeedNotifier extends Notifier<List<Testimony>> {
   static Testimony? _rowToTestimony(Map<String, dynamic> row) {
     try {
       final type   = row['type']   as String? ?? 'text';
-      final id     = row['id']     as String;
+      final id     = row['id']?.toString() ?? '';
       final author = TestimonyAuthor(
-        uid:         row['user_id']       as String? ?? '',
+        uid:         row['user_id']?.toString() ?? '',
         displayName: row['author_name']   as String? ?? 'Anonyme',
         avatarUrl:   row['author_avatar'] as String?,
       );
@@ -275,6 +312,9 @@ class FeedNotifier extends Notifier<List<Testimony>> {
         comments: row['comment_count'] as int? ?? 0,
       );
 
+      final bibleVerse    = row['bible_verse'] as String?;
+      final bibleVerseRef = row['bible_ref']   as String?;
+
       switch (type) {
         case 'audio':
           return AudioTestimony(
@@ -282,7 +322,8 @@ class FeedNotifier extends Notifier<List<Testimony>> {
             category: category, createdAt: createdAt, stats: stats,
             durationSeconds:   row['duration_sec'] as int? ?? 0,
             transcriptPreview: row['body_text']    as String? ?? '',
-            mediaPath:         row['media_url']    as String?,
+            mediaPath:         _absUrl(row['media_url'] as String?),
+            bibleVerse: bibleVerse, bibleVerseRef: bibleVerseRef,
           );
         case 'video':
           return VideoTestimony(
@@ -290,7 +331,8 @@ class FeedNotifier extends Notifier<List<Testimony>> {
             category: category, createdAt: createdAt, stats: stats,
             durationSeconds: row['duration_sec'] as int? ?? 0,
             thumbnailUrl:    row['cover_url']    as String? ?? '',
-            mediaPath:       row['media_url']    as String?,
+            mediaPath:       _absUrl(row['media_url'] as String?),
+            bibleVerse: bibleVerse, bibleVerseRef: bibleVerseRef,
           );
         default:
           final body = row['body_text'] as String? ?? '';
@@ -298,6 +340,7 @@ class FeedNotifier extends Notifier<List<Testimony>> {
             id: id, author: author, title: title,
             category: category, createdAt: createdAt, stats: stats,
             preview: body.length > 220 ? '${body.substring(0, 220)}…' : body,
+            bibleVerse: bibleVerse, bibleVerseRef: bibleVerseRef,
           );
       }
     } catch (_) {
@@ -315,8 +358,8 @@ class FeedNotifier extends Notifier<List<Testimony>> {
     state = state.where((t) => t.id != id).toList();
   }
 
-  /// Recharge le feed depuis l'API.
-  Future<void> refresh() => _loadFromApi();
+  /// Rafraîchit le feed depuis l'API sans afficher l'état de chargement (appelé en arrière-plan).
+  Future<void> refresh() => _loadFromApi(silent: state.isNotEmpty);
 }
 
 final feedNotifierProvider =
@@ -413,13 +456,16 @@ class InteractionNotifier extends Notifier<TestimonyInteractions> {
   void seedFromFeed(List<Testimony> testimonies) {
     final serverLiked  = <String>{};
     final serverPrayed = <String>{};
+    final serverSaved  = <String>{};
     for (final t in testimonies) {
       if (t.isLiked)  serverLiked.add(t.id);
       if (t.isPrayed) serverPrayed.add(t.id);
+      if (t.isSaved)  serverSaved.add(t.id);
     }
     state = state.copyWith(
       liked:  {...state.liked,  ...serverLiked},
       prayed: {...state.prayed, ...serverPrayed},
+      saved:  {...state.saved,  ...serverSaved},
     );
   }
 
@@ -496,6 +542,15 @@ class InteractionNotifier extends Notifier<TestimonyInteractions> {
         await api.put<void>(AppConstants.testimonySave(id));
       });
     }
+  }
+
+  // ── Partage (fire-and-forget, incrémente share_count côté serveur) ───────────
+
+  void recordShare(String id) {
+    _callApi(() async {
+      final api = ref.read(apiServiceProvider);
+      await api.post<void>(AppConstants.testimonyShare(id));
+    });
   }
 
   bool isLiked(String id)  => state.liked.contains(id);
@@ -621,12 +676,63 @@ const _kFallbackVerse = DailyVerse(
 class DailyVerseNotifier extends AsyncNotifier<DailyVerse> {
   @override
   Future<DailyVerse> build() async {
+    // 1. Try network first
     try {
       final api    = ref.read(apiServiceProvider);
       final result = await api.get<Map<String, dynamic>>(AppConstants.verseToday);
-      return DailyVerse.fromJson(result.data);
-    } catch (_) {
-      return _kFallbackVerse;
+      final verse  = DailyVerse.fromJson(result.data);
+      if (verse.text.isNotEmpty) {
+        await _saveToCache(verse);
+        return verse;
+      }
+    } catch (_) {}
+
+    // 2. Fallback to today's cached verse
+    try {
+      final cached = await _loadFromCache();
+      if (cached != null) return cached;
+    } catch (e) {
+      debugPrint('DailyVerse cache read error: $e');
+    }
+
+    // 3. Hard-coded fallback
+    return _kFallbackVerse;
+  }
+
+  // ── Cache helpers (one file per calendar date) ────────────────────────────
+
+  static String _todayKey() {
+    final now = DateTime.now();
+    return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+  }
+
+  Future<File> _cacheFile() async {
+    final dir = await getApplicationSupportDirectory();
+    return File('${dir.path}/daily_verse_${_todayKey()}.json');
+  }
+
+  Future<DailyVerse?> _loadFromCache() async {
+    final file = await _cacheFile();
+    if (!file.existsSync()) return null;
+    final json = jsonDecode(await file.readAsString()) as Map<String, dynamic>;
+    final verse = DailyVerse.fromJson(json);
+    return verse.text.isNotEmpty ? verse : null;
+  }
+
+  Future<void> _saveToCache(DailyVerse verse) async {
+    try {
+      final file = await _cacheFile();
+      await file.writeAsString(jsonEncode({
+        'id':            verse.id,
+        'text':          verse.text,
+        'reference':     verse.reference,
+        'like_count':    verse.likeCount,
+        'prayer_count':  verse.prayerCount,
+        'is_liked':      verse.isLiked,
+        'is_prayed':     verse.isPrayed,
+      }));
+    } catch (e) {
+      debugPrint('DailyVerse cache write error: $e');
     }
   }
 
@@ -634,7 +740,6 @@ class DailyVerseNotifier extends AsyncNotifier<DailyVerse> {
     final verse = state.value;
     if (verse == null) return;
     final wasLiked = verse.isLiked;
-    // Mise à jour optimiste
     state = AsyncValue.data(verse.copyWith(
       isLiked:   !wasLiked,
       likeCount: verse.likeCount + (wasLiked ? -1 : 1),
@@ -642,12 +747,11 @@ class DailyVerseNotifier extends AsyncNotifier<DailyVerse> {
     try {
       final api = ref.read(apiServiceProvider);
       if (wasLiked) {
-        await api.delete<void>(AppConstants.verseLike(verse.id));
+        await api.delete<void>(AppConstants.verseReact, data: {'type': 'like'});
       } else {
-        await api.post<void>(AppConstants.verseLike(verse.id));
+        await api.post<void>(AppConstants.verseReact, data: {'type': 'like'});
       }
     } catch (_) {
-      // Annuler l'optimiste en cas d'erreur
       state = AsyncValue.data(verse);
     }
   }
@@ -663,9 +767,9 @@ class DailyVerseNotifier extends AsyncNotifier<DailyVerse> {
     try {
       final api = ref.read(apiServiceProvider);
       if (wasPrayed) {
-        await api.delete<void>(AppConstants.versePray(verse.id));
+        await api.delete<void>(AppConstants.verseReact, data: {'type': 'pray'});
       } else {
-        await api.post<void>(AppConstants.versePray(verse.id));
+        await api.post<void>(AppConstants.verseReact, data: {'type': 'pray'});
       }
     } catch (_) {
       state = AsyncValue.data(verse);
@@ -677,7 +781,7 @@ class DailyVerseNotifier extends AsyncNotifier<DailyVerse> {
     if (verse == null) return;
     try {
       final api = ref.read(apiServiceProvider);
-      await api.post<void>(AppConstants.verseShare(verse.id));
+      await api.post<void>(AppConstants.verseShare);
     } catch (_) {}
   }
 }

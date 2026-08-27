@@ -32,19 +32,19 @@ class CommentModel {
   bool get isReply => parentId != null;
 
   factory CommentModel.fromJson(Map<String, dynamic> j) => CommentModel(
-    id:           j['id']           as String,
-    testimonyId:  j['testimony_id'] as String? ?? '',
-    userId:       j['user_id']      as String? ?? '',
+    id:           j['id'] as String,
+    testimonyId:  (j['testimonyId']   ?? j['testimony_id'])  as String? ?? '',
+    userId:       (j['userId']        ?? j['user_id'])       as String? ?? '',
     user:         j['user'] is Map
         ? UserModel.fromJson(Map<String, dynamic>.from(j['user'] as Map))
         : null,
-    text:         j['text'] as String? ?? j['body'] as String? ?? '',
-    likesCount:   (j['likes_count'] as num?)?.toInt() ?? 0,
-    repliesCount: (j['replies_count'] as num?)?.toInt() ?? (j['reply_count'] as num?)?.toInt() ?? 0,
-    isLikedByMe:  j['is_liked_by_me'] as bool? ?? false,
-    parentId:     j['parent_id'] as String?,
-    createdAt:    j['created_at'] as String?,
-    updatedAt:    j['updated_at'] as String?,
+    text:         (j['text'] ?? j['body']) as String? ?? '',
+    likesCount:   ((j['likesCount']   ?? j['likes_count'])   as num?)?.toInt() ?? 0,
+    repliesCount: ((j['repliesCount'] ?? j['replies_count']  ?? j['reply_count']) as num?)?.toInt() ?? 0,
+    isLikedByMe:  (j['isLikedByMe']  ?? j['is_liked_by_me']) as bool? ?? false,
+    parentId:     (j['parentId']     ?? j['parent_id'])      as String?,
+    createdAt:    (j['createdAt']    ?? j['created_at'])     as String?,
+    updatedAt:    (j['updatedAt']    ?? j['updated_at'])     as String?,
   );
 
   Map<String, dynamic> toJson() => {

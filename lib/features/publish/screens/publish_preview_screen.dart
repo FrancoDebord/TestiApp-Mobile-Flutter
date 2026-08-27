@@ -18,7 +18,10 @@ import 'package:image_picker/image_picker.dart';
 import '../../../../core/providers/categories_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../bible/providers/bible_providers.dart'
-    show bibleVerseToInsertProvider;
+    show
+        bibleVerseToInsertProvider,
+        bibleVerseRefProvider,
+        bibleVerseTextProvider;
 import '../models/publish_models.dart';
 import '../providers/publish_provider.dart';
 import 'video_camera_screen.dart';
@@ -94,6 +97,8 @@ class PublishPreviewScreen extends ConsumerWidget {
           case TestimonyFormat.video:
             return const _Step2Video();
         }
+      case 3:
+        return const _Step3Visibility();
       default:
         return const _Step1Details();
     }
@@ -143,7 +148,7 @@ class _StepperHeader extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Étape $step sur 2',
+                  'Étape $step sur 3',
                   style: const TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 12,
@@ -155,7 +160,7 @@ class _StepperHeader extends StatelessWidget {
           ),
           // Progress dots
           Row(
-            children: List.generate(2, (i) {
+            children: List.generate(3, (i) {
               final active = i + 1 == step;
               final done = i + 1 < step;
               return AnimatedContainer(
@@ -208,7 +213,6 @@ class _Step1DetailsState extends ConsumerState<_Step1Details> {
   @override
   Widget build(BuildContext context) {
     final draft = ref.watch(publishProvider);
-    final notifier = ref.read(publishProvider.notifier);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -221,7 +225,8 @@ class _Step1DetailsState extends ConsumerState<_Step1Details> {
           TextField(
             controller: _titleCtrl,
             maxLength: 80,
-            onChanged: notifier.updateTitle,
+            onChanged: (v) =>
+                ref.read(publishProvider.notifier).updateTitle(v),
             decoration: _inputDecoration(
               hint: 'Donnez un titre à votre témoignage',
               counterText: '${draft.title.length}/80',
@@ -235,7 +240,8 @@ class _Step1DetailsState extends ConsumerState<_Step1Details> {
           const SizedBox(height: 8),
           _CategorySelector(
             selectedSlug: draft.category,
-            onChanged: notifier.updateCategory,
+            onChanged: (cat) =>
+                ref.read(publishProvider.notifier).updateCategory(cat),
           ),
           const SizedBox(height: 20),
 
@@ -244,7 +250,8 @@ class _Step1DetailsState extends ConsumerState<_Step1Details> {
           const SizedBox(height: 8),
           _CoverImagePicker(
             imagePath: draft.coverImagePath,
-            onPick: notifier.updateCoverImage,
+            onPick: (path) =>
+                ref.read(publishProvider.notifier).updateCoverImage(path),
           ),
         ],
       ),
@@ -278,8 +285,9 @@ class _Step2TextState extends ConsumerState<_Step2Text> {
     final pending = ref.read(bibleVerseToInsertProvider);
     if (pending != null && pending.isNotEmpty) {
       _verseCtrl.text = pending;
-      ref.read(publishProvider.notifier).updateBibleVerse(pending);
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref.read(publishProvider.notifier).updateBibleVerse(pending);
         ref.read(bibleVerseToInsertProvider.notifier).clear();
       });
     }
@@ -326,9 +334,15 @@ class _Step2TextState extends ConsumerState<_Step2Text> {
           const SizedBox(height: 8),
           TextField(
             controller: _verseCtrl,
-            onChanged: notifier.updateBibleVerse,
+            onChanged: (v) {
+              notifier.updateBibleVerse(v);
+              // Si l'utilisateur modifie manuellement, on efface la réf structurée
+              if (ref.read(bibleVerseRefProvider) != null) {
+                ref.read(bibleVerseRefProvider.notifier).clear();
+              }
+            },
             decoration: _inputDecoration(
-              hint: 'Ex. : Jean 3:16 — «Car Dieu a tant aimé le monde…»',
+              hint: 'Ex. : Jean 3:16 ou sélectionnez dans la Bible',
               prefixIcon: const Icon(Icons.menu_book_rounded,
                   color: AppColors.secondary, size: 20),
             ),
@@ -337,6 +351,8 @@ class _Step2TextState extends ConsumerState<_Step2Text> {
               fontStyle: FontStyle.italic,
             ),
           ),
+          // Aperçu du texte du verset (chargé depuis SQLite local)
+          const _BibleVersePreview(),
         ],
       ),
     );
@@ -538,6 +554,13 @@ class _Step2VideoState extends ConsumerState<_Step2Video> {
   final _picker = ImagePicker();
   Duration _videoDuration = Duration.zero;
 
+  @override
+  void initState() {
+    super.initState();
+    final sec = ref.read(publishProvider).videoDurationSeconds;
+    if (sec > 0) _videoDuration = Duration(seconds: sec);
+  }
+
   Future<void> _applyVideoPath(String path) async {
     final notifier = ref.read(publishProvider.notifier);
 
@@ -642,6 +665,8 @@ class _BottomNavButtonsState extends ConsumerState<_BottomNavButtons> {
               draft.audioPath != null;
         }
         return draft.videoPath != null;
+      case 3:
+        return draft.consentGiven;
       default:
         return true;
     }
@@ -684,7 +709,45 @@ class _BottomNavButtonsState extends ConsumerState<_BottomNavButtons> {
             margin: const EdgeInsets.all(16),
           ),
         );
+      } else if (result.status == PublishStatus.pendingSync) {
+        // Hors ligne — enregistré localement, sera synchronisé plus tard
+        ref.read(publishProvider.notifier).reset();
+        ref.read(publishStepProvider.notifier).goTo(1);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Hors ligne — témoignage enregistré localement. Il sera envoyé à la prochaine connexion.',
+              style: TextStyle(fontFamily: 'Inter', fontSize: 13),
+            ),
+            backgroundColor: const Color(0xFFF59E0B),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10)),
+            margin: const EdgeInsets.all(16),
+            duration: const Duration(seconds: 5),
+          ),
+        );
+        if (context.canPop()) context.pop();
+        context.go('/home');
       } else {
+        // Succès — réinitialiser le flux et retourner à l'accueil
+        ref.read(publishProvider.notifier).reset();
+        ref.read(publishStepProvider.notifier).goTo(1);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Témoignage soumis ! Il sera visible après modération.',
+              style: TextStyle(fontFamily: 'Inter', fontSize: 13),
+            ),
+            backgroundColor: AppColors.primary,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10)),
+            margin: const EdgeInsets.all(16),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+        if (context.canPop()) context.pop();
         context.go('/home');
       }
     } finally {
@@ -699,7 +762,7 @@ class _BottomNavButtonsState extends ConsumerState<_BottomNavButtons> {
     final stepNotifier    = ref.read(publishStepProvider.notifier);
 
     final canGo      = _canProceed(draft, recordingStatus);
-    final isLastStep = widget.step == 2;
+    final isLastStep = widget.step == 3;
     final canPublish = isLastStep &&
         canGo &&
         draft.title.isNotEmpty &&
@@ -766,6 +829,264 @@ class _BottomNavButtonsState extends ConsumerState<_BottomNavButtons> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// =============================================================================
+// Step 3 — Visibility & Consent
+// =============================================================================
+
+class _Step3Visibility extends ConsumerWidget {
+  const _Step3Visibility();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final draft = ref.watch(publishProvider);
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Visibility ─────────────────────────────────────────────────────
+          _FieldLabel(label: 'Visibilité', required: true),
+          const SizedBox(height: 4),
+          const Text(
+            'Qui peut voir votre témoignage ?',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 12,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          _VisibilityOption(
+            icon: Icons.public_rounded,
+            label: 'Public',
+            description: 'Visible par tous les utilisateurs',
+            selected: draft.visibility == TestimonyVisibility.public,
+            onTap: () => ref
+                .read(publishProvider.notifier)
+                .setVisibility(TestimonyVisibility.public),
+          ),
+          const SizedBox(height: 10),
+          _VisibilityOption(
+            icon: Icons.people_rounded,
+            label: 'Amis',
+            description: 'Visible uniquement par vos abonnés',
+            selected: draft.visibility == TestimonyVisibility.friends,
+            onTap: () => ref
+                .read(publishProvider.notifier)
+                .setVisibility(TestimonyVisibility.friends),
+          ),
+          const SizedBox(height: 10),
+          _VisibilityOption(
+            icon: Icons.lock_rounded,
+            label: 'Privé',
+            description: 'Visible uniquement par vous',
+            selected: draft.visibility == TestimonyVisibility.private,
+            onTap: () => ref
+                .read(publishProvider.notifier)
+                .setVisibility(TestimonyVisibility.private),
+          ),
+
+          const SizedBox(height: 28),
+          const Divider(height: 1, color: AppColors.border),
+          const SizedBox(height: 24),
+
+          // ── Consent ────────────────────────────────────────────────────────
+          GestureDetector(
+            onTap: () =>
+                ref.read(publishProvider.notifier).toggleConsent(),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: draft.consentGiven
+                    ? AppColors.primary.withAlpha(10)
+                    : AppColors.surface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: draft.consentGiven
+                      ? AppColors.primary.withAlpha(100)
+                      : AppColors.border,
+                  width: draft.consentGiven ? 1.5 : 1,
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: Checkbox(
+                      value: draft.consentGiven,
+                      onChanged: (_) =>
+                          ref.read(publishProvider.notifier).toggleConsent(),
+                      activeColor: AppColors.primary,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4)),
+                      side: BorderSide(
+                        color: draft.consentGiven
+                            ? AppColors.primary
+                            : AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Je certifie que ce témoignage est réel',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                            color: draft.consentGiven
+                                ? AppColors.primary
+                                : AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Je confirme que les faits relatés dans ce '
+                          'témoignage sont authentiques et vécus '
+                          'personnellement.',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                            height: 1.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          if (!draft.consentGiven) ...[
+            const SizedBox(height: 8),
+            const Row(
+              children: [
+                Icon(Icons.info_outline_rounded,
+                    size: 14, color: AppColors.textSecondary),
+                SizedBox(width: 6),
+                Text(
+                  'La confirmation est requise pour publier.',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ],
+
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Visibility option card ────────────────────────────────────────────────────
+
+class _VisibilityOption extends StatelessWidget {
+  const _VisibilityOption({
+    required this.icon,
+    required this.label,
+    required this.description,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData     icon;
+  final String       label;
+  final String       description;
+  final bool         selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppColors.primary.withAlpha(10)
+              : AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: selected ? AppColors.primary : AppColors.border,
+            width: selected ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 42, height: 42,
+              decoration: BoxDecoration(
+                color: selected
+                    ? AppColors.primary.withAlpha(20)
+                    : AppColors.background,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                icon,
+                size: 22,
+                color: selected
+                    ? AppColors.primary
+                    : AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: selected
+                          ? AppColors.primary
+                          : AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    description,
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              selected
+                  ? Icons.check_circle_rounded
+                  : Icons.radio_button_unchecked_rounded,
+              color: selected ? AppColors.primary : AppColors.border,
+              size: 20,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1115,6 +1436,38 @@ class _TextFormatToolbar extends StatelessWidget {
 
   final TextEditingController controller;
 
+  void _wrap(String prefix, String suffix) {
+    final sel  = controller.selection;
+    final text = controller.text;
+    if (!sel.isValid) return;
+    final before   = text.substring(0, sel.start);
+    final selected = text.substring(sel.start, sel.end);
+    final after    = text.substring(sel.end);
+    final inserted = '$prefix$selected$suffix';
+    controller.value = TextEditingValue(
+      text: '$before$inserted$after',
+      selection: TextSelection.collapsed(
+        offset: sel.start + inserted.length,
+      ),
+    );
+  }
+
+  void _quote() {
+    final sel  = controller.selection;
+    final text = controller.text;
+    if (!sel.isValid) return;
+    final before   = text.substring(0, sel.start);
+    final selected = text.substring(sel.start, sel.end);
+    final after    = text.substring(sel.end);
+    final quoted   = selected.isEmpty
+        ? '> '
+        : selected.split('\n').map((l) => '> $l').join('\n');
+    controller.value = TextEditingValue(
+      text: '$before$quoted$after',
+      selection: TextSelection.collapsed(offset: sel.start + quoted.length),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -1128,20 +1481,20 @@ class _TextFormatToolbar extends StatelessWidget {
         children: [
           _ToolbarButton(
               icon: Icons.format_bold_rounded,
-              tooltip: 'Gras',
-              onTap: () {}),
+              tooltip: 'Gras (**texte**)',
+              onTap: () => _wrap('**', '**')),
           _ToolbarButton(
               icon: Icons.format_italic_rounded,
-              tooltip: 'Italique',
-              onTap: () {}),
+              tooltip: 'Italique (__texte__)',
+              onTap: () => _wrap('__', '__')),
+          _ToolbarButton(
+              icon: Icons.format_strikethrough_rounded,
+              tooltip: 'Barré (~~texte~~)',
+              onTap: () => _wrap('~~', '~~')),
           _ToolbarButton(
               icon: Icons.format_quote_rounded,
-              tooltip: 'Citation',
-              onTap: () {}),
-          _ToolbarButton(
-              icon: Icons.menu_book_rounded,
-              tooltip: 'Verset biblique',
-              onTap: () {}),
+              tooltip: 'Citation (> texte)',
+              onTap: _quote),
         ],
       ),
     );
@@ -1850,6 +2203,80 @@ class _ThumbnailSelector extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ── Bible verse preview (résout la référence → texte SQLite local) ────────────
+
+class _BibleVersePreview extends ConsumerWidget {
+  const _BibleVersePreview();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final verseRef  = ref.watch(bibleVerseRefProvider);
+    if (verseRef == null) return const SizedBox.shrink();
+
+    final textAsync = ref.watch(bibleVerseTextProvider);
+
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeInOut,
+      child: Container(
+        margin: const EdgeInsets.only(top: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withAlpha(8),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.primary.withAlpha(50)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.menu_book_rounded,
+                    size: 14, color: AppColors.primary),
+                const SizedBox(width: 6),
+                Text(
+                  verseRef.displayRef,
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ],
+            ),
+            textAsync.when(
+              loading: () => const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: LinearProgressIndicator(
+                  backgroundColor: Colors.transparent,
+                  minHeight: 2,
+                ),
+              ),
+              error: (_, _) => const SizedBox.shrink(),
+              data: (text) => text != null
+                  ? Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text(
+                        '«$text»',
+                        style: const TextStyle(
+                          fontFamily: 'Playfair Display',
+                          fontSize: 13,
+                          fontStyle: FontStyle.italic,
+                          color: AppColors.textPrimary,
+                          height: 1.55,
+                        ),
+                      ),
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

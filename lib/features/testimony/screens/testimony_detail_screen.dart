@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
 
 import '../../../core/app_constants.dart';
@@ -15,6 +16,8 @@ import '../../../features/auth/providers/auth_notifier.dart'
 import '../../../features/home/models/testimony_model.dart';
 import '../../../features/home/providers/home_providers.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/utils/rich_text_utils.dart';
+import '../../../services/audio_player_service.dart' show audioPlayerProvider;
 import 'audio_player_screen.dart';
 import 'video_player_screen.dart';
 
@@ -102,6 +105,9 @@ class _TestimonyDetailScreenState
   int  _likeCount    = 0;
   int  _prayCount    = 0;
 
+  // ── Testimony (fallback when not in feed) ─────────────────────────────────
+  Testimony? _singleTestimony;
+
   // ── Commentaires locaux ───────────────────────────────────────────────────
   List<_LocalComment> _comments = [];
   bool _loadingComments = true;
@@ -117,18 +123,38 @@ class _TestimonyDetailScreenState
 
   void _initFromTestimony() {
     final feed = ref.read(feedNotifierProvider);
-    final t = feed.firstWhere(
-      (t) => t.id == widget.testimonyId,
-      orElse: () => feed.first,
-    );
+    final t = feed.where((t) => t.id == widget.testimonyId).firstOrNull;
+    if (t == null) {
+      _fetchSingleTestimony();
+      return;
+    }
     if (mounted) {
       setState(() {
-        _likeCount  = t.stats.likes;
-        _prayCount  = t.stats.prayers;
-        _isLiked    = t.isLiked;
-        _isPraying  = t.isPrayed;
+        _likeCount = t.stats.likes;
+        _prayCount = t.stats.prayers;
+        _isLiked   = t.isLiked;
+        _isPraying = t.isPrayed;
       });
     }
+  }
+
+  Future<void> _fetchSingleTestimony() async {
+    try {
+      final api      = ref.read(apiServiceProvider);
+      final response = await api.get<Map<String, dynamic>>(
+        AppConstants.testimonyById(widget.testimonyId),
+      );
+      final t = testimonyFromApiJson(response.data);
+      if (t != null && mounted) {
+        setState(() {
+          _singleTestimony = t;
+          _likeCount = t.stats.likes;
+          _prayCount = t.stats.prayers;
+          _isLiked   = t.isLiked;
+          _isPraying = t.isPrayed;
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadComments() async {
@@ -225,6 +251,9 @@ class _TestimonyDetailScreenState
             _LocalComment.fromModel(saved),
           ];
         });
+        // Répercuter le nouveau commentaire sur les compteurs du feed
+        ref.read(feedNotifierProvider.notifier)
+            .applyOptimisticDelta(widget.testimonyId, comments: 1);
       }
 
       await dao.insert({
@@ -260,18 +289,25 @@ class _TestimonyDetailScreenState
 
   @override
   Widget build(BuildContext context) {
-    // Récupérer le témoignage depuis le feed
     final feed      = ref.watch(feedNotifierProvider);
-    final testimony = feed.firstWhere(
-      (t) => t.id == widget.testimonyId,
-      orElse: () => feed.first,
-    );
+    final testimony = feed.where((t) => t.id == widget.testimonyId).firstOrNull
+        ?? _singleTestimony;
+
+    if (testimony == null) {
+      return AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.light,
+        child: Scaffold(
+          backgroundColor: AppColors.background,
+          appBar: AppBar(backgroundColor: Colors.transparent),
+          body: const Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
 
     final currentUser = ref.watch(currentUserProvider);
     final isOwnProfile = testimony.author.uid == (currentUser?.id ?? '');
 
     final isAudio = testimony is AudioTestimony;
-    final isVideo = testimony is VideoTestimony;
     final isText  = testimony is TextTestimony;
 
     final bodyText = isText
@@ -328,15 +364,23 @@ class _TestimonyDetailScreenState
                     _ContentBody(text: bodyText),
 
                   // Lecteur audio inline
-                  if (isAudio)
-                    _AudioPlayerEmbed(testimonyId: testimony.id),
+                  if (testimony is AudioTestimony)
+                    _AudioPlayerEmbed(testimony: testimony),
 
                   // Lecteur vidéo inline
-                  if (isVideo)
-                    _VideoPlayerEmbed(testimonyId: testimony.id),
+                  if (testimony is VideoTestimony)
+                    _VideoPlayerEmbed(
+                      testimonyId:     testimony.id,
+                      durationSeconds: testimony.durationSeconds,
+                      mediaPath:       testimony.mediaPath,
+                      thumbnailUrl:    testimony.thumbnailUrl,
+                    ),
 
-                  // Verset biblique
-                  const _BibleVerseSection(),
+                  // Verset biblique (masqué si le témoignage n'en a pas)
+                  _BibleVerseSection(
+                    verse:    _extractBibleVerse(testimony),
+                    verseRef: _extractBibleVerseRef(testimony),
+                  ),
 
                   // Commentaires (preview + saisie)
                   _CommentsSection(
@@ -346,7 +390,10 @@ class _TestimonyDetailScreenState
                     currentUser:  ref.read(currentUserProvider)?.displayName ?? 'Vous',
                   ),
 
-                  const _SimilarTestimonies(),
+                  _SimilarTestimonies(
+                    category:  testimony.category,
+                    excludeId: testimony.id,
+                  ),
                   const SizedBox(height: 80),
                 ],
               ),
@@ -357,17 +404,36 @@ class _TestimonyDetailScreenState
           isLiked:      _isLiked,
           isPraying:    _isPraying,
           isBookmarked: _isBookmarked,
-          onLike: () => setState(() {
-            _isLiked   = !_isLiked;
-            _likeCount += _isLiked ? 1 : -1;
-          }),
-          onPray: () => setState(() {
-            _isPraying  = !_isPraying;
-            _prayCount += _isPraying ? 1 : -1;
-          }),
+          onLike: () {
+            final wasLiked = _isLiked;
+            setState(() {
+              _isLiked   = !_isLiked;
+              _likeCount += _isLiked ? 1 : -1;
+            });
+            if (!wasLiked) {
+              ref.read(interactionProvider.notifier)
+                  .setReaction(widget.testimonyId, ReactionType.like);
+            } else {
+              ref.read(interactionProvider.notifier)
+                  .removeReaction(widget.testimonyId);
+            }
+          },
+          onPray: () {
+            setState(() {
+              _isPraying  = !_isPraying;
+              _prayCount += _isPraying ? 1 : -1;
+            });
+            ref.read(interactionProvider.notifier).togglePray(widget.testimonyId);
+          },
           onComment:  () => _showCommentsSheet(context),
-          onBookmark: () => setState(() => _isBookmarked = !_isBookmarked),
-          onShare: () => _shareTestimony(testimony.title),
+          onBookmark: () {
+            setState(() => _isBookmarked = !_isBookmarked);
+            ref.read(interactionProvider.notifier).toggleSave(widget.testimonyId);
+          },
+          onShare: () {
+            _shareTestimony(testimony.title);
+            ref.read(interactionProvider.notifier).recordShare(widget.testimonyId);
+          },
         ),
       ),
     );
@@ -401,6 +467,20 @@ class _TestimonyDetailScreenState
     if (diff.inMinutes < 60) return 'il y a ${diff.inMinutes} min';
     if (diff.inHours < 24)   return 'il y a ${diff.inHours}h';
     return 'il y a ${diff.inDays}j';
+  }
+
+  static String? _extractBibleVerse(Testimony t) {
+    if (t is TextTestimony)  return t.bibleVerse;
+    if (t is AudioTestimony) return t.bibleVerse;
+    if (t is VideoTestimony) return t.bibleVerse;
+    return null;
+  }
+
+  static String? _extractBibleVerseRef(Testimony t) {
+    if (t is TextTestimony)  return t.bibleVerseRef;
+    if (t is AudioTestimony) return t.bibleVerseRef;
+    if (t is VideoTestimony) return t.bibleVerseRef;
+    return null;
   }
 }
 
@@ -777,6 +857,7 @@ class _ReactionCount extends StatelessWidget {
 // Content Body
 // ============================================================================
 
+
 class _ContentBody extends StatefulWidget {
   const _ContentBody({required this.text});
   final String text;
@@ -787,36 +868,54 @@ class _ContentBody extends StatefulWidget {
 
 class _ContentBodyState extends State<_ContentBody> {
   bool _expanded = false;
-  static const _shortLength = 500;
+  static const _kMaxLines = 8;
 
   @override
   Widget build(BuildContext context) {
-    final displayText = _expanded || widget.text.length <= _shortLength
-        ? widget.text
-        : '${widget.text.substring(0, _shortLength)}...';
+    final textStyle = AppTextStyles.bodyLarge;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(displayText, style: AppTextStyles.bodyLarge),
-          if (widget.text.length > _shortLength) ...[
-            const SizedBox(height: 8),
-            GestureDetector(
-              onTap: () => setState(() => _expanded = !_expanded),
-              child: Text(
-                _expanded ? AppLocalizations.of(context).detailSeeLess : AppLocalizations.of(context).detailSeeMore,
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                  color: AppColors.primary,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final tp = TextPainter(
+            text: TextSpan(text: widget.text, style: textStyle),
+            maxLines: _kMaxLines,
+            textDirection: TextDirection.ltr,
+          )..layout(maxWidth: constraints.maxWidth);
+          final hasOverflow = tp.didExceedMaxLines;
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _expanded
+                  ? buildRichBody(widget.text, textStyle)
+                  : Text(
+                      widget.text,
+                      style: textStyle,
+                      maxLines: _kMaxLines,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+              if (hasOverflow) ...[
+                const SizedBox(height: 8),
+                GestureDetector(
+                  onTap: () => setState(() => _expanded = !_expanded),
+                  child: Text(
+                    _expanded
+                        ? AppLocalizations.of(context).detailSeeLess
+                        : AppLocalizations.of(context).detailSeeMore,
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: AppColors.primary,
+                    ),
+                  ),
                 ),
-              ),
-            ),
-          ],
-        ],
+              ],
+            ],
+          );
+        },
       ),
     );
   }
@@ -826,26 +925,45 @@ class _ContentBodyState extends State<_ContentBody> {
 // Embedded Audio Player (inline preview, opens full player on tap)
 // ============================================================================
 
-class _AudioPlayerEmbed extends StatefulWidget {
-  const _AudioPlayerEmbed({required this.testimonyId});
+class _AudioPlayerEmbed extends ConsumerStatefulWidget {
+  const _AudioPlayerEmbed({required this.testimony});
 
-  final String testimonyId;
+  final AudioTestimony testimony;
 
   @override
-  State<_AudioPlayerEmbed> createState() => _AudioPlayerEmbedState();
+  ConsumerState<_AudioPlayerEmbed> createState() => _AudioPlayerEmbedState();
 }
 
-class _AudioPlayerEmbedState extends State<_AudioPlayerEmbed> {
-  bool _isPlaying = false;
-  final double _progress = 0.31;
+class _AudioPlayerEmbedState extends ConsumerState<_AudioPlayerEmbed> {
+  static String _absUrl(String src) {
+    if (src.startsWith('http://') || src.startsWith('https://')) return src;
+    final root = AppConstants.baseUrl.replaceAll(RegExp(r'/api/v\d+$'), '');
+    return src.startsWith('/') ? '$root$src' : '$root/$src';
+  }
+
+  static String _fmt(Duration d) {
+    final m = d.inMinutes;
+    final s = d.inSeconds % 60;
+    return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+  }
 
   @override
   Widget build(BuildContext context) {
+    final t           = widget.testimony;
+    final player      = ref.watch(audioPlayerProvider);
+    final absPath     = t.mediaPath != null ? _absUrl(t.mediaPath!) : '';
+    final isThisTrack = absPath.isNotEmpty && player.url == absPath;
+    final isPlaying   = isThisTrack && player.isPlaying;
+    final progress    = isThisTrack ? player.progress : 0.0;
+    final elapsed     = isThisTrack ? _fmt(player.position) : '0:00';
+
     return GestureDetector(
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) =>
-              AudioPlayerScreen(testimonyId: widget.testimonyId),
+          builder: (_) => AudioPlayerScreen(
+            testimonyId: t.id,
+            mediaPath:   t.mediaPath,
+          ),
         ),
       ),
       child: Container(
@@ -895,7 +1013,7 @@ class _AudioPlayerEmbedState extends State<_AudioPlayerEmbed> {
                         ),
                       ),
                       Text(
-                        '14:23 min  ·  ${AppLocalizations.of(context).detailTapToOpen}',
+                        '${t.formattedDuration}  ·  ${AppLocalizations.of(context).detailTapToOpen}',
                         style: TextStyle(
                           fontFamily: 'Inter',
                           color: Colors.white.withValues(alpha: 0.8),
@@ -906,7 +1024,13 @@ class _AudioPlayerEmbedState extends State<_AudioPlayerEmbed> {
                   ),
                 ),
                 GestureDetector(
-                  onTap: () => setState(() => _isPlaying = !_isPlaying),
+                  onTap: () {
+                    if (isPlaying) {
+                      ref.read(audioPlayerProvider.notifier).pause();
+                    } else if (absPath.isNotEmpty) {
+                      ref.read(audioPlayerProvider.notifier).play(absPath);
+                    }
+                  },
                   child: Container(
                     width: 44,
                     height: 44,
@@ -915,7 +1039,7 @@ class _AudioPlayerEmbedState extends State<_AudioPlayerEmbed> {
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      _isPlaying
+                      isPlaying
                           ? Icons.pause_rounded
                           : Icons.play_arrow_rounded,
                       color: AppColors.primary,
@@ -926,14 +1050,12 @@ class _AudioPlayerEmbedState extends State<_AudioPlayerEmbed> {
               ],
             ),
             const SizedBox(height: 12),
-            // Mini progress bar
             ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
-                value: _progress,
+                value: progress,
                 backgroundColor: Colors.white24,
-                valueColor:
-                    const AlwaysStoppedAnimation<Color>(Colors.white),
+                valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
                 minHeight: 4,
               ),
             ),
@@ -942,7 +1064,7 @@ class _AudioPlayerEmbedState extends State<_AudioPlayerEmbed> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '4:28',
+                  elapsed,
                   style: TextStyle(
                     fontFamily: 'Inter',
                     color: Colors.white.withValues(alpha: 0.8),
@@ -950,7 +1072,7 @@ class _AudioPlayerEmbedState extends State<_AudioPlayerEmbed> {
                   ),
                 ),
                 Text(
-                  '14:23',
+                  t.formattedDuration,
                   style: TextStyle(
                     fontFamily: 'Inter',
                     color: Colors.white.withValues(alpha: 0.8),
@@ -971,16 +1093,30 @@ class _AudioPlayerEmbedState extends State<_AudioPlayerEmbed> {
 // ============================================================================
 
 class _VideoPlayerEmbed extends StatelessWidget {
-  const _VideoPlayerEmbed({required this.testimonyId});
+  const _VideoPlayerEmbed({
+    required this.testimonyId,
+    required this.durationSeconds,
+    this.mediaPath,
+    this.thumbnailUrl,
+  });
 
-  final String testimonyId;
+  final String  testimonyId;
+  final int     durationSeconds;
+  final String? mediaPath;
+  final String? thumbnailUrl;
+
+  static String _fmt(int s) =>
+      '${(s ~/ 60).toString().padLeft(2, '0')}:${(s % 60).toString().padLeft(2, '0')}';
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => VideoPlayerScreen(testimonyId: testimonyId),
+          builder: (_) => VideoPlayerScreen(
+            testimonyId: testimonyId,
+            mediaPath:   mediaPath,
+          ),
         ),
       ),
       child: Container(
@@ -1059,9 +1195,9 @@ class _VideoPlayerEmbed extends StatelessWidget {
                   color: Colors.black54,
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: const Text(
-                  '8:42',
-                  style: TextStyle(
+                child: Text(
+                  durationSeconds > 0 ? _fmt(durationSeconds) : '--:--',
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 11,
                     fontFamily: 'Inter',
@@ -1081,10 +1217,14 @@ class _VideoPlayerEmbed extends StatelessWidget {
 // ============================================================================
 
 class _BibleVerseSection extends StatelessWidget {
-  const _BibleVerseSection();
+  const _BibleVerseSection({required this.verse, this.verseRef});
+
+  final String? verse;
+  final String? verseRef;
 
   @override
   Widget build(BuildContext context) {
+    if (verse == null || verse!.isEmpty) return const SizedBox.shrink();
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
       padding: const EdgeInsets.all(20),
@@ -1115,17 +1255,19 @@ class _BibleVerseSection extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            '"Il guérit ceux qui ont le cœur brisé, et il panse leurs plaies."',
+            '"$verse"',
             style: AppTextStyles.verseQuote,
           ),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerRight,
-            child: Text(
-              '— Psaumes 147:3',
-              style: AppTextStyles.verseReference,
+          if (verseRef != null && verseRef!.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                '— $verseRef',
+                style: AppTextStyles.verseReference,
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -1383,27 +1525,41 @@ class _CommentItem extends StatelessWidget {
 // Similar Testimonies (horizontal scroll)
 // ============================================================================
 
-class _SimilarTestimonies extends StatelessWidget {
-  const _SimilarTestimonies();
+class _SimilarTestimonies extends ConsumerWidget {
+  const _SimilarTestimonies({
+    required this.category,
+    required this.excludeId,
+  });
+
+  final TestimonyCategory category;
+  final String            excludeId;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final all = ref.watch(feedNotifierProvider);
+    final similar = all
+        .where((t) => t.category == category && t.id != excludeId)
+        .take(8)
+        .toList();
+
+    if (similar.isEmpty) return const SizedBox.shrink();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-          child: Text(AppLocalizations.of(context).detailSimilar, style: AppTextStyles.h4),
+          child: Text(AppLocalizations.of(context).detailSimilar,
+              style: AppTextStyles.h4),
         ),
         SizedBox(
           height: 168,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: 5,
-            separatorBuilder: (context, index) => const SizedBox(width: 12),
-            itemBuilder: (context, index) =>
-                _SimilarCard(index: index),
+            itemCount: similar.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 12),
+            itemBuilder: (_, i) => _SimilarCard(testimony: similar[i]),
           ),
         ),
       ],
@@ -1412,86 +1568,104 @@ class _SimilarTestimonies extends StatelessWidget {
 }
 
 class _SimilarCard extends StatelessWidget {
-  const _SimilarCard({required this.index});
+  const _SimilarCard({required this.testimony});
 
-  final int index;
+  final Testimony testimony;
 
-  static const _titles = [
-    'Guéri d\'un cancer en phase terminale',
-    'Délivrance d\'une addiction de 15 ans',
-    'Comment j\'ai retrouvé la foi',
-    'Miracle financier inattendu',
-    'Protection divine sur la route',
-  ];
+  static List<Color> _gradientFor(TestimonyCategory cat) =>
+      switch (cat) {
+        TestimonyCategory.guerison    => AppColors.guerisonGradient,
+        TestimonyCategory.delivrance  => AppColors.delivranceGradient,
+        TestimonyCategory.conversion  => AppColors.conversionGradient,
+        TestimonyCategory.mariage     => AppColors.mariageGradient,
+        TestimonyCategory.famille     => AppColors.familleGradient,
+        TestimonyCategory.finances    => AppColors.financesGradient,
+        TestimonyCategory.miracles    => AppColors.miraclesGradient,
+        TestimonyCategory.protection  => AppColors.protectionGradient,
+        TestimonyCategory.ministere   => AppColors.ministereGradient,
+        TestimonyCategory.salut       => AppColors.salutGradient,
+      };
 
-  static const _authors = [
-    'Paul Mbeki', 'Sarah Diallo', 'John Osei', 'Grace Nwosu', 'David Kamau'
-  ];
+  static IconData _iconFor(TestimonyCategory cat) =>
+      switch (cat) {
+        TestimonyCategory.guerison    => Icons.healing_rounded,
+        TestimonyCategory.delivrance  => Icons.shield_rounded,
+        TestimonyCategory.conversion  => Icons.church_rounded,
+        TestimonyCategory.mariage     => Icons.favorite_rounded,
+        TestimonyCategory.famille     => Icons.family_restroom_rounded,
+        TestimonyCategory.finances    => Icons.attach_money_rounded,
+        TestimonyCategory.miracles    => Icons.auto_awesome_rounded,
+        TestimonyCategory.protection  => Icons.security_rounded,
+        TestimonyCategory.ministere   => Icons.mic_rounded,
+        TestimonyCategory.salut       => Icons.stars_rounded,
+      };
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 148,
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Thumbnail
-          Container(
-            height: 80,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: AppColors.guerisonGradient,
+    return GestureDetector(
+      onTap: () => context.push('/testimony/${testimony.id}'),
+      child: Container(
+        width: 148,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              height: 80,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: _gradientFor(testimony.category),
+                ),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(14)),
               ),
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(14)),
+              child: Center(
+                child: Icon(_iconFor(testimony.category),
+                    color: Colors.white54, size: 32),
+              ),
             ),
-            child: const Center(
-              child: Icon(Icons.healing_rounded,
-                  color: Colors.white54, size: 32),
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _titles[index % _titles.length],
-                    style: const TextStyle(
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.w600,
-                      fontSize: 11,
-                      color: AppColors.textPrimary,
-                      height: 1.3,
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      testimony.title,
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 11,
+                        color: AppColors.textPrimary,
+                        height: 1.3,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const Spacer(),
-                  Text(
-                    _authors[index % _authors.length],
-                    style: AppTextStyles.bodySmall,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+                    const Spacer(),
+                    Text(
+                      testimony.author.displayName,
+                      style: AppTextStyles.bodySmall,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

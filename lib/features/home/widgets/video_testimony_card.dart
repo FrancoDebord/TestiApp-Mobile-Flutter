@@ -1,7 +1,10 @@
+import 'dart:io' show File;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
+import 'package:video_player/video_player.dart' show VideoPlayerController;
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -25,17 +28,22 @@ class VideoTestimonyCard extends ConsumerWidget {
 
     // Build the ordered list of VideoTestimonies from the full feed.
     void onPlayTap() {
-      final allVideos = ref
+      var allVideos = ref
           .read(feedNotifierProvider)
           .whereType<VideoTestimony>()
           .toList();
-      final startIndex =
-          allVideos.indexWhere((v) => v.id == testimony.id);
+      int startIndex = allVideos.indexWhere((v) => v.id == testimony.id);
+      if (startIndex < 0) {
+        // Témoignage absent du feed principal (catégorie, recherche…) —
+        // on l'insère en tête pour qu'il soit toujours la première page.
+        allVideos = [testimony, ...allVideos];
+        startIndex = 0;
+      }
       Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => ShortsScreen(
             testimonies: allVideos,
-            startIndex: startIndex < 0 ? 0 : startIndex,
+            startIndex: startIndex,
           ),
         ),
       );
@@ -66,12 +74,16 @@ class VideoTestimonyCard extends ConsumerWidget {
                     onSave: () => ref
                         .read(interactionProvider.notifier)
                         .toggleSave(testimony.id),
-                    shareText:
-                        '${testimony.title}\n\n'
-                        'Partagé depuis l\'application Témoignages ✝️',
-                    onReport: () => ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Signalement envoyé')),
-                    ),
+                    onShare: () {
+                      SharePlus.instance.share(ShareParams(
+                        text: '${testimony.title}\n\n'
+                            'Partagé depuis l\'application Témoignages ✝️',
+                      ));
+                      ref.read(interactionProvider.notifier)
+                          .recordShare(testimony.id);
+                    },
+                    onReport: () =>
+                        context.push('/testimony/${testimony.id}/report'),
                   ),
                 ],
               ),
@@ -110,12 +122,14 @@ class VideoTestimonyCard extends ConsumerWidget {
                     .togglePray(testimony.id),
                 onComment: () =>
                     context.push('/testimony/${testimony.id}/comments'),
-                onShare: () => SharePlus.instance.share(
-                  ShareParams(
+                onShare: () {
+                  SharePlus.instance.share(ShareParams(
                     text: '${testimony.title}\n\n'
                         'testi://app/testimony/${testimony.id}',
-                  ),
-                ),
+                  ));
+                  ref.read(interactionProvider.notifier)
+                      .recordShare(testimony.id);
+                },
               ),
             ],
           ),
@@ -185,7 +199,7 @@ class _VideoThumbnail extends StatelessWidget {
             ),
             Positioned(
               bottom: 8, right: 8,
-              child: _DurationBadge(duration: testimony.formattedDuration),
+              child: _SmartDurationBadge(testimony: testimony),
             ),
           ],
         ),
@@ -194,9 +208,40 @@ class _VideoThumbnail extends StatelessWidget {
   }
 }
 
-class _DurationBadge extends StatelessWidget {
-  const _DurationBadge({required this.duration});
-  final String duration;
+class _SmartDurationBadge extends StatefulWidget {
+  const _SmartDurationBadge({required this.testimony});
+  final VideoTestimony testimony;
+
+  @override
+  State<_SmartDurationBadge> createState() => _SmartDurationBadgeState();
+}
+
+class _SmartDurationBadgeState extends State<_SmartDurationBadge> {
+  late int _secs;
+
+  @override
+  void initState() {
+    super.initState();
+    _secs = widget.testimony.durationSeconds;
+    if (_secs == 0) _loadDuration();
+  }
+
+  Future<void> _loadDuration() async {
+    final path = widget.testimony.mediaPath;
+    if (path == null || path.isEmpty) return;
+    try {
+      final ctrl = path.startsWith('http')
+          ? VideoPlayerController.networkUrl(Uri.parse(path))
+          : VideoPlayerController.file(File(path));
+      await ctrl.initialize();
+      final secs = ctrl.value.duration.inSeconds;
+      ctrl.dispose();
+      if (mounted && secs > 0) setState(() => _secs = secs);
+    } catch (_) {}
+  }
+
+  static String _fmt(int s) =>
+      '${(s ~/ 60).toString().padLeft(2, '0')}:${(s % 60).toString().padLeft(2, '0')}';
 
   @override
   Widget build(BuildContext context) {
@@ -207,7 +252,7 @@ class _DurationBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
-        duration,
+        _fmt(_secs),
         style: const TextStyle(
           fontFamily: 'Inter',
           fontSize: 11,
@@ -225,13 +270,13 @@ class _CardMenu extends StatelessWidget {
   const _CardMenu({
     required this.isSaved,
     required this.onSave,
-    required this.shareText,
+    required this.onShare,
     required this.onReport,
   });
 
   final bool isSaved;
   final VoidCallback onSave;
-  final String shareText;
+  final VoidCallback onShare;
   final VoidCallback onReport;
 
   @override
@@ -246,7 +291,7 @@ class _CardMenu extends StatelessWidget {
           case 'save':
             onSave();
           case 'share':
-            SharePlus.instance.share(ShareParams(text: shareText));
+            onShare();
           case 'report':
             onReport();
         }

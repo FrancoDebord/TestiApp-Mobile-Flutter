@@ -4,6 +4,20 @@ enum PrayerVisibility { public, friends, private }
 
 enum PrayerSessionStatus { scheduled, live, ended }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+PrayerVisibility _parseVisibility(String v) => switch (v) {
+      'friends' => PrayerVisibility.friends,
+      'private'  => PrayerVisibility.private,
+      _          => PrayerVisibility.public,
+    };
+
+PrayerSessionStatus _parseStatus(String v) => switch (v) {
+      'live'  => PrayerSessionStatus.live,
+      'ended' => PrayerSessionStatus.ended,
+      _       => PrayerSessionStatus.scheduled,
+    };
+
 // ── Prayer Request ────────────────────────────────────────────────────────────
 
 class PrayerRequest {
@@ -43,6 +57,25 @@ class PrayerRequest {
     if (diff.inMinutes < 60) return 'il y a ${diff.inMinutes}min';
     if (diff.inHours < 24) return 'il y a ${diff.inHours}h';
     return 'il y a ${diff.inDays}j';
+  }
+
+  factory PrayerRequest.fromJson(Map<String, dynamic> json) {
+    final author = json['author'] as Map<String, dynamic>?;
+    return PrayerRequest(
+      id:           json['id'].toString(),
+      authorId:     (json['author_id'] ?? author?['id'] ?? '').toString(),
+      authorName:   json['author_name'] as String?
+                        ?? author?['display_name'] as String?
+                        ?? '',
+      authorAvatar: json['author_avatar'] as String?
+                        ?? author?['avatar'] as String?,
+      body:         json['body'] as String,
+      createdAt:    DateTime.parse(json['created_at'] as String),
+      prayerCount:  json['prayer_count'] as int? ?? 0,
+      messageCount: json['message_count'] as int? ?? 0,
+      visibility:   _parseVisibility(json['visibility'] as String? ?? 'public'),
+      userHasPrayed: json['user_has_prayed'] as bool? ?? false,
+    );
   }
 
   PrayerRequest copyWith({
@@ -144,6 +177,25 @@ class GroupPrayerSession {
 
   bool get isLive => status == PrayerSessionStatus.live;
   bool get isEnded => status == PrayerSessionStatus.ended;
+
+  factory GroupPrayerSession.fromJson(Map<String, dynamic> json) {
+    final host = json['host'] as Map<String, dynamic>?;
+    return GroupPrayerSession(
+      id:               json['id'].toString(),
+      hostId:           (json['host_id'] ?? host?['id'] ?? '').toString(),
+      hostName:         json['host_name'] as String?
+                            ?? host?['display_name'] as String?
+                            ?? '',
+      hostAvatar:       json['host_avatar'] as String?
+                            ?? host?['avatar'] as String?,
+      title:            json['title'] as String,
+      description:      json['description'] as String?,
+      scheduledAt:      DateTime.parse(json['scheduled_at'] as String),
+      visibility:       _parseVisibility(json['visibility'] as String? ?? 'public'),
+      status:           _parseStatus(json['status'] as String? ?? 'scheduled'),
+      participantCount: json['participant_count'] as int? ?? 0,
+    );
+  }
 
   GroupPrayerSession copyWith({
     PrayerSessionStatus? status,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../models/admin_models.dart' show AppSettings;
 import '../providers/admin_provider.dart';
 
 // =============================================================================
@@ -23,7 +24,7 @@ class AdminSettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final settings = ref.watch(appSettingsProvider);
+    final settings = ref.watch(appSettingsProvider).value ?? const AppSettings();
     final notifier = ref.read(appSettingsProvider.notifier);
 
     return ListView(

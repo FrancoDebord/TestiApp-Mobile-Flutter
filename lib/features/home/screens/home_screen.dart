@@ -53,10 +53,7 @@ class HomeScreen extends ConsumerWidget {
       backgroundColor: AppColors.background,
       body: RefreshIndicator(
         color: AppColors.primary,
-        onRefresh: () async {
-          // TODO: invalidate feed / featured providers when real repo is wired
-          await Future<void>.delayed(const Duration(milliseconds: 800));
-        },
+        onRefresh: () => ref.read(feedNotifierProvider.notifier).refresh(),
         child: CustomScrollView(
           physics: const BouncingScrollPhysics(
             parent: AlwaysScrollableScrollPhysics(),

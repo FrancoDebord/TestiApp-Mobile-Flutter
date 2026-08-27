@@ -141,7 +141,7 @@ class _MetricsGrid extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       crossAxisSpacing: 12,
       mainAxisSpacing: 12,
-      childAspectRatio: 1.3,
+      childAspectRatio: 0.95,
       children: [
         AdminMetricCard(
           title: 'Utilisateurs',

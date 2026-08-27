@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../features/home/models/testimony_model.dart';
 import '../../../features/home/providers/home_providers.dart';
+import '../../../services/api_service.dart' show apiServiceProvider;
 import '../../../services/audio_player_service.dart';
 
 // ============================================================================
@@ -40,9 +42,10 @@ import '../../../services/audio_player_service.dart';
 //         └─ _MiniClose
 
 class AudioPlayerScreen extends ConsumerStatefulWidget {
-  const AudioPlayerScreen({required this.testimonyId, super.key});
+  const AudioPlayerScreen({required this.testimonyId, this.mediaPath, super.key});
 
-  final String testimonyId;
+  final String  testimonyId;
+  final String? mediaPath;
 
   @override
   ConsumerState<AudioPlayerScreen> createState() => _AudioPlayerScreenState();
@@ -73,16 +76,50 @@ class _AudioPlayerScreenState extends ConsumerState<AudioPlayerScreen>
   }
 
   Future<void> _loadAndPlay() async {
-    final feed = ref.read(feedNotifierProvider);
-    _testimony = feed.whereType<AudioTestimony>()
-        .where((t) => t.id == widget.testimonyId)
-        .firstOrNull;
+    String? source = (widget.mediaPath != null && widget.mediaPath!.isNotEmpty)
+        ? widget.mediaPath
+        : null;
 
-    final source = _testimony?.mediaPath;
-    if (source != null && source.isNotEmpty) {
-      await ref.read(audioPlayerProvider.notifier).play(source);
+    if (source == null) {
+      final feed = ref.read(feedNotifierProvider);
+      _testimony = feed.whereType<AudioTestimony>()
+          .where((t) => t.id == widget.testimonyId)
+          .firstOrNull;
+      source = _testimony?.mediaPath;
     }
+
+    if (source == null || source.isEmpty) {
+      await _fetchFromApi();
+      return;
+    }
+
+    await ref.read(audioPlayerProvider.notifier).play(_absUrl(source));
     if (mounted) setState(() {});
+  }
+
+  Future<void> _fetchFromApi() async {
+    try {
+      final api  = ref.read(apiServiceProvider);
+      final resp = await api.get<Map<String, dynamic>>(
+        AppConstants.testimonyById(widget.testimonyId),
+      );
+      final t = testimonyFromApiJson(resp.data);
+      if (t is AudioTestimony && mounted) {
+        setState(() => _testimony = t);
+        final src = t.mediaPath;
+        if (src != null && src.isNotEmpty) {
+          await ref.read(audioPlayerProvider.notifier).play(_absUrl(src));
+        }
+      }
+    } catch (_) {
+      if (mounted) setState(() {});
+    }
+  }
+
+  static String _absUrl(String src) {
+    if (src.startsWith('http://') || src.startsWith('https://')) return src;
+    final root = AppConstants.baseUrl.replaceAll(RegExp(r'/api/v\d+$'), '');
+    return src.startsWith('/') ? '$root$src' : '$root/$src';
   }
 
   @override

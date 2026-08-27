@@ -56,23 +56,30 @@ class PublishScreen extends ConsumerWidget {
                       title: 'Short Témoignage',
                       description: '60 secondes · Impact immédiat',
                       onTap: () async {
-                        final path = await Navigator.of(context).push<String?>(
+                        final result = await Navigator.of(context)
+                            .push<Map<String, dynamic>?>(
                           MaterialPageRoute(
                             fullscreenDialog: true,
                             builder: (_) => const ShortRecordScreen(),
                           ),
                         );
-                        if (path != null && context.mounted) {
-                          ref
-                              .read(publishProvider.notifier)
-                              .selectFormat(TestimonyFormat.video);
-                          ref
-                              .read(publishProvider.notifier)
-                              .updateVideoPath(path);
-                          ref.read(publishStepProvider.notifier).goTo(1);
-                          context.pushNamed(AppRoutes.publishPreview,
-                              extra: TestimonyFormat.video);
+                        if (result == null || !context.mounted) return;
+
+                        final path = result['path'] as String?;
+                        final durationSec = result['duration'] as int? ?? 0;
+                        if (path == null) return;
+
+                        final notifier = ref.read(publishProvider.notifier);
+                        notifier.selectFormat(TestimonyFormat.video);
+                        notifier.updateVideoPath(path);
+                        if (durationSec > 0) {
+                          notifier.updateVideoDuration(durationSec);
+                          notifier.updateVideoTrim(
+                              Duration.zero, Duration(seconds: durationSec));
                         }
+                        ref.read(publishStepProvider.notifier).goTo(1);
+                        context.pushNamed(AppRoutes.publishPreview,
+                            extra: TestimonyFormat.video);
                       },
                     ),
                   ),
