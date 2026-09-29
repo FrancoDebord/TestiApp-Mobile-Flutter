@@ -52,7 +52,7 @@ class _MyTestimoniesScreenState extends ConsumerState<MyTestimoniesScreen>
         title: const Text(
           'Mes témoignages',
           style: TextStyle(
-            fontFamily: 'Poppins',
+            fontFamily: 'Plus Jakarta Sans',
             fontWeight: FontWeight.w600,
             fontSize: 17,
             color: AppColors.textPrimary,
@@ -69,12 +69,12 @@ class _MyTestimoniesScreenState extends ConsumerState<MyTestimoniesScreen>
           isScrollable: true,
           tabAlignment: TabAlignment.start,
           labelStyle: const TextStyle(
-            fontFamily: 'Inter',
+            fontFamily: 'Plus Jakarta Sans',
             fontWeight: FontWeight.w600,
             fontSize: 13,
           ),
           unselectedLabelStyle: const TextStyle(
-            fontFamily: 'Inter',
+            fontFamily: 'Plus Jakarta Sans',
             fontSize: 13,
           ),
           labelColor: AppColors.primary,
@@ -124,7 +124,7 @@ class _MyTestimoniesScreenState extends ConsumerState<MyTestimoniesScreen>
         label: const Text(
           'Nouveau',
           style: TextStyle(
-            fontFamily: 'Poppins',
+            fontFamily: 'Plus Jakarta Sans',
             fontWeight: FontWeight.w600,
             fontSize: 14,
           ),
@@ -259,7 +259,7 @@ class _MyTestimonyCard extends ConsumerWidget {
                         'En cours de validation par notre équipe. '
                         'Vous recevrez une notification dès que ce sera traité.',
                         style: const TextStyle(
-                          fontFamily: 'Inter',
+                          fontFamily: 'Plus Jakarta Sans',
                           fontSize: 11,
                           color: Color(0xFF856404),
                         ),
@@ -276,23 +276,23 @@ class _MyTestimonyCard extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFEE2E2),
+                  color: const Color(0xFFFEF3F2),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFEF4444).withAlpha(60)),
+                  border: Border.all(color: const Color(0xFFD92D20).withAlpha(60)),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Icon(Icons.info_outline_rounded,
-                        size: 14, color: Color(0xFFB91C1C)),
+                        size: 14, color: Color(0xFFB42318)),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
                         testimony.rejectionReason!,
                         style: const TextStyle(
-                          fontFamily: 'Inter',
+                          fontFamily: 'Plus Jakarta Sans',
                           fontSize: 11,
-                          color: Color(0xFFB91C1C),
+                          color: Color(0xFFB42318),
                         ),
                       ),
                     ),
@@ -314,7 +314,7 @@ class _MyTestimonyCard extends ConsumerWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text(
           'Modifier le titre',
-          style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600),
+          style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600),
         ),
         content: TextField(
           controller: ctrl,
@@ -361,11 +361,11 @@ class _MyTestimonyCard extends ConsumerWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text(
           'Supprimer ce témoignage ?',
-          style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600),
+          style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600),
         ),
         content: const Text(
           'Cette action est irréversible. Le témoignage sera définitivement supprimé.',
-          style: TextStyle(fontFamily: 'Inter', fontSize: 13),
+          style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13),
         ),
         actions: [
           TextButton(
@@ -437,9 +437,9 @@ class _TypeIcon extends StatelessWidget {
 
   Widget _iconContainer() {
     final (color, bg, icon) = switch (type) {
-      'audio' => (const Color(0xFFEF4444), const Color(0xFFFEE2E2), Icons.mic_rounded),
-      'video' => (AppColors.secondary,     const Color(0xFFFEF3C7), Icons.videocam_rounded),
-      _       => (AppColors.primary,       const Color(0xFFF3E8FF), Icons.edit_note_rounded),
+      'audio' => (const Color(0xFFD92D20), const Color(0xFFFEF3F2), Icons.mic_rounded),
+      'video' => (AppColors.secondary,     const Color(0xFFFFFAEB), Icons.videocam_rounded),
+      _       => (AppColors.primary,       const Color(0xFFEAF1FC), Icons.edit_note_rounded),
     };
     return Container(
       width: 52, height: 52,
@@ -457,8 +457,8 @@ class _StatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final (label, bg, fg) = switch (status) {
       'pending'   => ('En attente', const Color(0xFFFFF3CD), const Color(0xFF856404)),
-      'published' => ('Publié',     const Color(0xFFD1FAE5), const Color(0xFF065F46)),
-      'rejected'  => ('Rejeté',     const Color(0xFFFEE2E2), const Color(0xFFB91C1C)),
+      'published' => ('Publié',     const Color(0xFFD1FAE5), const Color(0xFFD96F0B)),
+      'rejected'  => ('Rejeté',     const Color(0xFFFEF3F2), const Color(0xFFB42318)),
       _           => (status,       AppColors.border,         AppColors.textSecondary),
     };
     return Container(
@@ -470,7 +470,7 @@ class _StatusBadge extends StatelessWidget {
       child: Text(
         label,
         style: TextStyle(
-          fontFamily: 'Inter',
+          fontFamily: 'Plus Jakarta Sans',
           fontSize: 11,
           fontWeight: FontWeight.w600,
           color: fg,
@@ -496,7 +496,7 @@ class _CategoryChip extends StatelessWidget {
       child: Text(
         slug,
         style: const TextStyle(
-          fontFamily: 'Inter',
+          fontFamily: 'Plus Jakarta Sans',
           fontSize: 11,
           color: AppColors.primary,
           fontWeight: FontWeight.w500,
@@ -522,7 +522,7 @@ class _CountBadge extends StatelessWidget {
       child: Text(
         '$count',
         style: TextStyle(
-          fontFamily: 'Inter',
+          fontFamily: 'Plus Jakarta Sans',
           fontSize: 11,
           fontWeight: FontWeight.w700,
           color: color,
@@ -643,7 +643,7 @@ class _EmptyState extends StatelessWidget {
                 onPressed: () => context.go('/publish'),
                 icon: const Icon(Icons.add_rounded, size: 18),
                 label: const Text('Publier un témoignage',
-                    style: TextStyle(fontFamily: 'Inter', fontSize: 13)),
+                    style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13)),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   padding: const EdgeInsets.symmetric(
@@ -713,7 +713,7 @@ class _ErrorView extends StatelessWidget {
 
 Color _statusColor(String status) => switch (status) {
       'pending'   => const Color(0xFF856404),
-      'published' => const Color(0xFF065F46),
-      'rejected'  => const Color(0xFFB91C1C),
+      'published' => const Color(0xFFD96F0B),
+      'rejected'  => const Color(0xFFB42318),
       _           => AppColors.textSecondary,
     };

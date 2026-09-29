@@ -5,6 +5,7 @@ import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../shared/utils/rich_text_utils.dart';
 import '../models/testimony_model.dart';
 import '../providers/home_providers.dart';
 import 'testimony_action_bar.dart';
@@ -21,8 +22,14 @@ class TextTestimonyCard extends ConsumerStatefulWidget {
 }
 
 class _TextTestimonyCardState extends ConsumerState<TextTestimonyCard> {
-  static const _kMaxLines = 3;
-  bool _expanded = false;
+  /// Extrait court et sans balises pour le message de partage (le lien mène
+  /// au texte complet).
+  static String _excerpt(String body) {
+    final plain = stripFormatting(body).trim();
+    if (plain.length <= 200) return plain;
+    final cut = plain.lastIndexOf(' ', 200);
+    return '${plain.substring(0, cut > 120 ? cut : 200).trimRight()}…';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -58,7 +65,8 @@ class _TextTestimonyCardState extends ConsumerState<TextTestimonyCard> {
                         .toggleSave(testimony.id),
                     onShare: () {
                       SharePlus.instance.share(ShareParams(
-                        text: '${testimony.title}\n\n${testimony.preview}\n\n'
+                        text: '${testimony.title}\n\n${_excerpt(testimony.preview)}\n\n'
+                            '${testimony.shareLink}\n\n'
                             'Partagé depuis l\'application Témoignages ✝️',
                       ));
                       ref.read(interactionProvider.notifier)
@@ -80,53 +88,23 @@ class _TextTestimonyCardState extends ConsumerState<TextTestimonyCard> {
               ),
               const SizedBox(height: 8),
 
-              // ── Extrait texte avec "Lire plus / Lire moins" ───────────────
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final textStyle = AppTextStyles.bodyMedium.copyWith(
-                    color: AppColors.textSecondary,
-                    height: 1.6,
-                  );
-                  final tp = TextPainter(
-                    text: TextSpan(
-                        text: testimony.preview, style: textStyle),
-                    maxLines: _kMaxLines,
-                    textDirection: TextDirection.ltr,
-                  )..layout(maxWidth: constraints.maxWidth);
-                  final hasOverflow = tp.didExceedMaxLines;
-
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        testimony.preview,
-                        style: textStyle,
-                        maxLines: _expanded ? null : _kMaxLines,
-                        overflow: _expanded
-                            ? TextOverflow.visible
-                            : TextOverflow.ellipsis,
-                      ),
-                      if (hasOverflow)
-                        GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: () =>
-                              setState(() => _expanded = !_expanded),
-                          child: Padding(
-                            padding: const EdgeInsets.only(top: 6),
-                            child: Text(
-                              _expanded ? 'Lire moins ‹' : 'Lire plus ›',
-                              style: const TextStyle(
-                                fontFamily: 'Inter',
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  );
-                },
+              // ── Texte mis en forme, dévoilé morceau par morceau ───────────
+              ProgressiveRichText(
+                text: testimony.preview,
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.textSecondary,
+                  height: 1.6,
+                ),
+                initialChars: 220,
+                stepChars: 500,
+                // Non sélectionnable : le tap sur la carte ouvre le détail.
+                selectable: false,
+                linkStyle: const TextStyle(
+                  fontFamily: 'Plus Jakarta Sans',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                  color: AppColors.primary,
+                ),
               ),
               const SizedBox(height: 12),
 
@@ -157,7 +135,7 @@ class _TextTestimonyCardState extends ConsumerState<TextTestimonyCard> {
                 onShare: () {
                   SharePlus.instance.share(ShareParams(
                     text: '${testimony.title}\n\n'
-                        'testi://app/testimony/${testimony.id}',
+                        '${testimony.shareLink}',
                   ));
                   ref
                       .read(interactionProvider.notifier)

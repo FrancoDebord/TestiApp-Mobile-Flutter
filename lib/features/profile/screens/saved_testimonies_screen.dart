@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/media/playback_preferences.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../features/home/models/testimony_model.dart';
 import '../../../features/home/providers/home_providers.dart';
-import '../../../features/home/widgets/audio_testimony_card.dart';
-import '../../../features/home/widgets/text_testimony_card.dart';
-import '../../../features/home/widgets/video_testimony_card.dart';
+import '../../../features/home/widgets/testimony_feed_item.dart';
 
 class SavedTestimoniesScreen extends ConsumerWidget {
   const SavedTestimoniesScreen({super.key});
@@ -31,7 +30,7 @@ class SavedTestimoniesScreen extends ConsumerWidget {
           title: const Text(
             'Témoignages sauvegardés',
             style: TextStyle(
-              fontFamily: 'Poppins',
+              fontFamily: 'Plus Jakarta Sans',
               fontWeight: FontWeight.w600,
               fontSize: 17,
               color: AppColors.textPrimary,
@@ -127,22 +126,20 @@ class _SavedTab extends StatelessWidget {
     );
   }
 
-  Widget _card(Testimony t) => switch (t) {
-        TextTestimony()  => TextTestimonyCard(testimony: t),
-        AudioTestimony() => AudioTestimonyCard(testimony: t),
-        VideoTestimony() => VideoTestimonyCard(testimony: t),
-      };
+  Widget _card(Testimony t) =>
+      TestimonyFeedItem(key: ValueKey(t.id), testimony: t);
 }
 
 // ── Tab 2: Hors ligne ─────────────────────────────────────────────────────────
 
-class _OfflineTab extends StatelessWidget {
+class _OfflineTab extends ConsumerWidget {
   const _OfflineTab({required this.testimonies});
 
   final List<Testimony> testimonies;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final compact = ref.watch(feedLayoutProvider) == FeedLayout.compact;
     if (testimonies.isEmpty) {
       return Center(
         child: Padding(
@@ -179,24 +176,21 @@ class _OfflineTab extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       itemCount: testimonies.length,
       separatorBuilder: (_, _) => const SizedBox(height: 12),
-      itemBuilder: (_, i) => _offlineCard(testimonies[i]),
+      itemBuilder: (_, i) => _offlineCard(testimonies[i], compact: compact),
     );
   }
 
-  Widget _offlineCard(Testimony t) {
-    final card = switch (t) {
-      TextTestimony()  => TextTestimonyCard(testimony: t),
-      AudioTestimony() => AudioTestimonyCard(testimony: t),
-      VideoTestimony() => VideoTestimonyCard(testimony: t),
-    };
-
+  Widget _offlineCard(Testimony t, {required bool compact}) {
     return Stack(
+      key: ValueKey(t.id),
       clipBehavior: Clip.none,
       children: [
-        card,
+        TestimonyFeedItem(testimony: t),
+        // En liste compacte, le badge chevauche le bord supérieur pour ne pas
+        // masquer les boutons lecture / déplier.
         Positioned(
-          top: 10,
-          right: 10,
+          top: compact ? -6 : 10,
+          right: compact ? 20 : 10,
           child: _OfflineBadge(),
         ),
       ],
@@ -232,7 +226,7 @@ class _OfflineBadge extends StatelessWidget {
           Text(
             'Hors ligne',
             style: TextStyle(
-              fontFamily: 'Inter',
+              fontFamily: 'Plus Jakarta Sans',
               fontSize: 11,
               fontWeight: FontWeight.w600,
               color: Colors.white,

@@ -34,7 +34,7 @@ class AdminModeratorsScreen extends ConsumerWidget {
         _SectionHeader(
           title: 'Modérateurs actifs',
           count: moderators.length,
-          color: const Color(0xFF3B82F6),
+          color: const Color(0xFF2B5DB0),
         ),
         ...moderators.map(
           (u) => _ModeratorCard(
@@ -43,7 +43,7 @@ class AdminModeratorsScreen extends ConsumerWidget {
               context,
               'Retirer le rôle de modérateur ?',
               '${u.displayName} redeviendra un utilisateur standard.',
-              const Color(0xFFEF4444),
+              const Color(0xFFD92D20),
               () => ref
                   .read(adminUsersNotifierProvider.notifier)
                   .updateRole(u.uid, UserRole.utilisateur),
@@ -55,7 +55,7 @@ class AdminModeratorsScreen extends ConsumerWidget {
         _SectionHeader(
           title: 'Utilisateurs — Promouvoir',
           count: candidates.length,
-          color: const Color(0xFF6B21A8),
+          color: const Color(0xFF184797),
         ),
         ...candidates.map(
           (u) => _CandidateCard(
@@ -64,7 +64,7 @@ class AdminModeratorsScreen extends ConsumerWidget {
               context,
               'Promouvoir ${u.displayName} ?',
               'Cet utilisateur pourra modérer les témoignages soumis.',
-              const Color(0xFF6B21A8),
+              const Color(0xFF184797),
               () => ref
                   .read(adminUsersNotifierProvider.notifier)
                   .updateRole(u.uid, UserRole.moderateur),
@@ -88,19 +88,19 @@ class AdminModeratorsScreen extends ConsumerWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(title,
             style: const TextStyle(
-                fontFamily: 'Poppins',
+                fontFamily: 'Plus Jakarta Sans',
                 fontWeight: FontWeight.w600,
                 fontSize: 16,
-                color: Color(0xFF0F172A))),
+                color: Color(0xFF263238))),
         content: Text(message,
             style: const TextStyle(
-                fontFamily: 'Inter', fontSize: 13, color: Color(0xFF64748B))),
+                fontFamily: 'Plus Jakarta Sans', fontSize: 13, color: Color(0xFF667085))),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('Annuler',
                 style:
-                    TextStyle(fontFamily: 'Inter', color: Color(0xFF64748B))),
+                    TextStyle(fontFamily: 'Plus Jakarta Sans', color: Color(0xFF667085))),
           ),
           ElevatedButton(
             onPressed: () {
@@ -116,7 +116,7 @@ class AdminModeratorsScreen extends ConsumerWidget {
             ),
             child: const Text('Confirmer',
                 style: TextStyle(
-                    fontFamily: 'Inter', fontWeight: FontWeight.w600)),
+                    fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600)),
           ),
         ],
       ),
@@ -143,13 +143,15 @@ class _SectionHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Row(
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontFamily: 'Poppins',
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
-              color: Color(0xFF0F172A),
+          Flexible(
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontFamily: 'Plus Jakarta Sans',
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: Color(0xFF263238),
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -162,7 +164,7 @@ class _SectionHeader extends StatelessWidget {
             child: Text(
               '$count',
               style: TextStyle(
-                fontFamily: 'Inter',
+                fontFamily: 'Plus Jakarta Sans',
                 fontWeight: FontWeight.w700,
                 fontSize: 12,
                 color: color,
@@ -191,55 +193,68 @@ class _ModeratorCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: const Color(0xFFE4E7EC)),
       ),
       child: Row(
         children: [
-          _Avatar(user: user, color: const Color(0xFF3B82F6)),
+          _Avatar(user: user, color: const Color(0xFF2B5DB0)),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(user.displayName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                        fontFamily: 'Inter',
+                        fontFamily: 'Plus Jakarta Sans',
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
-                        color: Color(0xFF0F172A))),
+                        color: Color(0xFF263238))),
                 Text(user.country ?? '',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                        fontFamily: 'Inter',
+                        fontFamily: 'Plus Jakarta Sans',
                         fontSize: 11,
-                        color: Color(0xFF64748B))),
+                        color: Color(0xFF667085))),
               ],
             ),
           ),
-          // Shield badge
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEFF6FF),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.shield_rounded, size: 12, color: Color(0xFF3B82F6)),
-                SizedBox(width: 4),
-                Text('Modérateur',
-                    style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF3B82F6))),
-              ],
+          const SizedBox(width: 8),
+          // Shield badge (le libellé se coupe plutôt que de déborder)
+          Flexible(
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEAF1FC),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.shield_rounded,
+                      size: 12, color: Color(0xFF2B5DB0)),
+                  SizedBox(width: 4),
+                  Flexible(
+                    child: Text('Modérateur',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            fontFamily: 'Plus Jakarta Sans',
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF2B5DB0))),
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(width: 8),
           IconButton(
             icon: const Icon(Icons.remove_circle_outline_rounded,
-                size: 18, color: Color(0xFFEF4444)),
+                size: 18, color: Color(0xFFD92D20)),
             tooltip: 'Retirer le rôle',
             onPressed: onRemove,
             padding: EdgeInsets.zero,
@@ -267,11 +282,11 @@ class _CandidateCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: const Color(0xFFE4E7EC)),
       ),
       child: Row(
         children: [
-          _Avatar(user: user, color: const Color(0xFF64748B)),
+          _Avatar(user: user, color: const Color(0xFF667085)),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -279,15 +294,15 @@ class _CandidateCard extends StatelessWidget {
               children: [
                 Text(user.displayName,
                     style: const TextStyle(
-                        fontFamily: 'Inter',
+                        fontFamily: 'Plus Jakarta Sans',
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
-                        color: Color(0xFF0F172A))),
+                        color: Color(0xFF263238))),
                 Text(user.email,
                     style: const TextStyle(
-                        fontFamily: 'Inter',
+                        fontFamily: 'Plus Jakarta Sans',
                         fontSize: 11,
-                        color: Color(0xFF64748B))),
+                        color: Color(0xFF667085))),
               ],
             ),
           ),
@@ -296,9 +311,9 @@ class _CandidateCard extends StatelessWidget {
             icon: const Icon(Icons.add_moderator_outlined, size: 14),
             label: const Text('Promouvoir'),
             style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFF6B21A8),
+              foregroundColor: const Color(0xFF184797),
               textStyle: const TextStyle(
-                  fontFamily: 'Inter',
+                  fontFamily: 'Plus Jakarta Sans',
                   fontSize: 12,
                   fontWeight: FontWeight.w600),
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -336,7 +351,7 @@ class _Avatar extends StatelessWidget {
       backgroundColor: color.withAlpha(20),
       child: Text(initials,
           style: TextStyle(
-              fontFamily: 'Inter',
+              fontFamily: 'Plus Jakarta Sans',
               fontWeight: FontWeight.w700,
               fontSize: 12,
               color: color)),

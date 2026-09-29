@@ -2,6 +2,11 @@
 /// and the Explorer results grid.
 library;
 
+import '../../../core/app_constants.dart';
+import 'media_rendition.dart';
+
+export 'media_rendition.dart';
+
 // ── Enums ────────────────────────────────────────────────────────────────────
 
 enum TestimonyType { text, audio, video }
@@ -43,11 +48,19 @@ class TestimonyAuthor {
     required this.uid,
     required this.displayName,
     this.avatarUrl,
+    this.isOrganization = false,
+    this.isVerified = false,
   });
 
   final String uid;
   final String displayName;
   final String? avatarUrl;
+
+  /// Compte organisation (église, ministère, association…).
+  final bool isOrganization;
+
+  /// Organisation vérifiée par un administrateur (badge).
+  final bool isVerified;
 }
 
 // ── Stats ────────────────────────────────────────────────────────────────────
@@ -87,6 +100,7 @@ sealed class Testimony {
     this.isLiked = false,
     this.isPrayed = false,
     this.isSaved = false,
+    this.shareUrl,
   });
 
   final String id;
@@ -99,6 +113,15 @@ sealed class Testimony {
   final bool isLiked;
   final bool isPrayed;
   final bool isSaved;
+
+  /// Lien public renvoyé par l'API (`share_url`), intercepté par l'app.
+  final String? shareUrl;
+
+  /// Lien à partager : `share_url` du serveur, sinon même format que le
+  /// backend (APP_URL/testimonies/{id}) pour les témoignages en cache local.
+  String get shareLink => (shareUrl?.isNotEmpty ?? false)
+      ? shareUrl!
+      : AppConstants.testimonyWebUrl(id);
 
   TestimonyType get type;
 }
@@ -121,6 +144,7 @@ final class TextTestimony extends Testimony {
     super.isLiked,
     super.isPrayed,
     super.isSaved,
+    super.shareUrl,
   });
 
   final String preview;
@@ -145,6 +169,8 @@ final class AudioTestimony extends Testimony {
     required this.durationSeconds,
     required this.transcriptPreview,
     this.mediaPath,
+    this.renditions = const [],
+    this.renditionsStatus,
     this.coverImageUrl,
     this.bibleVerse,
     this.bibleVerseRef,
@@ -152,11 +178,19 @@ final class AudioTestimony extends Testimony {
     super.isLiked,
     super.isPrayed,
     super.isSaved,
+    super.shareUrl,
   });
 
   final int     durationSeconds;
   final String  transcriptPreview;
   final String? mediaPath;
+
+  /// Versions disponibles (débits), de la plus basse à la plus haute.
+  /// Vide → seul [mediaPath] (fichier original) est disponible.
+  final List<MediaRendition> renditions;
+
+  /// État des versions allégées côté serveur : done, pending, processing, failed, none (ou null).
+  final String? renditionsStatus;
   final String? coverImageUrl;
   final String? bibleVerse;
   final String? bibleVerseRef;
@@ -184,17 +218,27 @@ final class VideoTestimony extends Testimony {
     required this.durationSeconds,
     required this.thumbnailUrl,
     this.mediaPath,
+    this.renditions = const [],
+    this.renditionsStatus,
     this.bibleVerse,
     this.bibleVerseRef,
     super.isFeatured,
     super.isLiked,
     super.isPrayed,
     super.isSaved,
+    super.shareUrl,
   });
 
   final int     durationSeconds;
   final String  thumbnailUrl;
   final String? mediaPath;
+
+  /// Versions disponibles (360p, 720p…), de la plus basse à la plus haute.
+  /// Vide → seul [mediaPath] (fichier original) est disponible.
+  final List<MediaRendition> renditions;
+
+  /// État des versions allégées côté serveur : done, pending, processing, failed, none (ou null).
+  final String? renditionsStatus;
   final String? bibleVerse;
   final String? bibleVerseRef;
 

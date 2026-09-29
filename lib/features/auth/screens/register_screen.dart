@@ -1,10 +1,22 @@
+import '../../../core/data/countries.dart';
+import '../../../shared/widgets/country_picker.dart';
+import 'dart:async' show unawaited;
+import 'dart:io' show File;
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../providers/auth_notifier.dart';
 import '../../../core/router/app_routes.dart';
+import '../../../features/profile/providers/profile_provider.dart'
+    show profileExtrasProvider;
+import '../../../l10n/app_localizations.dart';
 import '../../../services/api_service.dart' show LaravelApiException;
+import '../../../shared/models/user_model.dart'
+    show AccountType, OrganizationType;
 import '../widgets/auth_widgets.dart';
 
 // =============================================================================
@@ -13,6 +25,10 @@ import '../widgets/auth_widgets.dart';
 // Layout (top → bottom, scrollable):
 //   1. Purple wave header  — logo + "Créer un compte" title
 //   2. White card body     — rounded top corners (28 px)
+//      0. Choix du type de compte — « Je suis une personne » /
+//         « Je représente une organisation » (grandes cartes).
+//         Organisation : Nom, Type, Ville, Site web (optionnel) remplacent
+//         Prénom / Nom ; l'avatar devient « Logo » ; note de vérification.
 //      a. Avatar picker    — centered circle, gold camera FAB overlay (optional)
 //      b. Two-col row      — Prénom | Nom
 //      c. Email field
@@ -36,21 +52,7 @@ import '../widgets/auth_widgets.dart';
 
 // ── Countries list ────────────────────────────────────────────────────────────
 
-const List<String> _countries = [
-  'Bénin', 'Burkina Faso', 'Burundi', 'Cameroun', 'Cap-Vert',
-  'Comores', 'Congo (Brazzaville)', 'Congo (RDC)', "Côte d'Ivoire",
-  'Djibouti', 'Égypte', 'Érythrée', 'Éthiopie', 'Gabon',
-  'Gambie', 'Ghana', 'Guinée', 'Guinée-Bissau', 'Guinée équatoriale',
-  'Kenya', 'Lesotho', 'Libéria', 'Libye', 'Madagascar',
-  'Malawi', 'Mali', 'Maroc', 'Maurice', 'Mauritanie',
-  'Mozambique', 'Namibie', 'Niger', 'Nigeria', 'Ouganda',
-  'Rwanda', 'São Tomé-et-Príncipe', 'Sénégal', 'Seychelles',
-  'Sierra Leone', 'Somalie', 'Soudan', 'Soudan du Sud',
-  'Swaziland', 'Tanzanie', 'Tchad', 'Togo', 'Tunisie',
-  'Zambie', 'Zimbabwe',
-  'France', 'Belgique', 'Canada', 'États-Unis', 'Royaume-Uni',
-  'Autre',
-];
+// Pays : liste partagée avec le site (lib/core/data/countries.dart).
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 
@@ -69,14 +71,109 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
+  final _orgNameController = TextEditingController();
+  final _orgCityController = TextEditingController();
+  final _orgWebsiteController = TextEditingController();
+  final _phoneController = TextEditingController();
 
-  String? _selectedCountry;
+  AccountType _accountType = AccountType.individual;
+  OrganizationType? _orgType;
+  Country? _country;
+  /// Indicatif du téléphone : suit le pays choisi, reste modifiable.
+  Country? _phoneDial;
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
   bool _acceptedTerms = false;
   int _passwordStrength = 0;
   bool _isLoading = false;
   String? _errorMessage;
+
+  /// Photo de profil / logo choisi (envoyé après la création du compte).
+  String? _avatarPath;
+
+  // ── Photo / logo ──────────────────────────────────────────────────────────
+
+  /// Même sélecteur que l'écran « Modifier le profil » (galerie / caméra).
+  Future<void> _pickAvatar() async {
+    final l10n = AppLocalizations.of(context);
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(width: 36, height: 4,
+                decoration: BoxDecoration(
+                    color: const Color(0xFFE4E7EC),
+                    borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFEAF1FC),
+                  child: Icon(Icons.photo_library_rounded,
+                      color: Color(0xFF184797))),
+              title: Text(l10n.editGallery,
+                  style: const TextStyle(fontFamily: 'Plus Jakarta Sans')),
+              onTap: () => Navigator.pop(sheetContext, ImageSource.gallery),
+            ),
+            ListTile(
+              leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFEAF1FC),
+                  child: Icon(Icons.camera_alt_rounded,
+                      color: Color(0xFF184797))),
+              title: Text(l10n.editCamera,
+                  style: const TextStyle(fontFamily: 'Plus Jakarta Sans')),
+              onTap: () => Navigator.pop(sheetContext, ImageSource.camera),
+            ),
+            if (_avatarPath != null)
+              ListTile(
+                leading: const CircleAvatar(
+                    backgroundColor: Color(0xFFFEF3F2),
+                    child: Icon(Icons.delete_outline_rounded,
+                        color: Color(0xFFD92D20))),
+                title: const Text('Retirer',
+                    style: TextStyle(fontFamily: 'Plus Jakarta Sans')),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  setState(() => _avatarPath = null);
+                },
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (source == null) return;
+    final file = await ImagePicker().pickImage(
+        source: source, maxWidth: 512, maxHeight: 512, imageQuality: 80);
+    if (file != null && mounted) {
+      setState(() => _avatarPath = file.path);
+    }
+  }
+
+  /// Envoi de la photo / du logo après l'inscription. Un échec ne bloque pas
+  /// l'inscription : simple message, l'image pourra être ajoutée plus tard.
+  /// [container] et [messenger] sont capturés avant l'inscription car l'écran
+  /// peut être fermé par la redirection du router entre-temps.
+  static Future<void> _uploadAvatarAfterSignUp(
+    String path,
+    ProviderContainer container,
+    ScaffoldMessengerState messenger,
+  ) async {
+    try {
+      await container.read(profileExtrasProvider.notifier).uploadAvatar(path);
+    } catch (_) {
+      messenger.showSnackBar(const SnackBar(
+        content: Text(
+            "Logo non envoyé, vous pourrez l'ajouter depuis votre profil"),
+        behavior: SnackBarBehavior.floating,
+      ));
+    }
+  }
 
   Future<void> _signInWithGoogle() async {
     setState(() { _isLoading = true; _errorMessage = null; });
@@ -96,6 +193,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmController.dispose();
+    _orgNameController.dispose();
+    _orgCityController.dispose();
+    _orgWebsiteController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
@@ -121,6 +222,30 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
     return null;
   }
+
+  String? _validateRequired(String? value, String message) {
+    if (value == null || value.trim().length < 2) return message;
+    return null;
+  }
+
+  String? _validateWebsite(String? value) {
+    final v = value?.trim() ?? '';
+    if (v.isEmpty) return null; // optionnel
+    final uri = Uri.tryParse(v.contains('://') ? v : 'https://$v');
+    final ok = uri != null &&
+        (uri.scheme == 'http' || uri.scheme == 'https') &&
+        uri.host.contains('.') &&
+        !v.contains(' ');
+    return ok ? null : 'Adresse du site web invalide';
+  }
+
+  static String? _normalizeWebsite(String raw) {
+    final v = raw.trim();
+    if (v.isEmpty) return null;
+    return v.contains('://') ? v : 'https://$v';
+  }
+
+  bool get _isOrg => _accountType == AccountType.organization;
 
   String? _validateEmail(String? value) {
     if (value == null || value.trim().isEmpty) {
@@ -156,7 +281,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
-    if (_selectedCountry == null) {
+    if (_country == null) {
       setState(() => _errorMessage = 'Veuillez sélectionner votre pays');
       return;
     }
@@ -168,15 +293,42 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
 
     setState(() => _isLoading = true);
+    final avatarPath = _avatarPath;
+    final container = ProviderScope.containerOf(context, listen: false);
+    final messenger = ScaffoldMessenger.of(context);
     try {
-      await ref.read(authStateProvider.notifier).register(
-            firstName: _firstNameController.text.trim(),
-            lastName:  _lastNameController.text.trim(),
-            email:     _emailController.text.trim(),
-            password:  _passwordController.text,
-            country:   _selectedCountry,
-          );
+      final notifier = ref.read(authStateProvider.notifier);
+      if (_isOrg) {
+        await notifier.register(
+          firstName: '',
+          lastName:  '',
+          email:     _emailController.text.trim(),
+          password:  _passwordController.text,
+          country:   _country!.name,
+          phoneCountry: _phoneDial?.code,
+          phone:        _phoneController.text.trim(),
+          accountType:         AccountType.organization,
+          organizationName:    _orgNameController.text.trim(),
+          organizationType:    _orgType,
+          organizationCity:    _orgCityController.text.trim(),
+          organizationWebsite: _normalizeWebsite(_orgWebsiteController.text),
+        );
+      } else {
+        await notifier.register(
+          firstName: _firstNameController.text.trim(),
+          lastName:  _lastNameController.text.trim(),
+          email:     _emailController.text.trim(),
+          password:  _passwordController.text,
+          country:   _country!.name,
+          phoneCountry: _phoneDial?.code,
+          phone:        _phoneController.text.trim(),
+        );
+      }
       // La redirection vers /home est gérée par le router (auth state change)
+      if (avatarPath != null &&
+          container.read(authStateProvider).value is AuthStateAuthenticated) {
+        unawaited(_uploadAvatarAfterSignUp(avatarPath, container, messenger));
+      }
     } catch (e) {
       if (mounted) {
         final msg = e is LaravelApiException
@@ -199,7 +351,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     final errorMessage = _errorMessage;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF6B21A8),
+      backgroundColor: const Color(0xFF184797),
       body: Column(
         children: [
           // ── Purple wave header ─────────────────────────────────────────────
@@ -231,7 +383,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   const Text(
                     'Créer un compte',
                     style: TextStyle(
-                      fontFamily: 'Poppins',
+                      fontFamily: 'Plus Jakarta Sans',
                       fontWeight: FontWeight.w600,
                       fontSize: 22,
                       color: Colors.white,
@@ -241,7 +393,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   Text(
                     'Rejoignez la communauté Témoignages',
                     style: TextStyle(
-                      fontFamily: 'Inter',
+                      fontFamily: 'Plus Jakarta Sans',
                       fontSize: 13,
                       color: Colors.white.withAlpha(204),
                     ),
@@ -267,8 +419,24 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // Avatar picker.
-                      const _AvatarPicker(),
+                      // Choix du type de compte.
+                      _AccountTypeSelector(
+                        value: _accountType,
+                        enabled: !isLoading,
+                        onChanged: (t) => setState(() {
+                          _accountType = t;
+                          _errorMessage = null;
+                        }),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Avatar / logo picker.
+                      _AvatarPicker(
+                        isOrganization: _isOrg,
+                        imagePath: _avatarPath,
+                        onPick: isLoading ? null : _pickAvatar,
+                      ),
 
                       const SizedBox(height: 24),
 
@@ -277,6 +445,48 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         const SizedBox(height: 20),
                       ],
 
+                      if (_isOrg) ...[
+                        const _VerificationNote(),
+                        const SizedBox(height: 20),
+                        AuthTextField(
+                          controller: _orgNameController,
+                          label: "Nom de l'organisation",
+                          hint: 'Église de la Grâce',
+                          prefixIcon: Icons.church_outlined,
+                          textInputAction: TextInputAction.next,
+                          validator: (v) => _validateRequired(
+                              v, "Veuillez saisir le nom de l'organisation"),
+                          enabled: !isLoading,
+                        ),
+                        const SizedBox(height: 16),
+                        _OrganizationTypeDropdown(
+                          value: _orgType,
+                          enabled: !isLoading,
+                          onChanged: (v) => setState(() => _orgType = v),
+                        ),
+                        const SizedBox(height: 16),
+                        AuthTextField(
+                          controller: _orgCityController,
+                          label: 'Ville',
+                          hint: 'Cotonou',
+                          prefixIcon: Icons.location_city_rounded,
+                          textInputAction: TextInputAction.next,
+                          validator: (v) =>
+                              _validateRequired(v, 'Veuillez saisir la ville'),
+                          enabled: !isLoading,
+                        ),
+                        const SizedBox(height: 16),
+                        AuthTextField(
+                          controller: _orgWebsiteController,
+                          label: 'Site web (optionnel)',
+                          hint: 'www.exemple.org',
+                          prefixIcon: Icons.language_rounded,
+                          keyboardType: TextInputType.url,
+                          textInputAction: TextInputAction.next,
+                          validator: _validateWebsite,
+                          enabled: !isLoading,
+                        ),
+                      ] else
                       // Prénom + Nom.
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -324,10 +534,25 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       const SizedBox(height: 16),
 
                       // Pays dropdown.
-                      _CountryDropdown(
-                        value: _selectedCountry,
+                      CountryPickerField(
+                        initialValue: _country,
                         enabled: !isLoading,
-                        onChanged: (v) => setState(() => _selectedCountry = v),
+                        onChanged: (c) => setState(() {
+                          _country = c;
+                          if (c != null) _phoneDial = c; // l'indicatif suit le pays
+                        }),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Téléphone : obligatoire pour une organisation (vérification du compte).
+                      PhoneNumberField(
+                        dial: _phoneDial,
+                        onDialChanged: (c) => setState(() => _phoneDial = c),
+                        controller: _phoneController,
+                        required: _isOrg,
+                        requiredNote: _isOrg ? null : '(facultatif)',
+                        enabled: !isLoading,
                       ),
 
                       const SizedBox(height: 16),
@@ -347,7 +572,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             _obscurePassword
                                 ? Icons.visibility_off_outlined
                                 : Icons.visibility_outlined,
-                            color: const Color(0xFF64748B),
+                            color: const Color(0xFF667085),
                             size: 20,
                           ),
                           onPressed: () => setState(
@@ -379,7 +604,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             _obscureConfirm
                                 ? Icons.visibility_off_outlined
                                 : Icons.visibility_outlined,
-                            color: const Color(0xFF64748B),
+                            color: const Color(0xFF667085),
                             size: 20,
                           ),
                           onPressed: () => setState(
@@ -433,7 +658,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         label: const Text(
                           'Continuer avec Google',
                           style: TextStyle(
-                            fontFamily: 'Inter',
+                            fontFamily: 'Plus Jakarta Sans',
                             fontWeight: FontWeight.w600,
                             fontSize: 14,
                             color: Color(0xFFDB4437),
@@ -450,9 +675,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           const Text(
                             'Déjà inscrit ? ',
                             style: TextStyle(
-                              fontFamily: 'Inter',
+                              fontFamily: 'Plus Jakarta Sans',
                               fontSize: 14,
-                              color: Color(0xFF64748B),
+                              color: Color(0xFF667085),
                             ),
                           ),
                           GestureDetector(
@@ -460,10 +685,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             child: const Text(
                               'Se connecter',
                               style: TextStyle(
-                                fontFamily: 'Inter',
+                                fontFamily: 'Plus Jakarta Sans',
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
-                                color: Color(0xFF6B21A8),
+                                color: Color(0xFF184797),
                               ),
                             ),
                           ),
@@ -483,55 +708,262 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
 // ── Avatar picker ─────────────────────────────────────────────────────────────
 
-class _AvatarPicker extends StatefulWidget {
-  const _AvatarPicker();
+class _AvatarPicker extends StatelessWidget {
+  const _AvatarPicker({
+    this.isOrganization = false,
+    this.imagePath,
+    this.onPick,
+  });
 
-  @override
-  State<_AvatarPicker> createState() => _AvatarPickerState();
-}
+  /// En mode organisation, le même sélecteur sert de « Logo ».
+  final bool isOrganization;
 
-class _AvatarPickerState extends State<_AvatarPicker> {
-  bool _hasAvatar = false;
+  /// Image choisie (chemin local, ou URL blob sur le web).
+  final String? imagePath;
+  final VoidCallback? onPick;
 
   @override
   Widget build(BuildContext context) {
+    final icon =
+        isOrganization ? Icons.church_rounded : Icons.person_rounded;
     return Center(
-      child: Stack(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Semantics(
+            button: true,
+            label: isOrganization
+                ? "Choisir le logo de l'organisation"
+                : 'Choisir une photo de profil',
+            child: GestureDetector(onTap: onPick, child: _buildCircle(icon)),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            isOrganization ? 'Logo' : 'Photo de profil',
+            style: const TextStyle(
+              fontFamily: 'Plus Jakarta Sans',
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF667085),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCircle(IconData icon) {
+    final path = imagePath;
+    final ImageProvider? image = path == null
+        ? null
+        : kIsWeb
+            ? NetworkImage(path)
+            : FileImage(File(path));
+    return Stack(
         children: [
           Container(
             width: 88,
             height: 88,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: const Color(0xFFEDE9FE),
+              color: const Color(0xFFEAF1FC),
               border: Border.all(
-                  color: const Color(0xFF6B21A8).withAlpha(60), width: 2),
+                  color: const Color(0xFF184797).withAlpha(60), width: 2),
+              image: image == null
+                  ? null
+                  : DecorationImage(image: image, fit: BoxFit.cover),
             ),
-            child: _hasAvatar
-                ? const ClipOval(
-                    child: Icon(Icons.person_rounded,
-                        size: 48, color: Color(0xFF6B21A8)),
-                  )
-                : const Icon(Icons.person_rounded,
-                    size: 48, color: Color(0xFF6B21A8)),
+            child: image == null
+                ? Icon(icon, size: 48, color: const Color(0xFF184797))
+                : null,
           ),
           Positioned(
             bottom: 0,
             right: 0,
-            child: GestureDetector(
-              onTap: () {
-                // Wire image_picker package here
-                setState(() => _hasAvatar = !_hasAvatar);
-              },
-              child: Container(
-                width: 30,
-                height: 30,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF59E0B),
-                  shape: BoxShape.circle,
+            child: Container(
+              width: 30,
+              height: 30,
+              decoration: const BoxDecoration(
+                color: Color(0xFFF79009),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                  image == null ? Icons.camera_alt_rounded : Icons.edit_rounded,
+                  color: Colors.white, size: 16),
+            ),
+          ),
+        ],
+    );
+  }
+}
+
+// ── Account type selector ─────────────────────────────────────────────────────
+
+class _AccountTypeSelector extends StatelessWidget {
+  const _AccountTypeSelector({
+    required this.value,
+    required this.onChanged,
+    required this.enabled,
+  });
+
+  final AccountType value;
+  final ValueChanged<AccountType> onChanged;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text(
+          'Type de compte',
+          style: TextStyle(
+            fontFamily: 'Plus Jakarta Sans',
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+            color: Color(0xFF263238),
+          ),
+        ),
+        const SizedBox(height: 10),
+        _AccountTypeCard(
+          icon: Icons.person_rounded,
+          title: 'Je suis une personne',
+          subtitle: 'Partagez vos témoignages personnels',
+          selected: value == AccountType.individual,
+          onTap: enabled ? () => onChanged(AccountType.individual) : null,
+        ),
+        const SizedBox(height: 10),
+        _AccountTypeCard(
+          icon: Icons.church_rounded,
+          title: 'Je représente une organisation',
+          subtitle: 'Église, ministère, association…',
+          selected: value == AccountType.organization,
+          onTap: enabled ? () => onChanged(AccountType.organization) : null,
+        ),
+      ],
+    );
+  }
+}
+
+class _AccountTypeCard extends StatelessWidget {
+  const _AccountTypeCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  static const _purple = Color(0xFF184797);
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: Material(
+        color: selected ? const Color(0xFFF5F3FF) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: selected ? _purple : const Color(0xFFE4E7EC),
+                width: selected ? 2 : 1.2,
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: selected ? _purple : const Color(0xFFEAF1FC),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(icon,
+                      size: 26, color: selected ? Colors.white : _purple),
                 ),
-                child: const Icon(Icons.camera_alt_rounded,
-                    color: Colors.white, size: 16),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontFamily: 'Plus Jakarta Sans',
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                          color: Color(0xFF263238),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(
+                          fontFamily: 'Plus Jakarta Sans',
+                          fontSize: 12.5,
+                          color: Color(0xFF667085),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  selected
+                      ? Icons.radio_button_checked_rounded
+                      : Icons.radio_button_unchecked_rounded,
+                  color: selected ? _purple : const Color(0xFFD0D5DD),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Verification note ─────────────────────────────────────────────────────────
+
+class _VerificationNote extends StatelessWidget {
+  const _VerificationNote();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEAF1FC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFBFDBFE)),
+      ),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.verified_rounded, color: Color(0xFF1D9BF0), size: 20),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Votre organisation sera vérifiée par notre équipe. Le badge '
+              'vérifié apparaîtra ensuite sur votre profil et vos témoignages.',
+              style: TextStyle(
+                fontFamily: 'Plus Jakarta Sans',
+                fontSize: 13,
+                height: 1.4,
+                color: Color(0xFF103675),
               ),
             ),
           ),
@@ -541,23 +973,18 @@ class _AvatarPickerState extends State<_AvatarPicker> {
   }
 }
 
-// ── Country dropdown ──────────────────────────────────────────────────────────
+// ── Organisation type dropdown ────────────────────────────────────────────────
 
-class _CountryDropdown extends StatelessWidget {
-  const _CountryDropdown({
+class _OrganizationTypeDropdown extends StatelessWidget {
+  const _OrganizationTypeDropdown({
     required this.value,
     required this.onChanged,
     required this.enabled,
   });
 
-  final String? value;
-  final ValueChanged<String?> onChanged;
+  final OrganizationType? value;
+  final ValueChanged<OrganizationType?> onChanged;
   final bool enabled;
-
-  static final _fieldBorder = OutlineInputBorder(
-    borderRadius: BorderRadius.circular(12),
-    borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-  );
 
   @override
   Widget build(BuildContext context) {
@@ -565,75 +992,44 @@ class _CountryDropdown extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Pays',
+          "Type d'organisation",
           style: TextStyle(
-            fontFamily: 'Inter',
+            fontFamily: 'Plus Jakarta Sans',
             fontWeight: FontWeight.w500,
             fontSize: 13,
-            color: Color(0xFF0F172A),
+            color: Color(0xFF263238),
           ),
         ),
         const SizedBox(height: 6),
-        DropdownButtonFormField<String>(
+        DropdownButtonFormField<OrganizationType>(
           initialValue: value,
           hint: const Text(
-            'Sélectionnez votre pays',
+            'Sélectionnez le type',
             style: TextStyle(
-              fontFamily: 'Inter',
-              color: Color(0xFFCBD5E1),
+              fontFamily: 'Plus Jakarta Sans',
+              color: Color(0xFFD0D5DD),
               fontSize: 15,
             ),
           ),
           onChanged: enabled ? onChanged : null,
-          validator: (v) =>
-              v == null ? 'Veuillez sélectionner votre pays' : null,
+          validator: (v) => v == null ? 'Veuillez choisir un type' : null,
           isExpanded: true,
           icon: const Icon(Icons.keyboard_arrow_down_rounded,
-              color: Color(0xFF94A3B8)),
+              color: Color(0xFF98A2B3)),
           style: const TextStyle(
-            fontFamily: 'Inter',
+            fontFamily: 'Plus Jakarta Sans',
             fontSize: 15,
-            color: Color(0xFF0F172A),
+            color: Color(0xFF263238),
           ),
-          decoration: InputDecoration(
-            prefixIcon: const Icon(Icons.public_rounded,
-                color: Color(0xFF94A3B8), size: 20),
-            filled: true,
-            fillColor: Colors.white,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            border: _fieldBorder,
-            enabledBorder: _fieldBorder,
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide:
-                  const BorderSide(color: Color(0xFF6B21A8), width: 1.8),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFEF4444)),
-            ),
-            focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide:
-                  const BorderSide(color: Color(0xFFEF4444), width: 1.8),
-            ),
-            errorStyle: const TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 12,
-              color: Color(0xFFEF4444),
-            ),
-          ),
-          items: _countries
-              .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+          decoration: countryFieldDecoration(prefix: Icons.category_outlined),
+          items: OrganizationType.values
+              .map((t) => DropdownMenuItem(value: t, child: Text(t.label)))
               .toList(),
         ),
       ],
     );
   }
 }
-
-// ── Password strength bar ─────────────────────────────────────────────────────
 
 class _PasswordStrengthBar extends StatelessWidget {
   const _PasswordStrengthBar({required this.strength});
@@ -644,11 +1040,11 @@ class _PasswordStrengthBar extends StatelessWidget {
     'Très faible', 'Faible', 'Moyen', 'Fort', 'Très fort'
   ];
   static const _colors = [
-    Color(0xFFEF4444),
-    Color(0xFFF97316),
-    Color(0xFFF59E0B),
-    Color(0xFF22C55E),
-    Color(0xFF16A34A),
+    Color(0xFFD92D20),
+    Color(0xFFF18717),
+    Color(0xFFF79009),
+    Color(0xFF12B76A),
+    Color(0xFF12B76A),
   ];
 
   @override
@@ -667,7 +1063,7 @@ class _PasswordStrengthBar extends StatelessWidget {
                 margin: const EdgeInsets.only(right: 4),
                 height: 4,
                 decoration: BoxDecoration(
-                  color: i < strength ? color : const Color(0xFFE2E8F0),
+                  color: i < strength ? color : const Color(0xFFE4E7EC),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -678,7 +1074,7 @@ class _PasswordStrengthBar extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            fontFamily: 'Inter',
+            fontFamily: 'Plus Jakarta Sans',
             fontSize: 11,
             color: color,
             fontWeight: FontWeight.w500,
@@ -711,11 +1107,11 @@ class _TermsCheckbox extends StatelessWidget {
           child: Checkbox(
             value: checked,
             onChanged: onChanged,
-            activeColor: const Color(0xFF6B21A8),
+            activeColor: const Color(0xFF184797),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(4),
             ),
-            side: const BorderSide(color: Color(0xFFE2E8F0), width: 1.5),
+            side: const BorderSide(color: Color(0xFFE4E7EC), width: 1.5),
           ),
         ),
         const SizedBox(width: 10),
@@ -723,9 +1119,9 @@ class _TermsCheckbox extends StatelessWidget {
           child: RichText(
             text: const TextSpan(
               style: TextStyle(
-                fontFamily: 'Inter',
+                fontFamily: 'Plus Jakarta Sans',
                 fontSize: 13,
-                color: Color(0xFF64748B),
+                color: Color(0xFF667085),
                 height: 1.5,
               ),
               children: [
@@ -733,7 +1129,7 @@ class _TermsCheckbox extends StatelessWidget {
                 TextSpan(
                   text: "Conditions Générales d'Utilisation",
                   style: TextStyle(
-                    color: Color(0xFF6B21A8),
+                    color: Color(0xFF184797),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -741,7 +1137,7 @@ class _TermsCheckbox extends StatelessWidget {
                 TextSpan(
                   text: 'Politique de confidentialité',
                   style: TextStyle(
-                    color: Color(0xFF6B21A8),
+                    color: Color(0xFF184797),
                     fontWeight: FontWeight.w500,
                   ),
                 ),

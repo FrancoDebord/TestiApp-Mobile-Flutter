@@ -16,8 +16,8 @@ import '../providers/auth_notifier.dart';
 
 // ── Constantes ─────────────────────────────────────────────────────────────────
 
-const _kPurple = Color(0xFF6B21A8);
-const _kGold   = Color(0xFFF59E0B);
+const _kPurple = Color(0xFF184797);
+const _kGold   = Color(0xFFF79009);
 
 // ── Indicatifs pays ─────────────────────────────────────────────────────────────
 
@@ -139,7 +139,7 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
                     const Text(
                       'Témoignages',
                       style: TextStyle(
-                        fontFamily: 'Poppins', fontWeight: FontWeight.w700,
+                        fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w700,
                         fontSize: 28, color: Colors.white,
                       ),
                     ),
@@ -147,7 +147,7 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
                     Text(
                       'Partagez les œuvres de Dieu',
                       style: TextStyle(
-                        fontFamily: 'Inter', fontSize: 14,
+                        fontFamily: 'Plus Jakarta Sans', fontSize: 14,
                         color: Colors.white.withAlpha(204),
                       ),
                     ),
@@ -173,15 +173,15 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
                     const Text(
                       'Entrez votre numéro',
                       style: TextStyle(
-                        fontFamily: 'Poppins', fontWeight: FontWeight.w600,
-                        fontSize: 20, color: Color(0xFF0F172A),
+                        fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600,
+                        fontSize: 20, color: Color(0xFF263238),
                       ),
                     ),
                     const SizedBox(height: 6),
                     Text(
                       'Nous vous enverrons un code de vérification par SMS.',
                       style: TextStyle(
-                        fontFamily: 'Inter', fontSize: 14,
+                        fontFamily: 'Plus Jakarta Sans', fontSize: 14,
                         color: Colors.grey.shade600, height: 1.5,
                       ),
                     ),
@@ -211,7 +211,7 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
+                        border: Border.all(color: const Color(0xFFE4E7EC), width: 1.5),
                       ),
                       child: Row(
                         children: [
@@ -221,7 +221,7 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                               decoration: const BoxDecoration(
-                                border: Border(right: BorderSide(color: Color(0xFFE2E8F0))),
+                                border: Border(right: BorderSide(color: Color(0xFFE4E7EC))),
                               ),
                               child: Row(
                                 children: [
@@ -230,11 +230,11 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
                                   Text(
                                     _selectedCountry.code,
                                     style: const TextStyle(
-                                      fontFamily: 'Inter', fontWeight: FontWeight.w600,
-                                      fontSize: 15, color: Color(0xFF0F172A),
+                                      fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600,
+                                      fontSize: 15, color: Color(0xFF263238),
                                     ),
                                   ),
-                                  const Icon(Icons.arrow_drop_down_rounded, size: 20, color: Color(0xFF64748B)),
+                                  const Icon(Icons.arrow_drop_down_rounded, size: 20, color: Color(0xFF667085)),
                                 ],
                               ),
                             ),
@@ -246,10 +246,10 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
                               keyboardType: TextInputType.phone,
                               enabled: !_isLoading,
                               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                              style: const TextStyle(fontFamily: 'Inter', fontSize: 16),
+                              style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 16),
                               decoration: const InputDecoration(
                                 hintText: '07 12 34 56 78',
-                                hintStyle: TextStyle(color: Color(0xFF94A3B8)),
+                                hintStyle: TextStyle(color: Color(0xFF98A2B3)),
                                 border: InputBorder.none,
                                 contentPadding: EdgeInsets.symmetric(horizontal: 14),
                               ),
@@ -274,7 +274,7 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
                           ? const SizedBox(width: 22, height: 22,
                               child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
                           : const Text('Continuer', style: TextStyle(
-                              fontFamily: 'Poppins', fontWeight: FontWeight.w600,
+                              fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600,
                               fontSize: 16, color: Colors.white)),
                     ),
 
@@ -328,7 +328,7 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
                     borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 16),
             const Text('Choisir un pays', style: TextStyle(
-                fontFamily: 'Poppins', fontWeight: FontWeight.w600, fontSize: 16)),
+                fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600, fontSize: 16)),
             const SizedBox(height: 8),
             Expanded(
               child: ListView.builder(
@@ -338,9 +338,9 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
                   final c = _countries[i];
                   return ListTile(
                     leading: Text(c.flag, style: const TextStyle(fontSize: 24)),
-                    title: Text(c.name, style: const TextStyle(fontFamily: 'Inter')),
+                    title: Text(c.name, style: const TextStyle(fontFamily: 'Plus Jakarta Sans')),
                     trailing: Text(c.code, style: const TextStyle(
-                        color: Color(0xFF6B21A8), fontWeight: FontWeight.w600)),
+                        color: Color(0xFF184797), fontWeight: FontWeight.w600)),
                     onTap: () {
                       setState(() => _selectedCountry = c);
                       Navigator.pop(context);
@@ -474,7 +474,7 @@ class _OtpScreenState extends ConsumerState<_OtpScreen> {
           const Expanded(
             child: Center(
               child: Text('Vérification', style: TextStyle(
-                fontFamily: 'Poppins', fontWeight: FontWeight.w700,
+                fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w700,
                 fontSize: 26, color: Colors.white,
               )),
             ),
@@ -494,8 +494,8 @@ class _OtpScreenState extends ConsumerState<_OtpScreen> {
                 children: [
                   Text(
                     'Code envoyé au ${widget.phoneNumber}',
-                    style: const TextStyle(fontFamily: 'Inter', fontSize: 14,
-                        color: Color(0xFF64748B)),
+                    style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 14,
+                        color: Color(0xFF667085)),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 28),
@@ -540,8 +540,8 @@ class _OtpScreenState extends ConsumerState<_OtpScreen> {
                             maxLength: 1,
                             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                             style: const TextStyle(
-                              fontFamily: 'Poppins', fontWeight: FontWeight.w700,
-                              fontSize: 22, color: Color(0xFF0F172A),
+                              fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w700,
+                              fontSize: 22, color: Color(0xFF263238),
                             ),
                             decoration: InputDecoration(
                               counterText: '',
@@ -549,7 +549,7 @@ class _OtpScreenState extends ConsumerState<_OtpScreen> {
                               fillColor: Colors.white,
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                                borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -583,7 +583,7 @@ class _OtpScreenState extends ConsumerState<_OtpScreen> {
                         ? const SizedBox(width: 22, height: 22,
                             child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
                         : const Text('Confirmer', style: TextStyle(
-                            fontFamily: 'Poppins', fontWeight: FontWeight.w600,
+                            fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600,
                             fontSize: 16, color: Colors.white)),
                   ),
 
@@ -597,8 +597,8 @@ class _OtpScreenState extends ConsumerState<_OtpScreen> {
                             ? 'Renvoyer dans 0:${_secondsLeft.toString().padLeft(2, '0')}'
                             : 'Renvoyer le code',
                         style: TextStyle(
-                          fontFamily: 'Inter', fontSize: 14,
-                          color: _secondsLeft > 0 ? const Color(0xFF94A3B8) : _kPurple,
+                          fontFamily: 'Plus Jakarta Sans', fontSize: 14,
+                          color: _secondsLeft > 0 ? const Color(0xFF98A2B3) : _kPurple,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -687,11 +687,11 @@ class _ProfileScreenState extends ConsumerState<_ProfileScreen> {
                     ),
                     const SizedBox(height: 12),
                     const Text('Bienvenue !', style: TextStyle(
-                        fontFamily: 'Poppins', fontWeight: FontWeight.w700,
+                        fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w700,
                         fontSize: 24, color: Colors.white)),
                     const SizedBox(height: 4),
                     Text('Complétez votre profil pour commencer',
-                        style: TextStyle(fontFamily: 'Inter', fontSize: 13,
+                        style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13,
                             color: Colors.white.withAlpha(200))),
                   ],
                 ),
@@ -734,8 +734,8 @@ class _ProfileScreenState extends ConsumerState<_ProfileScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text('Pays', style: TextStyle(
-                            fontFamily: 'Inter', fontWeight: FontWeight.w500,
-                            fontSize: 14, color: Color(0xFF0F172A))),
+                            fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w500,
+                            fontSize: 14, color: Color(0xFF263238))),
                         const SizedBox(height: 6),
                         DropdownButtonFormField<String>(
                           value: _country, // ignore: deprecated_member_use
@@ -743,7 +743,7 @@ class _ProfileScreenState extends ConsumerState<_ProfileScreen> {
                             filled: true, fillColor: Colors.white,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Color(0xFFE2E8F0), width: 1.5),
+                              borderSide: const BorderSide(color: Color(0xFFE4E7EC), width: 1.5),
                             ),
                             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                           ),
@@ -769,7 +769,7 @@ class _ProfileScreenState extends ConsumerState<_ProfileScreen> {
                           ? const SizedBox(width: 22, height: 22,
                               child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
                           : const Text("C'est parti !", style: TextStyle(
-                              fontFamily: 'Poppins', fontWeight: FontWeight.w600,
+                              fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600,
                               fontSize: 16, color: Colors.white)),
                     ),
                   ],
@@ -786,19 +786,19 @@ class _ProfileScreenState extends ConsumerState<_ProfileScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontFamily: 'Inter',
-            fontWeight: FontWeight.w500, fontSize: 14, color: Color(0xFF0F172A))),
+        Text(label, style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+            fontWeight: FontWeight.w500, fontSize: 14, color: Color(0xFF263238))),
         const SizedBox(height: 6),
         TextField(
           controller: ctrl, enabled: !_isLoading,
-          style: const TextStyle(fontFamily: 'Inter', fontSize: 15),
+          style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 15),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
+            hintStyle: const TextStyle(color: Color(0xFF98A2B3)),
             filled: true, fillColor: Colors.white,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFE2E8F0), width: 1.5),
+              borderSide: const BorderSide(color: Color(0xFFE4E7EC), width: 1.5),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
@@ -823,7 +823,7 @@ class _OrDivider extends StatelessWidget {
     Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Text('ou continuer avec', style: TextStyle(
-          color: Colors.grey.shade500, fontSize: 13, fontFamily: 'Inter')),
+          color: Colors.grey.shade500, fontSize: 13, fontFamily: 'Plus Jakarta Sans')),
     ),
     const Expanded(child: Divider()),
   ]);
@@ -853,7 +853,7 @@ class _SocialBtn extends StatelessWidget {
       foregroundColor: color,
     ),
     icon: Icon(icon, size: 22, color: color),
-    label: Text(label, style: TextStyle(fontFamily: 'Inter',
+    label: Text(label, style: TextStyle(fontFamily: 'Plus Jakarta Sans',
         fontWeight: FontWeight.w600, fontSize: 14, color: color)),
   );
 }

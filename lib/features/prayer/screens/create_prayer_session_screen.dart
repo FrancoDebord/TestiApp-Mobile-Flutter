@@ -96,7 +96,7 @@ class _CreatePrayerSessionScreenState
         title: Text(
           l10n.prayerCreate,
           style: const TextStyle(
-            fontFamily: 'Poppins',
+            fontFamily: 'Plus Jakarta Sans',
             fontWeight: FontWeight.w600,
             fontSize: 17,
             color: AppColors.textPrimary,
@@ -116,7 +116,7 @@ class _CreatePrayerSessionScreenState
                 : Text(
                     _startNow ? l10n.createSessionStart : l10n.createSessionCreate,
                     style: const TextStyle(
-                      fontFamily: 'Inter',
+                      fontFamily: 'Plus Jakarta Sans',
                       fontWeight: FontWeight.w700,
                       color: AppColors.primary,
                     ),
@@ -169,7 +169,7 @@ class _CreatePrayerSessionScreenState
             const SizedBox(height: 8),
             _OptionTile(
               icon: Icons.radio_button_on_rounded,
-              iconColor: const Color(0xFFEF4444),
+              iconColor: const Color(0xFFD92D20),
               title: l10n.createSessionStartNow,
               subtitle: l10n.createSessionStartNowDesc,
               value: _startNow,
@@ -200,14 +200,14 @@ class _CreatePrayerSessionScreenState
                       ? l10n.createSessionStartBtn
                       : l10n.createSessionScheduleBtn,
                   style: const TextStyle(
-                    fontFamily: 'Inter',
+                    fontFamily: 'Plus Jakarta Sans',
                     fontWeight: FontWeight.w700,
                     fontSize: 15,
                   ),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _startNow
-                      ? const Color(0xFFEF4444)
+                      ? const Color(0xFFD92D20)
                       : AppColors.primary,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
@@ -292,7 +292,7 @@ class _VisibilityRow extends StatelessWidget {
                   Text(
                     label,
                     style: TextStyle(
-                      fontFamily: 'Inter',
+                      fontFamily: 'Plus Jakarta Sans',
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
                       color: sel
@@ -345,7 +345,7 @@ class _OptionTile extends StatelessWidget {
         title: Text(
           title,
           style: const TextStyle(
-            fontFamily: 'Inter',
+            fontFamily: 'Plus Jakarta Sans',
             fontWeight: FontWeight.w600,
             fontSize: 13,
             color: AppColors.textPrimary,
@@ -377,7 +377,7 @@ class _FieldLabel extends StatelessWidget {
     return Text(
       text,
       style: const TextStyle(
-        fontFamily: 'Inter',
+        fontFamily: 'Plus Jakarta Sans',
         fontWeight: FontWeight.w600,
         fontSize: 14,
         color: AppColors.textPrimary,

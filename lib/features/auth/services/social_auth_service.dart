@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
 
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -50,7 +50,10 @@ class SocialAuthService {
       ''; // ← collez ici votre Web Client ID
 
   final _googleSignIn = GoogleSignIn(
-    clientId: Platform.isIOS ? _iosClientId : null,
+    // dart:io Platform lève une exception sur le web → defaultTargetPlatform.
+    clientId: !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS
+        ? _iosClientId
+        : null,
     serverClientId: _webClientId.isEmpty ? null : _webClientId,
     scopes: ['email', 'profile'],
   );

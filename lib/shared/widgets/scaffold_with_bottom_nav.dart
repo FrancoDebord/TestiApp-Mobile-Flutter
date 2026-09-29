@@ -147,14 +147,18 @@ class _NavIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = selected
-        ? AppColors.primary
-        : Theme.of(context).colorScheme.onSurfaceVariant;
+    // Charte : actif Krea Blue sur fond Blue Light (arrondi 12), inactif gris #667085.
+    final color = selected ? AppColors.primary : AppColors.textSecondary;
 
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
-      child: Padding(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primarySoft : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -164,7 +168,7 @@ class _NavIcon extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                fontFamily: 'Inter',
+                fontFamily: 'Plus Jakarta Sans',
                 fontSize: 10,
                 fontWeight:
                     selected ? FontWeight.w700 : FontWeight.w400,

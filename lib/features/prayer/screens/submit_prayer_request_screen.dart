@@ -76,7 +76,7 @@ class _SubmitPrayerRequestScreenState
         title: Text(
           l10n.submitPrayerTitle,
           style: const TextStyle(
-            fontFamily: 'Poppins',
+            fontFamily: 'Plus Jakarta Sans',
             fontWeight: FontWeight.w600,
             fontSize: 17,
             color: AppColors.textPrimary,
@@ -96,7 +96,7 @@ class _SubmitPrayerRequestScreenState
                 : Text(
                     l10n.commonShare,
                     style: const TextStyle(
-                      fontFamily: 'Inter',
+                      fontFamily: 'Plus Jakarta Sans',
                       fontWeight: FontWeight.w700,
                       color: AppColors.primary,
                     ),
@@ -139,7 +139,7 @@ class _SubmitPrayerRequestScreenState
             Text(
               l10n.submitPrayerField,
               style: const TextStyle(
-                fontFamily: 'Inter',
+                fontFamily: 'Plus Jakarta Sans',
                 fontWeight: FontWeight.w600,
                 fontSize: 14,
                 color: AppColors.textPrimary,
@@ -186,7 +186,7 @@ class _SubmitPrayerRequestScreenState
             Text(
               l10n.submitPrayerVisibility,
               style: const TextStyle(
-                fontFamily: 'Inter',
+                fontFamily: 'Plus Jakarta Sans',
                 fontWeight: FontWeight.w600,
                 fontSize: 14,
                 color: AppColors.textPrimary,
@@ -208,7 +208,7 @@ class _SubmitPrayerRequestScreenState
                 label: Text(
                   l10n.submitPrayerButton,
                   style: const TextStyle(
-                    fontFamily: 'Inter',
+                    fontFamily: 'Plus Jakarta Sans',
                     fontWeight: FontWeight.w700,
                     fontSize: 15,
                   ),
@@ -284,7 +284,7 @@ class _VisibilitySelector extends StatelessWidget {
                       Text(
                         label,
                         style: TextStyle(
-                          fontFamily: 'Inter',
+                          fontFamily: 'Plus Jakarta Sans',
                           fontWeight: FontWeight.w600,
                           fontSize: 13,
                           color: selected

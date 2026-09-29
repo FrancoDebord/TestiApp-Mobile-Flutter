@@ -12,6 +12,13 @@
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
 
+    <!-- Témoignages en direct (LiveKit / WebRTC) -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
+    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
+
     <!-- Stockage (Android ≤ 12) -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32"/>
@@ -60,6 +67,20 @@
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="testi" android:host="app"/>
+            </intent-filter>
+
+            <!-- App Links : liens de partage (share_url) ouverts directement
+                 dans l'app. Vérifiés via
+                 https://testi.airid-africa.com/.well-known/assetlinks.json -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https"
+                      android:host="testi.airid-africa.com"
+                      android:pathPrefix="/testimonies/"/>
+                <!-- Pages web des directs : /lives/{id} -->
+                <data android:pathPrefix="/lives/"/>
             </intent-filter>
         </activity>
 

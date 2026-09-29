@@ -51,6 +51,7 @@ class AudioTestimonyCard extends ConsumerWidget {
                       SharePlus.instance.share(ShareParams(
                         text: '${testimony.title}\n\n'
                             '${testimony.transcriptPreview}\n\n'
+                            '${testimony.shareLink}\n\n'
                             'Partagé depuis l\'application Témoignages ✝️',
                       ));
                       ref.read(interactionProvider.notifier)
@@ -112,7 +113,7 @@ class AudioTestimonyCard extends ConsumerWidget {
                 onShare: () {
                   SharePlus.instance.share(ShareParams(
                     text: '${testimony.title}\n\n'
-                        'testi://app/testimony/${testimony.id}',
+                        '${testimony.shareLink}',
                   ));
                   ref.read(interactionProvider.notifier)
                       .recordShare(testimony.id);
@@ -232,7 +233,7 @@ class _DurationBadge extends StatelessWidget {
       child: Text(
         duration,
         style: const TextStyle(
-          fontFamily: 'Inter',
+          fontFamily: 'Plus Jakarta Sans',
           fontSize: 10,
           fontWeight: FontWeight.w600,
           color: Colors.white,

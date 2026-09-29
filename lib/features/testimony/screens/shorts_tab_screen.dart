@@ -34,7 +34,7 @@ class ShortsTabScreen extends ConsumerWidget {
                 'Aucun Short disponible',
                 style: TextStyle(
                   color: Colors.white54,
-                  fontFamily: 'Inter',
+                  fontFamily: 'Plus Jakarta Sans',
                   fontSize: 16,
                 ),
               ),
@@ -43,7 +43,7 @@ class ShortsTabScreen extends ConsumerWidget {
                 'Publiez une vidéo courte pour commencer.',
                 style: TextStyle(
                   color: Colors.white38,
-                  fontFamily: 'Inter',
+                  fontFamily: 'Plus Jakarta Sans',
                   fontSize: 13,
                 ),
                 textAlign: TextAlign.center,

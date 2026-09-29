@@ -29,7 +29,7 @@ class AdminUserRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+        border: Border(bottom: BorderSide(color: Color(0xFFE4E7EC))),
       ),
       child: Row(
         children: [
@@ -44,10 +44,10 @@ class AdminUserRow extends StatelessWidget {
                 Text(
                   user.displayName,
                   style: const TextStyle(
-                    fontFamily: 'Inter',
+                    fontFamily: 'Plus Jakarta Sans',
                     fontWeight: FontWeight.w600,
                     fontSize: 13,
-                    color: Color(0xFF0F172A),
+                    color: Color(0xFF263238),
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -55,9 +55,9 @@ class AdminUserRow extends StatelessWidget {
                 Text(
                   user.email,
                   style: const TextStyle(
-                    fontFamily: 'Inter',
+                    fontFamily: 'Plus Jakarta Sans',
                     fontSize: 11,
-                    color: Color(0xFF64748B),
+                    color: Color(0xFF667085),
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -109,16 +109,16 @@ class _UserAvatar extends StatelessWidget {
 
     final (bg, fg) = switch (user.role) {
       UserRole.administrateur => (
-          const Color(0xFF6B21A8).withAlpha(20),
-          const Color(0xFF6B21A8),
+          const Color(0xFF184797).withAlpha(20),
+          const Color(0xFF184797),
         ),
       UserRole.moderateur => (
-          const Color(0xFF3B82F6).withAlpha(20),
-          const Color(0xFF3B82F6),
+          const Color(0xFF2B5DB0).withAlpha(20),
+          const Color(0xFF2B5DB0),
         ),
       _ => (
-          const Color(0xFF64748B).withAlpha(20),
-          const Color(0xFF64748B),
+          const Color(0xFF667085).withAlpha(20),
+          const Color(0xFF667085),
         ),
     };
 
@@ -128,7 +128,7 @@ class _UserAvatar extends StatelessWidget {
       child: Text(
         initials,
         style: TextStyle(
-          fontFamily: 'Inter',
+          fontFamily: 'Plus Jakarta Sans',
           fontWeight: FontWeight.w700,
           fontSize: 12,
           color: fg,
@@ -146,20 +146,20 @@ class _RoleChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final (bg, fg) = switch (role) {
       UserRole.administrateur => (
-          const Color(0xFFF3E8FF),
-          const Color(0xFF6B21A8),
+          const Color(0xFFEAF1FC),
+          const Color(0xFF184797),
         ),
       UserRole.moderateur => (
-          const Color(0xFFEFF6FF),
-          const Color(0xFF3B82F6),
+          const Color(0xFFEAF1FC),
+          const Color(0xFF2B5DB0),
         ),
       UserRole.utilisateur => (
-          const Color(0xFFF0FDF4),
-          const Color(0xFF22C55E),
+          const Color(0xFFECFDF3),
+          const Color(0xFF12B76A),
         ),
       UserRole.visiteur => (
           const Color(0xFFF8FAFC),
-          const Color(0xFF64748B),
+          const Color(0xFF667085),
         ),
     };
 
@@ -172,7 +172,7 @@ class _RoleChip extends StatelessWidget {
       child: Text(
         role.label,
         style: TextStyle(
-          fontFamily: 'Inter',
+          fontFamily: 'Plus Jakarta Sans',
           fontSize: 10,
           fontWeight: FontWeight.w600,
           color: fg,
@@ -190,19 +190,19 @@ class _StatusChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final (bg, fg, dot) = switch (status) {
       UserAccountStatus.active => (
-          const Color(0xFFF0FDF4),
-          const Color(0xFF22C55E),
-          const Color(0xFF22C55E),
+          const Color(0xFFECFDF3),
+          const Color(0xFF12B76A),
+          const Color(0xFF12B76A),
         ),
       UserAccountStatus.suspended => (
-          const Color(0xFFFFF7ED),
-          const Color(0xFFF59E0B),
-          const Color(0xFFF59E0B),
+          const Color(0xFFFFF1E2),
+          const Color(0xFFF79009),
+          const Color(0xFFF79009),
         ),
       UserAccountStatus.banned => (
-          const Color(0xFFFEF2F2),
-          const Color(0xFFEF4444),
-          const Color(0xFFEF4444),
+          const Color(0xFFFEF3F2),
+          const Color(0xFFD92D20),
+          const Color(0xFFD92D20),
         ),
     };
 
@@ -224,7 +224,7 @@ class _StatusChip extends StatelessWidget {
           Text(
             status.label,
             style: TextStyle(
-              fontFamily: 'Inter',
+              fontFamily: 'Plus Jakarta Sans',
               fontSize: 10,
               fontWeight: FontWeight.w600,
               color: fg,
@@ -255,25 +255,25 @@ class _ActionsMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     return PopupMenuButton<String>(
       icon: const Icon(Icons.more_vert_rounded,
-          size: 18, color: Color(0xFF64748B)),
+          size: 18, color: Color(0xFF667085)),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       elevation: 8,
       itemBuilder: (_) => [
         if (user.status != UserAccountStatus.active)
           _menuItem('restore', Icons.restore_rounded, 'Réactiver',
-              const Color(0xFF22C55E)),
+              const Color(0xFF12B76A)),
         if (user.status == UserAccountStatus.active)
           _menuItem('suspend', Icons.pause_circle_outline_rounded, 'Suspendre',
-              const Color(0xFFF59E0B)),
+              const Color(0xFFF79009)),
         if (user.status != UserAccountStatus.banned)
           _menuItem('ban', Icons.block_rounded, 'Bannir',
-              const Color(0xFFEF4444)),
+              const Color(0xFFD92D20)),
         if (user.role == UserRole.utilisateur)
           _menuItem('promote', Icons.admin_panel_settings_outlined,
-              'Promouvoir modérateur', const Color(0xFF6B21A8)),
+              'Promouvoir modérateur', const Color(0xFF184797)),
         if (user.role == UserRole.moderateur)
           _menuItem('promote_admin', Icons.shield_outlined,
-              'Promouvoir admin', const Color(0xFF6B21A8)),
+              'Promouvoir admin', const Color(0xFF184797)),
       ],
       onSelected: (value) {
         switch (value) {
@@ -302,7 +302,7 @@ class _ActionsMenu extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              fontFamily: 'Inter',
+              fontFamily: 'Plus Jakarta Sans',
               fontSize: 13,
               color: color,
               fontWeight: FontWeight.w500,

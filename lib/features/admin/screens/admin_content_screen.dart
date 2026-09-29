@@ -49,7 +49,7 @@ class _PublishedTestimonyCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: const Color(0xFFE4E7EC)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -58,33 +58,43 @@ class _PublishedTestimonyCard extends StatelessWidget {
           Text(
             testimony.title,
             style: const TextStyle(
-              fontFamily: 'Poppins',
+              fontFamily: 'Plus Jakarta Sans',
               fontWeight: FontWeight.w600,
               fontSize: 13,
-              color: Color(0xFF0F172A),
+              color: Color(0xFF263238),
               height: 1.4,
             ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 8),
-          // Author + Category + Type
-          Row(
+          // Author + Category + Type (passent à la ligne si besoin)
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              const Icon(Icons.person_outline_rounded,
-                  size: 13, color: Color(0xFF94A3B8)),
-              const SizedBox(width: 4),
-              Text(
-                testimony.authorName,
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 12,
-                  color: Color(0xFF64748B),
-                ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.person_outline_rounded,
+                      size: 13, color: Color(0xFF98A2B3)),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      testimony.authorName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontFamily: 'Plus Jakarta Sans',
+                        fontSize: 12,
+                        color: Color(0xFF667085),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
               _CategoryChip(label: testimony.category),
-              const SizedBox(width: 6),
               TestimonyTypeBadge(type: testimony.type),
             ],
           ),
@@ -94,36 +104,43 @@ class _PublishedTestimonyCard extends StatelessWidget {
             final l10n = AppLocalizations.of(context);
             return Row(
             children: [
-              _StatItem(
-                icon: Icons.remove_red_eye_outlined,
-                value: _formatNumber(testimony.views),
-                label: l10n.adminViews,
+              // Les statistiques passent à la ligne quand la place manque.
+              Expanded(
+                child: Wrap(
+                  spacing: 16,
+                  runSpacing: 4,
+                  children: [
+                    _StatItem(
+                      icon: Icons.remove_red_eye_outlined,
+                      value: _formatNumber(testimony.views),
+                      label: l10n.adminViews,
+                    ),
+                    _StatItem(
+                      icon: Icons.favorite_border_rounded,
+                      value: _formatNumber(testimony.likes),
+                      label: l10n.adminLikes,
+                    ),
+                    _StatItem(
+                      icon: Icons.calendar_today_outlined,
+                      value: _formatDate(testimony.publishedAt),
+                      label: l10n.adminPublishedLabel,
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(width: 16),
-              _StatItem(
-                icon: Icons.favorite_border_rounded,
-                value: _formatNumber(testimony.likes),
-                label: l10n.adminLikes,
-              ),
-              const SizedBox(width: 16),
-              _StatItem(
-                icon: Icons.calendar_today_outlined,
-                value: _formatDate(testimony.publishedAt),
-                label: l10n.adminPublishedLabel,
-              ),
-              const Spacer(),
+              const SizedBox(width: 8),
               // Unpublish button
               OutlinedButton.icon(
                 onPressed: () => _confirmUnpublish(context),
                 icon: const Icon(Icons.unpublished_outlined, size: 13),
                 label: Text(l10n.adminUnpublish),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFFEF4444),
-                  side: const BorderSide(color: Color(0xFFEF4444)),
+                  foregroundColor: const Color(0xFFD92D20),
+                  side: const BorderSide(color: Color(0xFFD92D20)),
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   textStyle: const TextStyle(
-                    fontFamily: 'Inter',
+                    fontFamily: 'Plus Jakarta Sans',
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),
@@ -142,7 +159,9 @@ class _PublishedTestimonyCard extends StatelessWidget {
   }
 
   String _formatNumber(int n) {
-    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}k';
+    String one(double v) => v.toStringAsFixed(1).replaceAll('.', ',');
+    if (n >= 1000000) return '${one(n / 1000000)}M';
+    if (n >= 1000) return '${one(n / 1000)}k';
     return '$n';
   }
 
@@ -158,37 +177,37 @@ class _PublishedTestimonyCard extends StatelessWidget {
         title: Text(
           l10n.adminUnpublishConfirm,
           style: const TextStyle(
-            fontFamily: 'Poppins',
+            fontFamily: 'Plus Jakarta Sans',
             fontWeight: FontWeight.w600,
             fontSize: 16,
-            color: Color(0xFF0F172A),
+            color: Color(0xFF263238),
           ),
         ),
         content: Text(
           l10n.adminUnpublishDesc,
           style: const TextStyle(
-            fontFamily: 'Inter',
+            fontFamily: 'Plus Jakarta Sans',
             fontSize: 13,
-            color: Color(0xFF64748B),
+            color: Color(0xFF667085),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: Text(l10n.commonCancel,
-                style: const TextStyle(fontFamily: 'Inter', color: Color(0xFF64748B))),
+                style: const TextStyle(fontFamily: 'Plus Jakarta Sans', color: Color(0xFF667085))),
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFEF4444),
+              backgroundColor: const Color(0xFFD92D20),
               foregroundColor: Colors.white,
               elevation: 0,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8)),
             ),
             child: Text(l10n.adminUnpublish,
-                style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600)),
+                style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600)),
           ),
         ],
       ),
@@ -205,16 +224,18 @@ class _CategoryChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: const Color(0xFF6B21A8).withAlpha(15),
+        color: const Color(0xFF184797).withAlpha(15),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
         label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: const TextStyle(
-          fontFamily: 'Inter',
+          fontFamily: 'Plus Jakarta Sans',
           fontSize: 10,
           fontWeight: FontWeight.w500,
-          color: Color(0xFF6B21A8),
+          color: Color(0xFF184797),
         ),
       ),
     );
@@ -237,14 +258,18 @@ class _StatItem extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 12, color: const Color(0xFF94A3B8)),
+        Icon(icon, size: 12, color: const Color(0xFF98A2B3)),
         const SizedBox(width: 3),
-        Text(
-          '$value $label',
-          style: const TextStyle(
-            fontFamily: 'Inter',
-            fontSize: 11,
-            color: Color(0xFF64748B),
+        Flexible(
+          child: Text(
+            '$value $label',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontFamily: 'Plus Jakarta Sans',
+              fontSize: 11,
+              color: Color(0xFF667085),
+            ),
           ),
         ),
       ],

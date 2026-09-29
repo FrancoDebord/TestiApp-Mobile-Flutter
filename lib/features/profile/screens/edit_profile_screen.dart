@@ -1,3 +1,5 @@
+import '../../../core/data/countries.dart';
+import '../../../shared/widgets/country_picker.dart';
 import 'dart:io' show File;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -6,16 +8,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../features/auth/providers/auth_notifier.dart'
+    show currentUserProvider;
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/models/user_model.dart';
+import '../../../shared/widgets/profile_cover.dart';
 import '../models/profile_models.dart';
 import '../providers/profile_provider.dart';
 
-const _kCountries = [
-  'Bénin', "Côte d'Ivoire", 'Cameroun', 'Sénégal', 'Mali', 'Burkina Faso',
-  'Guinée', 'Togo', 'RDC', 'Congo', 'Gabon', 'Nigeria',
-  'Ghana', 'Rwanda', 'Kenya', 'Éthiopie', 'Madagascar', 'France',
-  'Belgique', 'Canada', 'États-Unis', 'Autre',
-];
+// Pays : liste partagée avec le site (lib/core/data/countries.dart).
 
 // Canonical stored gender values (language-neutral keys)
 const _kGenderValues = ['Homme', 'Femme', 'Autre'];
@@ -41,8 +42,17 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   late final TextEditingController _bioCtrl;
   late final TextEditingController _customTitleCtrl;
 
+  // ── Organisation (comptes AccountType.organization uniquement) ────────────
+  late final TextEditingController _orgNameCtrl;
+  late final TextEditingController _orgCityCtrl;
+  late final TextEditingController _orgWebsiteCtrl;
+  OrganizationType? _orgType;
+  bool _isOrg = false;
+
   String? _gender;
   String? _country;
+  /// Indicatif du téléphone : suit le pays, reste modifiable.
+  Country? _phoneDial;
   String? _selectedTitle;
   String? _avatarPath;
   bool _isLoading   = false;
@@ -56,6 +66,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _emailCtrl.dispose();
     _bioCtrl.dispose();
     _customTitleCtrl.dispose();
+    if (_initialized) {
+      _orgNameCtrl.dispose();
+      _orgCityCtrl.dispose();
+      _orgWebsiteCtrl.dispose();
+    }
     super.dispose();
   }
 
@@ -64,7 +79,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _initialized = true;
     _firstCtrl       = TextEditingController(text: e.firstName);
     _lastCtrl        = TextEditingController(text: e.lastName);
-    _phoneCtrl       = TextEditingController(text: e.phone);
+    final me = ref.read(currentUserProvider);
+    _phoneDial = countryByCode(me?.phoneCountry) ??
+        countryByCode(e.phoneCountry) ??
+        countryByName(me?.country) ??
+        countryByName(e.country);
+    _phoneCtrl       = TextEditingController(
+        text: PhoneNumberField.nationalPart(
+            (me?.phone.isNotEmpty ?? false) ? me!.phone : e.phone, _phoneDial));
     _emailCtrl       = TextEditingController(text: e.email);
     _bioCtrl         = TextEditingController(text: e.bio);
     _customTitleCtrl = TextEditingController(
@@ -73,6 +95,42 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _country       = e.country.isNotEmpty ? e.country : null;
     _avatarPath    = e.avatarPath;
     _selectedTitle = _kSuggestedTitles.contains(e.title) ? e.title : null;
+
+    final user = ref.read(currentUserProvider);
+    _isOrg          = user?.isOrganization ?? false;
+    _orgNameCtrl    = TextEditingController(
+        text: user?.organizationName ?? (_isOrg ? user!.displayName : ''));
+    _orgCityCtrl    = TextEditingController(text: user?.organizationCity ?? '');
+    _orgWebsiteCtrl =
+        TextEditingController(text: user?.organizationWebsite ?? '');
+    _orgType        = user?.organizationType;
+  }
+
+  static String? _normalizeWebsite(String raw) {
+    final v = raw.trim();
+    if (v.isEmpty) return null;
+    return v.contains('://') ? v : 'https://$v';
+  }
+
+  static bool _isValidWebsite(String raw) {
+    final v = raw.trim();
+    if (v.isEmpty) return true; // optionnel
+    final uri = Uri.tryParse(v.contains('://') ? v : 'https://$v');
+    return uri != null &&
+        (uri.scheme == 'http' || uri.scheme == 'https') &&
+        uri.host.contains('.') &&
+        !v.contains(' ');
+  }
+
+  /// Champs organisation à inclure dans le PUT /users/me du profil.
+  OrganizationProfileUpdate _organizationUpdate() {
+    final city = _orgCityCtrl.text.trim();
+    return OrganizationProfileUpdate(
+      name:    _orgNameCtrl.text.trim(),
+      type:    _orgType,
+      city:    city.isEmpty ? null : city,
+      website: _normalizeWebsite(_orgWebsiteCtrl.text),
+    );
   }
 
   // ── Picker photo ──────────────────────────────────────────────────────────
@@ -96,20 +154,20 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             const SizedBox(height: 16),
             ListTile(
               leading: const CircleAvatar(
-                  backgroundColor: Color(0xFFF3E8FF),
+                  backgroundColor: Color(0xFFEAF1FC),
                   child: Icon(Icons.photo_library_rounded,
                       color: AppColors.primary)),
               title: Text(l10n.editGallery,
-                  style: const TextStyle(fontFamily: 'Inter')),
+                  style: const TextStyle(fontFamily: 'Plus Jakarta Sans')),
               onTap: () => Navigator.pop(context, ImageSource.gallery),
             ),
             ListTile(
               leading: const CircleAvatar(
-                  backgroundColor: Color(0xFFF3E8FF),
+                  backgroundColor: Color(0xFFEAF1FC),
                   child: Icon(Icons.camera_alt_rounded,
                       color: AppColors.primary)),
               title: Text(l10n.editCamera,
-                  style: const TextStyle(fontFamily: 'Inter')),
+                  style: const TextStyle(fontFamily: 'Plus Jakarta Sans')),
               onTap: () => Navigator.pop(context, ImageSource.camera),
             ),
             const SizedBox(height: 8),
@@ -129,7 +187,26 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
   Future<void> _save() async {
     final l10n = AppLocalizations.of(context);
-    final first = _firstCtrl.text.trim();
+    if (_isOrg) {
+      if (_orgNameCtrl.text.trim().length < 2) {
+        _snack("Veuillez saisir le nom de l'organisation");
+        return;
+      }
+      if (_orgType == null) {
+        _snack("Veuillez choisir le type d'organisation");
+        return;
+      }
+      if (_orgCityCtrl.text.trim().isEmpty) {
+        _snack('Veuillez saisir la ville');
+        return;
+      }
+      if (!_isValidWebsite(_orgWebsiteCtrl.text)) {
+        _snack('Adresse du site web invalide');
+        return;
+      }
+    }
+    // Organisation : le nom affiché est le nom de l'organisation.
+    final first = _isOrg ? _orgNameCtrl.text.trim() : _firstCtrl.text.trim();
     if (first.isEmpty) {
       _snack(l10n.editFirstRequired);
       return;
@@ -139,13 +216,23 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         ? _customTitleCtrl.text.trim()
         : _selectedTitle!;
 
+    final phoneVerified = ref.read(currentUserProvider)?.isPhoneVerified ?? false;
+    if (!phoneVerified) {
+      final phoneError = PhoneNumberField.check(_phoneDial, _phoneCtrl.text, required: _isOrg);
+      if (phoneError != null) {
+        _snack(phoneError);
+        return;
+      }
+    }
+
     setState(() => _isLoading = true);
 
     final extras = ProfileExtras(
       firstName:  first,
-      lastName:   _lastCtrl.text.trim(),
-      gender:     _gender   ?? '',
+      lastName:   _isOrg ? '' : _lastCtrl.text.trim(),
+      gender:     _isOrg ? '' : (_gender ?? ''),
       phone:      _phoneCtrl.text.trim(),
+      phoneCountry: _phoneDial?.code ?? '',
       email:      _emailCtrl.text.trim(),
       country:    _country  ?? '',
       bio:        _bioCtrl.text.trim(),
@@ -153,13 +240,22 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       avatarPath: _avatarPath,
     );
 
-    await ref.read(profileExtrasProvider.notifier).save(extras);
+    final synced = await ref.read(profileExtrasProvider.notifier).save(
+          extras,
+          organization: _isOrg ? _organizationUpdate() : null,
+        );
 
-    if (mounted) {
-      setState(() => _isLoading = false);
-      _snack(l10n.editSaved, success: true);
-      Navigator.of(context).pop();
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+    if (!synced) {
+      // Rester sur l'écran : l'utilisateur peut réessayer.
+      _snack("Les informations de l'organisation n'ont pas pu être "
+          'enregistrées sur le serveur. Vérifiez votre connexion et '
+          'réessayez.');
+      return;
     }
+    _snack(l10n.editSaved, success: true);
+    Navigator.of(context).pop();
   }
 
   void _snack(String msg, {bool success = false}) {
@@ -167,7 +263,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg,
-            style: const TextStyle(fontFamily: 'Inter', fontSize: 13)),
+            style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13)),
         backgroundColor:
             success ? AppColors.primary : AppColors.danger,
         behavior: SnackBarBehavior.floating,
@@ -202,7 +298,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       appBar: AppBar(
         title: Text(l10n.profileEdit,
             style: const TextStyle(
-              fontFamily: 'Poppins',
+              fontFamily: 'Plus Jakarta Sans',
               fontWeight: FontWeight.w600,
               fontSize: 17,
               color: AppColors.textPrimary,
@@ -230,7 +326,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   onPressed: _save,
                   child: Text(l10n.detailSave,
                       style: const TextStyle(
-                        fontFamily: 'Poppins',
+                        fontFamily: 'Plus Jakarta Sans',
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
                         color: AppColors.primary,
@@ -243,6 +339,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+
+            // ── Photo de couverture (envoi immédiat) ──────────────────────
+            // docs/fonctionnalites/photo-de-couverture.md
+            _CoverPicker(coverUrl: ref.watch(currentUserProvider)?.coverUrl),
+            const SizedBox(height: 20),
 
             // ── Avatar ──────────────────────────────────────────────────
             Center(
@@ -259,7 +360,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                               : FileImage(File(_avatarPath!)))
                           : null,
                       child: _avatarPath == null
-                          ? const Icon(Icons.person_rounded,
+                          ? Icon(
+                              _isOrg
+                                  ? Icons.church_rounded
+                                  : Icons.person_rounded,
                               size: 52, color: AppColors.primary)
                           : null,
                     ),
@@ -282,15 +386,77 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             ),
             const SizedBox(height: 8),
             Center(
-              child: Text(l10n.editTapToChange,
+              child: Text(
+                  _isOrg ? 'Logo · touchez pour modifier' : l10n.editTapToChange,
                   style: const TextStyle(
-                      fontFamily: 'Inter',
+                      fontFamily: 'Plus Jakarta Sans',
                       fontSize: 12,
                       color: AppColors.textSecondary)),
             ),
             const SizedBox(height: 28),
 
+            // ── Organisation ────────────────────────────────────────────
+            if (_isOrg) ...[
+              const _SectionTitle('Organisation'),
+              const SizedBox(height: 12),
+              _Field(
+                label: "Nom de l'organisation *",
+                controller: _orgNameCtrl,
+                hint: 'Église de la Grâce',
+                prefixIcon: Icons.church_outlined,
+                textCapitalization: TextCapitalization.words,
+              ),
+              const SizedBox(height: 16),
+              const _Label('Type *'),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: OrganizationType.values.map((t) {
+                  final selected = t == _orgType;
+                  return ChoiceChip(
+                    label: Text(t.label,
+                        style: TextStyle(
+                          fontFamily: 'Plus Jakarta Sans',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: selected
+                              ? Colors.white
+                              : AppColors.textSecondary,
+                        )),
+                    selected: selected,
+                    showCheckmark: false,
+                    selectedColor: AppColors.primary,
+                    backgroundColor: AppColors.surface,
+                    side: BorderSide(
+                        color: selected ? AppColors.primary : AppColors.border),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20)),
+                    onSelected: (_) => setState(() => _orgType = t),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 16),
+              _Field(
+                label: 'Ville *',
+                controller: _orgCityCtrl,
+                hint: 'Cotonou',
+                prefixIcon: Icons.location_city_rounded,
+                textCapitalization: TextCapitalization.words,
+              ),
+              const SizedBox(height: 16),
+              _Field(
+                label: 'Site web (optionnel)',
+                controller: _orgWebsiteCtrl,
+                hint: 'www.exemple.org',
+                keyboardType: TextInputType.url,
+                prefixIcon: Icons.language_rounded,
+              ),
+              const SizedBox(height: 28),
+            ],
+
             // ── Identity ────────────────────────────────────────────────
+            if (!_isOrg) ...[
             _SectionTitle(l10n.editIdentity),
             const SizedBox(height: 12),
             Row(
@@ -346,7 +512,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     child: Text(
                       t,
                       style: TextStyle(
-                        fontFamily: 'Inter',
+                        fontFamily: 'Plus Jakarta Sans',
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
                         color: selected
@@ -379,17 +545,21 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             ),
 
             const SizedBox(height: 28),
+            ],
 
             // ── Contact ─────────────────────────────────────────────────
             _SectionTitle(l10n.editContact),
             const SizedBox(height: 12),
-            _Field(
-              label: l10n.editPhoneLabel,
-              controller: _phoneCtrl,
-              hint: '+225 07 00 00 00',
-              keyboardType: TextInputType.phone,
-              prefixIcon: Icons.phone_outlined,
-            ),
+            if (ref.watch(currentUserProvider)?.isPhoneVerified ?? false)
+              _VerifiedPhone(phone: ref.watch(currentUserProvider)!.phone)
+            else
+              PhoneNumberField(
+                dial: _phoneDial,
+                onDialChanged: (c) => setState(() => _phoneDial = c),
+                controller: _phoneCtrl,
+                required: _isOrg,
+                requiredNote: _isOrg ? null : '(facultatif)',
+              ),
             const SizedBox(height: 16),
             _Field(
               label: 'Email',
@@ -404,11 +574,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             // ── Location ─────────────────────────────────────────────────
             _SectionTitle(l10n.editLocation),
             const SizedBox(height: 12),
-            _Label(l10n.authCountryLabel),
-            const SizedBox(height: 8),
-            _CountryDropdown(
-              selected: _country,
-              onChanged: (c) => setState(() => _country = c),
+            CountryPickerField(
+              label: l10n.authCountryLabel,
+              initialValue: countryByName(_country),
+              required: false,
+              onChanged: (c) => setState(() {
+                _country = c?.name;
+                if (c != null) _phoneDial = c;
+              }),
             ),
 
             const SizedBox(height: 28),
@@ -446,7 +619,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     : Text(
                         l10n.editSaveProfile,
                         style: const TextStyle(
-                          fontFamily: 'Poppins',
+                          fontFamily: 'Plus Jakarta Sans',
                           fontWeight: FontWeight.w600,
                           fontSize: 16,
                         ),
@@ -462,6 +635,63 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
 // ── Sub-widgets ───────────────────────────────────────────────────────────────
 
+/// Bandeau « Photo de couverture » : aperçu, touche pour changer ou retirer.
+class _CoverPicker extends ConsumerWidget {
+  const _CoverPicker({required this.coverUrl});
+  final String? coverUrl;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hasCover = coverUrl != null;
+    return Semantics(
+      button: true,
+      label: hasCover ? 'Modifier la photo de couverture' : 'Ajouter une photo de couverture',
+      child: Material(
+        color: AppColors.border,
+        borderRadius: BorderRadius.circular(14),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => showProfileCoverSheet(context, ref, hasCover: hasCover),
+          child: AspectRatio(
+            aspectRatio: 3,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                ProfileCoverImage(url: coverUrl),
+                Align(
+                  alignment: hasCover ? Alignment.bottomRight : Alignment.center,
+                  child: Container(
+                    margin: const EdgeInsets.all(10),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: hasCover ? Colors.black.withAlpha(150) : AppColors.surface,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.add_photo_alternate_outlined,
+                            size: 16, color: hasCover ? Colors.white : AppColors.primary),
+                        const SizedBox(width: 6),
+                        Text(hasCover ? 'Modifier la couverture' : 'Ajouter une photo de couverture',
+                            style: TextStyle(
+                                fontFamily: 'Plus Jakarta Sans',
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: hasCover ? Colors.white : AppColors.textPrimary)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _SectionTitle extends StatelessWidget {
   const _SectionTitle(this.text);
   final String text;
@@ -471,7 +701,7 @@ class _SectionTitle extends StatelessWidget {
     return Text(
       text,
       style: const TextStyle(
-        fontFamily: 'Poppins',
+        fontFamily: 'Plus Jakarta Sans',
         fontWeight: FontWeight.w600,
         fontSize: 15,
         color: AppColors.textPrimary,
@@ -489,7 +719,7 @@ class _Label extends StatelessWidget {
     return Text(
       text,
       style: const TextStyle(
-        fontFamily: 'Inter',
+        fontFamily: 'Plus Jakarta Sans',
         fontWeight: FontWeight.w500,
         fontSize: 13,
         color: AppColors.textPrimary,
@@ -533,20 +763,20 @@ class _Field extends StatelessWidget {
           maxLength: maxLength,
           textCapitalization: textCapitalization,
           style: const TextStyle(
-              fontFamily: 'Inter', fontSize: 14,
+              fontFamily: 'Plus Jakarta Sans', fontSize: 14,
               color: AppColors.textPrimary),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: const TextStyle(
                 color: AppColors.textSecondary, fontSize: 14,
-                fontFamily: 'Inter'),
+                fontFamily: 'Plus Jakarta Sans'),
             prefixIcon: prefixIcon != null
                 ? Icon(prefixIcon, size: 18, color: AppColors.textSecondary)
                 : null,
             filled: true,
             fillColor: AppColors.surface,
             counterStyle: const TextStyle(
-                fontFamily: 'Inter', fontSize: 11,
+                fontFamily: 'Plus Jakarta Sans', fontSize: 11,
                 color: AppColors.textSecondary),
             contentPadding: EdgeInsets.symmetric(
               horizontal: prefixIcon != null ? 0 : 14,
@@ -614,7 +844,7 @@ class _GenderSelector extends StatelessWidget {
                   label,
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontFamily: 'Inter',
+                    fontFamily: 'Plus Jakarta Sans',
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
                     color: isSelected
@@ -631,125 +861,33 @@ class _GenderSelector extends StatelessWidget {
   }
 }
 
-class _CountryDropdown extends StatelessWidget {
-  const _CountryDropdown({required this.selected, required this.onChanged});
-  final String? selected;
-  final ValueChanged<String?> onChanged;
+/// Numéro confirmé par SMS : il sert à la connexion par téléphone, il ne se modifie pas ici.
+class _VerifiedPhone extends StatelessWidget {
+  const _VerifiedPhone({required this.phone});
+  final String phone;
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    return GestureDetector(
-      onTap: () => _showSheet(context),
-      child: Container(
-        height: 52,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          border: Border.all(color: AppColors.border, width: 1.5),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _Label('Téléphone'),
+        const SizedBox(height: 8),
+        Row(
           children: [
-            const Icon(Icons.public_rounded,
-                size: 18, color: AppColors.textSecondary),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                selected ?? l10n.editSelectCountry,
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 14,
-                  color: selected != null
-                      ? AppColors.textPrimary
-                      : AppColors.textSecondary,
-                ),
-              ),
-            ),
-            const Icon(Icons.expand_more_rounded,
-                color: AppColors.textSecondary),
+            const Icon(Icons.phone_outlined, size: 20, color: AppColors.textSecondary),
+            const SizedBox(width: 8),
+            Text(phone, style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 15, color: AppColors.textPrimary)),
+            const SizedBox(width: 8),
+            const Icon(Icons.verified_rounded, size: 18, color: AppColors.success),
+            const SizedBox(width: 4),
+            const Text('Vérifié par SMS', style: TextStyle(fontSize: 12, color: AppColors.success)),
           ],
         ),
-      ),
-    );
-  }
-
-  void _showSheet(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => DraggableScrollableSheet(
-        initialChildSize: 0.6,
-        minChildSize: 0.4,
-        maxChildSize: 0.88,
-        expand: false,
-        builder: (ctx, ctrl) => Container(
-          decoration: const BoxDecoration(
-            color: AppColors.surface,
-            borderRadius:
-                BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: Column(
-            children: [
-              const SizedBox(height: 10),
-              Container(
-                width: 36, height: 4,
-                decoration: BoxDecoration(
-                    color: AppColors.border,
-                    borderRadius: BorderRadius.circular(2)),
-              ),
-              const SizedBox(height: 14),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(l10n.editPickCountry,
-                      style: const TextStyle(
-                        fontFamily: 'Poppins',
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                        color: AppColors.textPrimary,
-                      )),
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Divider(height: 1, color: AppColors.border),
-              Expanded(
-                child: ListView(
-                  controller: ctrl,
-                  padding: const EdgeInsets.only(bottom: 20),
-                  children: _kCountries.map((c) {
-                    final sel = c == selected;
-                    return ListTile(
-                      title: Text(c,
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 14,
-                            color: sel
-                                ? AppColors.primary
-                                : AppColors.textPrimary,
-                            fontWeight: sel
-                                ? FontWeight.w600
-                                : FontWeight.normal,
-                          )),
-                      trailing: sel
-                          ? const Icon(Icons.check_circle_rounded,
-                              color: AppColors.primary, size: 20)
-                          : null,
-                      onTap: () {
-                        onChanged(c);
-                        Navigator.of(context).pop();
-                      },
-                    );
-                  }).toList(),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+        const SizedBox(height: 4),
+        const Text('Ce numéro sert à vous connecter : il ne se modifie pas ici.',
+            style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+      ],
     );
   }
 }

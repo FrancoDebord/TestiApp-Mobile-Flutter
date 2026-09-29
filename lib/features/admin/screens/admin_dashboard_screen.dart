@@ -58,20 +58,24 @@ class AdminDashboardScreen extends ConsumerWidget {
                   width: 32,
                   height: 32,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF6B21A8),
+                    color: const Color(0xFF184797),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(Icons.shield_rounded,
                       size: 18, color: Colors.white),
                 ),
                 const SizedBox(width: 10),
-                const Text(
-                  'Administration',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.w600,
-                    fontSize: 20,
-                    color: Color(0xFF0F172A),
+                const Flexible(
+                  child: Text(
+                    'Administration',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: 'Plus Jakarta Sans',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 20,
+                      color: Color(0xFF263238),
+                    ),
                   ),
                 ),
               ],
@@ -80,7 +84,7 @@ class AdminDashboardScreen extends ConsumerWidget {
               // Quick-access to moderation queue
               IconButton(
                 icon: const Icon(Icons.fact_check_outlined,
-                    color: Color(0xFF6B21A8)),
+                    color: Color(0xFF184797)),
                 tooltip: 'File de modération',
                 onPressed: () => context.push('/moderation'),
               ),
@@ -103,10 +107,10 @@ class AdminDashboardScreen extends ConsumerWidget {
                   child: Text(
                     'Gestion',
                     style: TextStyle(
-                      fontFamily: 'Poppins',
+                      fontFamily: 'Plus Jakarta Sans',
                       fontWeight: FontWeight.w600,
                       fontSize: 15,
-                      color: Color(0xFF0F172A),
+                      color: Color(0xFF263238),
                     ),
                   ),
                 ),
@@ -135,14 +139,7 @@ class _MetricsGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
-      childAspectRatio: 0.95,
-      children: [
+    final cards = [
         AdminMetricCard(
           title: 'Utilisateurs',
           primaryValue: _fmt(metrics.totalUsers),
@@ -150,7 +147,7 @@ class _MetricsGrid extends StatelessWidget {
           secondaryValue: '+${metrics.newUsersToday}',
           secondaryLabel: 'nouveaux aujourd\'hui',
           icon: Icons.people_outline_rounded,
-          accentColor: const Color(0xFF6B21A8),
+          accentColor: const Color(0xFF184797),
         ),
         AdminMetricCard(
           title: 'Témoignages',
@@ -159,7 +156,7 @@ class _MetricsGrid extends StatelessWidget {
           secondaryValue: _fmt(metrics.viewsThisMonth),
           secondaryLabel: 'vues ce mois',
           icon: Icons.auto_stories_outlined,
-          accentColor: const Color(0xFFF59E0B),
+          accentColor: const Color(0xFFF79009),
         ),
         AdminMetricCard(
           title: 'Approbation',
@@ -168,7 +165,7 @@ class _MetricsGrid extends StatelessWidget {
           secondaryValue: '${metrics.pendingTestimonies}',
           secondaryLabel: 'en attente',
           icon: Icons.check_circle_outline_rounded,
-          accentColor: const Color(0xFF22C55E),
+          accentColor: const Color(0xFF12B76A),
         ),
         AdminMetricCard(
           title: 'Engagement',
@@ -177,14 +174,38 @@ class _MetricsGrid extends StatelessWidget {
           secondaryValue: _fmt(metrics.commentsThisMonth),
           secondaryLabel: 'commentaires/mois',
           icon: Icons.trending_up_rounded,
-          accentColor: const Color(0xFF3B82F6),
+          accentColor: const Color(0xFF2B5DB0),
         ),
+    ];
+
+    // Grille 2×2 sans hauteur imposée (l'ancien childAspectRatio faisait
+    // déborder les cartes) : chaque ligne prend la hauteur de sa carte la
+    // plus haute.
+    Widget row(Widget a, Widget b) => IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(child: a),
+              const SizedBox(width: 12),
+              Expanded(child: b),
+            ],
+          ),
+        );
+
+    return Column(
+      children: [
+        row(cards[0], cards[1]),
+        const SizedBox(height: 12),
+        row(cards[2], cards[3]),
       ],
     );
   }
 
+  /// 950 → « 950 », 12 400 → « 12,4k », 1 234 567 → « 1,2M ».
   String _fmt(int n) {
-    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}k';
+    String one(double v) => v.toStringAsFixed(1).replaceAll('.', ',');
+    if (n >= 1000000) return '${one(n / 1000000)}M';
+    if (n >= 1000) return '${one(n / 1000)}k';
     return '$n';
   }
 }
@@ -285,15 +306,19 @@ class _SectionTitleBar extends StatelessWidget {
       color: const Color(0xFFF8FAFC),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: const Color(0xFF6B21A8)),
+          Icon(icon, size: 18, color: const Color(0xFF184797)),
           const SizedBox(width: 8),
-          Text(
-            title,
-            style: const TextStyle(
-              fontFamily: 'Poppins',
-              fontWeight: FontWeight.w600,
-              fontSize: 15,
-              color: Color(0xFF0F172A),
+          Expanded(
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontFamily: 'Plus Jakarta Sans',
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+                color: Color(0xFF263238),
+              ),
             ),
           ),
         ],

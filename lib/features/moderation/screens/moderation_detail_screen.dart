@@ -45,14 +45,14 @@ class ModerationDetailScreen extends ConsumerWidget {
             pinned: true,
             backgroundColor: Colors.white,
             surfaceTintColor: Colors.transparent,
-            foregroundColor: const Color(0xFF0F172A),
+            foregroundColor: const Color(0xFF263238),
             title: const Text(
               'Prévisualisation',
               style: TextStyle(
-                fontFamily: 'Poppins',
+                fontFamily: 'Plus Jakarta Sans',
                 fontWeight: FontWeight.w600,
                 fontSize: 18,
-                color: Color(0xFF0F172A),
+                color: Color(0xFF263238),
               ),
             ),
             actions: [
@@ -76,10 +76,10 @@ class ModerationDetailScreen extends ConsumerWidget {
                   Text(
                     item.title,
                     style: const TextStyle(
-                      fontFamily: 'Poppins',
+                      fontFamily: 'Plus Jakarta Sans',
                       fontWeight: FontWeight.w600,
                       fontSize: 18,
-                      color: Color(0xFF0F172A),
+                      color: Color(0xFF263238),
                       height: 1.4,
                     ),
                   ),
@@ -117,7 +117,7 @@ class _AuthorHeader extends StatelessWidget {
       children: [
         CircleAvatar(
           radius: 24,
-          backgroundColor: const Color(0xFF6B21A8).withAlpha(20),
+          backgroundColor: const Color(0xFF184797).withAlpha(20),
           backgroundImage: author.avatarUrl != null
               ? NetworkImage(author.avatarUrl!)
               : null,
@@ -125,10 +125,10 @@ class _AuthorHeader extends StatelessWidget {
               ? Text(
                   initials,
                   style: const TextStyle(
-                    fontFamily: 'Inter',
+                    fontFamily: 'Plus Jakarta Sans',
                     fontWeight: FontWeight.w700,
                     fontSize: 15,
-                    color: Color(0xFF6B21A8),
+                    color: Color(0xFF184797),
                   ),
                 )
               : null,
@@ -140,42 +140,45 @@ class _AuthorHeader extends StatelessWidget {
             children: [
               Text(
                 author.displayName,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  fontFamily: 'Inter',
+                  fontFamily: 'Plus Jakarta Sans',
                   fontWeight: FontWeight.w600,
                   fontSize: 15,
-                  color: Color(0xFF0F172A),
+                  color: Color(0xFF263238),
                 ),
               ),
               Text(
                 author.country,
                 style: const TextStyle(
-                  fontFamily: 'Inter',
+                  fontFamily: 'Plus Jakarta Sans',
                   fontSize: 13,
-                  color: Color(0xFF64748B),
+                  color: Color(0xFF667085),
                 ),
               ),
             ],
           ),
         ),
+        const SizedBox(width: 8),
         Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             const Text(
               'Soumis',
               style: TextStyle(
-                fontFamily: 'Inter',
+                fontFamily: 'Plus Jakarta Sans',
                 fontSize: 11,
-                color: Color(0xFF94A3B8),
+                color: Color(0xFF98A2B3),
               ),
             ),
             Text(
               _formatDate(item.submittedAt),
               style: const TextStyle(
-                fontFamily: 'Inter',
+                fontFamily: 'Plus Jakarta Sans',
                 fontWeight: FontWeight.w500,
                 fontSize: 12,
-                color: Color(0xFF64748B),
+                color: Color(0xFF667085),
               ),
             ),
           ],
@@ -199,25 +202,27 @@ class _MetaRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
-            color: const Color(0xFF6B21A8).withAlpha(15),
+            color: const Color(0xFF184797).withAlpha(15),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Text(
             item.category,
             style: const TextStyle(
-              fontFamily: 'Inter',
+              fontFamily: 'Plus Jakarta Sans',
               fontSize: 12,
               fontWeight: FontWeight.w500,
-              color: Color(0xFF6B21A8),
+              color: Color(0xFF184797),
             ),
           ),
         ),
-        const SizedBox(width: 8),
         TestimonyTypeBadge(type: item.type),
       ],
     );
@@ -240,7 +245,7 @@ class _ContentSection extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
+            border: Border.all(color: const Color(0xFFE4E7EC)),
           ),
           child: Text(
             item.contentPreview ??
@@ -249,7 +254,7 @@ class _ContentSection extends StatelessWidget {
               fontFamily: 'Playfair Display',
               fontStyle: FontStyle.italic,
               fontSize: 15,
-              color: Color(0xFF0F172A),
+              color: Color(0xFF263238),
               height: 1.8,
             ),
           ),
@@ -260,7 +265,7 @@ class _ContentSection extends StatelessWidget {
           icon: Icons.headphones_rounded,
           label: 'Témoignage audio',
           sublabel: 'Appuyer pour écouter',
-          color: const Color(0xFFF59E0B),
+          color: const Color(0xFFF79009),
         );
 
       case TestimonyType.video:
@@ -268,7 +273,7 @@ class _ContentSection extends StatelessWidget {
           icon: Icons.play_circle_fill_rounded,
           label: 'Témoignage vidéo',
           sublabel: 'Appuyer pour visionner',
-          color: const Color(0xFF22C55E),
+          color: const Color(0xFF12B76A),
         );
     }
   }
@@ -304,7 +309,7 @@ class _MediaPlaceholder extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              fontFamily: 'Poppins',
+              fontFamily: 'Plus Jakarta Sans',
               fontWeight: FontWeight.w600,
               fontSize: 14,
               color: color,
@@ -314,7 +319,7 @@ class _MediaPlaceholder extends StatelessWidget {
           Text(
             sublabel,
             style: TextStyle(
-              fontFamily: 'Inter',
+              fontFamily: 'Plus Jakarta Sans',
               fontSize: 12,
               color: color.withAlpha(180),
             ),
@@ -339,31 +344,31 @@ class _ActionSection extends ConsumerWidget {
         const Text(
           'Action de modération',
           style: TextStyle(
-            fontFamily: 'Poppins',
+            fontFamily: 'Plus Jakarta Sans',
             fontWeight: FontWeight.w600,
             fontSize: 15,
-            color: Color(0xFF0F172A),
+            color: Color(0xFF263238),
           ),
         ),
         const SizedBox(height: 12),
         _FullActionButton(
           label: 'Approuver le témoignage',
           icon: Icons.check_circle_rounded,
-          backgroundColor: const Color(0xFF22C55E),
+          backgroundColor: const Color(0xFF12B76A),
           onTap: () => _doApprove(context, ref),
         ),
         const SizedBox(height: 10),
         _FullActionButton(
           label: 'Demander une modification',
           icon: Icons.edit_rounded,
-          backgroundColor: const Color(0xFFF59E0B),
+          backgroundColor: const Color(0xFFF79009),
           onTap: () => _showSheet(context, ref, ReviewAction.requestEdit),
         ),
         const SizedBox(height: 10),
         _FullActionButton(
           label: 'Rejeter le témoignage',
           icon: Icons.cancel_rounded,
-          backgroundColor: const Color(0xFFEF4444),
+          backgroundColor: const Color(0xFFD92D20),
           onTap: () => _showSheet(context, ref, ReviewAction.reject),
         ),
       ],
@@ -377,8 +382,8 @@ class _ActionSection extends ConsumerWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Témoignage approuvé',
-                style: TextStyle(fontFamily: 'Inter', fontSize: 13)),
-            backgroundColor: Color(0xFF22C55E),
+                style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13)),
+            backgroundColor: Color(0xFF12B76A),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -389,8 +394,8 @@ class _ActionSection extends ConsumerWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Erreur : $e',
-                style: const TextStyle(fontFamily: 'Inter', fontSize: 13)),
-            backgroundColor: const Color(0xFFEF4444),
+                style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13)),
+            backgroundColor: const Color(0xFFD92D20),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -444,7 +449,7 @@ class _FullActionButton extends StatelessWidget {
         label: Text(
           label,
           style: const TextStyle(
-            fontFamily: 'Inter',
+            fontFamily: 'Plus Jakarta Sans',
             fontWeight: FontWeight.w600,
             fontSize: 14,
           ),
@@ -473,23 +478,23 @@ class _StatusChip extends StatelessWidget {
     final (label, bg, fg) = switch (status) {
       ModerationStatus.pending => (
           'En attente',
-          const Color(0xFFFFF7ED),
-          const Color(0xFFF59E0B),
+          const Color(0xFFFFF1E2),
+          const Color(0xFFF79009),
         ),
       ModerationStatus.inReview => (
           'En révision',
-          const Color(0xFFEFF6FF),
-          const Color(0xFF3B82F6),
+          const Color(0xFFEAF1FC),
+          const Color(0xFF2B5DB0),
         ),
       ModerationStatus.approved => (
           'Approuvé',
-          const Color(0xFFF0FDF4),
-          const Color(0xFF22C55E),
+          const Color(0xFFECFDF3),
+          const Color(0xFF12B76A),
         ),
       ModerationStatus.rejected => (
           'Rejeté',
-          const Color(0xFFFEF2F2),
-          const Color(0xFFEF4444),
+          const Color(0xFFFEF3F2),
+          const Color(0xFFD92D20),
         ),
     };
 
@@ -502,7 +507,7 @@ class _StatusChip extends StatelessWidget {
       child: Text(
         label,
         style: TextStyle(
-          fontFamily: 'Inter',
+          fontFamily: 'Plus Jakarta Sans',
           fontWeight: FontWeight.w600,
           fontSize: 11,
           color: fg,

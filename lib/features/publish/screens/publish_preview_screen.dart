@@ -140,7 +140,7 @@ class _StepperHeader extends StatelessWidget {
                 Text(
                   format.label,
                   style: const TextStyle(
-                    fontFamily: 'Poppins',
+                    fontFamily: 'Plus Jakarta Sans',
                     fontWeight: FontWeight.w600,
                     fontSize: 15,
                     color: AppColors.textPrimary,
@@ -150,7 +150,7 @@ class _StepperHeader extends StatelessWidget {
                 Text(
                   'Étape $step sur 3',
                   style: const TextStyle(
-                    fontFamily: 'Inter',
+                    fontFamily: 'Plus Jakarta Sans',
                     fontSize: 12,
                     color: AppColors.textSecondary,
                   ),
@@ -397,7 +397,7 @@ class _Step2AudioState extends ConsumerState<_Step2Audio> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Permission microphone refusée.',
-                style: TextStyle(fontFamily: 'Inter')),
+                style: TextStyle(fontFamily: 'Plus Jakarta Sans')),
             backgroundColor: AppColors.danger,
           ),
         );
@@ -492,7 +492,7 @@ class _Step2AudioState extends ConsumerState<_Step2Audio> {
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Text('ou',
                     style: const TextStyle(
-                        fontFamily: 'Inter',
+                        fontFamily: 'Plus Jakarta Sans',
                         fontSize: 13,
                         color: AppColors.textSecondary)),
               ),
@@ -655,7 +655,10 @@ class _BottomNavButtonsState extends ConsumerState<_BottomNavButtons> {
   bool _canProceed(PublishDraft draft, AudioRecordingStatus recordingStatus) {
     switch (widget.step) {
       case 1:
-        return draft.title.trim().isNotEmpty && draft.category != null;
+        // Carnet privé : catégorie facultative.
+        return draft.title.trim().isNotEmpty &&
+            (draft.category != null ||
+                draft.visibility == TestimonyVisibility.private);
       case 2:
         if (draft.format == TestimonyFormat.text) {
           return draft.bodyText.trim().isNotEmpty;
@@ -666,7 +669,8 @@ class _BottomNavButtonsState extends ConsumerState<_BottomNavButtons> {
         }
         return draft.videoPath != null;
       case 3:
-        return draft.consentGiven;
+        if (draft.visibility == TestimonyVisibility.private) return true;
+        return draft.consentGiven && draft.category != null;
       default:
         return true;
     }
@@ -683,9 +687,9 @@ class _BottomNavButtonsState extends ConsumerState<_BottomNavButtons> {
           SnackBar(
             content: Text(
               result.errorMessage ?? 'Session expirée. Reconnecte-toi.',
-              style: const TextStyle(fontFamily: 'Inter', fontSize: 13),
+              style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13),
             ),
-            backgroundColor: const Color(0xFFEF4444),
+            backgroundColor: const Color(0xFFD92D20),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10)),
@@ -697,16 +701,20 @@ class _BottomNavButtonsState extends ConsumerState<_BottomNavButtons> {
             ),
           ),
         );
-      } else if (result.errorMessage != null) {
+      } else if (result.errorMessage != null || result.uploadError != null) {
+        // uploadError : échec d'envoi de la vidéo / audio / couverture.
+        // Sans ce cas, l'échec tombait dans la branche « succès » et le
+        // brouillon était effacé alors que rien n'avait été publié.
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(result.errorMessage!,
-                style: const TextStyle(fontFamily: 'Inter', fontSize: 13)),
-            backgroundColor: const Color(0xFFEF4444),
+            content: Text(result.errorMessage ?? result.uploadError!,
+                style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13)),
+            backgroundColor: const Color(0xFFD92D20),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10)),
             margin: const EdgeInsets.all(16),
+            duration: const Duration(seconds: 6),
           ),
         );
       } else if (result.status == PublishStatus.pendingSync) {
@@ -717,9 +725,9 @@ class _BottomNavButtonsState extends ConsumerState<_BottomNavButtons> {
           SnackBar(
             content: const Text(
               'Hors ligne — témoignage enregistré localement. Il sera envoyé à la prochaine connexion.',
-              style: TextStyle(fontFamily: 'Inter', fontSize: 13),
+              style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13),
             ),
-            backgroundColor: const Color(0xFFF59E0B),
+            backgroundColor: const Color(0xFFF79009),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10)),
@@ -729,6 +737,24 @@ class _BottomNavButtonsState extends ConsumerState<_BottomNavButtons> {
         );
         if (context.canPop()) context.pop();
         context.go('/home');
+      } else if (result.status == PublishStatus.savedToJournal) {
+        ref.read(publishProvider.notifier).reset();
+        ref.read(publishStepProvider.notifier).goTo(1);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Enregistré dans votre carnet privé 🔒',
+              style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13),
+            ),
+            backgroundColor: AppColors.primary,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10)),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+        if (context.canPop()) context.pop();
+        context.go('/journal');
       } else {
         // Succès — réinitialiser le flux et retourner à l'accueil
         ref.read(publishProvider.notifier).reset();
@@ -737,7 +763,7 @@ class _BottomNavButtonsState extends ConsumerState<_BottomNavButtons> {
           SnackBar(
             content: const Text(
               'Témoignage soumis ! Il sera visible après modération.',
-              style: TextStyle(fontFamily: 'Inter', fontSize: 13),
+              style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13),
             ),
             backgroundColor: AppColors.primary,
             behavior: SnackBarBehavior.floating,
@@ -791,7 +817,7 @@ class _BottomNavButtonsState extends ConsumerState<_BottomNavButtons> {
                 ),
                 child: const Text(
                   'Précédent',
-                  style: TextStyle(fontFamily: 'Inter', fontSize: 14),
+                  style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 14),
                 ),
               ),
             ),
@@ -819,9 +845,14 @@ class _BottomNavButtonsState extends ConsumerState<_BottomNavButtons> {
                           color: Colors.white, strokeWidth: 2),
                     )
                   : Text(
-                      isLastStep ? 'Publier' : 'Suivant',
+                      !isLastStep
+                          ? 'Suivant'
+                          : ref.watch(publishProvider).visibility ==
+                                  TestimonyVisibility.private
+                              ? 'Enregistrer'
+                              : 'Publier',
                       style: const TextStyle(
-                        fontFamily: 'Poppins',
+                        fontFamily: 'Plus Jakarta Sans',
                         fontWeight: FontWeight.w600,
                         fontSize: 15,
                       ),
@@ -856,7 +887,7 @@ class _Step3Visibility extends ConsumerWidget {
           const Text(
             'Qui peut voir votre témoignage ?',
             style: TextStyle(
-              fontFamily: 'Inter',
+              fontFamily: 'Plus Jakarta Sans',
               fontSize: 12,
               color: AppColors.textSecondary,
             ),
@@ -885,8 +916,9 @@ class _Step3Visibility extends ConsumerWidget {
           const SizedBox(height: 10),
           _VisibilityOption(
             icon: Icons.lock_rounded,
-            label: 'Privé',
-            description: 'Visible uniquement par vous',
+            label: 'Carnet privé',
+            description:
+                'Gardé pour vous seul, sans modération. Vous pourrez le partager plus tard.',
             selected: draft.visibility == TestimonyVisibility.private,
             onTap: () => ref
                 .read(publishProvider.notifier)
@@ -897,6 +929,10 @@ class _Step3Visibility extends ConsumerWidget {
           const Divider(height: 1, color: AppColors.border),
           const SizedBox(height: 24),
 
+          // Carnet privé : pas de consentement de publication.
+          if (draft.visibility == TestimonyVisibility.private)
+            const _JournalInfoCard()
+          else ...[
           // ── Consent ────────────────────────────────────────────────────────
           GestureDetector(
             onTap: () =>
@@ -944,7 +980,7 @@ class _Step3Visibility extends ConsumerWidget {
                         Text(
                           'Je certifie que ce témoignage est réel',
                           style: TextStyle(
-                            fontFamily: 'Inter',
+                            fontFamily: 'Plus Jakarta Sans',
                             fontWeight: FontWeight.w600,
                             fontSize: 14,
                             color: draft.consentGiven
@@ -958,7 +994,7 @@ class _Step3Visibility extends ConsumerWidget {
                           'témoignage sont authentiques et vécus '
                           'personnellement.',
                           style: TextStyle(
-                            fontFamily: 'Inter',
+                            fontFamily: 'Plus Jakarta Sans',
                             fontSize: 12,
                             color: AppColors.textSecondary,
                             height: 1.5,
@@ -982,7 +1018,7 @@ class _Step3Visibility extends ConsumerWidget {
                 Text(
                   'La confirmation est requise pour publier.',
                   style: TextStyle(
-                    fontFamily: 'Inter',
+                    fontFamily: 'Plus Jakarta Sans',
                     fontSize: 12,
                     color: AppColors.textSecondary,
                   ),
@@ -991,7 +1027,70 @@ class _Step3Visibility extends ConsumerWidget {
             ),
           ],
 
+          ],
+          // Une publication (publique ou abonnés) exige une catégorie.
+          if (draft.visibility != TestimonyVisibility.private &&
+              draft.category == null) ...[
+            const SizedBox(height: 12),
+            const Row(
+              children: [
+                Icon(Icons.warning_amber_rounded,
+                    size: 16, color: AppColors.secondary),
+                SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Pour publier, choisissez une catégorie (étape 1).',
+                    style: TextStyle(
+                      fontFamily: 'Plus Jakarta Sans',
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+
           const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Carnet privé : explication (étape 3) ──────────────────────────────────────
+
+class _JournalInfoCard extends StatelessWidget {
+  const _JournalInfoCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withAlpha(12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.primary.withAlpha(60)),
+      ),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.lock_rounded, color: AppColors.primary, size: 20),
+          SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Ce témoignage sera rangé dans votre carnet privé : '
+              'vous seul pourrez le voir, il ne sera ni publié ni relu par '
+              'les modérateurs.\n\nVous pourrez le partager quand vous le '
+              'souhaitez, depuis votre carnet.',
+              style: TextStyle(
+                fontFamily: 'Plus Jakarta Sans',
+                fontSize: 13,
+                color: AppColors.textPrimary,
+                height: 1.5,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -1058,7 +1157,7 @@ class _VisibilityOption extends StatelessWidget {
                   Text(
                     label,
                     style: TextStyle(
-                      fontFamily: 'Inter',
+                      fontFamily: 'Plus Jakarta Sans',
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
                       color: selected
@@ -1070,7 +1169,7 @@ class _VisibilityOption extends StatelessWidget {
                   Text(
                     description,
                     style: const TextStyle(
-                      fontFamily: 'Inter',
+                      fontFamily: 'Plus Jakarta Sans',
                       fontSize: 12,
                       color: AppColors.textSecondary,
                     ),
@@ -1111,7 +1210,7 @@ class _FieldLabel extends StatelessWidget {
         Text(
           label,
           style: const TextStyle(
-            fontFamily: 'Inter',
+            fontFamily: 'Plus Jakarta Sans',
             fontWeight: FontWeight.w500,
             fontSize: 13,
             color: AppColors.textPrimary,
@@ -1174,7 +1273,7 @@ class _CategorySelector extends ConsumerWidget {
               child: Text(
                 displayName ?? 'Sélectionner une catégorie',
                 style: TextStyle(
-                  fontFamily: 'Inter',
+                  fontFamily: 'Plus Jakarta Sans',
                   fontSize: 14,
                   color: selectedSlug != null
                       ? AppColors.textPrimary
@@ -1224,7 +1323,7 @@ class _CategorySelector extends ConsumerWidget {
                   child: Text(
                     'Choisir une catégorie',
                     style: TextStyle(
-                      fontFamily: 'Poppins',
+                      fontFamily: 'Plus Jakarta Sans',
                       fontWeight: FontWeight.w600,
                       fontSize: 16,
                       color: AppColors.textPrimary,
@@ -1248,7 +1347,7 @@ class _CategorySelector extends ConsumerWidget {
                             title: Text(
                               cat.name,
                               style: TextStyle(
-                                fontFamily: 'Inter',
+                                fontFamily: 'Plus Jakarta Sans',
                                 fontSize: 14,
                                 color: isSelected
                                     ? AppColors.primary
@@ -1308,22 +1407,22 @@ class _CoverImagePicker extends StatelessWidget {
             const SizedBox(height: 16),
             ListTile(
               leading: const CircleAvatar(
-                backgroundColor: Color(0xFFF3E8FF),
+                backgroundColor: Color(0xFFEAF1FC),
                 child: Icon(Icons.photo_library_rounded,
                     color: AppColors.primary),
               ),
               title: const Text('Galerie photos',
-                  style: TextStyle(fontFamily: 'Inter')),
+                  style: TextStyle(fontFamily: 'Plus Jakarta Sans')),
               onTap: () => Navigator.pop(context, ImageSource.gallery),
             ),
             ListTile(
               leading: const CircleAvatar(
-                backgroundColor: Color(0xFFF3E8FF),
+                backgroundColor: Color(0xFFEAF1FC),
                 child: Icon(Icons.camera_alt_rounded,
                     color: AppColors.primary),
               ),
               title: const Text('Prendre une photo',
-                  style: TextStyle(fontFamily: 'Inter')),
+                  style: TextStyle(fontFamily: 'Plus Jakarta Sans')),
               onTap: () => Navigator.pop(context, ImageSource.camera),
             ),
             const SizedBox(height: 8),
@@ -1395,7 +1494,7 @@ class _CoverImagePicker extends StatelessWidget {
                               style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 11,
-                                  fontFamily: 'Inter')),
+                                  fontFamily: 'Plus Jakarta Sans')),
                         ],
                       ),
                     ),
@@ -1418,7 +1517,7 @@ class _CoverImagePicker extends StatelessWidget {
           'Appuyez pour ajouter\nune image de couverture',
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontFamily: 'Inter',
+            fontFamily: 'Plus Jakarta Sans',
             fontSize: 12,
             color: AppColors.textSecondary,
             height: 1.5,
@@ -1452,19 +1551,35 @@ class _TextFormatToolbar extends StatelessWidget {
     );
   }
 
-  void _quote() {
+  void _quote() => _prefixLines((_) => '> ');
+
+  void _heading() => _prefixLines((_) => '# ');
+
+  void _bullets() => _prefixLines((_) => '- ');
+
+  void _numbered() => _prefixLines((i) => '${i + 1}. ');
+
+  /// Préfixe chaque ligne touchée par la sélection (ou la ligne du curseur).
+  /// Les préfixes de bloc existants (#, >, -, 1.) sont remplacés, pas cumulés.
+  void _prefixLines(String Function(int index) prefix) {
     final sel  = controller.selection;
     final text = controller.text;
     if (!sel.isValid) return;
-    final before   = text.substring(0, sel.start);
-    final selected = text.substring(sel.start, sel.end);
-    final after    = text.substring(sel.end);
-    final quoted   = selected.isEmpty
-        ? '> '
-        : selected.split('\n').map((l) => '> $l').join('\n');
+
+    final start = text.lastIndexOf('\n', sel.start > 0 ? sel.start - 1 : 0) + 1;
+    var end = text.indexOf('\n', sel.end);
+    if (end < 0) end = text.length;
+
+    final existing = RegExp(r'^(#{1,3} |> |- |\d{1,3}[.)] )');
+    final lines = text.substring(start, end).split('\n');
+    final block = [
+      for (var i = 0; i < lines.length; i++)
+        '${prefix(i)}${lines[i].replaceFirst(existing, '')}',
+    ].join('\n');
+
     controller.value = TextEditingValue(
-      text: '$before$quoted$after',
-      selection: TextSelection.collapsed(offset: sel.start + quoted.length),
+      text: text.replaceRange(start, end, block),
+      selection: TextSelection.collapsed(offset: start + block.length),
     );
   }
 
@@ -1477,8 +1592,14 @@ class _TextFormatToolbar extends StatelessWidget {
         border: Border.all(color: AppColors.border),
         borderRadius: BorderRadius.circular(10),
       ),
-      child: Row(
+      // Défilable : 7 boutons ne tiennent pas sur les petits écrans.
+      child: ListView(
+        scrollDirection: Axis.horizontal,
         children: [
+          _ToolbarButton(
+              icon: Icons.title_rounded,
+              tooltip: 'Titre (# texte)',
+              onTap: _heading),
           _ToolbarButton(
               icon: Icons.format_bold_rounded,
               tooltip: 'Gras (**texte**)',
@@ -1495,6 +1616,14 @@ class _TextFormatToolbar extends StatelessWidget {
               icon: Icons.format_quote_rounded,
               tooltip: 'Citation (> texte)',
               onTap: _quote),
+          _ToolbarButton(
+              icon: Icons.format_list_bulleted_rounded,
+              tooltip: 'Liste à puces (- texte)',
+              onTap: _bullets),
+          _ToolbarButton(
+              icon: Icons.format_list_numbered_rounded,
+              tooltip: 'Liste numérotée (1. texte)',
+              onTap: _numbered),
         ],
       ),
     );
@@ -1614,7 +1743,7 @@ class _RealRecordingCard extends StatelessWidget {
           Text(
             formatTime(elapsed),
             style: const TextStyle(
-              fontFamily: 'Poppins',
+              fontFamily: 'Plus Jakarta Sans',
               fontWeight: FontWeight.w700,
               fontSize: 28,
               color: AppColors.textPrimary,
@@ -1686,7 +1815,7 @@ class _RealRecordingCard extends StatelessWidget {
                     ? 'Enregistrement terminé ✓'
                     : 'Appuyez pour enregistrer',
             style: TextStyle(
-              fontFamily: 'Inter',
+              fontFamily: 'Plus Jakarta Sans',
               fontSize: 12,
               color: hasAudio && !isRecording
                   ? AppColors.primary
@@ -1820,12 +1949,12 @@ class _RealPlaybackBarState extends State<_RealPlaybackBar> {
                     children: [
                       Text(_fmt(_position),
                           style: const TextStyle(
-                              fontFamily: 'Inter',
+                              fontFamily: 'Plus Jakarta Sans',
                               fontSize: 11,
                               color: AppColors.textSecondary)),
                       Text(_fmt(_duration),
                           style: const TextStyle(
-                              fontFamily: 'Inter',
+                              fontFamily: 'Plus Jakarta Sans',
                               fontSize: 11,
                               color: AppColors.textSecondary)),
                     ],
@@ -1880,7 +2009,7 @@ class _UploadButton extends StatelessWidget {
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12)),
           textStyle: const TextStyle(
-            fontFamily: 'Inter',
+            fontFamily: 'Plus Jakarta Sans',
             fontWeight: FontWeight.w500,
             fontSize: 14,
           ),
@@ -1908,7 +2037,7 @@ class _VideoCameraPreview extends StatelessWidget {
     return Container(
       height: 220,
       decoration: BoxDecoration(
-        color: const Color(0xFF0F172A),
+        color: const Color(0xFF263238),
         borderRadius: BorderRadius.circular(16),
       ),
       child: videoPath != null
@@ -1939,7 +2068,7 @@ class _VideoCameraPreview extends StatelessWidget {
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10)),
                     textStyle: const TextStyle(
-                        fontFamily: 'Inter',
+                        fontFamily: 'Plus Jakarta Sans',
                         fontWeight: FontWeight.w600,
                         fontSize: 14),
                   ),
@@ -1953,7 +2082,7 @@ class _VideoCameraPreview extends StatelessWidget {
                     'Choisir depuis la galerie',
                     style: TextStyle(
                         color: Colors.white70,
-                        fontFamily: 'Inter',
+                        fontFamily: 'Plus Jakarta Sans',
                         fontSize: 13),
                   ),
                 ),
@@ -1993,7 +2122,7 @@ class _VideoSelected extends StatelessWidget {
                   fileName,
                   style: const TextStyle(
                     color: Colors.white70,
-                    fontFamily: 'Inter',
+                    fontFamily: 'Plus Jakarta Sans',
                     fontSize: 12,
                   ),
                   maxLines: 2,
@@ -2025,7 +2154,7 @@ class _VideoSelected extends StatelessWidget {
                       style: TextStyle(
                           color: Colors.white,
                           fontSize: 11,
-                          fontFamily: 'Inter')),
+                          fontFamily: 'Plus Jakarta Sans')),
                 ],
               ),
             ),
@@ -2065,7 +2194,7 @@ class _VideoTrimTool extends StatelessWidget {
         const Text(
           'Couper la vidéo',
           style: TextStyle(
-            fontFamily: 'Poppins',
+            fontFamily: 'Plus Jakarta Sans',
             fontWeight: FontWeight.w600,
             fontSize: 14,
             color: AppColors.textPrimary,
@@ -2076,7 +2205,7 @@ class _VideoTrimTool extends StatelessWidget {
           children: [
             Text(_fmt(trimStart),
                 style: const TextStyle(
-                    fontFamily: 'Inter',
+                    fontFamily: 'Plus Jakarta Sans',
                     fontSize: 11,
                     color: AppColors.textSecondary)),
             Expanded(
@@ -2100,7 +2229,7 @@ class _VideoTrimTool extends StatelessWidget {
             Text(
               _fmt(trimEnd.inSeconds == 0 ? totalDuration : trimEnd),
               style: const TextStyle(
-                  fontFamily: 'Inter',
+                  fontFamily: 'Plus Jakarta Sans',
                   fontSize: 11,
                   color: AppColors.textSecondary),
             ),
@@ -2130,7 +2259,7 @@ class _ThumbnailSelector extends StatelessWidget {
         const Text(
           'Miniature',
           style: TextStyle(
-            fontFamily: 'Poppins',
+            fontFamily: 'Plus Jakarta Sans',
             fontWeight: FontWeight.w600,
             fontSize: 14,
             color: AppColors.textPrimary,
@@ -2191,7 +2320,7 @@ class _ThumbnailSelector extends StatelessWidget {
                       Text(
                         'Perso.',
                         style: TextStyle(
-                            fontFamily: 'Inter',
+                            fontFamily: 'Plus Jakarta Sans',
                             fontSize: 9,
                             color: AppColors.textSecondary),
                       ),
@@ -2241,7 +2370,7 @@ class _BibleVersePreview extends ConsumerWidget {
                 Text(
                   verseRef.displayRef,
                   style: const TextStyle(
-                    fontFamily: 'Inter',
+                    fontFamily: 'Plus Jakarta Sans',
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                     color: AppColors.primary,
@@ -2294,14 +2423,14 @@ InputDecoration _inputDecoration({
   return InputDecoration(
     hintText: hint,
     hintStyle: const TextStyle(
-      fontFamily: 'Inter',
+      fontFamily: 'Plus Jakarta Sans',
       fontSize: 14,
       color: AppColors.textSecondary,
     ),
     prefixIcon: prefixIcon,
     counterText: counterText ?? '',
     counterStyle: const TextStyle(
-      fontFamily: 'Inter',
+      fontFamily: 'Plus Jakarta Sans',
       fontSize: 11,
       color: AppColors.textSecondary,
     ),
@@ -2325,7 +2454,7 @@ InputDecoration _inputDecoration({
 }
 
 const TextStyle _inputTextStyle = TextStyle(
-  fontFamily: 'Inter',
+  fontFamily: 'Plus Jakarta Sans',
   fontSize: 14,
   color: AppColors.textPrimary,
 );

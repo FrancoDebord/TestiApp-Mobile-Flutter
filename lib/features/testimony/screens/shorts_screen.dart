@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:share_plus/share_plus.dart' show ShareParams, SharePlus;
@@ -10,6 +10,8 @@ import 'package:video_player/video_player.dart';
 
 import '../../../core/local_db/daos/comment_dao.dart';
 import '../../../core/local_db/database_service.dart';
+import '../../../core/media/media_quality.dart';
+import '../../../core/media/playback_preferences.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../features/auth/providers/auth_notifier.dart'
@@ -17,6 +19,7 @@ import '../../../features/auth/providers/auth_notifier.dart'
 import '../../../l10n/app_localizations.dart';
 import '../../home/models/testimony_model.dart';
 import '../../home/providers/home_providers.dart';
+import 'video_player_screen.dart' show showVideoQualitySheet, videoQualityChipLabel;
 
 // ============================================================================
 // ShortsScreen
@@ -40,6 +43,9 @@ class _ShortsScreenState extends ConsumerState<ShortsScreen> {
   late final PageController _pageController;
   late int _currentPage;
 
+  /// Qualité choisie manuellement : s'applique à tous les shorts de la session.
+  VideoQuality? _override;
+
   @override
   void initState() {
     super.initState();
@@ -59,8 +65,57 @@ class _ShortsScreenState extends ConsumerState<ShortsScreen> {
     });
   }
 
+  /// Un short doit-il tourner en boucle ? (« Répéter la liste » implique
+  /// toujours la lecture auto, cf. PlaybackPreferencesNotifier.)
+  /// • « Répéter ce témoignage » ou lecture auto désactivée → boucle
+  /// • dernier short sans « Répéter la liste » → boucle
+  bool _shouldLoop(int index, PlaybackPreferences prefs) {
+    if (prefs.repeatMode == RepeatMode.one || !prefs.autoplayNext) return true;
+    if (widget.testimonies.length <= 1) return true;
+    final isLast = index == widget.testimonies.length - 1;
+    return isLast && prefs.repeatMode != RepeatMode.all;
+  }
+
+  /// Fin d'un short (sans boucle) : passer au suivant, ou revenir au début.
+  void _onShortEnded(int index) {
+    if (index != _currentPage || !_pageController.hasClients) return;
+    if (index < widget.testimonies.length - 1) {
+      _pageController.animateToPage(
+        index + 1,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeOut,
+      );
+    } else if (_allowWrap(ref.read(playbackPreferencesProvider))) {
+      _pageController.jumpToPage(0);
+    }
+  }
+
+  static bool _allowWrap(PlaybackPreferences p) =>
+      p.autoplayNext && p.repeatMode == RepeatMode.all;
+
+  Future<void> _openQualitySheet(VideoTestimony current) async {
+    final picked = await showVideoQualitySheet(
+      context,
+      original: current.mediaPath,
+      renditions: current.renditions,
+      prefs: ref.read(playbackPreferencesProvider),
+      metered: ref.read(isMeteredConnectionProvider).value ?? true,
+      override: _override,
+      renditionsStatus: current.renditionsStatus,
+    );
+    if (picked == null || !mounted) return;
+    setState(() => _override = picked);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final prefs = ref.watch(playbackPreferencesProvider);
+    final metered = ref.watch(isMeteredConnectionProvider).value ?? true;
+    final current = widget.testimonies.isEmpty
+        ? null
+        : widget.testimonies[
+            _currentPage.clamp(0, widget.testimonies.length - 1)];
+
     return Scaffold(
       backgroundColor: Colors.black,
       extendBodyBehindAppBar: true,
@@ -88,6 +143,22 @@ class _ShortsScreenState extends ConsumerState<ShortsScreen> {
             fontSize: 18,
           ),
         ),
+        actions: [
+          if (current != null)
+            _ShortsQualityChip(
+              label: videoQualityChipLabel(
+                _override ?? prefs.videoQuality,
+                resolveVideoTestimony(
+                  current,
+                  prefs: prefs,
+                  metered: metered,
+                  override: _override,
+                ),
+              ),
+              onTap: () => _openQualitySheet(current),
+            ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: widget.testimonies.isEmpty
           ? const Center(
@@ -115,9 +186,58 @@ class _ShortsScreenState extends ConsumerState<ShortsScreen> {
                   key: ValueKey(testimony.id),
                   testimony: testimony,
                   isActive: isActive,
+                  loop: _shouldLoop(index, prefs),
+                  qualityOverride: _override,
+                  onEnded: () => _onShortEnded(index),
                 );
               },
             ),
+    );
+  }
+}
+
+// ── Bouton « Qualité » discret (en haut à droite) ─────────────────────────────
+
+class _ShortsQualityChip extends StatelessWidget {
+  const _ShortsQualityChip({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Tooltip(
+        message: 'Qualité de la vidéo',
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 36),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withAlpha(51),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white.withAlpha(77)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.hd_rounded, color: Colors.white, size: 18),
+                const SizedBox(width: 4),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -126,21 +246,31 @@ class _ShortsScreenState extends ConsumerState<ShortsScreen> {
 // _ShortPage — one video page
 // ============================================================================
 
-class _ShortPage extends StatefulWidget {
+class _ShortPage extends ConsumerStatefulWidget {
   const _ShortPage({
     required this.testimony,
     required this.isActive,
+    required this.loop,
+    required this.onEnded,
+    this.qualityOverride,
     super.key,
   });
 
   final VideoTestimony testimony;
   final bool isActive;
 
+  /// Rejouer en boucle (sinon [onEnded] est appelé à la fin).
+  final bool loop;
+  final VoidCallback onEnded;
+
+  /// Qualité choisie pour la session Shorts (`null` = préférence par défaut).
+  final VideoQuality? qualityOverride;
+
   @override
-  State<_ShortPage> createState() => _ShortPageState();
+  ConsumerState<_ShortPage> createState() => _ShortPageState();
 }
 
-class _ShortPageState extends State<_ShortPage> {
+class _ShortPageState extends ConsumerState<_ShortPage> {
   VideoPlayerController? _videoController;
   bool _controllerReady = false;
   bool _showPlayIcon = false;
@@ -149,6 +279,12 @@ class _ShortPageState extends State<_ShortPage> {
   // Tracks whether we showed the play icon overlay recently.
   bool _isPlaying = false;
 
+  /// URL en cours de lecture (version choisie selon la qualité).
+  String? _currentUrl;
+
+  /// Évite de signaler deux fois la même fin de lecture.
+  bool _endHandled = false;
+
   @override
   void initState() {
     super.initState();
@@ -156,31 +292,70 @@ class _ShortPageState extends State<_ShortPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _initVideo();
     });
+    ref.listenManual<AsyncValue<bool>>(
+      isMeteredConnectionProvider,
+      (prev, next) => _onNetworkChanged(prev?.value, next.value),
+    );
+  }
+
+  /// Wi-Fi ⇄ données mobiles : le short actif, en mode Auto (pas de choix
+  /// manuel), bascule sur la version adaptée en gardant sa position.
+  Future<void> _onNetworkChanged(bool? was, bool? now) async {
+    if (now == null || was == null || was == now) return;
+    if (!widget.isActive || widget.qualityOverride != null) return;
+    if (ref.read(playbackPreferencesProvider).videoQuality !=
+        VideoQuality.auto) {
+      return;
+    }
+    final resolved = resolveVideoTestimony(
+      widget.testimony,
+      prefs: ref.read(playbackPreferencesProvider),
+      metered: now,
+    );
+    if (resolved == null || resolved.url == _currentUrl) return;
+    final switched = await _switchQuality();
+    if (!switched || !mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Text('Qualité ajustée : ${resolved.label} '
+            '(${now ? 'données mobiles' : 'Wi-Fi'})'),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+      ));
+  }
+
+  /// Version à lire selon préférences + réseau + choix manuel.
+  String? _resolveUrl() => resolveVideoTestimony(
+        widget.testimony,
+        prefs: ref.read(playbackPreferencesProvider),
+        metered: ref.read(isMeteredConnectionProvider).value ?? true,
+        override: widget.qualityOverride,
+      )?.url;
+
+  VideoPlayerController _createController(String path) {
+    if (kIsWeb || path.startsWith('http://') || path.startsWith('https://')) {
+      return VideoPlayerController.networkUrl(Uri.parse(path));
+    }
+    return VideoPlayerController.file(File(path));
   }
 
   Future<void> _initVideo() async {
-    final path = widget.testimony.mediaPath;
+    final path = _resolveUrl();
     debugPrint('⚡ _initVideo id=${widget.testimony.id} path=$path');
     if (path == null || path.isEmpty) {
       debugPrint('⚡ _initVideo: path null/empty → placeholder');
       return;
     }
 
-    VideoPlayerController controller;
-
-    if (kIsWeb) {
-      controller = VideoPlayerController.networkUrl(Uri.parse(path));
-    } else if (path.startsWith('http://') || path.startsWith('https://')) {
-      controller = VideoPlayerController.networkUrl(Uri.parse(path));
-    } else {
-      controller = VideoPlayerController.file(File(path));
-    }
-
+    final controller = _createController(path);
     _videoController = controller;
+    _currentUrl = path;
 
     try {
       await controller.initialize();
-      controller.setLooping(true);
+      await controller.setLooping(widget.loop);
+      controller.addListener(_onTick);
       if (mounted) {
         setState(() => _controllerReady = true);
         _isPlaying = widget.isActive;
@@ -194,11 +369,81 @@ class _ShortPageState extends State<_ShortPage> {
     }
   }
 
+  /// Changement de qualité : nouveau lecteur à la même position.
+  /// Retourne `true` si le lecteur a changé de fichier.
+  Future<bool> _switchQuality() async {
+    final old = _videoController;
+    final path = _resolveUrl();
+    if (path == null || path.isEmpty || path == _currentUrl) return false;
+    if (old == null || !_controllerReady) {
+      // Lecteur pas encore prêt : on repart simplement de zéro.
+      old?.removeListener(_onTick);
+      old?.dispose();
+      _videoController = null;
+      await _initVideo();
+      return true;
+    }
+
+    final position = old.value.position;
+    final controller = _createController(path);
+    try {
+      await controller.initialize();
+      await controller.setLooping(widget.loop);
+      await controller.seekTo(position);
+      if (widget.isActive && old.value.isPlaying) await controller.play();
+    } catch (e) {
+      debugPrint('⚡ _switchQuality FAIL path=$path error=$e');
+      await controller.dispose();
+      return false;
+    }
+    if (!mounted || _videoController != old) {
+      await controller.dispose();
+      return false;
+    }
+    old.removeListener(_onTick);
+    await old.pause();
+    controller.addListener(_onTick);
+    setState(() {
+      _videoController = controller;
+      _currentUrl = path;
+      _endHandled = false;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => old.dispose());
+    return true;
+  }
+
+  /// Détecte la fin d'un short non bouclé.
+  void _onTick() {
+    final ctrl = _videoController;
+    if (ctrl == null || widget.loop || !widget.isActive) return;
+    final v = ctrl.value;
+    if (!v.isInitialized || v.duration <= Duration.zero) return;
+    final ended = !v.isPlaying &&
+        v.position >= v.duration - const Duration(milliseconds: 250);
+    if (!ended) {
+      if (v.position < v.duration - const Duration(seconds: 1)) {
+        _endHandled = false;
+      }
+      return;
+    }
+    if (_endHandled) return;
+    _endHandled = true;
+    widget.onEnded();
+  }
+
   @override
   void didUpdateWidget(covariant _ShortPage oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.loop != widget.loop) {
+      _videoController?.setLooping(widget.loop);
+    }
+    if (oldWidget.qualityOverride != widget.qualityOverride) {
+      _switchQuality();
+    }
     if (oldWidget.isActive != widget.isActive) {
       if (widget.isActive) {
+        _endHandled = false;
+        // play() repart de zéro si la vidéo était terminée.
         _videoController?.play();
         setState(() => _isPlaying = true);
       } else {
@@ -211,6 +456,7 @@ class _ShortPageState extends State<_ShortPage> {
   @override
   void dispose() {
     _playIconTimer?.cancel();
+    _videoController?.removeListener(_onTick);
     _videoController?.dispose();
     super.dispose();
   }
@@ -566,7 +812,8 @@ class _ShortActions extends ConsumerWidget {
           label: AppLocalizations.of(context).detailShare,
           onTap: () => SharePlus.instance.share(
             ShareParams(
-              text: '${testimony.title}\n\nPartagé depuis l\'application Témoignages ✝️',
+              text: '${testimony.title}\n\n${testimony.shareLink}\n\n'
+                  'Partagé depuis l\'application Témoignages ✝️',
             ),
           ),
         ),
@@ -783,7 +1030,7 @@ class _ShortsCommentsSheetState
                 Text(
                   AppLocalizations.of(context).detailComments,
                   style: const TextStyle(
-                    fontFamily: 'Poppins',
+                    fontFamily: 'Plus Jakarta Sans',
                     fontWeight: FontWeight.w600,
                     fontSize: 15,
                     color: AppColors.textPrimary,
@@ -931,7 +1178,7 @@ class _CommentTile extends StatelessWidget {
             height: 32,
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                colors: [AppColors.primary, Color(0xFF9333EA)],
+                colors: [AppColors.primary, Color(0xFF2B5DB0)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -941,7 +1188,7 @@ class _CommentTile extends StatelessWidget {
             child: Text(
               initials,
               style: const TextStyle(
-                fontFamily: 'Inter',
+                fontFamily: 'Plus Jakarta Sans',
                 fontWeight: FontWeight.w700,
                 fontSize: 12,
                 color: Colors.white,
@@ -958,7 +1205,7 @@ class _CommentTile extends StatelessWidget {
                     Text(
                       comment.author,
                       style: const TextStyle(
-                        fontFamily: 'Inter',
+                        fontFamily: 'Plus Jakarta Sans',
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
                         color: AppColors.textPrimary,

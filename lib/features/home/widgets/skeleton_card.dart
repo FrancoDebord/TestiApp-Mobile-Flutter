@@ -5,7 +5,7 @@ import '../../../core/theme/app_colors.dart';
 
 // ── Couleurs shimmer ──────────────────────────────────────────────────────────
 
-const _kBaseColor      = Color(0xFFE2E8F0);
+const _kBaseColor      = Color(0xFFE4E7EC);
 const _kHighlightColor = Color(0xFFF8FAFC);
 
 // ── SkeletonCard — carte générique ───────────────────────────────────────────

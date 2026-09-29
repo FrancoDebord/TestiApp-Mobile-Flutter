@@ -13,9 +13,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../home/models/testimony_model.dart';
 import '../../home/providers/home_providers.dart';
-import '../../home/widgets/audio_testimony_card.dart';
-import '../../home/widgets/text_testimony_card.dart';
-import '../../home/widgets/video_testimony_card.dart';
+import '../../home/widgets/testimony_feed_item.dart';
 import '../../../core/providers/categories_provider.dart';
 import '../../home/widgets/skeleton_card.dart';
 import '../providers/explore_providers.dart';
@@ -78,7 +76,7 @@ class ExploreScreen extends ConsumerWidget {
                       child: Text(
                         AppLocalizations.of(context).exploreCancel,
                         style: const TextStyle(
-                          fontFamily: 'Inter',
+                          fontFamily: 'Plus Jakarta Sans',
                           fontSize: 14,
                           color: AppColors.primary,
                         ),
@@ -330,23 +328,23 @@ class _CategoryVisual {
 }
 
 const _kVisualMap = <String, _CategoryVisual>{
-  'guerison':         _CategoryVisual(0xFF6B21A8, 0xFFA855F7, 0xe3f3),
-  'delivrance':       _CategoryVisual(0xFF1E3A8A, 0xFF3B82F6, 0xe1af),
-  'conversion':       _CategoryVisual(0xFF065F46, 0xFF10B981, 0xef6e),
-  'mariage':          _CategoryVisual(0xFF9D174D, 0xFFF43F5E, 0xe87d),
-  'famille':          _CategoryVisual(0xFF92400E, 0xFFF59E0B, 0xe533),
-  'finances':         _CategoryVisual(0xFF14532D, 0xFF22C55E, 0xe263),
-  'miracles':         _CategoryVisual(0xFF7C2D12, 0xFFF97316, 0xe518),
-  'protection':       _CategoryVisual(0xFF1E3A5F, 0xFF0EA5E9, 0xe32a),
-  'protection_divine':_CategoryVisual(0xFF1E3A5F, 0xFF0EA5E9, 0xe32a),
-  'ministere':        _CategoryVisual(0xFF4A1D96, 0xFF8B5CF6, 0xe547),
-  'salut':            _CategoryVisual(0xFF7F1D1D, 0xFFEF4444, 0xe838),
+  'guerison':         _CategoryVisual(0xFF184797, 0xFF4B7ACB, 0xe3f3),
+  'delivrance':       _CategoryVisual(0xFF103675, 0xFF2B5DB0, 0xe1af),
+  'conversion':       _CategoryVisual(0xFFD96F0B, 0xFF12B76A, 0xef6e),
+  'mariage':          _CategoryVisual(0xFFF18717, 0xFFFCC11D, 0xe87d),
+  'famille':          _CategoryVisual(0xFFC48A06, 0xFFF79009, 0xe533),
+  'finances':         _CategoryVisual(0xFF184797, 0xFF12B76A, 0xe263),
+  'miracles':         _CategoryVisual(0xFFD96F0B, 0xFFF18717, 0xe518),
+  'protection':       _CategoryVisual(0xFF103675, 0xFF4B7ACB, 0xe32a),
+  'protection_divine':_CategoryVisual(0xFF103675, 0xFF4B7ACB, 0xe32a),
+  'ministere':        _CategoryVisual(0xFF103675, 0xFF4B7ACB, 0xe547),
+  'salut':            _CategoryVisual(0xFFD96F0B, 0xFFD92D20, 0xe838),
 };
 
 // Couleurs de secours pour les catégories inconnues (cycle)
 const _kFallbackVisuals = <_CategoryVisual>[
   _CategoryVisual(0xFF374151, 0xFF6B7280, 0xe88a), // bookmark
-  _CategoryVisual(0xFF1F2937, 0xFF4B5563, 0xe7ef), // label
+  _CategoryVisual(0xFF263238, 0xFF4B5563, 0xe7ef), // label
   _CategoryVisual(0xFF312E81, 0xFF6366F1, 0xe54f), // star_border
   _CategoryVisual(0xFF064E3B, 0xFF059669, 0xe1b0), // eco
 ];
@@ -432,7 +430,7 @@ class _CategoryCard extends StatelessWidget {
                   Text(
                     cat.name,
                     style: const TextStyle(
-                      fontFamily: 'Poppins',
+                      fontFamily: 'Plus Jakarta Sans',
                       fontWeight: FontWeight.w600,
                       fontSize: 11.5,
                       color: Colors.white,
@@ -447,7 +445,7 @@ class _CategoryCard extends StatelessWidget {
                         ? '$liveCount tém.${liveCount > 1 ? 's' : ''}'
                         : 'Aucun tém.',
                     style: TextStyle(
-                      fontFamily: 'Inter',
+                      fontFamily: 'Plus Jakarta Sans',
                       fontSize: 10,
                       color: Colors.white.withAlpha(200),
                     ),
@@ -529,8 +527,6 @@ class _EmptySearch extends StatelessWidget {
 
 // ── Dispatch card par type ────────────────────────────────────────────────────
 
-Widget _buildCard(Testimony t) => switch (t) {
-      TextTestimony()  => TextTestimonyCard(testimony: t),
-      AudioTestimony() => AudioTestimonyCard(testimony: t),
-      VideoTestimony() => VideoTestimonyCard(testimony: t),
-    };
+/// Grande carte ou ligne compacte selon l'affichage choisi (feedLayoutProvider).
+Widget _buildCard(Testimony t) =>
+    TestimonyFeedItem(key: ValueKey(t.id), testimony: t);

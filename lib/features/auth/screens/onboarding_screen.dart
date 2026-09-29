@@ -132,9 +132,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         child: const Text(
                           'Passer',
                           style: TextStyle(
-                            fontFamily: 'Inter',
+                            fontFamily: 'Plus Jakarta Sans',
                             fontSize: 14,
-                            color: Color(0xFF64748B),
+                            color: Color(0xFF667085),
                           ),
                         ),
                       ),
@@ -214,10 +214,10 @@ class _SlidePage extends StatelessWidget {
             data.title,
             textAlign: TextAlign.center,
             style: const TextStyle(
-              fontFamily: 'Poppins',
+              fontFamily: 'Plus Jakarta Sans',
               fontWeight: FontWeight.w600,
               fontSize: 26,
-              color: Color(0xFF0F172A),
+              color: Color(0xFF263238),
               height: 1.3,
             ),
           ),
@@ -229,9 +229,9 @@ class _SlidePage extends StatelessWidget {
             data.body,
             textAlign: TextAlign.center,
             style: const TextStyle(
-              fontFamily: 'Inter',
+              fontFamily: 'Plus Jakarta Sans',
               fontSize: 15,
-              color: Color(0xFF64748B),
+              color: Color(0xFF667085),
               height: 1.6,
             ),
           ),
@@ -272,12 +272,12 @@ class _IllustrationPainter extends CustomPainter {
     canvas.drawCircle(
       Offset(cx, cy),
       size.width * 0.38,
-      Paint()..color = const Color(0xFFEDE9FE),
+      Paint()..color = const Color(0xFFEAF1FC),
     );
 
     // Light rays emanating from top-center.
     final rayPaint = Paint()
-      ..color = const Color(0xFFF59E0B).withAlpha(180)
+      ..color = const Color(0xFFF79009).withAlpha(180)
       ..strokeWidth = 3
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
@@ -296,7 +296,7 @@ class _IllustrationPainter extends CustomPainter {
 
     // Two simplified hands reaching up.
     final handPaint = Paint()
-      ..color = const Color(0xFF6B21A8)
+      ..color = const Color(0xFF184797)
       ..style = PaintingStyle.fill;
 
     // Left hand.
@@ -320,7 +320,7 @@ class _IllustrationPainter extends CustomPainter {
     canvas.drawPath(rightHand, handPaint);
 
     // Gold star / sparkle above.
-    _drawStar(canvas, Offset(cx, cy - size.height * 0.38), 12, rayPaint..color = const Color(0xFFF59E0B));
+    _drawStar(canvas, Offset(cx, cy - size.height * 0.38), 12, rayPaint..color = const Color(0xFFF79009));
   }
 
   // ── Slide 1 : Community hearts circle ────────────────────────────────────
@@ -333,7 +333,7 @@ class _IllustrationPainter extends CustomPainter {
     canvas.drawCircle(
       Offset(cx, cy),
       size.width * 0.38,
-      Paint()..color = const Color(0xFFFEF3C7),
+      Paint()..color = const Color(0xFFFFFAEB),
     );
 
     // Three hearts positioned in a triangle.
@@ -348,13 +348,13 @@ class _IllustrationPainter extends CustomPainter {
         canvas,
         Offset(cx + pos.dx * size.width, cy + pos.dy * size.height),
         24,
-        const Color(0xFF6B21A8),
+        const Color(0xFF184797),
       );
     }
 
     // Connecting lines.
     final linePaint = Paint()
-      ..color = const Color(0xFFA855F7).withAlpha(120)
+      ..color = const Color(0xFF4B7ACB).withAlpha(120)
       ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke;
 
@@ -366,7 +366,7 @@ class _IllustrationPainter extends CustomPainter {
     }
 
     // Small gold stars.
-    final starPaint = Paint()..color = const Color(0xFFF59E0B);
+    final starPaint = Paint()..color = const Color(0xFFF79009);
     _drawStar(canvas, Offset(cx + 60, cy - 60), 8, starPaint);
     _drawStar(canvas, Offset(cx - 65, cy - 45), 6, starPaint);
   }
@@ -381,19 +381,19 @@ class _IllustrationPainter extends CustomPainter {
     canvas.drawCircle(
       Offset(cx, cy),
       size.width * 0.38,
-      Paint()..color = const Color(0xFFEDE9FE),
+      Paint()..color = const Color(0xFFEAF1FC),
     );
 
     // Sun.
     canvas.drawCircle(
       Offset(cx, cy - 30),
       26,
-      Paint()..color = const Color(0xFFF59E0B),
+      Paint()..color = const Color(0xFFF79009),
     );
 
     // Sun rays.
     final rayPaint = Paint()
-      ..color = const Color(0xFFF59E0B).withAlpha(160)
+      ..color = const Color(0xFFF79009).withAlpha(160)
       ..strokeWidth = 2.5
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
@@ -408,7 +408,7 @@ class _IllustrationPainter extends CustomPainter {
     }
 
     // Open Bible (two rectangles tilted).
-    final biblePaint = Paint()..color = const Color(0xFF6B21A8);
+    final biblePaint = Paint()..color = const Color(0xFF184797);
     canvas.save();
     canvas.translate(cx, cy + 40);
 
@@ -539,8 +539,8 @@ class _DotIndicator extends StatelessWidget {
           height: 8,
           decoration: BoxDecoration(
             color: isActive
-                ? const Color(0xFF6B21A8)
-                : const Color(0xFFE2E8F0),
+                ? const Color(0xFF184797)
+                : const Color(0xFFE4E7EC),
             borderRadius: BorderRadius.circular(4),
           ),
         );
@@ -573,7 +573,7 @@ class _ActionButtons extends StatelessWidget {
         FilledButton(
           onPressed: onPrimary,
           style: FilledButton.styleFrom(
-            backgroundColor: const Color(0xFF6B21A8),
+            backgroundColor: const Color(0xFF184797),
             minimumSize: const Size.fromHeight(52),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(14),
@@ -582,7 +582,7 @@ class _ActionButtons extends StatelessWidget {
           child: Text(
             slide.primaryLabel,
             style: const TextStyle(
-              fontFamily: 'Poppins',
+              fontFamily: 'Plus Jakarta Sans',
               fontWeight: FontWeight.w600,
               fontSize: 16,
               color: Colors.white,
@@ -600,8 +600,8 @@ class _ActionButtons extends StatelessWidget {
               minimumSize: const Size.fromHeight(52),
               side: BorderSide(
                 color: isLastPage
-                    ? const Color(0xFF6B21A8)
-                    : const Color(0xFFE2E8F0),
+                    ? const Color(0xFF184797)
+                    : const Color(0xFFE4E7EC),
                 width: 1.5,
               ),
               shape: RoundedRectangleBorder(
@@ -611,12 +611,12 @@ class _ActionButtons extends StatelessWidget {
             child: Text(
               slide.secondaryLabel!,
               style: TextStyle(
-                fontFamily: 'Poppins',
+                fontFamily: 'Plus Jakarta Sans',
                 fontWeight: FontWeight.w600,
                 fontSize: 16,
                 color: isLastPage
-                    ? const Color(0xFF6B21A8)
-                    : const Color(0xFF64748B),
+                    ? const Color(0xFF184797)
+                    : const Color(0xFF667085),
               ),
             ),
           ),

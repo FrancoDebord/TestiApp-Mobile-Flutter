@@ -112,6 +112,7 @@ Testimony _applyStatsDelta(
       bibleVerse: t.bibleVerse, bibleVerseRef: t.bibleVerseRef,
       isFeatured: t.isFeatured, isLiked: t.isLiked,
       isPrayed: t.isPrayed, isSaved: t.isSaved,
+      shareUrl: t.shareUrl,
     );
   }
   if (t is AudioTestimony) {
@@ -119,10 +120,12 @@ Testimony _applyStatsDelta(
       id: t.id, author: t.author, title: t.title,
       category: t.category, createdAt: t.createdAt, stats: ns,
       durationSeconds: t.durationSeconds, transcriptPreview: t.transcriptPreview,
-      mediaPath: t.mediaPath, coverImageUrl: t.coverImageUrl,
+      mediaPath: t.mediaPath, renditions: t.renditions, renditionsStatus: t.renditionsStatus,
+      coverImageUrl: t.coverImageUrl,
       bibleVerse: t.bibleVerse, bibleVerseRef: t.bibleVerseRef,
       isFeatured: t.isFeatured, isLiked: t.isLiked,
       isPrayed: t.isPrayed, isSaved: t.isSaved,
+      shareUrl: t.shareUrl,
     );
   }
   if (t is VideoTestimony) {
@@ -130,10 +133,11 @@ Testimony _applyStatsDelta(
       id: t.id, author: t.author, title: t.title,
       category: t.category, createdAt: t.createdAt, stats: ns,
       durationSeconds: t.durationSeconds, thumbnailUrl: t.thumbnailUrl,
-      mediaPath: t.mediaPath,
+      mediaPath: t.mediaPath, renditions: t.renditions, renditionsStatus: t.renditionsStatus,
       bibleVerse: t.bibleVerse, bibleVerseRef: t.bibleVerseRef,
       isFeatured: t.isFeatured, isLiked: t.isLiked,
       isPrayed: t.isPrayed, isSaved: t.isSaved,
+      shareUrl: t.shareUrl,
     );
   }
   return t;
@@ -169,7 +173,14 @@ Testimony? testimonyFromApiJson(dynamic raw) {
       uid:         (userMap['id'] ?? m['userId'] ?? m['user_id'])?.toString() ?? '',
       displayName: (userMap['displayName'] ?? userMap['display_name'])  as String? ?? 'Anonyme',
       avatarUrl:   (userMap['avatarUrl']   ?? userMap['avatar_url'])    as String?,
+      isOrganization: ((userMap['accountType'] ?? userMap['account_type'])
+              as String?) == 'organization',
+      isVerified: (userMap['isVerified'] ?? userMap['is_verified'] ??
+              userMap['organization_verified']) as bool? ?? false,
     );
+    final renditions = MediaRendition.parseList(
+        m['renditions'] ?? m['mediaRenditions'] ?? m['media_renditions'],
+        absUrl: _absUrl);
     final id        = m['id']?.toString() ?? '';
     final title     = m['title']    as String? ?? '';
     final category  = _categoryFromApiSlug(
@@ -189,6 +200,7 @@ Testimony? testimonyFromApiJson(dynamic raw) {
     final type          = m['type']                                                            as String? ?? 'text';
     final bibleVerse    = (m['bibleVerse']      ?? m['bible_verse'])                          as String?;
     final bibleVerseRef = (m['verseReference']  ?? m['verse_reference'])                      as String?;
+    final shareUrl      = (m['shareUrl']        ?? m['share_url'])                            as String?;
 
     switch (type) {
       case 'audio':
@@ -199,9 +211,12 @@ Testimony? testimonyFromApiJson(dynamic raw) {
           durationSeconds:   _parseInt(m['duration'] ?? m['duration_seconds']),
           transcriptPreview: body.length > 180 ? '${body.substring(0, 180)}…' : body,
           mediaPath:     _absUrl((m['mediaUrl'] ?? m['media_url']) as String?),
+          renditions:    renditions,
+          renditionsStatus: m['renditionsStatus'] as String?,
           coverImageUrl: (m['coverUrl'] ?? m['cover_url']) as String?,
           bibleVerse: bibleVerse, bibleVerseRef: bibleVerseRef,
           isFeatured: isFeatured, isLiked: isLiked, isPrayed: isPrayed, isSaved: isSaved,
+          shareUrl: shareUrl,
         );
       case 'video':
         return VideoTestimony(
@@ -210,18 +225,22 @@ Testimony? testimonyFromApiJson(dynamic raw) {
           durationSeconds: _parseInt(m['duration'] ?? m['duration_seconds']),
           thumbnailUrl:    (m['coverUrl'] ?? m['cover_url']) as String? ?? '',
           mediaPath:       _absUrl((m['mediaUrl'] ?? m['media_url']) as String?),
+          renditions:      renditions,
+          renditionsStatus: m['renditionsStatus'] as String?,
           bibleVerse: bibleVerse, bibleVerseRef: bibleVerseRef,
           isFeatured: isFeatured, isLiked: isLiked, isPrayed: isPrayed, isSaved: isSaved,
+          shareUrl: shareUrl,
         );
       default:
         final body = (m['bodyText'] ?? m['body_text']) as String? ?? '';
         return TextTestimony(
           id: id, author: author, title: title,
           category: category, createdAt: createdAt, stats: stats,
-          preview: body.length > 220 ? '${body.substring(0, 220)}…' : body,
+          preview: body, // texte complet : l'affichage gère la troncature
           coverImageUrl: (m['coverUrl'] ?? m['cover_url']) as String?,
           bibleVerse: bibleVerse, bibleVerseRef: bibleVerseRef,
           isFeatured: isFeatured, isLiked: isLiked, isPrayed: isPrayed, isSaved: isSaved,
+          shareUrl: shareUrl,
         );
     }
   } catch (_) {
@@ -339,7 +358,7 @@ class FeedNotifier extends Notifier<List<Testimony>> {
           return TextTestimony(
             id: id, author: author, title: title,
             category: category, createdAt: createdAt, stats: stats,
-            preview: body.length > 220 ? '${body.substring(0, 220)}…' : body,
+            preview: body, // texte complet : l'affichage gère la troncature
             bibleVerse: bibleVerse, bibleVerseRef: bibleVerseRef,
           );
       }

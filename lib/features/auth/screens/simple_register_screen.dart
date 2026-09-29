@@ -9,8 +9,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../providers/auth_notifier.dart';
 
-const _kPurple = Color(0xFF6B21A8);
-const _kGold   = Color(0xFFF59E0B);
+const _kPurple = Color(0xFF184797);
+const _kGold   = Color(0xFFF79009);
 
 class SimpleRegisterScreen extends ConsumerStatefulWidget {
   const SimpleRegisterScreen({super.key});
@@ -100,7 +100,7 @@ class _SimpleRegisterScreenState
                     const Text(
                       'Bienvenue !',
                       style: TextStyle(
-                        fontFamily: 'Poppins',
+                        fontFamily: 'Plus Jakarta Sans',
                         fontWeight: FontWeight.w700,
                         fontSize: 28,
                         color: Colors.white,
@@ -110,7 +110,7 @@ class _SimpleRegisterScreenState
                     Text(
                       'Partagez les œuvres de Dieu',
                       style: TextStyle(
-                        fontFamily: 'Inter',
+                        fontFamily: 'Plus Jakarta Sans',
                         fontSize: 14,
                         color: Colors.white.withAlpha(204),
                       ),
@@ -139,17 +139,17 @@ class _SimpleRegisterScreenState
                     const Text(
                       'Créer mon compte',
                       style: TextStyle(
-                        fontFamily: 'Poppins',
+                        fontFamily: 'Plus Jakarta Sans',
                         fontWeight: FontWeight.w600,
                         fontSize: 20,
-                        color: Color(0xFF0F172A),
+                        color: Color(0xFF263238),
                       ),
                     ),
                     const SizedBox(height: 6),
                     Text(
                       'Entrez juste votre prénom et votre nom.\nAucun mot de passe requis.',
                       style: TextStyle(
-                        fontFamily: 'Inter',
+                        fontFamily: 'Plus Jakarta Sans',
                         fontSize: 13,
                         color: Colors.grey.shade600,
                         height: 1.5,
@@ -223,7 +223,7 @@ class _SimpleRegisterScreenState
                           : const Text(
                               "C'est parti !",
                               style: TextStyle(
-                                fontFamily: 'Poppins',
+                                fontFamily: 'Plus Jakarta Sans',
                                 fontWeight: FontWeight.w600,
                                 fontSize: 16,
                                 color: Colors.white,
@@ -238,7 +238,7 @@ class _SimpleRegisterScreenState
                       child: Text(
                         'Vous pouvez compléter votre profil plus tard.',
                         style: TextStyle(
-                          fontFamily: 'Inter',
+                          fontFamily: 'Plus Jakarta Sans',
                           fontSize: 12,
                           color: Colors.grey.shade500,
                         ),
@@ -270,10 +270,10 @@ class _SimpleRegisterScreenState
         Text(
           label,
           style: const TextStyle(
-            fontFamily: 'Inter',
+            fontFamily: 'Plus Jakarta Sans',
             fontWeight: FontWeight.w500,
             fontSize: 14,
-            color: Color(0xFF0F172A),
+            color: Color(0xFF263238),
           ),
         ),
         const SizedBox(height: 6),
@@ -284,22 +284,22 @@ class _SimpleRegisterScreenState
           textCapitalization: TextCapitalization.words,
           textInputAction:
               isLast ? TextInputAction.done : TextInputAction.next,
-          style: const TextStyle(fontFamily: 'Inter', fontSize: 15),
+          style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 15),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle:
-                const TextStyle(color: Color(0xFF94A3B8)),
+                const TextStyle(color: Color(0xFF98A2B3)),
             filled: true,
             fillColor: Colors.white,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide:
-                  const BorderSide(color: Color(0xFFE2E8F0), width: 1.5),
+                  const BorderSide(color: Color(0xFFE4E7EC), width: 1.5),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide:
-                  const BorderSide(color: Color(0xFFE2E8F0), width: 1.5),
+                  const BorderSide(color: Color(0xFFE4E7EC), width: 1.5),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),

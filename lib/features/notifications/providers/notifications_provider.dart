@@ -8,7 +8,8 @@ import '../models/notification_models.dart';
 // Helper : JSON API → AppNotification
 // ============================================================================
 
-AppNotification? _fromJson(dynamic raw) {
+/// Convertit un élément de la liste API en [AppNotification] (null si invalide).
+AppNotification? notificationFromJson(dynamic raw) {
   try {
     final m = raw as Map<String, dynamic>;
     return AppNotification(
@@ -19,6 +20,9 @@ AppNotification? _fromJson(dynamic raw) {
       createdAt:            DateTime.tryParse(m['createdAt'] as String? ?? '') ?? DateTime.now(),
       actorAvatarUrl:       m['actorAvatar']    as String?,
       isRead:               m['isRead']         as bool? ?? false,
+      testimonyId:          m['testimonyId']?.toString(),
+      liveId:               m['liveId']?.toString(),
+      message:              m['message']        as String?,
     );
   } catch (_) {
     return null;
@@ -35,6 +39,9 @@ NotificationType _parseType(String v) => switch (v) {
       'pending_correction'    => NotificationType.pendingCorrection,
       'new_followed_testimony'=> NotificationType.newFollowedTestimony,
       'prayer'                => NotificationType.prayer,
+      'organization_verified' => NotificationType.organizationVerified,
+      'organization_rejected' => NotificationType.organizationRejected,
+      'live_started'          => NotificationType.liveStarted,
       _                       => NotificationType.like,
     };
 
@@ -65,7 +72,7 @@ class NotificationsNotifier extends AsyncNotifier<List<AppNotification>> {
     final api      = ref.read(apiServiceProvider);
     final response = await api.get<List<dynamic>>(AppConstants.notifications);
     return response.data
-        .map(_fromJson)
+        .map(notificationFromJson)
         .whereType<AppNotification>()
         .toList();
   }

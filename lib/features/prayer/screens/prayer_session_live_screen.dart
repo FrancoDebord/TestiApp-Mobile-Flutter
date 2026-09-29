@@ -116,7 +116,7 @@ class _PrayerSessionLiveScreenState
           ElevatedButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFEF4444),
+              backgroundColor: const Color(0xFFD92D20),
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8)),
@@ -234,7 +234,7 @@ class _TopBar extends StatelessWidget {
             padding:
                 const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: const Color(0xFFEF4444),
+              color: const Color(0xFFD92D20),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Row(
@@ -252,7 +252,7 @@ class _TopBar extends StatelessWidget {
                 const Text(
                   'EN DIRECT',
                   style: TextStyle(
-                    fontFamily: 'Inter',
+                    fontFamily: 'Plus Jakarta Sans',
                     fontWeight: FontWeight.w800,
                     fontSize: 10,
                     color: Colors.white,
@@ -272,7 +272,7 @@ class _TopBar extends StatelessWidget {
                 Text(
                   session.title,
                   style: const TextStyle(
-                    fontFamily: 'Inter',
+                    fontFamily: 'Plus Jakarta Sans',
                     fontWeight: FontWeight.w700,
                     fontSize: 14,
                     color: Colors.white,
@@ -285,21 +285,21 @@ class _TopBar extends StatelessWidget {
                     Text(
                       elapsed,
                       style: const TextStyle(
-                        fontFamily: 'Inter',
+                        fontFamily: 'Plus Jakarta Sans',
                         fontSize: 11,
-                        color: Color(0xFF94A3B8),
+                        color: Color(0xFF98A2B3),
                       ),
                     ),
                     const SizedBox(width: 8),
                     const Icon(Icons.people_outline_rounded,
-                        size: 12, color: Color(0xFF94A3B8)),
+                        size: 12, color: Color(0xFF98A2B3)),
                     const SizedBox(width: 3),
                     Text(
                       '$participants',
                       style: const TextStyle(
-                        fontFamily: 'Inter',
+                        fontFamily: 'Plus Jakarta Sans',
                         fontSize: 11,
-                        color: Color(0xFF94A3B8),
+                        color: Color(0xFF98A2B3),
                       ),
                     ),
                     if (isRecording) ...[
@@ -307,15 +307,15 @@ class _TopBar extends StatelessWidget {
                       const Icon(
                         Icons.fiber_manual_record_rounded,
                         size: 10,
-                        color: Color(0xFFEF4444),
+                        color: Color(0xFFD92D20),
                       ),
                       const SizedBox(width: 3),
                       const Text(
                         'Enregistrement',
                         style: TextStyle(
-                          fontFamily: 'Inter',
+                          fontFamily: 'Plus Jakarta Sans',
                           fontSize: 11,
-                          color: Color(0xFFEF4444),
+                          color: Color(0xFFD92D20),
                         ),
                       ),
                     ],
@@ -333,11 +333,11 @@ class _TopBar extends StatelessWidget {
                 onPressed: isHost ? onEnd : onLeave,
                 style: TextButton.styleFrom(
                   foregroundColor: isHost
-                      ? const Color(0xFFEF4444)
-                      : const Color(0xFF94A3B8),
+                      ? const Color(0xFFD92D20)
+                      : const Color(0xFF98A2B3),
                   backgroundColor: isHost
-                      ? const Color(0xFFEF4444).withAlpha(20)
-                      : const Color(0xFF94A3B8).withAlpha(20),
+                      ? const Color(0xFFD92D20).withAlpha(20)
+                      : const Color(0xFF98A2B3).withAlpha(20),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8)),
                   padding:
@@ -346,7 +346,7 @@ class _TopBar extends StatelessWidget {
                 child: Text(
                   isHost ? l10n.prayerEnd : l10n.prayerLeave,
                   style: const TextStyle(
-                    fontFamily: 'Inter',
+                    fontFamily: 'Plus Jakarta Sans',
                     fontWeight: FontWeight.w700,
                     fontSize: 13,
                   ),
@@ -389,16 +389,16 @@ class _PrayerCircle extends StatelessWidget {
           Text(
             'Session animée par $hostName',
             style: const TextStyle(
-              fontFamily: 'Inter',
+              fontFamily: 'Plus Jakarta Sans',
               fontSize: 13,
-              color: Color(0xFF94A3B8),
+              color: Color(0xFF98A2B3),
             ),
           ),
           const SizedBox(height: 4),
           Text(
             '$participants participants en prière',
             style: TextStyle(
-              fontFamily: 'Inter',
+              fontFamily: 'Plus Jakarta Sans',
               fontWeight: FontWeight.w600,
               fontSize: 12,
               color: AppColors.primary.withAlpha(200),
@@ -427,9 +427,9 @@ class _ChatList extends StatelessWidget {
         child: Text(
           'Commencez à prier ensemble…',
           style: TextStyle(
-            fontFamily: 'Inter',
+            fontFamily: 'Plus Jakarta Sans',
             fontSize: 13,
-            color: Color(0xFF475569),
+            color: Color(0xFF475467),
             fontStyle: FontStyle.italic,
           ),
         ),
@@ -467,7 +467,7 @@ class _ChatBubble extends StatelessWidget {
             height: 28,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [AppColors.primary, Color(0xFF9333EA)],
+                colors: [AppColors.primary, Color(0xFF2B5DB0)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -477,7 +477,7 @@ class _ChatBubble extends StatelessWidget {
             child: Text(
               message.author.isNotEmpty ? message.author[0].toUpperCase() : '?',
               style: const TextStyle(
-                fontFamily: 'Inter',
+                fontFamily: 'Plus Jakarta Sans',
                 fontWeight: FontWeight.w700,
                 fontSize: 11,
                 color: Colors.white,
@@ -492,10 +492,10 @@ class _ChatBubble extends StatelessWidget {
                 Text(
                   message.author,
                   style: const TextStyle(
-                    fontFamily: 'Inter',
+                    fontFamily: 'Plus Jakarta Sans',
                     fontWeight: FontWeight.w600,
                     fontSize: 11,
-                    color: Color(0xFF94A3B8),
+                    color: Color(0xFF98A2B3),
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -503,13 +503,13 @@ class _ChatBubble extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1E293B),
+                    color: const Color(0xFF2D3A42),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
                     message.text,
                     style: const TextStyle(
-                      fontFamily: 'Inter',
+                      fontFamily: 'Plus Jakarta Sans',
                       fontSize: 13,
                       color: Colors.white,
                       height: 1.4,
@@ -543,7 +543,7 @@ class _SystemBubble extends StatelessWidget {
         text,
         textAlign: TextAlign.center,
         style: TextStyle(
-          fontFamily: 'Inter',
+          fontFamily: 'Plus Jakarta Sans',
           fontSize: 12,
           color: AppColors.primary.withAlpha(220),
           fontStyle: FontStyle.italic,
@@ -578,7 +578,7 @@ class _BottomControls extends StatelessWidget {
     return Container(
       decoration: const BoxDecoration(
         color: Color(0xFF0D0D1A),
-        border: Border(top: BorderSide(color: Color(0xFF1E293B))),
+        border: Border(top: BorderSide(color: Color(0xFF2D3A42))),
       ),
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
       child: Column(
@@ -603,7 +603,7 @@ class _BottomControls extends StatelessWidget {
                     ? AppLocalizations.of(context).prayerStopRec
                     : AppLocalizations.of(context).prayerRecord,
                 active: isRecording,
-                activeColor: const Color(0xFFEF4444),
+                activeColor: const Color(0xFFD92D20),
                 onTap: onToggleRecord,
               ),
             ],
@@ -618,17 +618,17 @@ class _BottomControls extends StatelessWidget {
                   controller: controller,
                   focusNode: focusNode,
                   style: const TextStyle(
-                    fontFamily: 'Inter',
+                    fontFamily: 'Plus Jakarta Sans',
                     fontSize: 13,
                     color: Colors.white,
                   ),
                   decoration: InputDecoration(
                     hintText: AppLocalizations.of(context).prayerMessageHint,
                     hintStyle: AppTextStyles.bodySmall.copyWith(
-                      color: const Color(0xFF475569),
+                      color: const Color(0xFF475467),
                     ),
                     filled: true,
-                    fillColor: const Color(0xFF1E293B),
+                    fillColor: const Color(0xFF2D3A42),
                     contentPadding: const EdgeInsets.symmetric(
                         horizontal: 14, vertical: 10),
                     border: OutlineInputBorder(
@@ -687,7 +687,7 @@ class _ControlButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? (activeColor ?? AppColors.primary) : const Color(0xFF475569);
+    final color = active ? (activeColor ?? AppColors.primary) : const Color(0xFF475467);
     return GestureDetector(
       onTap: onTap,
       child: Column(
@@ -698,7 +698,7 @@ class _ControlButton extends StatelessWidget {
             decoration: BoxDecoration(
               color: active
                   ? color.withAlpha(25)
-                  : const Color(0xFF1E293B),
+                  : const Color(0xFF2D3A42),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: color, size: 22),
@@ -707,7 +707,7 @@ class _ControlButton extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              fontFamily: 'Inter',
+              fontFamily: 'Plus Jakarta Sans',
               fontSize: 10,
               color: color,
             ),

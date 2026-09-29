@@ -9,6 +9,9 @@ enum NotificationType {
   approved,
   newFollowedTestimony,
   pendingCorrection,
+  organizationVerified,
+  organizationRejected,
+  liveStarted,
 }
 
 extension NotificationTypeLabel on NotificationType {
@@ -26,6 +29,12 @@ extension NotificationTypeLabel on NotificationType {
         return 'Nouveau témoignage';
       case NotificationType.pendingCorrection:
         return 'Correction requise';
+      case NotificationType.organizationVerified:
+        return 'Organisation vérifiée';
+      case NotificationType.organizationRejected:
+        return 'Vérification refusée';
+      case NotificationType.liveStarted:
+        return 'En direct';
     }
   }
 }
@@ -58,6 +67,9 @@ class AppNotification {
     this.actorAvatarUrl,
     this.testimonyThumbnailUrl,
     this.isRead = false,
+    this.testimonyId,
+    this.liveId,
+    this.message,
   });
 
   final String id;
@@ -69,6 +81,15 @@ class AppNotification {
   final String? testimonyThumbnailUrl;
   final bool isRead;
 
+  /// Témoignage concerné (null pour les notifications système / direct).
+  final String? testimonyId;
+
+  /// Direct annoncé (type live_started uniquement).
+  final String? liveId;
+
+  /// Message pré-rédigé par le serveur (peut être null / vide).
+  final String? message;
+
   AppNotification copyWith({bool? isRead}) {
     return AppNotification(
       id: id,
@@ -79,6 +100,9 @@ class AppNotification {
       actorAvatarUrl: actorAvatarUrl,
       testimonyThumbnailUrl: testimonyThumbnailUrl,
       isRead: isRead ?? this.isRead,
+      testimonyId: testimonyId,
+      liveId: liveId,
+      message: message,
     );
   }
 
@@ -96,12 +120,24 @@ class AppNotification {
         return '$actorName a partagé un nouveau témoignage « $testimonyTitle »';
       case NotificationType.pendingCorrection:
         return 'Votre témoignage « $testimonyTitle » nécessite des corrections';
+      case NotificationType.organizationVerified:
+        return 'Votre organisation a été vérifiée : le badge est maintenant visible';
+      case NotificationType.organizationRejected:
+        return 'La vérification de votre organisation a été refusée';
+      case NotificationType.liveStarted:
+        final msg = message?.trim() ?? '';
+        if (msg.isNotEmpty) return msg;
+        return testimonyTitle.isNotEmpty
+            ? '$actorName est en direct : $testimonyTitle'
+            : '$actorName est en direct';
     }
   }
 
   bool get isSystemType =>
       type == NotificationType.approved ||
-      type == NotificationType.pendingCorrection;
+      type == NotificationType.pendingCorrection ||
+      type == NotificationType.organizationVerified ||
+      type == NotificationType.organizationRejected;
 
   bool get isReactionType =>
       type == NotificationType.like || type == NotificationType.prayer;

@@ -28,7 +28,7 @@ class BibleScreen extends ConsumerWidget {
               width: 32, height: 32,
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
+                  colors: [Color(0xFF103675), Color(0xFF2B5DB0)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -398,7 +398,7 @@ class _AbbreviationBadge extends StatelessWidget {
         gradient: LinearGradient(
           colors: downloaded
               ? [AppColors.primary, AppColors.primaryLight]
-              : [const Color(0xFF94A3B8), const Color(0xFFCBD5E1)],
+              : [const Color(0xFF98A2B3), const Color(0xFFD0D5DD)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -408,7 +408,7 @@ class _AbbreviationBadge extends StatelessWidget {
         child: Text(
           abbreviation,
           style: const TextStyle(
-            fontFamily: 'Poppins',
+            fontFamily: 'Plus Jakarta Sans',
             fontSize: 12,
             fontWeight: FontWeight.w700,
             color: Colors.white,

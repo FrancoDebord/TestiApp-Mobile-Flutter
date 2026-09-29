@@ -33,7 +33,7 @@ const _sizeConfigs = <AppButtonSize, _SizeConfig>{
     horizontalPadding: 14,
     iconSize: 16,
     textStyle: TextStyle(
-      fontFamily: 'Inter',
+      fontFamily: 'Plus Jakarta Sans',
       fontWeight: FontWeight.w600,
       fontSize: 13,
       height: 1,
@@ -46,7 +46,7 @@ const _sizeConfigs = <AppButtonSize, _SizeConfig>{
     horizontalPadding: 20,
     iconSize: 20,
     textStyle: TextStyle(
-      fontFamily: 'Inter',
+      fontFamily: 'Plus Jakarta Sans',
       fontWeight: FontWeight.w600,
       fontSize: 15,
       height: 1,
@@ -59,7 +59,7 @@ const _sizeConfigs = <AppButtonSize, _SizeConfig>{
     horizontalPadding: 28,
     iconSize: 22,
     textStyle: TextStyle(
-      fontFamily: 'Inter',
+      fontFamily: 'Plus Jakarta Sans',
       fontWeight: FontWeight.w600,
       fontSize: 16,
       height: 1,
@@ -95,7 +95,7 @@ const _variantConfigs = <AppButtonVariant, _VariantConfig>{
     foreground: Colors.white,
     border: Colors.transparent,
     disabledBackground: Color(0xFFD1D5DB),
-    disabledForeground: Color(0xFF9CA3AF),
+    disabledForeground: Color(0xFF98A2B3),
     gradient: [AppColors.primary, AppColors.primaryLight],
   ),
   AppButtonVariant.secondary: _VariantConfig(
@@ -103,21 +103,21 @@ const _variantConfigs = <AppButtonVariant, _VariantConfig>{
     foreground: AppColors.primary,
     border: AppColors.primary,
     disabledBackground: Colors.transparent,
-    disabledForeground: Color(0xFF9CA3AF),
+    disabledForeground: Color(0xFF98A2B3),
   ),
   AppButtonVariant.ghost: _VariantConfig(
     background: Colors.transparent,
     foreground: AppColors.textPrimary,
     border: Colors.transparent,
     disabledBackground: Colors.transparent,
-    disabledForeground: Color(0xFF9CA3AF),
+    disabledForeground: Color(0xFF98A2B3),
   ),
   AppButtonVariant.danger: _VariantConfig(
     background: AppColors.danger,
     foreground: Colors.white,
     border: Colors.transparent,
     disabledBackground: Color(0xFFD1D5DB),
-    disabledForeground: Color(0xFF9CA3AF),
+    disabledForeground: Color(0xFF98A2B3),
   ),
 };
 

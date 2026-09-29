@@ -77,6 +77,7 @@ class VideoTestimonyCard extends ConsumerWidget {
                     onShare: () {
                       SharePlus.instance.share(ShareParams(
                         text: '${testimony.title}\n\n'
+                            '${testimony.shareLink}\n\n'
                             'Partagé depuis l\'application Témoignages ✝️',
                       ));
                       ref.read(interactionProvider.notifier)
@@ -125,7 +126,7 @@ class VideoTestimonyCard extends ConsumerWidget {
                 onShare: () {
                   SharePlus.instance.share(ShareParams(
                     text: '${testimony.title}\n\n'
-                        'testi://app/testimony/${testimony.id}',
+                        '${testimony.shareLink}',
                   ));
                   ref.read(interactionProvider.notifier)
                       .recordShare(testimony.id);
@@ -227,7 +228,9 @@ class _SmartDurationBadgeState extends State<_SmartDurationBadge> {
   }
 
   Future<void> _loadDuration() async {
-    final path = widget.testimony.mediaPath;
+    // Économie de données : la version la plus légère suffit pour connaître la durée.
+    final renditions = widget.testimony.renditions;
+    final path = renditions.isNotEmpty ? renditions.first.url : widget.testimony.mediaPath;
     if (path == null || path.isEmpty) return;
     try {
       final ctrl = path.startsWith('http')
@@ -254,7 +257,7 @@ class _SmartDurationBadgeState extends State<_SmartDurationBadge> {
       child: Text(
         _fmt(_secs),
         style: const TextStyle(
-          fontFamily: 'Inter',
+          fontFamily: 'Plus Jakarta Sans',
           fontSize: 11,
           fontWeight: FontWeight.w600,
           color: Colors.white,

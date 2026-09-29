@@ -31,7 +31,7 @@ class AdminCategoriesScreen extends ConsumerWidget {
           child: categories.isEmpty
               ? const Center(
                   child: CircularProgressIndicator(
-                    color: Color(0xFF6B21A8),
+                    color: Color(0xFF184797),
                     strokeWidth: 2.5,
                   ),
                 )
@@ -77,10 +77,10 @@ class AdminCategoriesScreen extends ConsumerWidget {
         title: const Text(
           'Modifier la catégorie',
           style: TextStyle(
-              fontFamily: 'Poppins',
+              fontFamily: 'Plus Jakarta Sans',
               fontWeight: FontWeight.w600,
               fontSize: 16,
-              color: Color(0xFF0F172A)),
+              color: Color(0xFF263238)),
         ),
         content: TextField(
           controller: controller,
@@ -88,25 +88,25 @@ class AdminCategoriesScreen extends ConsumerWidget {
           decoration: InputDecoration(
             hintText: 'Nom de la catégorie',
             hintStyle: const TextStyle(
-                fontFamily: 'Inter', fontSize: 13, color: Color(0xFF94A3B8)),
+                fontFamily: 'Plus Jakarta Sans', fontSize: 13, color: Color(0xFF98A2B3)),
             border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                borderSide: const BorderSide(color: Color(0xFFE4E7EC))),
             focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
                 borderSide: const BorderSide(
-                    color: Color(0xFF6B21A8), width: 1.5)),
+                    color: Color(0xFF184797), width: 1.5)),
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           ),
-          style: const TextStyle(fontFamily: 'Inter', fontSize: 14),
+          style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 14),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('Annuler',
                 style:
-                    TextStyle(fontFamily: 'Inter', color: Color(0xFF64748B))),
+                    TextStyle(fontFamily: 'Plus Jakarta Sans', color: Color(0xFF667085))),
           ),
           ElevatedButton(
             onPressed: () {
@@ -119,7 +119,7 @@ class AdminCategoriesScreen extends ConsumerWidget {
               Navigator.of(context).pop();
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF6B21A8),
+              backgroundColor: const Color(0xFF184797),
               foregroundColor: Colors.white,
               elevation: 0,
               shape: RoundedRectangleBorder(
@@ -127,7 +127,7 @@ class AdminCategoriesScreen extends ConsumerWidget {
             ),
             child: const Text('Enregistrer',
                 style: TextStyle(
-                    fontFamily: 'Inter', fontWeight: FontWeight.w600)),
+                    fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600)),
           ),
         ],
       ),
@@ -166,27 +166,27 @@ class _AddCategoryBarState extends State<_AddCategoryBar> {
               decoration: InputDecoration(
                 hintText: 'Nouvelle catégorie…',
                 hintStyle: const TextStyle(
-                    fontFamily: 'Inter',
+                    fontFamily: 'Plus Jakarta Sans',
                     fontSize: 13,
-                    color: Color(0xFF94A3B8)),
+                    color: Color(0xFF98A2B3)),
                 contentPadding: const EdgeInsets.symmetric(
                     horizontal: 14, vertical: 10),
                 border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide:
-                        const BorderSide(color: Color(0xFFE2E8F0))),
+                        const BorderSide(color: Color(0xFFE4E7EC))),
                 enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide:
-                        const BorderSide(color: Color(0xFFE2E8F0))),
+                        const BorderSide(color: Color(0xFFE4E7EC))),
                 focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: const BorderSide(
-                        color: Color(0xFF6B21A8), width: 1.5)),
+                        color: Color(0xFF184797), width: 1.5)),
                 filled: true,
                 fillColor: Colors.white,
               ),
-              style: const TextStyle(fontFamily: 'Inter', fontSize: 13),
+              style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13),
               onChanged: (_) => setState(() {}),
             ),
           ),
@@ -204,13 +204,13 @@ class _AddCategoryBarState extends State<_AddCategoryBar> {
               icon: const Icon(Icons.add_rounded, size: 16),
               label: const Text('Ajouter'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF6B21A8),
+                backgroundColor: const Color(0xFF184797),
                 foregroundColor: Colors.white,
-                disabledBackgroundColor: const Color(0xFFE2E8F0),
-                disabledForegroundColor: const Color(0xFF94A3B8),
+                disabledBackgroundColor: const Color(0xFFE4E7EC),
+                disabledForegroundColor: const Color(0xFF98A2B3),
                 elevation: 0,
                 textStyle: const TextStyle(
-                    fontFamily: 'Inter',
+                    fontFamily: 'Plus Jakarta Sans',
                     fontWeight: FontWeight.w600,
                     fontSize: 13),
                 shape: RoundedRectangleBorder(
@@ -248,15 +248,15 @@ class _CategoryTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: category.isActive
-              ? const Color(0xFFE2E8F0)
-              : const Color(0xFFE2E8F0),
+              ? const Color(0xFFE4E7EC)
+              : const Color(0xFFE4E7EC),
         ),
       ),
       child: Row(
         children: [
           // Drag handle
           const Icon(Icons.drag_handle_rounded,
-              size: 18, color: Color(0xFFCBD5E1)),
+              size: 18, color: Color(0xFFD0D5DD)),
           const SizedBox(width: 10),
           // Order number
           SizedBox(
@@ -264,10 +264,10 @@ class _CategoryTile extends StatelessWidget {
             child: Text(
               '${category.order}',
               style: const TextStyle(
-                fontFamily: 'Inter',
+                fontFamily: 'Plus Jakarta Sans',
                 fontWeight: FontWeight.w600,
                 fontSize: 12,
-                color: Color(0xFF94A3B8),
+                color: Color(0xFF98A2B3),
               ),
               textAlign: TextAlign.center,
             ),
@@ -275,44 +275,52 @@ class _CategoryTile extends StatelessWidget {
           const SizedBox(width: 10),
           // Name
           Expanded(
+            flex: 3,
             child: Text(
               category.name,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontFamily: 'Inter',
+                fontFamily: 'Plus Jakarta Sans',
                 fontWeight: FontWeight.w600,
                 fontSize: 14,
                 color: category.isActive
-                    ? const Color(0xFF0F172A)
-                    : const Color(0xFF94A3B8),
+                    ? const Color(0xFF263238)
+                    : const Color(0xFF98A2B3),
                 decoration: category.isActive
                     ? null
                     : TextDecoration.lineThrough,
               ),
             ),
           ),
-          // Count badge
-          Container(
+          const SizedBox(width: 6),
+          // Count badge (se réduit plutôt que de pousser l'interrupteur)
+          Flexible(
+            child: Container(
             padding:
                 const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
             decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
+              color: const Color(0xFFF2F4F7),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
               '${category.testimonyCount}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                fontFamily: 'Inter',
+                fontFamily: 'Plus Jakarta Sans',
                 fontSize: 11,
                 fontWeight: FontWeight.w500,
-                color: Color(0xFF64748B),
+                color: Color(0xFF667085),
               ),
+            ),
             ),
           ),
           const SizedBox(width: 8),
           // Edit
           IconButton(
             icon: const Icon(Icons.edit_outlined,
-                size: 16, color: Color(0xFF6B21A8)),
+                size: 16, color: Color(0xFF184797)),
             onPressed: onEdit,
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
@@ -323,8 +331,8 @@ class _CategoryTile extends StatelessWidget {
           Switch(
             value: category.isActive,
             onChanged: (_) => onToggle(),
-            activeThumbColor: const Color(0xFF6B21A8),
-            activeTrackColor: const Color(0xFF6B21A8).withAlpha(80),
+            activeThumbColor: const Color(0xFF184797),
+            activeTrackColor: const Color(0xFF184797).withAlpha(80),
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
         ],

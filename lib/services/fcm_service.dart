@@ -16,10 +16,10 @@
 //   • firebaseMessagingBackgroundHandler (top-level) → declared in main.dart
 
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:dio/dio.dart' show DioException, DioExceptionType;
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -46,9 +46,26 @@ final FlutterLocalNotificationsPlugin localNotificationsPlugin =
 // ── FCM navigation intent ─────────────────────────────────────────────────────
 
 class FcmNavIntent {
-  const FcmNavIntent({required this.type, this.testimonyId});
+  const FcmNavIntent({required this.type, this.testimonyId, this.liveId});
   final String  type;
   final String? testimonyId;
+  final String? liveId;
+
+  /// Construit l'intention depuis les données d'un push FCM
+  /// (null si `type` est absent).
+  static FcmNavIntent? fromData(Map<String, dynamic> data) {
+    final type = data['type']?.toString();
+    if (type == null || type.isEmpty) return null;
+    String? str(String key) {
+      final v = data[key]?.toString();
+      return (v == null || v.isEmpty) ? null : v;
+    }
+    return FcmNavIntent(
+      type:        type,
+      testimonyId: str('testimony_id'),
+      liveId:      str('live_id'),
+    );
+  }
 }
 
 class FcmNavNotifier extends Notifier<FcmNavIntent?> {
@@ -182,6 +199,10 @@ class FcmService {
       'comment' || 'reply' || 'mention' => settings.pushComments,
       'like'                            => settings.pushLikes,
       'prayer'                          => settings.pushPrayers,
+      // Pas de préférence dédiée « abonnements » dans UserSettings :
+      // toujours affichées.
+      'live_started'
+          || 'new_followed_testimony'   => true,
       'testimony_approved'
           || 'testimony_rejected'
           || 'pending_correction'       => settings.pushApproval,
@@ -227,12 +248,9 @@ class FcmService {
   void _handleNavigation(RemoteMessage message) => _postNavIntent(message.data);
 
   void _postNavIntent(Map<String, dynamic> data) {
-    final type        = data['type']         as String?;
-    final testimonyId = data['testimony_id'] as String?;
-    if (type == null) return;
-    _ref.read(fcmNavProvider.notifier).set(
-      FcmNavIntent(type: type, testimonyId: testimonyId),
-    );
+    final intent = FcmNavIntent.fromData(data);
+    if (intent == null) return;
+    _ref.read(fcmNavProvider.notifier).set(intent);
   }
 
   // ── Delta sync + provider refresh ────────────────────────────────────────
@@ -262,7 +280,11 @@ class FcmService {
         AppConstants.registerFcmToken,
         data: {
           'token':    token,
-          'platform': Platform.isAndroid ? 'android' : 'ios',
+          'platform': kIsWeb
+              ? 'web'
+              : defaultTargetPlatform == TargetPlatform.android
+                  ? 'android'
+                  : 'ios',
         },
       );
     } on DioException catch (e) {

@@ -84,9 +84,9 @@ class _ShimmerState extends State<_Shimmer>
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
               colors: const [
-                Color(0xFFE2E8F0),
-                Color(0xFFF1F5F9),
-                Color(0xFFE2E8F0),
+                Color(0xFFE4E7EC),
+                Color(0xFFF2F4F7),
+                Color(0xFFE4E7EC),
               ],
               stops: const [0.0, 0.5, 1.0],
               transform: _SlidingGradientTransform(slidePercent: _anim.value),

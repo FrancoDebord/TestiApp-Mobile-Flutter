@@ -1,9 +1,11 @@
+import '../../home/widgets/testimony_card_header.dart' show openAuthorProfile;
+import '../../community/widgets/follow_button.dart';
 import 'dart:async';
 import 'dart:io' show File;
 
 import 'package:chewie/chewie.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_player/video_player.dart';
@@ -11,10 +13,14 @@ import 'package:video_player/video_player.dart';
 import '../../../core/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
-import '../../../features/auth/providers/auth_notifier.dart' show currentUserProvider;
+import '../../../core/media/media_quality.dart';
+import '../../../core/media/playback_preferences.dart';
+import '../../../features/auth/providers/auth_notifier.dart'
+    show currentUserProvider;
 import '../../../features/home/models/testimony_model.dart';
 import '../../../features/home/providers/home_providers.dart';
 import '../../../services/api_service.dart' show apiServiceProvider;
+import '../../../shared/widgets/quality_picker_sheet.dart';
 
 // ============================================================================
 // Video Player Screen — YouTube-inspired
@@ -64,12 +70,26 @@ class VideoPlayerScreen extends ConsumerStatefulWidget {
   const VideoPlayerScreen({
     required this.testimonyId,
     this.mediaPath,
+    this.testimony,
+    this.playlist,
+    this.qualityOverride,
     super.key,
   });
 
-  final String  testimonyId;
+  final String testimonyId;
+
   /// URL directe passée depuis l'écran appelant (évite une recherche dans le feed).
   final String? mediaPath;
+
+  /// Témoignage complet (titre, versions/qualités…) si l'appelant l'a déjà.
+  final VideoTestimony? testimony;
+
+  /// Liste de lecture pour l'enchaînement automatique (par défaut : le fil).
+  final List<VideoTestimony>? playlist;
+
+  /// Qualité choisie manuellement pendant la session (transmise à la vidéo
+  /// suivante). `null` = préférence par défaut.
+  final VideoQuality? qualityOverride;
 
   @override
   ConsumerState<VideoPlayerScreen> createState() => _VideoPlayerScreenState();
@@ -77,40 +97,89 @@ class VideoPlayerScreen extends ConsumerStatefulWidget {
 
 class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
   VideoPlayerController? _videoCtrl;
-  ChewieController?      _chewieCtrl;
-  bool _isLiked        = false;
-  bool _isPraying      = false;
-  bool _isBookmarked   = false;
+  ChewieController? _chewieCtrl;
+  bool _isLiked = false;
+  bool _isPraying = false;
+  bool _isBookmarked = false;
   VideoTestimony? _testimony;
+
+  // ── Qualité ──────────────────────────────────────────────────────────────
+  String? _original; // fichier original
+  List<MediaRendition> _renditions = const []; // versions disponibles
+  VideoQuality? _override; // choix ponctuel (session)
+  ResolvedMedia? _resolved; // version en cours de lecture
+  bool _switching = false; // changement de qualité en cours
+
+  // ── Fin de lecture / suivant ─────────────────────────────────────────────
+  bool _endHandled = false; // évite un double déclenchement
+  VideoTestimony? _nextUp; // vidéo suivante annoncée
+  int _nextCountdown = 0;
+  Timer? _nextTimer;
 
   Timer? _hideTimer;
 
   @override
   void initState() {
     super.initState();
+    _override = widget.qualityOverride;
     WidgetsBinding.instance.addPostFrameCallback((_) => _initPlayer());
+    ref.listenManual<AsyncValue<bool>>(
+      isMeteredConnectionProvider,
+      (prev, next) => _onNetworkChanged(prev?.value, next.value),
+    );
+  }
+
+  /// Wi-Fi ⇄ données mobiles : en mode Auto (pas de choix manuel), on relit
+  /// la version adaptée au nouveau réseau, sans perdre la position.
+  Future<void> _onNetworkChanged(bool? was, bool? now) async {
+    if (now == null || was == null || was == now) return;
+    if (_videoCtrl == null || _switching || _override != null) return;
+    if (ref.read(playbackPreferencesProvider).videoQuality !=
+        VideoQuality.auto) {
+      return;
+    }
+    final next = _resolve();
+    if (next == null || next.url == _resolved?.url) return;
+    final switched = await _changeQuality(null);
+    if (!switched || !mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            'Qualité ajustée : ${next.label} '
+            '(${now ? 'données mobiles' : 'Wi-Fi'})',
+          ),
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
   }
 
   Future<void> _initPlayer() async {
-    // 1. URL passée directement par l'appelant
-    String? source = widget.mediaPath;
+    // 1. Témoignage transmis par l'appelant, sinon recherche dans le feed local
+    _testimony =
+        widget.testimony ??
+        ref
+            .read(feedNotifierProvider)
+            .whereType<VideoTestimony>()
+            .where((t) => t.id == widget.testimonyId)
+            .firstOrNull;
 
-    // 2. Chercher dans le feed local
-    if (source == null || source.isEmpty) {
-      final feed = ref.read(feedNotifierProvider);
-      _testimony = feed.whereType<VideoTestimony>()
-          .where((t) => t.id == widget.testimonyId)
-          .firstOrNull;
-      source = _testimony?.mediaPath;
-    }
+    // 2. URL passée directement par l'appelant, sinon celle du témoignage
+    final direct = widget.mediaPath;
+    _original = (direct != null && direct.isNotEmpty)
+        ? direct
+        : _testimony?.mediaPath;
+    _renditions = _testimony?.renditions ?? const [];
 
     // 3. Fallback : récupérer le témoignage complet depuis l'API
-    if (source == null || source.isEmpty) {
+    if ((_original == null || _original!.isEmpty) && _renditions.isEmpty) {
       await _fetchFromApi();
       return;
     }
 
-    await _buildPlayer(source);
+    await _startPlayback();
   }
 
   Future<void> _fetchFromApi() async {
@@ -120,11 +189,12 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
         AppConstants.testimonyById(widget.testimonyId),
       );
       final t = testimonyFromApiJson(response.data);
-      if (t is VideoTestimony) {
+      if (t is VideoTestimony && mounted) {
         _testimony = t;
-        final url = t.mediaPath;
-        if (url != null && url.isNotEmpty && mounted) {
-          await _buildPlayer(url);
+        _original = t.mediaPath;
+        _renditions = t.renditions;
+        if (_resolve() != null) {
+          await _startPlayback();
           return;
         }
       }
@@ -132,39 +202,287 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     if (mounted) setState(() {}); // afficher l'état vide
   }
 
-  Future<void> _buildPlayer(String source) async {
-    final bool isNetwork = source.startsWith('http://') ||
-                           source.startsWith('https://');
-    final VideoPlayerController ctrl;
+  // ── Choix de la version à lire (préférences + réseau + choix manuel) ─────
 
+  ResolvedMedia? _resolve({VideoQuality? override}) => resolveVideo(
+    original: _original,
+    renditions: _renditions,
+    prefs: ref.read(playbackPreferencesProvider),
+    metered: ref.read(isMeteredConnectionProvider).value ?? true,
+    override: override ?? _override,
+  );
+
+  VideoPlayerController _createController(String source) {
+    final bool isNetwork =
+        source.startsWith('http://') || source.startsWith('https://');
     if (kIsWeb || isNetwork) {
-      ctrl = VideoPlayerController.networkUrl(Uri.parse(source));
-    } else {
-      ctrl = VideoPlayerController.file(File(source));
+      return VideoPlayerController.networkUrl(Uri.parse(source));
     }
+    return VideoPlayerController.file(File(source));
+  }
 
-    await ctrl.initialize();
-
-    final chewie = ChewieController(
+  ChewieController _buildChewie(
+    VideoPlayerController ctrl, {
+    required bool autoPlay,
+  }) {
+    return ChewieController(
       videoPlayerController: ctrl,
-      autoPlay: true,
-      looping: false,
+      autoPlay: autoPlay,
+      looping: false, // la répétition est gérée par _onVideoEnded
       allowFullScreen: true,
       aspectRatio: ctrl.value.aspectRatio,
       placeholder: const _VideoPlaceholder(),
     );
+  }
 
-    if (mounted) {
-      setState(() {
-        _videoCtrl  = ctrl;
-        _chewieCtrl = chewie;
-      });
+  Future<void> _startPlayback() async {
+    final resolved = _resolve();
+    if (resolved == null) {
+      if (mounted) setState(() {});
+      return;
     }
+
+    final ctrl = _createController(resolved.url);
+    try {
+      await ctrl.initialize();
+    } catch (_) {
+      await ctrl.dispose();
+      if (mounted) setState(() {});
+      return;
+    }
+    if (!mounted) {
+      await ctrl.dispose();
+      return;
+    }
+
+    ctrl.addListener(_onTick);
+    final chewie = _buildChewie(ctrl, autoPlay: true);
+
+    setState(() {
+      _videoCtrl = ctrl;
+      _chewieCtrl = chewie;
+      _resolved = resolved;
+    });
+  }
+
+  // ── Changement de qualité (conserve la position et lecture/pause) ────────
+
+  Future<void> _openQualitySheet() async {
+    final picked = await showVideoQualitySheet(
+      context,
+      original: _original,
+      renditions: _renditions,
+      prefs: ref.read(playbackPreferencesProvider),
+      metered: ref.read(isMeteredConnectionProvider).value ?? true,
+      override: _override,
+      renditionsStatus: _testimony?.renditionsStatus,
+    );
+    if (picked == null || !mounted) return;
+    await _changeQuality(picked);
+  }
+
+  /// Passe à la version correspondant à [quality] (`null` = préférence /
+  /// Auto). Retourne `true` si le lecteur a effectivement changé de fichier.
+  Future<bool> _changeQuality(VideoQuality? quality) async {
+    final next = quality == null
+        ? resolveVideo(
+            original: _original,
+            renditions: _renditions,
+            prefs: ref.read(playbackPreferencesProvider),
+            metered: ref.read(isMeteredConnectionProvider).value ?? true,
+          )
+        : _resolve(override: quality);
+    final old = _videoCtrl;
+    if (next == null) return false;
+
+    // Même fichier (ou lecteur pas encore prêt) : on mémorise simplement le choix.
+    if (old == null || next.url == _resolved?.url) {
+      setState(() {
+        _override = quality;
+        _resolved = next;
+      });
+      return false;
+    }
+
+    final oldChewie = _chewieCtrl;
+    final position = old.value.position;
+    final wasPlaying = old.value.isPlaying;
+
+    setState(() => _switching = true);
+
+    final ctrl = _createController(next.url);
+    try {
+      await ctrl.initialize();
+      await ctrl.seekTo(position);
+      if (wasPlaying) await ctrl.play();
+    } catch (_) {
+      await ctrl.dispose();
+      if (mounted) {
+        setState(() => _switching = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Impossible de charger cette qualité.')),
+        );
+      }
+      return false;
+    }
+    if (!mounted) {
+      await ctrl.dispose();
+      return false;
+    }
+
+    // Bascule vers le nouveau lecteur, puis libère l'ancien.
+    old.removeListener(_onTick);
+    await old.pause();
+    ctrl.addListener(_onTick);
+    final chewie = _buildChewie(ctrl, autoPlay: false);
+
+    setState(() {
+      _override = quality;
+      _resolved = next;
+      _videoCtrl = ctrl;
+      _chewieCtrl = chewie;
+      _switching = false;
+      _endHandled = false;
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      oldChewie?.dispose();
+      old.dispose();
+    });
+    return true;
+  }
+
+  // ── Fin de lecture : répéter, enchaîner ou s'arrêter ─────────────────────
+
+  void _onTick() {
+    final ctrl = _videoCtrl;
+    if (ctrl == null || _switching) return;
+    final v = ctrl.value;
+    if (!v.isInitialized || v.duration <= Duration.zero) return;
+
+    final ended =
+        !v.isPlaying &&
+        v.position >= v.duration - const Duration(milliseconds: 250);
+
+    if (!ended) {
+      // L'utilisateur est revenu en arrière : la prochaine fin comptera.
+      if (_endHandled && v.position < v.duration - const Duration(seconds: 1)) {
+        _endHandled = false;
+      }
+      return;
+    }
+    if (_endHandled) return;
+    _endHandled = true;
+    _onVideoEnded();
+  }
+
+  /// Vidéos enchaînables : liste transmise, sinon les vidéos du fil.
+  List<VideoTestimony> _playlist() =>
+      widget.playlist ??
+      ref.read(feedNotifierProvider).whereType<VideoTestimony>().toList();
+
+  /// Vidéo qui suit la vidéo en cours (ordre de la liste), ou la première
+  /// vidéo « similaire » si la vidéo en cours n'est pas dans la liste.
+  VideoTestimony? _findNext() {
+    final list = _playlist();
+    final idx = list.indexWhere((t) => t.id == widget.testimonyId);
+    if (idx < 0) {
+      return list.where((t) => t.id != widget.testimonyId).firstOrNull;
+    }
+    return idx + 1 < list.length ? list[idx + 1] : null;
+  }
+
+  void _onVideoEnded() {
+    final prefs = ref.read(playbackPreferencesProvider);
+
+    // Répéter cette vidéo
+    if (prefs.repeatMode == RepeatMode.one) {
+      _restart();
+      return;
+    }
+
+    // Lecture auto désactivée : on s'arrête (« Répéter la liste » implique
+    // toujours la lecture auto, cf. PlaybackPreferencesNotifier).
+    if (!prefs.autoplayNext) return;
+
+    final next = _findNext();
+
+    // Enchaîner la suivante
+    if (next != null) {
+      _startNextCountdown(next);
+      return;
+    }
+
+    // Fin de liste + « Répéter la liste » → retour à la première vidéo
+    if (prefs.repeatMode == RepeatMode.all) {
+      final first = _playlist().firstOrNull;
+      if (first == null || first.id == widget.testimonyId) {
+        _restart();
+      } else {
+        _startNextCountdown(first);
+      }
+    }
+    // Sinon : on s'arrête.
+  }
+
+  Future<void> _restart() async {
+    final ctrl = _videoCtrl;
+    if (ctrl == null) return;
+    await ctrl.seekTo(Duration.zero);
+    await ctrl.play();
+  }
+
+  void _startNextCountdown(VideoTestimony next) {
+    _nextTimer?.cancel();
+    setState(() {
+      _nextUp = next;
+      _nextCountdown = 5;
+    });
+    _nextTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      if (_nextCountdown <= 1) {
+        timer.cancel();
+        _goToVideo(next);
+      } else {
+        setState(() => _nextCountdown--);
+      }
+    });
+  }
+
+  void _cancelNext() {
+    _nextTimer?.cancel();
+    setState(() => _nextUp = null);
+  }
+
+  Future<void> _goToVideo(VideoTestimony t) async {
+    _nextTimer?.cancel();
+    // Quitter le plein écran de Chewie avant de remplacer la page.
+    if (_chewieCtrl?.isFullScreen ?? false) {
+      _chewieCtrl!.exitFullScreen();
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+    }
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(
+        builder: (_) => VideoPlayerScreen(
+          testimonyId: t.id,
+          mediaPath: t.mediaPath,
+          testimony: t,
+          playlist: widget.playlist,
+          qualityOverride: _override,
+        ),
+      ),
+    );
   }
 
   @override
   void dispose() {
     _hideTimer?.cancel();
+    _nextTimer?.cancel();
+    _videoCtrl?.removeListener(_onTick);
     _chewieCtrl?.dispose();
     _videoCtrl?.dispose();
     super.dispose();
@@ -173,9 +491,15 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
   @override
   Widget build(BuildContext context) {
     final feed = ref.watch(feedNotifierProvider);
-    final testimony = feed.whereType<VideoTestimony>()
-        .where((t) => t.id == widget.testimonyId)
-        .firstOrNull;
+    final testimony =
+        feed
+            .whereType<VideoTestimony>()
+            .where((t) => t.id == widget.testimonyId)
+            .firstOrNull ??
+        _testimony;
+    final prefs = ref.watch(playbackPreferencesProvider);
+    // Garder l'état du réseau à jour (utilisé pour le mode Auto).
+    ref.watch(isMeteredConnectionProvider);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark,
@@ -186,9 +510,16 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
             // ── Surface vidéo (16:9) ───────────────────────────────────────
             AspectRatio(
               aspectRatio: 16 / 9,
-              child: _chewieCtrl != null
-                  ? Chewie(controller: _chewieCtrl!)
-                  : _VideoSurface(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (_chewieCtrl != null)
+                    Chewie(
+                      key: ObjectKey(_chewieCtrl),
+                      controller: _chewieCtrl!,
+                    )
+                  else
+                    _VideoSurface(
                       title: testimony?.title ?? '',
                       isPlaying: false,
                       controlsVisible: true,
@@ -201,7 +532,41 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
                       onFullscreen: () {},
                       onBack: () => Navigator.of(context).pop(),
                     ),
+                  // Chargement pendant le changement de qualité
+                  if (_switching) const _QualitySwitchOverlay(),
+                  // Annonce de la vidéo suivante
+                  if (_nextUp != null)
+                    Positioned(
+                      left: 8,
+                      right: 8,
+                      bottom: 8,
+                      child: _UpNextOverlay(
+                        title: _nextUp!.title,
+                        seconds: _nextCountdown,
+                        onCancel: _cancelNext,
+                        onPlayNow: () => _goToVideo(_nextUp!),
+                      ),
+                    ),
+                ],
+              ),
             ),
+            // ── Qualité · répétition · lecture auto ─────────────────────────
+            _PlaybackControlsRow(
+              qualityLabel: videoQualityChipLabel(
+                _override ?? prefs.videoQuality,
+                _resolved,
+              ),
+              onQuality: _openQualitySheet,
+              repeatMode: prefs.repeatMode,
+              onRepeat: () => ref
+                  .read(playbackPreferencesProvider.notifier)
+                  .cycleRepeatMode(),
+              autoplayNext: prefs.autoplayNext,
+              onAutoplayChanged: (v) => ref
+                  .read(playbackPreferencesProvider.notifier)
+                  .setAutoplayNext(v),
+            ),
+            const Divider(height: 1, color: AppColors.border),
             // ── Scrollable body ───────────────────────────────────────────
             Expanded(
               child: SingleChildScrollView(
@@ -232,11 +597,12 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
                     ),
                     const Divider(height: 1, color: AppColors.border),
                     const Divider(height: 1, color: AppColors.border),
-                    _CommentsPreview(
-                      onTap: () => _showCommentsSheet(context),
-                    ),
+                    _CommentsPreview(onTap: () => _showCommentsSheet(context)),
                     const Divider(height: 1, color: AppColors.border),
-                    _RelatedVideosList(currentTestimonyId: widget.testimonyId),
+                    _RelatedVideosList(
+                      currentTestimonyId: widget.testimonyId,
+                      onOpen: _goToVideo,
+                    ),
                     const SizedBox(height: 24),
                   ],
                 ),
@@ -255,6 +621,310 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
       backgroundColor: Colors.transparent,
       builder: (_) =>
           _VideoCommentsBottomSheet(testimonyId: widget.testimonyId),
+    );
+  }
+}
+
+// ============================================================================
+// Qualité vidéo — utilitaires partagés (lecteur + Shorts)
+// ============================================================================
+
+/// Libellé court du bouton « Qualité » : « Auto · 360p », « 720p », « Auto ».
+String videoQualityChipLabel(VideoQuality effective, ResolvedMedia? resolved) {
+  if (effective == VideoQuality.auto) {
+    return resolved?.rendition != null ? 'Auto · ${resolved!.label}' : 'Auto';
+  }
+  if (resolved == null) return effective.label;
+  return resolved.rendition != null ? resolved.label : 'Auto';
+}
+
+/// Pourquoi une seule qualité est proposée (versions allégées en préparation, ou absentes).
+String singleQualityReason(String? renditionsStatus, {required bool video}) =>
+    switch (renditionsStatus) {
+      'pending' || 'processing' =>
+        'Les autres qualités sont en préparation : réessayez dans quelques minutes.',
+      _ => video
+          ? 'Une seule qualité est disponible pour cette vidéo.'
+          : 'Une seule qualité est disponible pour cet audio.',
+    };
+
+/// Ouvre la feuille « Qualité » pour une vidéo et renvoie le choix
+/// (ou `null` si l'utilisateur ferme la feuille). Ne modifie pas la
+/// préférence globale : le choix vaut pour la lecture en cours.
+Future<VideoQuality?> showVideoQualitySheet(
+  BuildContext context, {
+  required String? original,
+  required List<MediaRendition> renditions,
+  required PlaybackPreferences prefs,
+  required bool metered,
+  required VideoQuality? override,
+  String? renditionsStatus,
+}) {
+  final options = availableVideoQualities(renditions);
+
+  // Qualité cochée : choix en cours, sinon la version réellement lue.
+  var selected = override ?? prefs.videoQuality;
+  if (!options.contains(selected)) {
+    final r = resolveVideo(
+      original: original,
+      renditions: renditions,
+      prefs: prefs,
+      metered: metered,
+      override: override,
+    );
+    selected = options.firstWhere(
+      (q) => q != VideoQuality.auto && q.height == r?.rendition?.height,
+      orElse: () => VideoQuality.auto,
+    );
+  }
+
+  final autoLabel = resolveVideo(
+    original: original,
+    renditions: renditions,
+    prefs: prefs,
+    metered: metered,
+    override: VideoQuality.auto,
+  )?.rendition?.label;
+
+  const settingsHint =
+      'Qualité par défaut modifiable dans Paramètres › Lecture et données.';
+
+  return showQualityPickerSheet<VideoQuality>(
+    context,
+    title: 'Qualité de la vidéo',
+    options: [
+      for (final q in options)
+        QualityOption(value: q, label: q.label, hint: q.hint),
+    ],
+    selected: selected,
+    currentLabel: autoLabel,
+    footer: renditions.isEmpty
+        ? '${singleQualityReason(renditionsStatus, video: true)}\n$settingsHint'
+        : 'Ce choix vaut pour cette lecture uniquement.\n$settingsHint',
+  );
+}
+
+// ============================================================================
+// Playback Controls Row (qualité + répétition + lecture auto)
+// ============================================================================
+
+class _PlaybackControlsRow extends StatelessWidget {
+  const _PlaybackControlsRow({
+    required this.qualityLabel,
+    required this.onQuality,
+    required this.repeatMode,
+    required this.onRepeat,
+    required this.autoplayNext,
+    required this.onAutoplayChanged,
+  });
+
+  final String qualityLabel;
+  final VoidCallback onQuality;
+  final RepeatMode repeatMode;
+  final VoidCallback onRepeat;
+  final bool autoplayNext;
+  final ValueChanged<bool> onAutoplayChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final repeatIcon = switch (repeatMode) {
+      RepeatMode.off => Icons.repeat,
+      RepeatMode.one => Icons.repeat_one_rounded,
+      RepeatMode.all => Icons.repeat_rounded,
+    };
+    final repeatActive = repeatMode != RepeatMode.off;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
+      child: Row(
+        children: [
+          // Bouton « Qualité »
+          Tooltip(
+            message: 'Qualité de la vidéo',
+            child: InkWell(
+              onTap: onQuality,
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                constraints: const BoxConstraints(minHeight: 40),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.hd_rounded,
+                      size: 20,
+                      color: AppColors.primary,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      qualityLabel,
+                      style: const TextStyle(
+                        fontFamily: 'Plus Jakarta Sans',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const Spacer(),
+          // Répétition (off → une → liste)
+          IconButton(
+            onPressed: onRepeat,
+            tooltip: repeatMode.label,
+            icon: Icon(repeatIcon),
+            iconSize: 24,
+            color: repeatActive ? AppColors.primary : AppColors.textSecondary,
+            style: repeatActive
+                ? IconButton.styleFrom(
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                  )
+                : null,
+          ),
+          const SizedBox(width: 4),
+          // Lecture automatique de la suivante
+          GestureDetector(
+            onTap: () => onAutoplayChanged(!autoplayNext),
+            behavior: HitTestBehavior.opaque,
+            child: const Text(
+              'Lecture auto',
+              style: TextStyle(
+                fontFamily: 'Plus Jakarta Sans',
+                fontWeight: FontWeight.w500,
+                fontSize: 13,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+          Switch(
+            value: autoplayNext,
+            onChanged: onAutoplayChanged,
+            activeThumbColor: AppColors.primary,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// Overlays : changement de qualité + vidéo suivante
+// ============================================================================
+
+class _QualitySwitchOverlay extends StatelessWidget {
+  const _QualitySwitchOverlay();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.black54,
+      alignment: Alignment.center,
+      child: const Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 32,
+            height: 32,
+            child: CircularProgressIndicator(
+              strokeWidth: 3,
+              color: Colors.white,
+            ),
+          ),
+          SizedBox(height: 10),
+          Text(
+            'Changement de qualité…',
+            style: TextStyle(
+              fontFamily: 'Plus Jakarta Sans',
+              color: Colors.white,
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _UpNextOverlay extends StatelessWidget {
+  const _UpNextOverlay({
+    required this.title,
+    required this.seconds,
+    required this.onCancel,
+    required this.onPlayNow,
+  });
+
+  final String title;
+  final int seconds;
+  final VoidCallback onCancel;
+  final VoidCallback onPlayNow;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.black.withValues(alpha: 0.8),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onPlayNow,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.skip_next_rounded,
+                color: Colors.white,
+                size: 28,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Suivant dans $seconds s',
+                      style: const TextStyle(
+                        fontFamily: 'Plus Jakarta Sans',
+                        color: Colors.white70,
+                        fontSize: 11,
+                      ),
+                    ),
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontFamily: 'Plus Jakarta Sans',
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              TextButton(
+                onPressed: onCancel,
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(48, 40),
+                ),
+                child: const Text('Annuler'),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -356,8 +1026,11 @@ class _VideoPlaceholder extends StatelessWidget {
                     shape: BoxShape.circle,
                     color: Colors.white.withValues(alpha: 0.15),
                   ),
-                  child: const Icon(Icons.videocam_rounded,
-                      color: Colors.white38, size: 28),
+                  child: const Icon(
+                    Icons.videocam_rounded,
+                    color: Colors.white38,
+                    size: 28,
+                  ),
                 ),
               ],
             ),
@@ -445,7 +1118,7 @@ class _VideoOverlay extends StatelessWidget {
                 child: Text(
                   title,
                   style: const TextStyle(
-                    fontFamily: 'Poppins',
+                    fontFamily: 'Plus Jakarta Sans',
                     color: Colors.white,
                     fontWeight: FontWeight.w600,
                     fontSize: 13,
@@ -474,7 +1147,9 @@ class _VideoOverlay extends StatelessWidget {
                 shape: BoxShape.circle,
                 color: Colors.black.withValues(alpha: 0.55),
                 border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.7), width: 2),
+                  color: Colors.white.withValues(alpha: 0.7),
+                  width: 2,
+                ),
               ),
               child: Icon(
                 isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
@@ -541,26 +1216,40 @@ class _BottomControlBar extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Row(
               children: [
-                Text(elapsed,
-                    style: const TextStyle(
-                        color: Colors.white, fontSize: 11, fontFamily: 'Inter')),
+                Text(
+                  elapsed,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontFamily: 'Plus Jakarta Sans',
+                  ),
+                ),
                 const SizedBox(width: 4),
-                Text('/ $total',
-                    style: const TextStyle(
-                        color: Colors.white54,
-                        fontSize: 11,
-                        fontFamily: 'Inter')),
+                Text(
+                  '/ $total',
+                  style: const TextStyle(
+                    color: Colors.white54,
+                    fontSize: 11,
+                    fontFamily: 'Plus Jakarta Sans',
+                  ),
+                ),
                 const Spacer(),
                 // HD badge
                 _VideoBadge(label: 'HD'),
                 const SizedBox(width: 8),
                 // Captions
-                const Icon(Icons.closed_caption_outlined,
-                    color: Colors.white70, size: 18),
+                const Icon(
+                  Icons.closed_caption_outlined,
+                  color: Colors.white70,
+                  size: 18,
+                ),
                 const SizedBox(width: 8),
                 // Settings
-                const Icon(Icons.settings_outlined,
-                    color: Colors.white70, size: 18),
+                const Icon(
+                  Icons.settings_outlined,
+                  color: Colors.white70,
+                  size: 18,
+                ),
               ],
             ),
           ),
@@ -589,7 +1278,7 @@ class _VideoBadge extends StatelessWidget {
           color: Colors.white70,
           fontSize: 9,
           fontWeight: FontWeight.w700,
-          fontFamily: 'Inter',
+          fontFamily: 'Plus Jakarta Sans',
         ),
       ),
     );
@@ -640,7 +1329,7 @@ class _CategoryChipSmall extends StatelessWidget {
       child: Text(
         label,
         style: const TextStyle(
-          fontFamily: 'Inter',
+          fontFamily: 'Plus Jakarta Sans',
           fontWeight: FontWeight.w500,
           fontSize: 12,
           color: AppColors.primary,
@@ -678,14 +1367,20 @@ class _VideoStats extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
       child: Row(
         children: [
-          const Icon(Icons.visibility_outlined,
-              size: 15, color: AppColors.textSecondary),
+          const Icon(
+            Icons.visibility_outlined,
+            size: 15,
+            color: AppColors.textSecondary,
+          ),
           const SizedBox(width: 5),
           Text(_fmtViews(views), style: AppTextStyles.bodySmall),
           if (createdAt != null) ...[
             const SizedBox(width: 14),
-            const Icon(Icons.calendar_today_outlined,
-                size: 13, color: AppColors.textSecondary),
+            const Icon(
+              Icons.calendar_today_outlined,
+              size: 13,
+              color: AppColors.textSecondary,
+            ),
             const SizedBox(width: 5),
             Text(_fmtDate(createdAt!), style: AppTextStyles.bodySmall),
           ],
@@ -708,8 +1403,6 @@ class _VideoAuthorRow extends ConsumerStatefulWidget {
 }
 
 class _VideoAuthorRowState extends ConsumerState<_VideoAuthorRow> {
-  bool _following = false;
-
   static String _initials(String name) {
     final parts = name.trim().split(RegExp(r'\s+'));
     if (parts.length >= 2) return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
@@ -727,23 +1420,28 @@ class _VideoAuthorRowState extends ConsumerState<_VideoAuthorRow> {
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 22,
-            backgroundImage: author?.avatarUrl != null
-                ? NetworkImage(author!.avatarUrl!)
-                : null,
-            backgroundColor: AppColors.primary.withAlpha(40),
-            child: author?.avatarUrl == null
-                ? Text(
-                    _initials(displayName),
-                    style: const TextStyle(
-                      fontFamily: 'Poppins',
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
-                    ),
-                  )
-                : null,
+          GestureDetector(
+            onTap: author == null
+                ? null
+                : () => openAuthorProfile(context, author.uid),
+            child: CircleAvatar(
+              radius: 22,
+              backgroundImage: author?.avatarUrl != null
+                  ? NetworkImage(author!.avatarUrl!)
+                  : null,
+              backgroundColor: AppColors.primary.withAlpha(40),
+              child: author?.avatarUrl == null
+                  ? Text(
+                      _initials(displayName),
+                      style: const TextStyle(
+                        fontFamily: 'Plus Jakarta Sans',
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                    )
+                  : null,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -752,29 +1450,11 @@ class _VideoAuthorRowState extends ConsumerState<_VideoAuthorRow> {
               style: AppTextStyles.labelMedium,
             ),
           ),
-          if (!isOwnProfile)
-            GestureDetector(
-              onTap: () => setState(() => _following = !_following),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
-                decoration: BoxDecoration(
-                  color: _following ? Colors.transparent : AppColors.primary,
-                  border: Border.all(
-                      color:
-                          _following ? AppColors.border : AppColors.primary),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  _following ? 'Suivi' : 'Suivre',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                    color: _following ? AppColors.textSecondary : Colors.white,
-                  ),
-                ),
-              ),
+          if (!isOwnProfile && author != null)
+            FollowButton(
+              userId: author.uid,
+              displayName: author.displayName,
+              compact: true,
             ),
         ],
       ),
@@ -815,25 +1495,31 @@ class _VideoReactionBar extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           _VideoReactionBtn(
-              emoji: '❤️',
-              label: "J'aime",
-              active: isLiked,
-              activeColor: AppColors.danger,
-              onTap: onLike),
+            emoji: '❤️',
+            label: "J'aime",
+            active: isLiked,
+            activeColor: AppColors.danger,
+            onTap: onLike,
+          ),
           _VideoReactionBtn(
-              emoji: '🙏',
-              label: 'Je prie',
-              active: isPraying,
-              activeColor: AppColors.primary,
-              onTap: onPray),
+            emoji: '🙏',
+            label: 'Je prie',
+            active: isPraying,
+            activeColor: AppColors.primary,
+            onTap: onPray,
+          ),
           _VideoReactionBtn(
-              emoji: '💬', label: 'Commentaires', onTap: onComment),
+            emoji: '💬',
+            label: 'Commentaires',
+            onTap: onComment,
+          ),
           _VideoReactionBtn(
-              emoji: '🔖',
-              label: 'Sauvegarder',
-              active: isBookmarked,
-              activeColor: AppColors.secondary,
-              onTap: onBookmark),
+            emoji: '🔖',
+            label: 'Sauvegarder',
+            active: isBookmarked,
+            activeColor: AppColors.secondary,
+            onTap: onBookmark,
+          ),
           _VideoReactionBtn(emoji: '📤', label: 'Partager', onTap: onShare),
         ],
       ),
@@ -871,12 +1557,10 @@ class _VideoReactionBtn extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                fontFamily: 'Inter',
+                fontFamily: 'Plus Jakarta Sans',
                 fontSize: 10,
-                fontWeight:
-                    active ? FontWeight.w600 : FontWeight.w400,
-                color:
-                    active ? activeColor : AppColors.textSecondary,
+                fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+                color: active ? activeColor : AppColors.textSecondary,
               ),
             ),
           ],
@@ -885,7 +1569,6 @@ class _VideoReactionBtn extends StatelessWidget {
     );
   }
 }
-
 
 // ============================================================================
 // Comments Preview
@@ -904,15 +1587,16 @@ class _CommentsPreview extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
         child: Row(
           children: [
-            const Text('💬',
-                style: TextStyle(fontSize: 16)),
+            const Text('💬', style: TextStyle(fontSize: 16)),
             const SizedBox(width: 8),
             Expanded(
-              child: Text('34 commentaires',
-                  style: AppTextStyles.labelMedium),
+              child: Text('34 commentaires', style: AppTextStyles.labelMedium),
             ),
-            const Icon(Icons.keyboard_arrow_down_rounded,
-                color: AppColors.textSecondary, size: 20),
+            const Icon(
+              Icons.keyboard_arrow_down_rounded,
+              color: AppColors.textSecondary,
+              size: 20,
+            ),
           ],
         ),
       ),
@@ -925,8 +1609,14 @@ class _CommentsPreview extends StatelessWidget {
 // ============================================================================
 
 class _RelatedVideosList extends ConsumerWidget {
-  const _RelatedVideosList({required this.currentTestimonyId});
+  const _RelatedVideosList({
+    required this.currentTestimonyId,
+    required this.onOpen,
+  });
   final String currentTestimonyId;
+
+  /// Ouvre la vidéo choisie (remplace l'écran courant).
+  final ValueChanged<VideoTestimony> onOpen;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -946,14 +1636,9 @@ class _RelatedVideosList extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
           child: Text('Vidéos similaires', style: AppTextStyles.h4),
         ),
-        ...related.map((t) => _RelatedVideoCard(
-          testimony: t,
-          onTap: () => Navigator.of(context).pushReplacement(
-            MaterialPageRoute<void>(
-              builder: (_) => VideoPlayerScreen(testimonyId: t.id),
-            ),
-          ),
-        )),
+        ...related.map(
+          (t) => _RelatedVideoCard(testimony: t, onTap: () => onOpen(t)),
+        ),
       ],
     );
   }
@@ -1012,7 +1697,8 @@ class _RelatedVideoCardState extends State<_RelatedVideoCard> {
   @override
   Widget build(BuildContext context) {
     final testimony = widget.testimony;
-    final gradient = _gradients[testimony.id.hashCode.abs() % _gradients.length];
+    final gradient =
+        _gradients[testimony.id.hashCode.abs() % _gradients.length];
     return InkWell(
       onTap: widget.onTap,
       child: Padding(
@@ -1032,7 +1718,8 @@ class _RelatedVideoCardState extends State<_RelatedVideoCard> {
                         ? Image.network(
                             testimony.thumbnailUrl,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) => _GradientThumb(gradient: gradient),
+                            errorBuilder: (_, _, _) =>
+                                _GradientThumb(gradient: gradient),
                           )
                         : _GradientThumb(gradient: gradient),
                   ),
@@ -1041,7 +1728,10 @@ class _RelatedVideoCardState extends State<_RelatedVideoCard> {
                   bottom: 5,
                   right: 6,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 5,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.7),
                       borderRadius: BorderRadius.circular(3),
@@ -1051,7 +1741,7 @@ class _RelatedVideoCardState extends State<_RelatedVideoCard> {
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 10,
-                        fontFamily: 'Inter',
+                        fontFamily: 'Plus Jakarta Sans',
                       ),
                     ),
                   ),
@@ -1067,7 +1757,7 @@ class _RelatedVideoCardState extends State<_RelatedVideoCard> {
                   Text(
                     testimony.title,
                     style: const TextStyle(
-                      fontFamily: 'Poppins',
+                      fontFamily: 'Plus Jakarta Sans',
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
                       color: AppColors.textPrimary,
@@ -1086,18 +1776,26 @@ class _RelatedVideoCardState extends State<_RelatedVideoCard> {
                   const SizedBox(height: 2),
                   Row(
                     children: [
-                      const Icon(Icons.visibility_outlined,
-                          size: 11, color: AppColors.textSecondary),
+                      const Icon(
+                        Icons.visibility_outlined,
+                        size: 11,
+                        color: AppColors.textSecondary,
+                      ),
                       const SizedBox(width: 3),
-                      Text(_fmtViews(testimony.stats.views),
-                          style: AppTextStyles.bodySmall),
+                      Text(
+                        _fmtViews(testimony.stats.views),
+                        style: AppTextStyles.bodySmall,
+                      ),
                     ],
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.more_vert_rounded,
-                color: AppColors.textSecondary, size: 18),
+            const Icon(
+              Icons.more_vert_rounded,
+              color: AppColors.textSecondary,
+              size: 18,
+            ),
           ],
         ),
       ),
@@ -1112,12 +1810,13 @@ class _GradientThumb extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(colors: gradient),
-      ),
+      decoration: BoxDecoration(gradient: LinearGradient(colors: gradient)),
       child: const Center(
-        child: Icon(Icons.play_circle_outline_rounded,
-            color: Colors.white54, size: 30),
+        child: Icon(
+          Icons.play_circle_outline_rounded,
+          color: Colors.white54,
+          size: 30,
+        ),
       ),
     );
   }
@@ -1137,8 +1836,7 @@ class _VideoCommentsBottomSheet extends StatefulWidget {
       _VideoCommentsBottomSheetState();
 }
 
-class _VideoCommentsBottomSheetState
-    extends State<_VideoCommentsBottomSheet> {
+class _VideoCommentsBottomSheetState extends State<_VideoCommentsBottomSheet> {
   final _controller = TextEditingController();
   final _focusNode = FocusNode();
 
@@ -1297,7 +1995,7 @@ class _VideoCommentItem extends StatelessWidget {
                   color: AppColors.textSecondary,
                   fontWeight: FontWeight.w600,
                   fontSize: 13,
-                  fontFamily: 'Poppins',
+                  fontFamily: 'Plus Jakarta Sans',
                 ),
               ),
             ),
@@ -1330,19 +2028,20 @@ class _VideoCommentItem extends StatelessWidget {
                     const SizedBox(width: 16),
                     Row(
                       children: [
-                        const Icon(Icons.favorite_border_rounded,
-                            size: 13,
-                            color: AppColors.textSecondary),
+                        const Icon(
+                          Icons.favorite_border_rounded,
+                          size: 13,
+                          color: AppColors.textSecondary,
+                        ),
                         const SizedBox(width: 3),
-                        Text('$likeCount',
-                            style: AppTextStyles.bodySmall),
+                        Text('$likeCount', style: AppTextStyles.bodySmall),
                       ],
                     ),
                     const SizedBox(width: 16),
                     const Text(
                       'Répondre',
                       style: TextStyle(
-                        fontFamily: 'Inter',
+                        fontFamily: 'Plus Jakarta Sans',
                         fontSize: 12,
                         color: AppColors.textSecondary,
                         fontWeight: FontWeight.w500,
@@ -1381,17 +2080,18 @@ class _VideoCommentInputBar extends StatelessWidget {
             height: 36,
             decoration: const BoxDecoration(
               shape: BoxShape.circle,
-              gradient:
-                  LinearGradient(colors: AppColors.guerisonGradient),
+              gradient: LinearGradient(colors: AppColors.guerisonGradient),
             ),
             child: const Center(
-              child: Text('V',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                    fontFamily: 'Poppins',
-                  )),
+              child: Text(
+                'V',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  fontFamily: 'Plus Jakarta Sans',
+                ),
+              ),
             ),
           ),
           const SizedBox(width: 10),
@@ -1403,14 +2103,16 @@ class _VideoCommentInputBar extends StatelessWidget {
               decoration: InputDecoration(
                 hintText: 'Ajouter un commentaire...',
                 hintStyle: const TextStyle(
-                  fontFamily: 'Inter',
+                  fontFamily: 'Plus Jakarta Sans',
                   color: AppColors.textSecondary,
                   fontSize: 14,
                 ),
                 filled: true,
                 fillColor: AppColors.background,
                 contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 10),
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24),
                   borderSide: const BorderSide(color: AppColors.border),
@@ -1422,7 +2124,9 @@ class _VideoCommentInputBar extends StatelessWidget {
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24),
                   borderSide: const BorderSide(
-                      color: AppColors.primary, width: 1.5),
+                    color: AppColors.primary,
+                    width: 1.5,
+                  ),
                 ),
               ),
             ),
@@ -1437,8 +2141,11 @@ class _VideoCommentInputBar extends StatelessWidget {
                 shape: BoxShape.circle,
                 color: AppColors.primary,
               ),
-              child: const Icon(Icons.send_rounded,
-                  color: Colors.white, size: 18),
+              child: const Icon(
+                Icons.send_rounded,
+                color: Colors.white,
+                size: 18,
+              ),
             ),
           ),
         ],
@@ -1475,8 +2182,7 @@ class _FullscreenVideoRoute extends StatefulWidget {
   final bool isPlaying;
 
   @override
-  State<_FullscreenVideoRoute> createState() =>
-      _FullscreenVideoRouteState();
+  State<_FullscreenVideoRoute> createState() => _FullscreenVideoRouteState();
 }
 
 class _FullscreenVideoRouteState extends State<_FullscreenVideoRoute> {
@@ -1560,12 +2266,18 @@ class _FullscreenVideoRouteState extends State<_FullscreenVideoRoute> {
                   if (_isPlaying) _startHideTimer();
                 },
                 onSeek: (v) => setState(() => _progress = v),
-                onRewind: () => setState(() =>
-                    _progress = (_progress - 15 / _totalSeconds)
-                        .clamp(0.0, 1.0)),
-                onForward: () => setState(() =>
-                    _progress = (_progress + 15 / _totalSeconds)
-                        .clamp(0.0, 1.0)),
+                onRewind: () => setState(
+                  () => _progress = (_progress - 15 / _totalSeconds).clamp(
+                    0.0,
+                    1.0,
+                  ),
+                ),
+                onForward: () => setState(
+                  () => _progress = (_progress + 15 / _totalSeconds).clamp(
+                    0.0,
+                    1.0,
+                  ),
+                ),
                 onLockRotate: () =>
                     setState(() => _rotateLocked = !_rotateLocked),
               ),
@@ -1632,7 +2344,7 @@ class _FullscreenOverlay extends StatelessWidget {
                   child: Text(
                     'Comment Dieu a guéri ma fille',
                     style: TextStyle(
-                      fontFamily: 'Poppins',
+                      fontFamily: 'Plus Jakarta Sans',
                       color: Colors.white,
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
@@ -1657,7 +2369,9 @@ class _FullscreenOverlay extends StatelessWidget {
                 shape: BoxShape.circle,
                 color: Colors.black.withValues(alpha: 0.55),
                 border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.7), width: 2),
+                  color: Colors.white.withValues(alpha: 0.7),
+                  width: 2,
+                ),
               ),
               child: Icon(
                 isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
@@ -1686,10 +2400,12 @@ class _FullscreenOverlay extends StatelessWidget {
                 SliderTheme(
                   data: SliderTheme.of(context).copyWith(
                     trackHeight: 3,
-                    thumbShape:
-                        const RoundSliderThumbShape(enabledThumbRadius: 6),
-                    overlayShape:
-                        const RoundSliderOverlayShape(overlayRadius: 14),
+                    thumbShape: const RoundSliderThumbShape(
+                      enabledThumbRadius: 6,
+                    ),
+                    overlayShape: const RoundSliderOverlayShape(
+                      overlayRadius: 14,
+                    ),
                     activeTrackColor: AppColors.primary,
                     inactiveTrackColor: Colors.white30,
                     thumbColor: Colors.white,
@@ -1700,16 +2416,22 @@ class _FullscreenOverlay extends StatelessWidget {
                 // Controls row
                 Row(
                   children: [
-                    Text(elapsed,
-                        style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 12,
-                            fontFamily: 'Inter')),
-                    Text(' / $total',
-                        style: const TextStyle(
-                            color: Colors.white38,
-                            fontSize: 12,
-                            fontFamily: 'Inter')),
+                    Text(
+                      elapsed,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                        fontFamily: 'Plus Jakarta Sans',
+                      ),
+                    ),
+                    Text(
+                      ' / $total',
+                      style: const TextStyle(
+                        color: Colors.white38,
+                        fontSize: 12,
+                        fontFamily: 'Plus Jakarta Sans',
+                      ),
+                    ),
                     const Spacer(),
                     // Rewind
                     IconButton(
@@ -1719,19 +2441,25 @@ class _FullscreenOverlay extends StatelessWidget {
                       iconSize: 26,
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(
-                          minWidth: 36, minHeight: 36),
+                        minWidth: 36,
+                        minHeight: 36,
+                      ),
                     ),
                     // Play/Pause
                     IconButton(
                       onPressed: onPlayPause,
-                      icon: Icon(isPlaying
-                          ? Icons.pause_rounded
-                          : Icons.play_arrow_rounded),
+                      icon: Icon(
+                        isPlaying
+                            ? Icons.pause_rounded
+                            : Icons.play_arrow_rounded,
+                      ),
                       color: Colors.white,
                       iconSize: 32,
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(
-                          minWidth: 40, minHeight: 40),
+                        minWidth: 40,
+                        minHeight: 40,
+                      ),
                     ),
                     // Forward
                     IconButton(
@@ -1741,7 +2469,9 @@ class _FullscreenOverlay extends StatelessWidget {
                       iconSize: 26,
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(
-                          minWidth: 36, minHeight: 36),
+                        minWidth: 36,
+                        minHeight: 36,
+                      ),
                     ),
                     const Spacer(),
                     // Captions
@@ -1752,12 +2482,16 @@ class _FullscreenOverlay extends StatelessWidget {
                       iconSize: 22,
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(
-                          minWidth: 32, minHeight: 32),
+                        minWidth: 32,
+                        minHeight: 32,
+                      ),
                     ),
                     // Speed label
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 7, vertical: 3),
+                        horizontal: 7,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white12,
                         borderRadius: BorderRadius.circular(4),
@@ -1767,7 +2501,7 @@ class _FullscreenOverlay extends StatelessWidget {
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 12,
-                          fontFamily: 'Inter',
+                          fontFamily: 'Plus Jakarta Sans',
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -1776,15 +2510,20 @@ class _FullscreenOverlay extends StatelessWidget {
                     // Rotate lock
                     IconButton(
                       onPressed: onLockRotate,
-                      icon: Icon(rotateLocked
-                          ? Icons.screen_lock_rotation_rounded
-                          : Icons.screen_rotation_rounded),
-                      color:
-                          rotateLocked ? AppColors.secondary : Colors.white70,
+                      icon: Icon(
+                        rotateLocked
+                            ? Icons.screen_lock_rotation_rounded
+                            : Icons.screen_rotation_rounded,
+                      ),
+                      color: rotateLocked
+                          ? AppColors.secondary
+                          : Colors.white70,
                       iconSize: 22,
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(
-                          minWidth: 32, minHeight: 32),
+                        minWidth: 32,
+                        minHeight: 32,
+                      ),
                     ),
                   ],
                 ),
@@ -1846,8 +2585,7 @@ class _MiniVideoPlayerState extends State<MiniVideoPlayer> {
         },
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute<void>(
-            builder: (_) =>
-                VideoPlayerScreen(testimonyId: widget.testimonyId),
+            builder: (_) => VideoPlayerScreen(testimonyId: widget.testimonyId),
           ),
         ),
         child: Container(
@@ -1875,8 +2613,7 @@ class _MiniVideoPlayerState extends State<MiniVideoPlayer> {
               // Play/pause overlay
               Center(
                 child: GestureDetector(
-                  onTap: () =>
-                      setState(() => _isPlaying = !_isPlaying),
+                  onTap: () => setState(() => _isPlaying = !_isPlaying),
                   child: Container(
                     width: 34,
                     height: 34,
@@ -1907,8 +2644,11 @@ class _MiniVideoPlayerState extends State<MiniVideoPlayer> {
                       shape: BoxShape.circle,
                       color: Colors.black.withValues(alpha: 0.7),
                     ),
-                    child: const Icon(Icons.close_rounded,
-                        color: Colors.white, size: 13),
+                    child: const Icon(
+                      Icons.close_rounded,
+                      color: Colors.white,
+                      size: 13,
+                    ),
                   ),
                 ),
               ),

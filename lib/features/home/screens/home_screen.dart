@@ -1,21 +1,20 @@
+import '../../../shared/widgets/app_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../features/auth/providers/auth_notifier.dart'
     show currentUserProvider;
+import '../../../core/media/playback_preferences.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../l10n/app_localizations.dart';
-import '../models/testimony_model.dart';
 import '../providers/home_providers.dart';
-import '../widgets/audio_testimony_card.dart';
 import '../widgets/category_chips_row.dart';
 import '../widgets/daily_verse_banner.dart';
 import '../widgets/featured_carousel.dart';
 import '../widgets/skeleton_card.dart';
-import '../widgets/text_testimony_card.dart';
-import '../widgets/video_testimony_card.dart';
+import '../widgets/testimony_feed_item.dart';
 
 /// Accueil (Home) screen.
 ///
@@ -38,8 +37,8 @@ import '../widgets/video_testimony_card.dart';
 ///       ├─ SliverToBoxAdapter → _FeedHeader
 ///       └─ SliverList → _FeedBody
 ///           ├─ [loading] SkeletonCard × 3
-///           └─ [loaded]  TextTestimonyCard | AudioTestimonyCard |
-///                         VideoTestimonyCard (dispatched per type)
+///           └─ [loaded]  TestimonyFeedItem (grande carte par type, ou
+///                         ligne compacte dépliable selon feedLayoutProvider)
 /// ─────────────────────────────────────────────────────────────────────────────
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -51,6 +50,8 @@ class HomeScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      // Menu latéral : Communauté, Directs, Carnet… (écrans sans onglet)
+      drawer: const AppDrawer(),
       body: RefreshIndicator(
         color: AppColors.primary,
         onRefresh: () => ref.read(feedNotifierProvider.notifier).refresh(),
@@ -131,7 +132,12 @@ class _HomeAppBarContent extends ConsumerWidget {
     // Pas de SafeArea : SliverAppBar.title est déjà positionné sous la status bar.
     return Row(
       children: [
-        const SizedBox(width: 16),
+        const SizedBox(width: 2),
+        IconButton(
+          tooltip: 'Menu',
+          icon: const Icon(Icons.menu_rounded, color: AppColors.textPrimary),
+          onPressed: () => Scaffold.of(context).openDrawer(),
+        ),
         _AppLogo(),
         const SizedBox(width: 10),
         Expanded(
@@ -155,7 +161,7 @@ class _HomeAppBarContent extends ConsumerWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: const Color(0xFFEF4444),
+              color: const Color(0xFFD92D20),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
@@ -175,7 +181,7 @@ class _HomeAppBarContent extends ConsumerWidget {
                   AppLocalizations.of(context).homeLive.toUpperCase(),
                   style: const TextStyle(
                     color: Colors.white,
-                    fontFamily: 'Poppins',
+                    fontFamily: 'Plus Jakarta Sans',
                     fontWeight: FontWeight.w700,
                     fontSize: 10,
                     letterSpacing: 0.5,
@@ -198,18 +204,11 @@ class _HomeAppBarContent extends ConsumerWidget {
 class _AppLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 38,
-      height: 38,
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.primary, AppColors.primaryLight],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: const Icon(Icons.church_rounded, color: Colors.white, size: 22),
+    // Logo ARISE & SHINE Krea (assets/images/arise_shine_krea.png).
+    return Image.asset(
+      'assets/images/arise_shine_krea.png',
+      height: 40,
+      semanticLabel: 'ARISE & SHINE Krea',
     );
   }
 }
@@ -288,18 +287,97 @@ class _AvatarButton extends ConsumerWidget {
 
 // ── Feed header ───────────────────────────────────────────────────────────────
 
-class _FeedHeader extends StatelessWidget {
+class _FeedHeader extends ConsumerWidget {
   const _FeedHeader();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
+    final layout = ref.watch(feedLayoutProvider);
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text('${l10n.homeTitle} récents', style: AppTextStyles.h3),
-        const Icon(Icons.tune_rounded, color: AppColors.textSecondary, size: 20),
+        Expanded(
+          child: Text(
+            '${l10n.homeTitle} récents',
+            style: AppTextStyles.h3,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        _LayoutToggle(
+          value: layout,
+          onChanged: (l) => ref
+              .read(playbackPreferencesProvider.notifier)
+              .setFeedLayout(l),
+        ),
       ],
+    );
+  }
+}
+
+/// Bascule simple entre « Cartes » (grandes cartes) et « Liste » (lignes
+/// compactes dépliables).
+class _LayoutToggle extends StatelessWidget {
+  const _LayoutToggle({required this.value, required this.onChanged});
+
+  final FeedLayout value;
+  final ValueChanged<FeedLayout> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget button(FeedLayout l, IconData icon, String label) {
+      final selected = value == l;
+      return Tooltip(
+        message: 'Affichage : $label',
+        child: Semantics(
+          button: true,
+          selected: selected,
+          label: 'Affichage $label',
+          excludeSemantics: true,
+          child: InkWell(
+            onTap: selected ? null : () => onChanged(l),
+            borderRadius: BorderRadius.circular(10),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              width: 44,
+              height: 40,
+              decoration: BoxDecoration(
+                color: selected ? AppColors.surface : Colors.transparent,
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: selected
+                    ? [
+                        BoxShadow(
+                          color: Colors.black.withAlpha(18),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
+                        ),
+                      ]
+                    : null,
+              ),
+              child: Icon(
+                icon,
+                size: 20,
+                color: selected ? AppColors.primary : AppColors.textSecondary,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: AppColors.border.withAlpha(140),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          button(FeedLayout.cards, Icons.view_agenda_rounded, 'Cartes'),
+          button(FeedLayout.compact, Icons.view_list_rounded, 'Liste'),
+        ],
+      ),
     );
   }
 }
@@ -315,6 +393,7 @@ class _FeedBody extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final feed      = ref.watch(feedProvider);
     final isLoading = ref.watch(feedIsLoadingProvider);
+    final layout    = ref.watch(feedLayoutProvider);
 
     // Chargement initial — squelettes animés
     if (isLoading) return const FeedLoadingSkeleton();
@@ -335,17 +414,14 @@ class _FeedBody extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       sliver: SliverList.separated(
         itemCount: feed.length,
-        separatorBuilder: (_, _) => const SizedBox(height: 12),
-        itemBuilder: (context, index) => _buildCard(feed[index]),
+        separatorBuilder: (_, _) => SizedBox(height: feedItemGap(layout)),
+        itemBuilder: (context, index) => TestimonyFeedItem(
+          key: ValueKey(feed[index].id),
+          testimony: feed[index],
+        ),
       ),
     );
   }
-
-  Widget _buildCard(Testimony testimony) => switch (testimony) {
-        TextTestimony t  => TextTestimonyCard(testimony: t),
-        AudioTestimony a => AudioTestimonyCard(testimony: a),
-        VideoTestimony v => VideoTestimonyCard(testimony: v),
-      };
 }
 
 /// Squelette shimmer du feed affiché pendant le chargement initial.
@@ -411,7 +487,7 @@ class _BibleBanner extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
+              colors: [Color(0xFF103675), Color(0xFF2B5DB0)],
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
             ),
@@ -439,7 +515,7 @@ class _BibleBanner extends StatelessWidget {
                     Text(
                       'Bible',
                       style: TextStyle(
-                        fontFamily: 'Poppins',
+                        fontFamily: 'Plus Jakarta Sans',
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
                         color: Colors.white,
@@ -448,7 +524,7 @@ class _BibleBanner extends StatelessWidget {
                     Text(
                       'Télécharger et lire hors connexion',
                       style: TextStyle(
-                        fontFamily: 'Inter',
+                        fontFamily: 'Plus Jakarta Sans',
                         fontSize: 11,
                         color: Colors.white70,
                       ),

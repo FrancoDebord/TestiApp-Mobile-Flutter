@@ -9,6 +9,7 @@
 import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -29,14 +30,25 @@ class LaravelResponse<T> {
     required this.success,
     required this.data,
     this.message,
+    this.meta,
   });
 
   final bool success;
   final T data;
   final String? message;
 
+  /// Pagination des listes (`meta` : current_page, last_page, total…), si fournie.
+  final Object? meta;
+
   factory LaravelResponse.fromDio(Response response) {
-    final body = response.data as Map<String, dynamic>? ?? {};
+    final raw = response.data;
+    if (raw is! Map<String, dynamic>) {
+      throw LaravelApiException(
+        message: 'Réponse inattendue du serveur.',
+        statusCode: response.statusCode ?? 0,
+      );
+    }
+    final body = raw;
     final success = body['success'] as bool? ?? true;
     final message = body['message'] as String?;
 
@@ -53,6 +65,7 @@ class LaravelResponse<T> {
       success: success,
       data: body['data'] as T,
       message: message,
+      meta: body['meta'],
     );
   }
 }
@@ -129,10 +142,12 @@ class AuthInterceptor extends Interceptor {
     ErrorInterceptorHandler handler,
   ) async {
     if (err.response?.statusCode == 401) {
-      // Éviter une boucle infinie si le retry lui-même revient en 401
+      // Éviter une boucle infinie si le retry lui-même revient en 401.
+      // Les routes /auth/* (login, register, refresh…) renvoient 401 pour des
+      // identifiants invalides : ne pas tenter de refresh dans ce cas.
       final alreadyRetried =
           err.requestOptions.extra['_auth_retry'] as bool? ?? false;
-      if (alreadyRetried) {
+      if (alreadyRetried || err.requestOptions.path.startsWith('/auth/')) {
         handler.next(err);
         return;
       }
@@ -194,7 +209,14 @@ class RetryInterceptor extends Interceptor {
     final code = err.response?.statusCode ?? 0;
     final attempt = err.requestOptions.extra['_retry'] as int? ?? 0;
 
-    final shouldRetry = attempt < AppConstants.maxRetries &&
+    // Ne relancer que les GET : relancer un POST/PUT/DELETE après un timeout
+    // peut créer des doublons, et un FormData ne peut pas être renvoyé.
+    final options = err.requestOptions;
+    final isIdempotent =
+        options.method.toUpperCase() == 'GET' && options.data is! FormData;
+
+    final shouldRetry = isIdempotent &&
+        attempt < AppConstants.maxRetries &&
         (err.type == DioExceptionType.connectionError ||
             err.type == DioExceptionType.connectionTimeout ||
             err.type == DioExceptionType.receiveTimeout ||
@@ -219,33 +241,53 @@ class RetryInterceptor extends Interceptor {
 // ── Logging interceptor ────────────────────────────────────────────────────────
 
 class LoggingInterceptor extends Interceptor {
+  static const _maxBodyChars = 800;
+  static const _sensitiveKeys = {
+    'password', 'password_confirmation', 'current_password',
+    'token', 'firebase_token', 'refresh_token', 'access_token',
+  };
+
+  static String _format(dynamic data) {
+    if (data is FormData) return '<multipart>';
+    final masked = data is Map
+        ? {
+            for (final e in data.entries)
+              e.key: _sensitiveKeys.contains(e.key) ? '***' : e.value,
+          }
+        : data;
+    final text = '$masked';
+    return text.length > _maxBodyChars
+        ? '${text.substring(0, _maxBodyChars)}… (${text.length} car.)'
+        : text;
+  }
+
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
-    // ignore: avoid_print
-    print('[API] ▶ ${options.method} ${options.uri}');
-    if (options.data != null) {
-      // ignore: avoid_print
-      print('[API] ▶ body: ${options.data}');
+    if (kDebugMode) {
+      debugPrint('[API] ▶ ${options.method} ${options.uri}');
+      if (options.data != null) {
+        debugPrint('[API] ▶ body: ${_format(options.data)}');
+      }
     }
     handler.next(options);
   }
 
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
-    // ignore: avoid_print
-    print('[API] ◀ ${response.statusCode} ${response.requestOptions.uri}');
-    // ignore: avoid_print
-    print('[API] ◀ body: ${response.data}');
+    if (kDebugMode) {
+      debugPrint('[API] ◀ ${response.statusCode} ${response.requestOptions.uri}');
+      debugPrint('[API] ◀ body: ${_format(response.data)}');
+    }
     handler.next(response);
   }
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
-    // ignore: avoid_print
-    print('[API] ✖ ${err.response?.statusCode ?? err.type} '
-        '${err.requestOptions.uri} — ${err.message}');
-    // ignore: avoid_print
-    print('[API] ✖ body: ${err.response?.data}');
+    if (kDebugMode) {
+      debugPrint('[API] ✖ ${err.response?.statusCode ?? err.type} '
+          '${err.requestOptions.uri} — ${err.message}');
+      debugPrint('[API] ✖ body: ${_format(err.response?.data)}');
+    }
     handler.next(err);
   }
 }
@@ -284,7 +326,8 @@ class ApiService {
 
   static Never _rethrowClientError(DioException e) {
     final statusCode = e.response?.statusCode ?? 0;
-    final body       = e.response?.data as Map<String, dynamic>? ?? {};
+    final rawBody    = e.response?.data;
+    final body       = rawBody is Map<String, dynamic> ? rawBody : const <String, dynamic>{};
     final message    = body['message'] as String?;
     final errors     = body['errors'];
     throw LaravelApiException(
@@ -301,8 +344,8 @@ class ApiService {
       return await fn();
     } on DioException catch (e) {
       final status = e.response?.statusCode ?? 0;
-      // 4xx (except 401: handled by AuthInterceptor for token refresh)
-      if (status >= 400 && status < 500 && status != 401) {
+      // 4xx, 401 inclus : AuthInterceptor a déjà tenté le refresh à ce stade.
+      if (status >= 400 && status < 500) {
         _rethrowClientError(e);
       }
       rethrow;
@@ -370,7 +413,12 @@ class ApiService {
       () => _dio.post<Map<String, dynamic>>(
         path,
         data: formData,
-        options: Options(contentType: 'multipart/form-data'),
+        options: Options(
+          contentType: 'multipart/form-data',
+          // Une vidéo peut prendre du temps à être écrite côté serveur :
+          // le receiveTimeout global (20 s) est trop court pour un upload.
+          receiveTimeout: const Duration(minutes: 3),
+        ),
         onSendProgress: onProgress,
       ),
     );

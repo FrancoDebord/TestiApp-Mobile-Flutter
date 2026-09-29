@@ -72,6 +72,9 @@ dependencies:
   url_launcher: ^6.3.1
   connectivity_plus: ^7.1.1
   permission_handler: ^12.0.3
+  sqflite_common_ffi_web: ^1.1.1
+  livekit_client: ^2.13.0
+  wakelock_plus: ^1.7.0
 
 dev_dependencies:
   flutter_test:
@@ -80,3 +83,20 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  # Charte ARISE & SHINE Krea : logo et police Plus Jakarta Sans (SIL OFL, assets/fonts/OFL.txt).
+  assets:
+    - assets/images/arise_shine_krea.png
+
+  fonts:
+    - family: Plus Jakarta Sans
+      fonts:
+        - asset: assets/fonts/PlusJakartaSans-Regular.ttf
+        - asset: assets/fonts/PlusJakartaSans-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/PlusJakartaSans-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/PlusJakartaSans-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/PlusJakartaSans-ExtraBold.ttf
+          weight: 800

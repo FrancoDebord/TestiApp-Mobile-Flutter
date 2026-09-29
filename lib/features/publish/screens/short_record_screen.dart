@@ -478,28 +478,20 @@ class _ShortRecordScreenState extends State<ShortRecordScreen>
       );
     }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final screenRatio = constraints.maxWidth / constraints.maxHeight;
-        final previewRatio = _cameraCtrl!.value.aspectRatio;
-
-        double w, h;
-        if (screenRatio < previewRatio) {
-          h = constraints.maxHeight;
-          w = h * previewRatio;
-        } else {
-          w = constraints.maxWidth;
-          h = w / previewRatio;
-        }
-
-        return Center(
+    // value.aspectRatio est en paysage (ex. 16/9) ; écran verrouillé en
+    // portrait → la boîte de l'aperçu fait 1 × aspectRatio. FittedBox.cover
+    // la remplit sans déformation (rogne les bords au lieu d'aplatir).
+    return ClipRect(
+      child: SizedBox.expand(
+        child: FittedBox(
+          fit: BoxFit.cover,
           child: SizedBox(
-            width: w,
-            height: h,
+            width: 1,
+            height: _cameraCtrl!.value.aspectRatio,
             child: CameraPreview(_cameraCtrl!),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 

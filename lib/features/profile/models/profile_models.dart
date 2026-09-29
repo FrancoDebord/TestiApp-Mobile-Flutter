@@ -11,7 +11,8 @@ class ProfileExtras {
     this.firstName  = '',
     this.lastName   = '',
     this.gender     = '',   // 'Homme' | 'Femme' | 'Autre'
-    this.phone      = '',
+    this.phone      = '',   // numéro national (sans indicatif)
+    this.phoneCountry = '', // code ISO de l'indicatif (« bj »)
     this.email      = '',
     this.country    = '',
     this.bio        = '',
@@ -23,6 +24,7 @@ class ProfileExtras {
   final String  lastName;
   final String  gender;
   final String  phone;
+  final String  phoneCountry;
   final String  email;
   final String  country;
   final String  bio;
@@ -43,6 +45,7 @@ class ProfileExtras {
     String? lastName,
     String? gender,
     String? phone,
+    String? phoneCountry,
     String? email,
     String? country,
     String? bio,
@@ -54,6 +57,7 @@ class ProfileExtras {
     lastName:   lastName   ?? this.lastName,
     gender:     gender     ?? this.gender,
     phone:      phone      ?? this.phone,
+    phoneCountry: phoneCountry ?? this.phoneCountry,
     email:      email      ?? this.email,
     country:    country    ?? this.country,
     bio:        bio        ?? this.bio,
@@ -79,6 +83,7 @@ class UserProfile {
     this.followingCount = 0,
     this.bio,
     this.avatarUrl,
+    this.coverUrl,
     this.isPrivate = false,
     this.extras = const ProfileExtras(),
   });
@@ -94,6 +99,8 @@ class UserProfile {
   final int          followingCount;
   final String?      bio;
   final String?      avatarUrl;
+  /// Photo de couverture (bandeau du profil).
+  final String?      coverUrl;
   final bool         isPrivate;
   final ProfileExtras extras;
 

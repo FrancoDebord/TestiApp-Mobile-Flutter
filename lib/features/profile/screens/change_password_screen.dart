@@ -14,7 +14,7 @@ class ChangePasswordScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Sécurité',
             style: TextStyle(
-              fontFamily: 'Poppins',
+              fontFamily: 'Plus Jakarta Sans',
               fontWeight: FontWeight.w600,
               fontSize: 17,
               color: AppColors.textPrimary,
@@ -44,7 +44,7 @@ class ChangePasswordScreen extends StatelessWidget {
             const Text(
               'Aucun mot de passe requis',
               style: TextStyle(
-                fontFamily: 'Poppins',
+                fontFamily: 'Plus Jakarta Sans',
                 fontWeight: FontWeight.w600,
                 fontSize: 20,
                 color: AppColors.textPrimary,
@@ -56,7 +56,7 @@ class ChangePasswordScreen extends StatelessWidget {
               'Votre compte Témoignages utilise\nune authentification simplifiée\n'
               'par nom — aucun mot de passe\nn\'est nécessaire.',
               style: TextStyle(
-                fontFamily: 'Inter',
+                fontFamily: 'Plus Jakarta Sans',
                 fontSize: 14,
                 color: AppColors.textSecondary,
                 height: 1.6,
@@ -76,7 +76,7 @@ class ChangePasswordScreen extends StatelessWidget {
               ),
               child: const Text('Retour',
                   style: TextStyle(
-                      fontFamily: 'Poppins',
+                      fontFamily: 'Plus Jakarta Sans',
                       fontWeight: FontWeight.w500,
                       fontSize: 14)),
             ),

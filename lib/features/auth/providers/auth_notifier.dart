@@ -4,7 +4,8 @@
 // Flux : Téléphone → SMS OTP → Vérification → Profil (1ère fois) → Home
 // Sans mot de passe — comme WhatsApp.
 
-import 'package:dio/dio.dart' show DioException;
+import 'dart:convert';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -25,6 +26,8 @@ const _kCachedEmail       = 'cached_user_email';
 const _kCachedAvatarUrl   = 'cached_user_avatar_url';
 const _kCachedCountry     = 'cached_user_country';
 const _kCachedRole        = 'cached_user_role';
+// Full UserModel.toJson() snapshot (includes organisation fields / badge).
+const _kCachedUserJson    = 'cached_user_json';
 
 // Mirror of ProfileExtrasNotifier storage keys — written here so the profile
 // screen shows the correct name immediately after login and on next launch.
@@ -151,8 +154,8 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
           (state.value as AuthStateAuthenticated).user != user) {
         state = AsyncValue.data(AuthStateAuthenticated(user));
       }
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 401) {
+    } on LaravelApiException catch (e) {
+      if (e.statusCode == 401) {
         // JWT expiré → reconnexion silencieuse avec les credentials sauvegardés
         final autoLogin = await _tryAutoLoginWithCredentials();
         if (autoLogin != null) {
@@ -176,8 +179,8 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
           Map<String, dynamic>.from(response.data));
       await _cacheUser(user);
       return AuthStateAuthenticated(user);
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 401) {
+    } on LaravelApiException catch (e) {
+      if (e.statusCode == 401) {
         // JWT expiré → reconnexion silencieuse
         final autoLogin = await _tryAutoLoginWithCredentials();
         if (autoLogin != null) return autoLogin;
@@ -392,28 +395,86 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
   // L'écran gère son propre indicateur de chargement (_isLoading).
   // Les exceptions sont relancées pour que le try/catch de l'écran les affiche.
 
+  //
+  // Compte organisation : passer accountType = AccountType.organization et
+  // organizationName / organizationType / organizationCity (+ site web
+  // optionnel). firstName / lastName peuvent alors être vides : les champs
+  // de nom sont dérivés du nom de l'organisation pour satisfaire la
+  // validation serveur existante (`display_name` requis).
+
   Future<void> register({
     required String firstName,
     required String lastName,
     required String email,
     required String password,
     String? country,
+    // Téléphone de contact : code ISO de l'indicatif (« bj ») + numéro national.
+    // Le serveur le met au format international (+229…). docs/fonctionnalites/telephone.md
+    String? phoneCountry,
+    String? phone,
+    AccountType accountType = AccountType.individual,
+    String? organizationName,
+    OrganizationType? organizationType,
+    String? organizationCity,
+    String? organizationWebsite,
   }) async {
+    final isOrg = accountType == AccountType.organization;
+    final phoneNumber = phone?.trim() ?? '';
+    final orgName = organizationName?.trim() ?? '';
+    final personName = '$firstName $lastName'.trim();
+    final displayName = isOrg && orgName.isNotEmpty ? orgName : personName;
+    final website = organizationWebsite?.trim();
+
     final response = await _api.post<Map<String, dynamic>>(
       AppConstants.authRegister,
       data: {
-        'first_name':             firstName,
+        'account_type':           accountType.toJson(),
+        'first_name':             isOrg && firstName.isEmpty ? orgName : firstName,
         'last_name':              lastName,
-        'name':                   '$firstName $lastName'.trim(),
-        'display_name':           '$firstName $lastName'.trim(),
+        'name':                   displayName,
+        'display_name':           displayName,
         'email':                  email,
         'password':               password,
         'password_confirmation':  password,
         'country': ?country,
+        if (phoneNumber.isNotEmpty && phoneCountry != null) ...{
+          'phone_country': phoneCountry,
+          'phone':         phoneNumber,
+        },
+        if (isOrg) ...{
+          'organization_name':    orgName,
+          'organization_type': ?organizationType?.toJson(),
+          'organization_city': ?organizationCity?.trim(),
+          if (website != null && website.isNotEmpty)
+            'organization_website': website,
+        },
       },
     );
     await _saveCredentials(email, password);
-    state = AsyncValue.data(await _handleTokenResponse(response.data));
+    var next = await _handleTokenResponse(response.data);
+    // Le serveur peut ignorer les champs organisation (ancienne version) :
+    // on conserve localement ce que l'utilisateur a saisi.
+    if (isOrg && next is AuthStateAuthenticated && !next.user.isOrganization) {
+      final patched = next.user.copyWith(
+        accountType:         AccountType.organization,
+        organizationName:    orgName,
+        organizationType:    organizationType,
+        organizationCity:    organizationCity?.trim(),
+        organizationWebsite: (website?.isEmpty ?? true) ? null : website,
+        verificationStatus:  VerificationStatus.pending,
+      );
+      await _cacheUser(patched);
+      next = AuthStateAuthenticated(patched);
+    }
+    state = AsyncValue.data(next);
+  }
+
+  /// Met à jour l'utilisateur courant (ex. après édition du profil) et le cache.
+  Future<void> updateCurrentUser(UserModel user) async {
+    final current = state.value;
+    if (current is! AuthStateAuthenticated) return;
+    await _cacheUser(user);
+    state = AsyncValue.data(AuthStateAuthenticated(user));
   }
 
   // ── Email / Password login ─────────────────────────────────────────────────
@@ -531,6 +592,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
       _storage.write(key: _kCachedEmail,       value: user.email),
       _storage.write(key: _kCachedCountry,     value: user.country),
       _storage.write(key: _kCachedRole,        value: user.role.toJson()),
+      _storage.write(key: _kCachedUserJson,    value: jsonEncode(user.toJson())),
       // Mirror into ProfileExtrasNotifier keys so the profile screen shows
       // the name immediately and on the next launch without a network call.
       _storage.write(key: _kProfileFirstName,  value: _firstPart(user.displayName)),
@@ -548,6 +610,16 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     final userId      = await _storage.read(key: AppConstants.keyUserId);
     final displayName = await _storage.read(key: _kCachedDisplayName);
     if (userId == null || displayName == null || displayName.isEmpty) return null;
+
+    final rawJson = await _storage.read(key: _kCachedUserJson);
+    if (rawJson != null && rawJson.isNotEmpty) {
+      try {
+        final map = Map<String, dynamic>.from(jsonDecode(rawJson) as Map);
+        if (map['id'] == userId) {
+          return AuthStateAuthenticated(UserModel.fromJson(map));
+        }
+      } catch (_) {/* cache corrompu → repli sur les clés individuelles */}
+    }
 
     return AuthStateAuthenticated(UserModel(
       id:              userId,
@@ -605,6 +677,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
       _storage.delete(key: _kCachedAvatarUrl),
       _storage.delete(key: _kCachedCountry),
       _storage.delete(key: _kCachedRole),
+      _storage.delete(key: _kCachedUserJson),
       _storage.delete(key: _kProfileFirstName),
       _storage.delete(key: _kProfileLastName),
       _storage.delete(key: _kProfileEmail),

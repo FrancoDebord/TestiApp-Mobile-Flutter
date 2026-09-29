@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 
 import 'database_schema.dart';
 
@@ -21,8 +23,18 @@ class DatabaseService {
   }
 
   Future<Database> _init() async {
-    final docDir = await getApplicationDocumentsDirectory();
-    final dbPath = join(docDir.path, 'testi_app.db');
+    final String dbPath;
+    if (kIsWeb) {
+      // Web : pas de système de fichiers ni de plugin sqflite natif.
+      // SQLite tourne en WebAssembly (web/sqlite3.wasm + sqflite_sw.js,
+      // installés via `dart run sqflite_common_ffi_web:setup`) et stocke
+      // la base dans IndexedDB.
+      databaseFactory = databaseFactoryFfiWeb;
+      dbPath = 'testi_app.db';
+    } else {
+      final docDir = await getApplicationDocumentsDirectory();
+      dbPath = join(docDir.path, 'testi_app.db');
+    }
 
     return openDatabase(
       dbPath,

@@ -30,7 +30,7 @@ class GroupPrayerSessionsScreen extends ConsumerWidget {
         title: const Text(
           'Sessions de prière',
           style: TextStyle(
-            fontFamily: 'Poppins',
+            fontFamily: 'Plus Jakarta Sans',
             fontWeight: FontWeight.w600,
             fontSize: 17,
             color: AppColors.textPrimary,
@@ -66,7 +66,7 @@ class GroupPrayerSessionsScreen extends ConsumerWidget {
                     ref.read(groupSessionsProvider.notifier).refresh(),
                 icon: const Icon(Icons.refresh_rounded, size: 18),
                 label: const Text('Réessayer',
-                    style: TextStyle(fontFamily: 'Inter')),
+                    style: TextStyle(fontFamily: 'Plus Jakarta Sans')),
               ),
             ],
           ),
@@ -128,7 +128,7 @@ class GroupPrayerSessionsScreen extends ConsumerWidget {
         icon: const Icon(Icons.video_call_rounded),
         label: const Text(
           'Créer une session',
-          style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600),
+          style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600),
         ),
       ),
     );
@@ -162,7 +162,7 @@ class _SessionCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: isLive ? const Color(0xFFEF4444) : AppColors.border,
+          color: isLive ? const Color(0xFFD92D20) : AppColors.border,
           width: isLive ? 1.5 : 1,
         ),
       ),
@@ -180,7 +180,7 @@ class _SessionCard extends StatelessWidget {
                 height: 48,
                 decoration: BoxDecoration(
                   color: isLive
-                      ? const Color(0xFFEF4444).withAlpha(15)
+                      ? const Color(0xFFD92D20).withAlpha(15)
                       : isEnded
                           ? AppColors.border.withAlpha(80)
                           : AppColors.primary.withAlpha(15),
@@ -193,7 +193,7 @@ class _SessionCard extends StatelessWidget {
                           ? Icons.check_circle_outline_rounded
                           : Icons.upcoming_rounded,
                   color: isLive
-                      ? const Color(0xFFEF4444)
+                      ? const Color(0xFFD92D20)
                       : isEnded
                           ? AppColors.textSecondary
                           : AppColors.primary,
@@ -215,13 +215,13 @@ class _SessionCard extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFEF4444),
+                              color: const Color(0xFFD92D20),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: const Text(
                               'EN DIRECT',
                               style: TextStyle(
-                                fontFamily: 'Inter',
+                                fontFamily: 'Plus Jakarta Sans',
                                 fontWeight: FontWeight.w800,
                                 fontSize: 9,
                                 color: Colors.white,
@@ -233,7 +233,7 @@ class _SessionCard extends StatelessWidget {
                           child: Text(
                             session.title,
                             style: TextStyle(
-                              fontFamily: 'Inter',
+                              fontFamily: 'Plus Jakarta Sans',
                               fontWeight: FontWeight.w600,
                               fontSize: 14,
                               color: isEnded
@@ -285,11 +285,11 @@ class _SessionCard extends StatelessWidget {
                   child: Text(
                     isLive ? 'Rejoindre' : 'Inscrire',
                     style: TextStyle(
-                      fontFamily: 'Inter',
+                      fontFamily: 'Plus Jakarta Sans',
                       fontWeight: FontWeight.w700,
                       fontSize: 12,
                       color:
-                          isLive ? const Color(0xFFEF4444) : AppColors.primary,
+                          isLive ? const Color(0xFFD92D20) : AppColors.primary,
                     ),
                   ),
                 ),
@@ -340,7 +340,7 @@ class _SectionHeader extends StatelessWidget {
         Text(
           title,
           style: const TextStyle(
-            fontFamily: 'Poppins',
+            fontFamily: 'Plus Jakarta Sans',
             fontWeight: FontWeight.w600,
             fontSize: 14,
             color: AppColors.textPrimary,
@@ -358,7 +358,7 @@ class _SectionHeader extends StatelessWidget {
             child: Text(
               '$count',
               style: const TextStyle(
-                fontFamily: 'Inter',
+                fontFamily: 'Plus Jakarta Sans',
                 fontWeight: FontWeight.w700,
                 fontSize: 11,
                 color: AppColors.primary,

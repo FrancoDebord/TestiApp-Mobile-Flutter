@@ -45,13 +45,17 @@ class ModerationScreen extends ConsumerWidget {
             automaticallyImplyLeading: false,
             title: Row(
               children: [
-                const Text(
-                  'Modération',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.w600,
-                    fontSize: 20,
-                    color: Color(0xFF0F172A),
+                const Flexible(
+                  child: Text(
+                    'Modération',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: 'Plus Jakarta Sans',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 20,
+                      color: Color(0xFF263238),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -61,7 +65,7 @@ class ModerationScreen extends ConsumerWidget {
             actions: [
               IconButton(
                 icon: const Icon(Icons.filter_list_rounded,
-                    color: Color(0xFF6B21A8)),
+                    color: Color(0xFF184797)),
                 tooltip: 'Filtres avancés',
                 onPressed: () {},
               ),
@@ -127,9 +131,9 @@ class ModerationScreen extends ConsumerWidget {
           SnackBar(
             content: Text(
               'Approuvé : ${item.truncatedTitle}',
-              style: const TextStyle(fontFamily: 'Inter', fontSize: 13),
+              style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13),
             ),
-            backgroundColor: const Color(0xFF22C55E),
+            backgroundColor: const Color(0xFF12B76A),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             margin: const EdgeInsets.all(16),
@@ -141,8 +145,8 @@ class ModerationScreen extends ConsumerWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Erreur : $e',
-                style: const TextStyle(fontFamily: 'Inter', fontSize: 13)),
-            backgroundColor: const Color(0xFFEF4444),
+                style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13)),
+            backgroundColor: const Color(0xFFD92D20),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             margin: const EdgeInsets.all(16),
@@ -180,10 +184,10 @@ class ModerationScreen extends ConsumerWidget {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(msg,
-                    style: const TextStyle(fontFamily: 'Inter', fontSize: 13)),
+                    style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13)),
                 backgroundColor: action == ReviewAction.reject
-                    ? const Color(0xFFEF4444)
-                    : const Color(0xFFF59E0B),
+                    ? const Color(0xFFD92D20)
+                    : const Color(0xFFF79009),
                 behavior: SnackBarBehavior.floating,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10)),
@@ -205,40 +209,44 @@ class _StatsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 110,
-      child: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        scrollDirection: Axis.horizontal,
-        children: [
-          ModerationStatCard(
-            label: 'En attente',
-            count: stats.pending,
-            color: const Color(0xFFF59E0B),
-            icon: Icons.hourglass_top_rounded,
-          ),
-          const SizedBox(width: 10),
-          ModerationStatCard(
-            label: 'Approuvés\naujourd\'hui',
-            count: stats.approvedToday,
-            color: const Color(0xFF22C55E),
-            icon: Icons.check_circle_outline_rounded,
-          ),
-          const SizedBox(width: 10),
-          ModerationStatCard(
-            label: 'Rejetés',
-            count: stats.rejectedToday,
-            color: const Color(0xFFEF4444),
-            icon: Icons.cancel_outlined,
-          ),
-          const SizedBox(width: 10),
-          ModerationStatCard(
-            label: 'Total ce mois',
-            count: stats.totalThisMonth,
-            color: const Color(0xFF6B21A8),
-            icon: Icons.bar_chart_rounded,
-          ),
-        ],
+    // Pas de hauteur fixe (elle débordait) : la hauteur suit le contenu, taille
+    // de police système comprise, et les cartes prennent celle de la plus haute.
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 2, 16, 10),
+      scrollDirection: Axis.horizontal,
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ModerationStatCard(
+              label: 'En attente',
+              count: stats.pending,
+              color: const Color(0xFFF79009),
+              icon: Icons.hourglass_top_rounded,
+            ),
+            const SizedBox(width: 10),
+            ModerationStatCard(
+              label: 'Approuvés\naujourd\'hui',
+              count: stats.approvedToday,
+              color: const Color(0xFF12B76A),
+              icon: Icons.check_circle_outline_rounded,
+            ),
+            const SizedBox(width: 10),
+            ModerationStatCard(
+              label: 'Rejetés',
+              count: stats.rejectedToday,
+              color: const Color(0xFFD92D20),
+              icon: Icons.cancel_outlined,
+            ),
+            const SizedBox(width: 10),
+            ModerationStatCard(
+              label: 'Total ce mois',
+              count: stats.totalThisMonth,
+              color: const Color(0xFF184797),
+              icon: Icons.bar_chart_rounded,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -258,7 +266,7 @@ class _FilterTabBar extends ConsumerWidget {
       child: Container(
         height: 40,
         decoration: BoxDecoration(
-          color: const Color(0xFFE2E8F0),
+          color: const Color(0xFFE4E7EC),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Row(
@@ -294,13 +302,13 @@ class _FilterTabBar extends ConsumerWidget {
                   child: Text(
                     label,
                     style: TextStyle(
-                      fontFamily: 'Inter',
+                      fontFamily: 'Plus Jakarta Sans',
                       fontSize: 12,
                       fontWeight:
                           selected ? FontWeight.w600 : FontWeight.w400,
                       color: selected
-                          ? const Color(0xFF6B21A8)
-                          : const Color(0xFF64748B),
+                          ? const Color(0xFF184797)
+                          : const Color(0xFF667085),
                     ),
                   ),
                 ),
@@ -324,13 +332,15 @@ class _PendingBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
       decoration: BoxDecoration(
-        color: const Color(0xFFF59E0B),
+        color: const Color(0xFFF79009),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
-        '$count',
+        // Au-delà de 999, « 999+ » : le badge garde une taille fixe.
+        count > 999 ? '999+' : '$count',
+        maxLines: 1,
         style: const TextStyle(
-          fontFamily: 'Inter',
+          fontFamily: 'Plus Jakarta Sans',
           fontWeight: FontWeight.w700,
           fontSize: 12,
           color: Colors.white,
@@ -355,32 +365,32 @@ class _EmptyState extends StatelessWidget {
             width: 80,
             height: 80,
             decoration: BoxDecoration(
-              color: const Color(0xFF6B21A8).withAlpha(15),
+              color: const Color(0xFF184797).withAlpha(15),
               shape: BoxShape.circle,
             ),
             child: const Icon(
               Icons.check_circle_outline_rounded,
               size: 40,
-              color: Color(0xFF6B21A8),
+              color: Color(0xFF184797),
             ),
           ),
           const SizedBox(height: 16),
           const Text(
             'Aucun témoignage à modérer',
             style: TextStyle(
-              fontFamily: 'Poppins',
+              fontFamily: 'Plus Jakarta Sans',
               fontWeight: FontWeight.w600,
               fontSize: 16,
-              color: Color(0xFF0F172A),
+              color: Color(0xFF263238),
             ),
           ),
           const SizedBox(height: 6),
           const Text(
             'Tout est à jour !',
             style: TextStyle(
-              fontFamily: 'Inter',
+              fontFamily: 'Plus Jakarta Sans',
               fontSize: 13,
-              color: Color(0xFF64748B),
+              color: Color(0xFF667085),
             ),
           ),
         ],

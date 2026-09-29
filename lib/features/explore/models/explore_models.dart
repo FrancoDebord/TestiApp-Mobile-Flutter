@@ -42,61 +42,61 @@ class CategoryCardData {
     CategoryCardData(
       category: TestimonyCategory.guerison,
       count: 342,
-      gradientColors: [0xFF6B21A8, 0xFFA855F7],
+      gradientColors: [0xFF184797, 0xFF4B7ACB],
       iconCodePoint: 0xe3f3, // Icons.healing_outlined
     ),
     CategoryCardData(
       category: TestimonyCategory.delivrance,
       count: 218,
-      gradientColors: [0xFF1E3A8A, 0xFF3B82F6],
+      gradientColors: [0xFF103675, 0xFF2B5DB0],
       iconCodePoint: 0xe1af, // Icons.lock_open_outlined
     ),
     CategoryCardData(
       category: TestimonyCategory.conversion,
       count: 187,
-      gradientColors: [0xFF065F46, 0xFF10B981],
+      gradientColors: [0xFFD96F0B, 0xFF12B76A],
       iconCodePoint: 0xef6e, // Icons.rotate_right
     ),
     CategoryCardData(
       category: TestimonyCategory.mariage,
       count: 134,
-      gradientColors: [0xFF9D174D, 0xFFF43F5E],
+      gradientColors: [0xFFF18717, 0xFFFCC11D],
       iconCodePoint: 0xe87d, // Icons.favorite_rounded
     ),
     CategoryCardData(
       category: TestimonyCategory.famille,
       count: 276,
-      gradientColors: [0xFF92400E, 0xFFF59E0B],
+      gradientColors: [0xFFC48A06, 0xFFF79009],
       iconCodePoint: 0xe533, // Icons.people_alt_outlined
     ),
     CategoryCardData(
       category: TestimonyCategory.finances,
       count: 159,
-      gradientColors: [0xFF14532D, 0xFF22C55E],
+      gradientColors: [0xFF184797, 0xFF12B76A],
       iconCodePoint: 0xe263, // Icons.attach_money
     ),
     CategoryCardData(
       category: TestimonyCategory.miracles,
       count: 423,
-      gradientColors: [0xFF7C2D12, 0xFFF97316],
+      gradientColors: [0xFFD96F0B, 0xFFF18717],
       iconCodePoint: 0xe518, // Icons.auto_awesome
     ),
     CategoryCardData(
       category: TestimonyCategory.protection,
       count: 98,
-      gradientColors: [0xFF1E3A5F, 0xFF0EA5E9],
+      gradientColors: [0xFF103675, 0xFF4B7ACB],
       iconCodePoint: 0xe32a, // Icons.shield_outlined
     ),
     CategoryCardData(
       category: TestimonyCategory.ministere,
       count: 67,
-      gradientColors: [0xFF4A1D96, 0xFF8B5CF6],
+      gradientColors: [0xFF103675, 0xFF4B7ACB],
       iconCodePoint: 0xe547, // Icons.record_voice_over_outlined
     ),
     CategoryCardData(
       category: TestimonyCategory.salut,
       count: 312,
-      gradientColors: [0xFF7F1D1D, 0xFFEF4444],
+      gradientColors: [0xFFD96F0B, 0xFFD92D20],
       iconCodePoint: 0xe838, // Icons.star_rounded
     ),
   ];

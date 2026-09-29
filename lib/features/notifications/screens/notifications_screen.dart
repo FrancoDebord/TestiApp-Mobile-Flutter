@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../l10n/app_localizations.dart';
@@ -43,7 +44,7 @@ class NotificationsScreen extends ConsumerWidget {
             title: Text(
               AppLocalizations.of(context).notifTitle,
               style: const TextStyle(
-                fontFamily: 'Poppins',
+                fontFamily: 'Plus Jakarta Sans',
                 fontWeight: FontWeight.w600,
                 fontSize: 20,
                 color: AppColors.textPrimary,
@@ -55,7 +56,7 @@ class NotificationsScreen extends ConsumerWidget {
                 child: Text(
                   AppLocalizations.of(context).notifMarkAllRead,
                   style: const TextStyle(
-                    fontFamily: 'Inter',
+                    fontFamily: 'Plus Jakarta Sans',
                     fontSize: 13,
                     color: AppColors.primary,
                     fontWeight: FontWeight.w500,
@@ -145,7 +146,7 @@ class _FilterTabBar extends ConsumerWidget {
                       child: Text(
                         tab.label,
                         style: TextStyle(
-                          fontFamily: 'Inter',
+                          fontFamily: 'Plus Jakarta Sans',
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
                           color: selected
@@ -241,7 +242,7 @@ class _DateGroupHeader extends StatelessWidget {
       child: Text(
         label,
         style: const TextStyle(
-          fontFamily: 'Poppins',
+          fontFamily: 'Plus Jakarta Sans',
           fontWeight: FontWeight.w600,
           fontSize: 13,
           color: AppColors.textSecondary,
@@ -270,15 +271,21 @@ class _NotificationTile extends ConsumerWidget {
     NotificationType.approved: Icons.check_circle_rounded,
     NotificationType.newFollowedTestimony: Icons.notifications_rounded,
     NotificationType.pendingCorrection: Icons.warning_rounded,
+    NotificationType.organizationVerified: Icons.verified_rounded,
+    NotificationType.organizationRejected: Icons.gpp_bad_rounded,
+    NotificationType.liveStarted: Icons.sensors_rounded,
   };
 
   static const Map<NotificationType, Color> _iconColors = {
-    NotificationType.comment: Color(0xFF3B82F6),
+    NotificationType.comment: Color(0xFF2B5DB0),
     NotificationType.like: AppColors.danger,
     NotificationType.prayer: AppColors.secondary,
     NotificationType.approved: AppColors.success,
     NotificationType.newFollowedTestimony: AppColors.primary,
-    NotificationType.pendingCorrection: Color(0xFFF97316),
+    NotificationType.pendingCorrection: Color(0xFFF18717),
+    NotificationType.organizationVerified: AppColors.success,
+    NotificationType.organizationRejected: AppColors.danger,
+    NotificationType.liveStarted: AppColors.danger,
   };
 
   String _timeAgo(BuildContext context, DateTime dt) {
@@ -294,10 +301,21 @@ class _NotificationTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final markRead =
         ref.read(notificationsNotifierProvider.notifier).markRead;
-    final color = _iconColors[notification.type]!;
+    final color = _iconColors[notification.type] ?? AppColors.primary;
 
     return InkWell(
-      onTap: () => markRead(notification.id),
+      onTap: () {
+        markRead(notification.id);
+        final liveId = notification.liveId;
+        final testimonyId = notification.testimonyId;
+        if (notification.type == NotificationType.liveStarted) {
+          if (liveId != null && liveId.isNotEmpty) {
+            context.push('/lives/$liveId');
+          }
+        } else if (testimonyId != null && testimonyId.isNotEmpty) {
+          context.push('/testimony/$testimonyId');
+        }
+      },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         height: 72,
@@ -325,7 +343,7 @@ class _NotificationTile extends ConsumerWidget {
                               ? notification.actorName[0].toUpperCase()
                               : '?',
                           style: TextStyle(
-                            fontFamily: 'Poppins',
+                            fontFamily: 'Plus Jakarta Sans',
                             fontWeight: FontWeight.w600,
                             fontSize: 15,
                             color: color,
@@ -364,7 +382,7 @@ class _NotificationTile extends ConsumerWidget {
                   Text(
                     notification.body,
                     style: TextStyle(
-                      fontFamily: 'Inter',
+                      fontFamily: 'Plus Jakarta Sans',
                       fontSize: 13,
                       color: AppColors.textPrimary,
                       fontWeight: notification.isRead
@@ -379,7 +397,7 @@ class _NotificationTile extends ConsumerWidget {
                   Text(
                     _timeAgo(context, notification.createdAt),
                     style: const TextStyle(
-                      fontFamily: 'Inter',
+                      fontFamily: 'Plus Jakarta Sans',
                       fontSize: 11,
                       color: AppColors.textSecondary,
                     ),
@@ -405,7 +423,7 @@ class _NotificationTile extends ConsumerWidget {
                 width: 10,
                 height: 10,
                 decoration: const BoxDecoration(
-                  color: Color(0xFF3B82F6),
+                  color: Color(0xFF2B5DB0),
                   shape: BoxShape.circle,
                 ),
               )
@@ -450,7 +468,7 @@ class _EmptyState extends StatelessWidget {
             Text(
               AppLocalizations.of(context).notifEmpty,
               style: const TextStyle(
-                fontFamily: 'Poppins',
+                fontFamily: 'Plus Jakarta Sans',
                 fontWeight: FontWeight.w600,
                 fontSize: 17,
                 color: AppColors.textPrimary,
@@ -461,7 +479,7 @@ class _EmptyState extends StatelessWidget {
               AppLocalizations.of(context).notifEmptyDesc,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                fontFamily: 'Inter',
+                fontFamily: 'Plus Jakarta Sans',
                 fontSize: 13,
                 color: AppColors.textSecondary,
                 height: 1.5,

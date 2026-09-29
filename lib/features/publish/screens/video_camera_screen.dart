@@ -357,7 +357,13 @@ class _LivePreviewState extends State<_LivePreview> {
       onScaleUpdate: _handleScaleUpdate,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final camRatio    = widget.controller.value.aspectRatio;
+          // value.aspectRatio est en paysage (ex. 16/9) ; en portrait le ratio
+          // largeur/hauteur réel de l'aperçu est 1 / aspectRatio.
+          final isPortrait =
+              MediaQuery.orientationOf(context) == Orientation.portrait;
+          final camRatio = isPortrait
+              ? 1 / widget.controller.value.aspectRatio
+              : widget.controller.value.aspectRatio;
           final screenRatio = constraints.maxWidth / constraints.maxHeight;
           final scale = screenRatio < camRatio
               ? constraints.maxHeight * camRatio / constraints.maxWidth
@@ -388,7 +394,7 @@ class _LivePreviewState extends State<_LivePreview> {
                         '${_currentZoom.toStringAsFixed(1)}×',
                         style: const TextStyle(
                           color: Colors.white,
-                          fontFamily: 'Inter',
+                          fontFamily: 'Plus Jakarta Sans',
                           fontWeight: FontWeight.w600,
                           fontSize: 14,
                         ),
@@ -440,7 +446,7 @@ class _RecordedConfirmView extends StatelessWidget {
               'Vidéo enregistrée !',
               style: TextStyle(
                 color: Colors.white,
-                fontFamily: 'Poppins',
+                fontFamily: 'Plus Jakarta Sans',
                 fontWeight: FontWeight.w600,
                 fontSize: 20,
               ),
@@ -450,7 +456,7 @@ class _RecordedConfirmView extends StatelessWidget {
               'Durée : $duration',
               style: const TextStyle(
                 color: Colors.white70,
-                fontFamily: 'Inter',
+                fontFamily: 'Plus Jakarta Sans',
                 fontSize: 14,
               ),
             ),
@@ -461,7 +467,7 @@ class _RecordedConfirmView extends StatelessWidget {
                 filename,
                 style: const TextStyle(
                   color: Colors.white38,
-                  fontFamily: 'Inter',
+                  fontFamily: 'Plus Jakarta Sans',
                   fontSize: 11,
                 ),
                 textAlign: TextAlign.center,
@@ -534,7 +540,7 @@ class _TopBar extends StatelessWidget {
                     formatDuration(elapsed),
                     style: const TextStyle(
                       color: Colors.white,
-                      fontFamily: 'Inter',
+                      fontFamily: 'Plus Jakarta Sans',
                       fontWeight: FontWeight.w700,
                       fontSize: 14,
                     ),
@@ -597,7 +603,7 @@ class _RecordControls extends StatelessWidget {
                   formatDuration(elapsed),
                   style: const TextStyle(
                     color: Colors.white70,
-                    fontFamily: 'Inter',
+                    fontFamily: 'Plus Jakarta Sans',
                     fontSize: 12,
                   ),
                 ),
@@ -606,7 +612,7 @@ class _RecordControls extends StatelessWidget {
                   formatDuration(maxSeconds),
                   style: const TextStyle(
                     color: Colors.white38,
-                    fontFamily: 'Inter',
+                    fontFamily: 'Plus Jakarta Sans',
                     fontSize: 12,
                   ),
                 ),
@@ -676,7 +682,7 @@ class _RecordControls extends StatelessWidget {
             isRecording ? 'Appuyez pour arrêter' : 'Appuyez pour enregistrer',
             style: const TextStyle(
               color: Colors.white60,
-              fontFamily: 'Inter',
+              fontFamily: 'Plus Jakarta Sans',
               fontSize: 12,
             ),
           ),
@@ -744,7 +750,7 @@ class _LoadingView extends StatelessWidget {
               'Initialisation de la caméra…',
               style: TextStyle(
                 color: Colors.white70,
-                fontFamily: 'Inter',
+                fontFamily: 'Plus Jakarta Sans',
                 fontSize: 14,
               ),
             ),
@@ -780,7 +786,7 @@ class _ErrorView extends StatelessWidget {
                   message,
                   style: const TextStyle(
                     color: Colors.white70,
-                    fontFamily: 'Inter',
+                    fontFamily: 'Plus Jakarta Sans',
                     fontSize: 14,
                     height: 1.6,
                   ),
@@ -795,7 +801,7 @@ class _ErrorView extends StatelessWidget {
                     'Retour',
                     style: TextStyle(
                       color: Colors.white70,
-                      fontFamily: 'Inter',
+                      fontFamily: 'Plus Jakarta Sans',
                     ),
                   ),
                   style: OutlinedButton.styleFrom(
@@ -879,7 +885,7 @@ class _ActionButton extends StatelessWidget {
             label,
             style: TextStyle(
               color: color,
-              fontFamily: 'Inter',
+              fontFamily: 'Plus Jakarta Sans',
               fontSize: 13,
               fontWeight: FontWeight.w500,
             ),

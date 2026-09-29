@@ -252,7 +252,7 @@ class _ListeningIndicatorState extends State<_ListeningIndicator>
       child: const Text(
         'Parlez maintenant…',
         style: TextStyle(
-          fontFamily: 'Inter',
+          fontFamily: 'Plus Jakarta Sans',
           fontSize: 14,
           color: AppColors.primary,
           fontStyle: FontStyle.italic,

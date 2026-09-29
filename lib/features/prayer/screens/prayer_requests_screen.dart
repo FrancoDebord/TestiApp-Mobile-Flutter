@@ -31,7 +31,7 @@ class PrayerRequestsScreen extends ConsumerWidget {
         title: Text(
           AppLocalizations.of(context).prayerTitle,
           style: const TextStyle(
-            fontFamily: 'Poppins',
+            fontFamily: 'Plus Jakarta Sans',
             fontWeight: FontWeight.w600,
             fontSize: 17,
             color: AppColors.textPrimary,
@@ -66,7 +66,7 @@ class PrayerRequestsScreen extends ConsumerWidget {
                     ref.read(prayerRequestsProvider.notifier).refresh(),
                 icon: const Icon(Icons.refresh_rounded, size: 18),
                 label: const Text('Réessayer',
-                    style: TextStyle(fontFamily: 'Inter')),
+                    style: TextStyle(fontFamily: 'Plus Jakarta Sans')),
               ),
             ],
           ),
@@ -101,7 +101,7 @@ class PrayerRequestsScreen extends ConsumerWidget {
         icon: const Icon(Icons.volunteer_activism_rounded),
         label: Text(
           AppLocalizations.of(context).prayerSubmit,
-          style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600),
+          style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600),
         ),
       ),
     );
@@ -154,7 +154,7 @@ class _RequestCard extends ConsumerWidget {
                         Text(
                           request.authorName,
                           style: const TextStyle(
-                            fontFamily: 'Inter',
+                            fontFamily: 'Plus Jakarta Sans',
                             fontWeight: FontWeight.w600,
                             fontSize: 13,
                             color: AppColors.textPrimary,
@@ -246,7 +246,7 @@ class _PrayButton extends StatelessWidget {
                   ? '${AppLocalizations.of(context).detailPray} ($count)'
                   : '${AppLocalizations.of(context).prayerPray} ($count)',
               style: TextStyle(
-                fontFamily: 'Inter',
+                fontFamily: 'Plus Jakarta Sans',
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color:
@@ -294,7 +294,7 @@ class _Avatar extends StatelessWidget {
       height: 36,
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [AppColors.primary, Color(0xFF9333EA)],
+          colors: [AppColors.primary, Color(0xFF2B5DB0)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -304,7 +304,7 @@ class _Avatar extends StatelessWidget {
       child: Text(
         initials,
         style: const TextStyle(
-          fontFamily: 'Inter',
+          fontFamily: 'Plus Jakarta Sans',
           fontWeight: FontWeight.w700,
           fontSize: 13,
           color: Colors.white,
@@ -333,7 +333,7 @@ class _EmptyState extends StatelessWidget {
             Text(
               AppLocalizations.of(context).prayerEmpty,
               style: const TextStyle(
-                fontFamily: 'Poppins',
+                fontFamily: 'Plus Jakarta Sans',
                 fontWeight: FontWeight.w600,
                 fontSize: 16,
                 color: AppColors.textPrimary,

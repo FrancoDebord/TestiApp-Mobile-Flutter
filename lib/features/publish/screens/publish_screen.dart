@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/app_routes.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../testimony/screens/live_screen.dart';
+import '../../auth/providers/auth_notifier.dart' show currentUserProvider;
 import '../models/publish_models.dart';
 import '../providers/publish_provider.dart';
 import 'short_record_screen.dart';
@@ -51,8 +51,8 @@ class PublishScreen extends ConsumerWidget {
                     padding: const EdgeInsets.only(bottom: 16),
                     child: _SpecialCard(
                       icon: Icons.slow_motion_video_rounded,
-                      iconColor: const Color(0xFFEF4444),
-                      iconBg: const Color(0xFFFEE2E2),
+                      iconColor: const Color(0xFFD92D20),
+                      iconBg: const Color(0xFFFEF3F2),
                       title: 'Short Témoignage',
                       description: '60 secondes · Impact immédiat',
                       onTap: () async {
@@ -83,23 +83,31 @@ class PublishScreen extends ConsumerWidget {
                       },
                     ),
                   ),
-                  // ── Card B: Live ──────────────────────────────────────────
+                  // ── Carnet privé : garder un témoignage pour soi ─────────
                   Padding(
                     padding: const EdgeInsets.only(bottom: 16),
                     child: _SpecialCard(
-                      icon: Icons.live_tv_rounded,
-                      iconColor: const Color(0xFFDC2626),
-                      iconBg: const Color(0xFFFEE2E2),
-                      title: 'Live',
-                      description: 'Témoignage en temps réel',
-                      onTap: () => Navigator.of(context).push<void>(
-                        MaterialPageRoute(
-                          fullscreenDialog: true,
-                          builder: (_) => const LiveScreen(),
-                        ),
-                      ),
+                      icon: Icons.lock_rounded,
+                      iconColor: AppColors.primary,
+                      iconBg: const Color(0xFFEAF1FC),
+                      title: 'Carnet privé',
+                      description: 'Garder un témoignage pour moi, sans le publier',
+                      onTap: () => context.push('/journal'),
                     ),
                   ),
+                  // ── Card B: Live (modérateurs / administrateurs) ──────────
+                  if (ref.watch(currentUserProvider)?.canModerate ?? false)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: _SpecialCard(
+                        icon: Icons.live_tv_rounded,
+                        iconColor: const Color(0xFFD92D20),
+                        iconBg: const Color(0xFFFEF3F2),
+                        title: 'Live',
+                        description: 'Témoignage en direct, en temps réel',
+                        onTap: () => context.push('/lives/new'),
+                      ),
+                    ),
                   // ── Standard format cards ─────────────────────────────────
                   ...TestimonyFormat.values.map((format) {
                     return Padding(
@@ -148,7 +156,7 @@ class _PublishHeader extends StatelessWidget {
           Text(
             'Partagez votre témoignage',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontFamily: 'Poppins',
+                  fontFamily: 'Plus Jakarta Sans',
                   fontWeight: FontWeight.w600,
                   color: AppColors.textPrimary,
                 ),
@@ -157,7 +165,7 @@ class _PublishHeader extends StatelessWidget {
           Text(
             'Quelle forme prend votre témoignage ?',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontFamily: 'Inter',
+                  fontFamily: 'Plus Jakarta Sans',
                   color: AppColors.textSecondary,
                 ),
           ),
@@ -224,7 +232,7 @@ class _SpecialCard extends StatelessWidget {
                     Text(
                       title,
                       style: const TextStyle(
-                        fontFamily: 'Poppins',
+                        fontFamily: 'Plus Jakarta Sans',
                         fontWeight: FontWeight.w600,
                         fontSize: 15,
                         color: AppColors.textPrimary,
@@ -234,7 +242,7 @@ class _SpecialCard extends StatelessWidget {
                     Text(
                       description,
                       style: const TextStyle(
-                        fontFamily: 'Inter',
+                        fontFamily: 'Plus Jakarta Sans',
                         fontSize: 13,
                         color: AppColors.textSecondary,
                       ),
@@ -276,14 +284,14 @@ class _FormatCard extends StatelessWidget {
 
   static const Map<TestimonyFormat, Color> _iconColors = {
     TestimonyFormat.text: AppColors.primary,
-    TestimonyFormat.audio: Color(0xFFEF4444),   // danger-red for mic
+    TestimonyFormat.audio: Color(0xFFD92D20),   // danger-red for mic
     TestimonyFormat.video: AppColors.secondary,
   };
 
   static const Map<TestimonyFormat, Color> _iconBg = {
-    TestimonyFormat.text: Color(0xFFF3E8FF),
-    TestimonyFormat.audio: Color(0xFFFEE2E2),
-    TestimonyFormat.video: Color(0xFFFEF3C7),
+    TestimonyFormat.text: Color(0xFFEAF1FC),
+    TestimonyFormat.audio: Color(0xFFFEF3F2),
+    TestimonyFormat.video: Color(0xFFFFFAEB),
   };
 
   @override
@@ -328,7 +336,7 @@ class _FormatCard extends StatelessWidget {
                     Text(
                       format.label,
                       style: const TextStyle(
-                        fontFamily: 'Poppins',
+                        fontFamily: 'Plus Jakarta Sans',
                         fontWeight: FontWeight.w600,
                         fontSize: 15,
                         color: AppColors.textPrimary,
@@ -338,7 +346,7 @@ class _FormatCard extends StatelessWidget {
                     Text(
                       format.description,
                       style: const TextStyle(
-                        fontFamily: 'Inter',
+                        fontFamily: 'Plus Jakarta Sans',
                         fontSize: 13,
                         color: AppColors.textSecondary,
                       ),
@@ -386,7 +394,7 @@ class _StatusBarRow extends StatelessWidget {
               Text(
                 'Statut :',
                 style: const TextStyle(
-                  fontFamily: 'Inter',
+                  fontFamily: 'Plus Jakarta Sans',
                   fontSize: 12,
                   color: AppColors.textSecondary,
                 ),
@@ -456,7 +464,7 @@ class _StatusChip extends StatelessWidget {
       child: Text(
         label,
         style: TextStyle(
-          fontFamily: 'Inter',
+          fontFamily: 'Plus Jakarta Sans',
           fontSize: 10,
           fontWeight: FontWeight.w500,
           color: isCurrent

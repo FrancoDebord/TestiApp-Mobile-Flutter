@@ -96,7 +96,7 @@ class _PrayerRequestDetailScreenState
         title: const Text(
           'Requête de prière',
           style: TextStyle(
-            fontFamily: 'Poppins',
+            fontFamily: 'Plus Jakarta Sans',
             fontWeight: FontWeight.w600,
             fontSize: 17,
             color: AppColors.textPrimary,
@@ -124,7 +124,7 @@ class _PrayerRequestDetailScreenState
                     const Text(
                       'Messages d\'inspiration',
                       style: TextStyle(
-                        fontFamily: 'Poppins',
+                        fontFamily: 'Plus Jakarta Sans',
                         fontWeight: FontWeight.w600,
                         fontSize: 15,
                         color: AppColors.textPrimary,
@@ -141,7 +141,7 @@ class _PrayerRequestDetailScreenState
                       child: Text(
                         '${messages.length}',
                         style: const TextStyle(
-                          fontFamily: 'Inter',
+                          fontFamily: 'Plus Jakarta Sans',
                           fontWeight: FontWeight.w700,
                           fontSize: 12,
                           color: AppColors.primary,
@@ -209,7 +209,7 @@ class _RequestHeaderCard extends StatelessWidget {
                     Text(
                       request.authorName,
                       style: const TextStyle(
-                        fontFamily: 'Inter',
+                        fontFamily: 'Plus Jakarta Sans',
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
                         color: AppColors.textPrimary,
@@ -235,7 +235,7 @@ class _RequestHeaderCard extends StatelessWidget {
               Text(
                 '${request.prayerCount} personnes prient',
                 style: const TextStyle(
-                  fontFamily: 'Inter',
+                  fontFamily: 'Plus Jakarta Sans',
                   fontSize: 12,
                   color: AppColors.primary,
                   fontWeight: FontWeight.w600,
@@ -272,7 +272,7 @@ class _PrayCta extends ConsumerWidget {
         label: Text(
           hasPrayed ? 'Je prie pour toi' : 'Prier pour cette personne',
           style: const TextStyle(
-            fontFamily: 'Inter',
+            fontFamily: 'Plus Jakarta Sans',
             fontWeight: FontWeight.w700,
             fontSize: 15,
           ),
@@ -319,7 +319,7 @@ class _MessageBubble extends StatelessWidget {
                     Text(
                       message.authorName,
                       style: const TextStyle(
-                        fontFamily: 'Inter',
+                        fontFamily: 'Plus Jakarta Sans',
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
                         color: AppColors.textPrimary,
@@ -356,7 +356,7 @@ class _MessageBubble extends StatelessWidget {
                             Text(
                               message.bibleVerse!,
                               style: const TextStyle(
-                                fontFamily: 'Inter',
+                                fontFamily: 'Plus Jakarta Sans',
                                 fontSize: 11,
                                 color: AppColors.primary,
                                 fontWeight: FontWeight.w600,
@@ -558,7 +558,7 @@ class _Avatar extends StatelessWidget {
       height: 34,
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppColors.primary, Color(0xFF9333EA)],
+          colors: [AppColors.primary, Color(0xFF2B5DB0)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -568,7 +568,7 @@ class _Avatar extends StatelessWidget {
       child: Text(
         initials,
         style: const TextStyle(
-          fontFamily: 'Inter',
+          fontFamily: 'Plus Jakarta Sans',
           fontWeight: FontWeight.w700,
           fontSize: 12,
           color: Colors.white,

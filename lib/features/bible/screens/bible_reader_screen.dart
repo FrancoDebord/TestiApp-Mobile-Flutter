@@ -216,7 +216,7 @@ class _ReaderBodyState extends ConsumerState<_ReaderBody> {
               child: Text(
                 widget.translationCode.toUpperCase(),
                 style: const TextStyle(
-                  fontFamily: 'Inter',
+                  fontFamily: 'Plus Jakarta Sans',
                   fontWeight: FontWeight.w700,
                   fontSize: 12,
                   color: AppColors.primary,
@@ -450,7 +450,7 @@ class _ChapterBar extends StatelessWidget {
               child: Text(
                 '$ch',
                 style: TextStyle(
-                  fontFamily: 'Inter',
+                  fontFamily: 'Plus Jakarta Sans',
                   fontSize: 12,
                   fontWeight:
                       selected ? FontWeight.w700 : FontWeight.w400,
@@ -723,7 +723,7 @@ class _VerseRow extends StatelessWidget {
     final content = RichText(
       text: TextSpan(
         style: TextStyle(
-          fontFamily: 'Inter',
+          fontFamily: 'Plus Jakarta Sans',
           fontSize: 16,
           height: 1.75,
           color: isSelected
@@ -747,7 +747,7 @@ class _VerseRow extends StatelessWidget {
               child: Text(
                 '${verse.verseNumber}',
                 style: TextStyle(
-                  fontFamily:  'Inter',
+                  fontFamily:  'Plus Jakarta Sans',
                   fontSize:    10,
                   fontWeight:  FontWeight.w700,
                   color:       numColor,
@@ -858,7 +858,7 @@ class _SelectionBar extends StatelessWidget {
               child: Text(
                 '$selectedCount verset${selectedCount > 1 ? 's' : ''}',
                 style: const TextStyle(
-                  fontFamily: 'Inter',
+                  fontFamily: 'Plus Jakarta Sans',
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: AppColors.primary,
@@ -915,7 +915,7 @@ class _BarAction extends StatelessWidget {
             Text(
               label,
               style: const TextStyle(
-                fontFamily: 'Inter',
+                fontFamily: 'Plus Jakarta Sans',
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: AppColors.primary,
@@ -1124,7 +1124,7 @@ class _VerseActionSheet extends ConsumerWidget {
             Text(
               _verseRef,
               style: const TextStyle(
-                fontFamily:  'Poppins',
+                fontFamily:  'Plus Jakarta Sans',
                 fontWeight:  FontWeight.w600,
                 fontSize:    14,
                 color:       AppColors.primary,
@@ -1134,7 +1134,7 @@ class _VerseActionSheet extends ConsumerWidget {
             Text(
               verse.text,
               style: TextStyle(
-                fontFamily: 'Inter',
+                fontFamily: 'Plus Jakarta Sans',
                 fontSize:   13,
                 color:      AppColors.textSecondary,
                 height:     1.4,
@@ -1250,7 +1250,7 @@ class _ActionRow extends StatelessWidget {
           title: Text(
             label,
             style: const TextStyle(
-              fontFamily: 'Inter',
+              fontFamily: 'Plus Jakarta Sans',
               fontSize:   14,
               color:      AppColors.textPrimary,
             ),
@@ -1293,7 +1293,7 @@ class _CompareSheet extends StatelessWidget {
             Text(
               verseRef,
               style: const TextStyle(
-                fontFamily: 'Poppins',
+                fontFamily: 'Plus Jakarta Sans',
                 fontWeight: FontWeight.w600,
                 fontSize:   14,
                 color:      AppColors.primary,
@@ -1306,7 +1306,7 @@ class _CompareSheet extends StatelessWidget {
                 child: Text(
                   'Téléchargez d\'autres traductions pour les comparer.',
                   style: TextStyle(
-                    fontFamily: 'Inter',
+                    fontFamily: 'Plus Jakarta Sans',
                     fontSize:   13,
                     color:      AppColors.textSecondary,
                   ),
@@ -1327,7 +1327,7 @@ class _CompareSheet extends StatelessWidget {
                         Text(
                           e.key,
                           style: const TextStyle(
-                            fontFamily:  'Inter',
+                            fontFamily:  'Plus Jakarta Sans',
                             fontSize:    11,
                             fontWeight:  FontWeight.w700,
                             color:       AppColors.primary,
@@ -1337,7 +1337,7 @@ class _CompareSheet extends StatelessWidget {
                         Text(
                           e.value,
                           style: const TextStyle(
-                            fontFamily: 'Inter',
+                            fontFamily: 'Plus Jakarta Sans',
                             fontSize:   14,
                             color:      AppColors.textPrimary,
                             height:     1.5,
@@ -1613,7 +1613,7 @@ class _TranslationPickerSheet extends StatelessWidget {
         child: Text(
           t.abbreviation.toUpperCase(),
           style: TextStyle(
-            fontFamily: 'Inter',
+            fontFamily: 'Plus Jakarta Sans',
             fontWeight: FontWeight.w700,
             fontSize: 11,
             color: isActive ? AppColors.primary : AppColors.textSecondary,
@@ -1623,7 +1623,7 @@ class _TranslationPickerSheet extends StatelessWidget {
       title: Text(
         t.name,
         style: TextStyle(
-          fontFamily: 'Inter',
+          fontFamily: 'Plus Jakarta Sans',
           fontSize: 14,
           fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
           color: isActive ? AppColors.primary : AppColors.textPrimary,
@@ -1632,7 +1632,7 @@ class _TranslationPickerSheet extends StatelessWidget {
       subtitle: Text(
         _languageLabel(t.language),
         style: const TextStyle(
-          fontFamily: 'Inter',
+          fontFamily: 'Plus Jakarta Sans',
           fontSize: 12,
           color: AppColors.textSecondary,
         ),

@@ -268,7 +268,7 @@ class _CategoryPill extends StatelessWidget {
       child: Text(
         category.label,
         style: const TextStyle(
-          fontFamily: 'Inter',
+          fontFamily: 'Plus Jakarta Sans',
           fontSize: 10,
           fontWeight: FontWeight.w700,
           color: Colors.white,
@@ -281,14 +281,14 @@ class _CategoryPill extends StatelessWidget {
 // ── Per-category gradient map (file-private top-level constant) ───────────────
 
 const Map<TestimonyCategory, List<Color>> _kCategoryGradients = {
-  TestimonyCategory.guerison: [Color(0xFF6B21A8), Color(0xFFA855F7)],
-  TestimonyCategory.delivrance: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
-  TestimonyCategory.conversion: [Color(0xFF065F46), Color(0xFF10B981)],
-  TestimonyCategory.mariage: [Color(0xFF9D174D), Color(0xFFF43F5E)],
-  TestimonyCategory.famille: [Color(0xFF92400E), Color(0xFFF59E0B)],
-  TestimonyCategory.finances: [Color(0xFF14532D), Color(0xFF22C55E)],
-  TestimonyCategory.miracles: [Color(0xFF7C2D12), Color(0xFFF97316)],
-  TestimonyCategory.protection: [Color(0xFF1E3A5F), Color(0xFF0EA5E9)],
-  TestimonyCategory.ministere: [Color(0xFF4A1D96), Color(0xFF8B5CF6)],
-  TestimonyCategory.salut: [Color(0xFF7F1D1D), Color(0xFFEF4444)],
+  TestimonyCategory.guerison: [Color(0xFF184797), Color(0xFF4B7ACB)],
+  TestimonyCategory.delivrance: [Color(0xFF103675), Color(0xFF2B5DB0)],
+  TestimonyCategory.conversion: [Color(0xFFD96F0B), Color(0xFF12B76A)],
+  TestimonyCategory.mariage: [Color(0xFFF18717), Color(0xFFFCC11D)],
+  TestimonyCategory.famille: [Color(0xFFC48A06), Color(0xFFF79009)],
+  TestimonyCategory.finances: [Color(0xFF184797), Color(0xFF12B76A)],
+  TestimonyCategory.miracles: [Color(0xFFD96F0B), Color(0xFFF18717)],
+  TestimonyCategory.protection: [Color(0xFF103675), Color(0xFF4B7ACB)],
+  TestimonyCategory.ministere: [Color(0xFF103675), Color(0xFF4B7ACB)],
+  TestimonyCategory.salut: [Color(0xFFD96F0B), Color(0xFFD92D20)],
 };

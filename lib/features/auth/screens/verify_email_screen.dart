@@ -190,7 +190,7 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
     final maskedEmail = _maskEmail(user?.email ?? '');
 
     return Scaffold(
-      backgroundColor: const Color(0xFF6B21A8),
+      backgroundColor: const Color(0xFF184797),
       body: Column(
         children: [
           // ── Purple wave header ─────────────────────────────────────────────
@@ -217,7 +217,7 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
                   const Text(
                     'Vérifiez votre e-mail',
                     style: TextStyle(
-                      fontFamily: 'Poppins',
+                      fontFamily: 'Plus Jakarta Sans',
                       fontWeight: FontWeight.w600,
                       fontSize: 22,
                       color: Colors.white,
@@ -227,7 +227,7 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
                   Text(
                     'Code envoyé à $maskedEmail',
                     style: TextStyle(
-                      fontFamily: 'Inter',
+                      fontFamily: 'Plus Jakarta Sans',
                       fontSize: 13,
                       color: Colors.white.withAlpha(204),
                     ),
@@ -256,9 +256,9 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
                       'Saisissez le code à 6 chiffres que nous venons de vous envoyer.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontFamily: 'Inter',
+                        fontFamily: 'Plus Jakarta Sans',
                         fontSize: 14,
-                        color: Color(0xFF64748B),
+                        color: Color(0xFF667085),
                         height: 1.6,
                       ),
                     ),
@@ -305,16 +305,16 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
                         child: RichText(
                           text: const TextSpan(
                             style: TextStyle(
-                              fontFamily: 'Inter',
+                              fontFamily: 'Plus Jakarta Sans',
                               fontSize: 13,
-                              color: Color(0xFF64748B),
+                              color: Color(0xFF667085),
                             ),
                             children: [
                               TextSpan(text: "Ce n'est pas mon compte ? "),
                               TextSpan(
                                 text: 'Se déconnecter',
                                 style: TextStyle(
-                                  color: Color(0xFF6B21A8),
+                                  color: Color(0xFF184797),
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -412,34 +412,34 @@ class _OtpCell extends StatelessWidget {
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           onChanged: onChanged,
           style: const TextStyle(
-            fontFamily: 'Poppins',
+            fontFamily: 'Plus Jakarta Sans',
             fontWeight: FontWeight.w600,
             fontSize: 22,
-            color: Color(0xFF0F172A),
+            color: Color(0xFF263238),
           ),
           decoration: InputDecoration(
             counterText: '',
             filled: true,
             fillColor: controller.text.isEmpty
                 ? Colors.white
-                : const Color(0xFFEDE9FE),
+                : const Color(0xFFEAF1FC),
             contentPadding: EdgeInsets.zero,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+              borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(
                 color: controller.text.isNotEmpty
-                    ? const Color(0xFF6B21A8)
-                    : const Color(0xFFE2E8F0),
+                    ? const Color(0xFF184797)
+                    : const Color(0xFFE4E7EC),
               ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide:
-                  const BorderSide(color: Color(0xFF6B21A8), width: 2),
+                  const BorderSide(color: Color(0xFF184797), width: 2),
             ),
           ),
         ),
@@ -474,9 +474,9 @@ class _ResendRow extends StatelessWidget {
         const Text(
           "Vous n'avez pas reçu de code ? ",
           style: TextStyle(
-            fontFamily: 'Inter',
+            fontFamily: 'Plus Jakarta Sans',
             fontSize: 13,
-            color: Color(0xFF64748B),
+            color: Color(0xFF667085),
           ),
         ),
         GestureDetector(
@@ -484,12 +484,12 @@ class _ResendRow extends StatelessWidget {
           child: Text(
             _timerLabel,
             style: TextStyle(
-              fontFamily: 'Inter',
+              fontFamily: 'Plus Jakarta Sans',
               fontSize: 13,
               fontWeight: FontWeight.w600,
               color: onResend != null
-                  ? const Color(0xFF6B21A8)
-                  : const Color(0xFF94A3B8),
+                  ? const Color(0xFF184797)
+                  : const Color(0xFF98A2B3),
             ),
           ),
         ),

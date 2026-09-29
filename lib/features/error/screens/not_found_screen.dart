@@ -15,7 +15,7 @@ class NotFoundScreen extends StatelessWidget {
             const Icon(
               Icons.sentiment_dissatisfied_rounded,
               size: 72,
-              color: Color(0xFF6B21A8),
+              color: Color(0xFF184797),
             ),
             const SizedBox(height: 16),
             const Text(
@@ -23,20 +23,20 @@ class NotFoundScreen extends StatelessWidget {
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF0F172A),
+                color: Color(0xFF263238),
               ),
             ),
             const SizedBox(height: 8),
             const Text(
               'Cette page n\'existe pas ou a été déplacée.',
-              style: TextStyle(color: Color(0xFF64748B)),
+              style: TextStyle(color: Color(0xFF667085)),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
             FilledButton(
               onPressed: () => context.go('/home'),
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF6B21A8),
+                backgroundColor: const Color(0xFF184797),
               ),
               child: const Text('Retour à l\'accueil'),
             ),

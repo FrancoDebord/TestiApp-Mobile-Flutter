@@ -67,10 +67,10 @@ class _ReactionAvatarRow extends StatelessWidget {
   final TestimonyStats stats;
 
   static const List<Color> _avatarColors = [
-    Color(0xFF6B21A8), // purple
-    Color(0xFF1E3A8A), // dark blue
-    Color(0xFF065F46), // dark green
-    Color(0xFF9D174D), // dark pink
+    Color(0xFF184797), // purple
+    Color(0xFF103675), // dark blue
+    Color(0xFFD96F0B), // dark green
+    Color(0xFFF18717), // dark pink
   ];
 
   static const List<String> _letters = ['M', 'J', 'A', 'S'];
@@ -120,7 +120,7 @@ class _ReactionAvatarRow extends StatelessWidget {
                   ? '${_format(total)} · et ${_format(others)} autres'
                   : _format(total),
               style: AppTextStyles.bodySmall.copyWith(
-                color: const Color(0xFF64748B),
+                color: const Color(0xFF667085),
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -207,7 +207,7 @@ class _Dot extends StatelessWidget {
     return const Padding(
       padding: EdgeInsets.symmetric(horizontal: 6),
       child: Text('·',
-          style: TextStyle(color: Color(0xFF64748B), fontSize: 12)),
+          style: TextStyle(color: Color(0xFF667085), fontSize: 12)),
     );
   }
 }

@@ -1,14 +1,17 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart' show ShareParams, SharePlus;
 
+import '../../../core/media/media_quality.dart' show autoVideoHeight;
+import '../../../core/media/playback_preferences.dart';
 import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../features/auth/providers/auth_notifier.dart'
     show authStateProvider;
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/quality_picker_sheet.dart';
 import '../models/profile_models.dart';
 import '../providers/profile_provider.dart';
 
@@ -21,6 +24,14 @@ class SettingsScreen extends ConsumerWidget {
     final notifier = ref.read(userSettingsProvider.notifier);
     final locale   = ref.watch(localeProvider);
     final isFr     = locale.languageCode == 'fr';
+    final playback = ref.watch(playbackPreferencesProvider);
+    final playCtl  = ref.read(playbackPreferencesProvider.notifier);
+
+    // Plafonds réels du mode Auto (tiennent compte de l'économiseur).
+    final autoMobile =
+        autoVideoHeight(metered: true, dataSaver: playback.dataSaver);
+    final autoWifi =
+        autoVideoHeight(metered: false, dataSaver: playback.dataSaver);
 
     final l10n = AppLocalizations.of(context);
 
@@ -29,7 +40,7 @@ class SettingsScreen extends ConsumerWidget {
       appBar: AppBar(
         title: Text(l10n.settingsTitle,
             style: const TextStyle(
-              fontFamily: 'Poppins',
+              fontFamily: 'Plus Jakarta Sans',
               fontWeight: FontWeight.w600,
               fontSize: 17,
               color: AppColors.textPrimary,
@@ -63,6 +74,83 @@ class SettingsScreen extends ConsumerWidget {
                   onTap: () => ref.read(localeProvider.notifier).setEnglish(),
                 ),
               ],
+            ),
+          ),
+
+          // ── Lecture et données ─────────────────────────────────────────
+          const _SectionHeader('Lecture et données'),
+          _ValueTile(
+            icon: Icons.hd_outlined,
+            title: 'Qualité vidéo par défaut',
+            valueLabel: playback.videoQuality.label,
+            onTap: () async {
+              final q = await showQualityPickerSheet<VideoQuality>(
+                context,
+                title: 'Qualité vidéo par défaut',
+                options: [
+                  for (final v in VideoQuality.values)
+                    QualityOption(value: v, label: v.label, hint: v.hint),
+                ],
+                selected: playback.videoQuality,
+                footer: 'Auto : ${autoMobile}p sur données mobiles, '
+                    '${autoWifi}p en Wi-Fi.',
+              );
+              if (q != null) playCtl.setVideoQuality(q);
+            },
+          ),
+          _ValueTile(
+            icon: Icons.graphic_eq_rounded,
+            title: 'Qualité audio par défaut',
+            valueLabel: playback.audioQuality.label,
+            onTap: () async {
+              final q = await showQualityPickerSheet<AudioQuality>(
+                context,
+                title: 'Qualité audio par défaut',
+                options: [
+                  for (final v in AudioQuality.values)
+                    QualityOption(value: v, label: v.label, hint: v.hint),
+                ],
+                selected: playback.audioQuality,
+              );
+              if (q != null) playCtl.setAudioQuality(q);
+            },
+          ),
+          _ToggleTile(
+            icon: Icons.data_saver_on_rounded,
+            title: 'Économiseur de données',
+            subtitle: 'Qualité réduite sur données mobiles',
+            value: playback.dataSaver,
+            onChanged: playCtl.setDataSaver,
+          ),
+          _ToggleTile(
+            icon: Icons.playlist_play_rounded,
+            title: 'Lecture automatique',
+            subtitle: 'Enchaîner le témoignage suivant',
+            value: playback.autoplayNext,
+            onChanged: playCtl.setAutoplayNext,
+          ),
+          _SelectTile<RepeatMode>(
+            icon: Icons.repeat_rounded,
+            title: 'Répétition',
+            value: playback.repeatMode,
+            items: RepeatMode.values,
+            labelOf: (v) => v.label,
+            onChanged: playCtl.setRepeatMode,
+          ),
+          _SelectTile<FeedLayout>(
+            icon: Icons.view_agenda_outlined,
+            title: 'Affichage du fil',
+            value: playback.feedLayout,
+            items: FeedLayout.values,
+            labelOf: (v) => v.label,
+            onChanged: playCtl.setFeedLayout,
+            isLast: true,
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: Text(
+              'Auto : ${autoMobile}p sur données mobiles, ${autoWifi}p en Wi-Fi.',
+              style: AppTextStyles.bodySmall,
             ),
           ),
 
@@ -170,7 +258,7 @@ class SettingsScreen extends ConsumerWidget {
             child: Text(
               'Témoignages v1.0',
               style: TextStyle(
-                fontFamily: 'Inter',
+                fontFamily: 'Plus Jakarta Sans',
                 fontSize: 12,
                 color: AppColors.textSecondary.withAlpha(120),
               ),
@@ -188,9 +276,9 @@ class SettingsScreen extends ConsumerWidget {
       context: context,
       builder: (_) => AlertDialog(
         title: Text(l10n.settingsLogout,
-            style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600)),
+            style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600)),
         content: Text(l10n.settingsLogoutConfirm,
-            style: const TextStyle(fontFamily: 'Inter')),
+            style: const TextStyle(fontFamily: 'Plus Jakarta Sans')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -201,7 +289,7 @@ class SettingsScreen extends ConsumerWidget {
             style: FilledButton.styleFrom(
                 backgroundColor: AppColors.danger),
             child: Text(l10n.settingsLogout,
-                style: const TextStyle(fontFamily: 'Inter')),
+                style: const TextStyle(fontFamily: 'Plus Jakarta Sans')),
           ),
         ],
         shape: RoundedRectangleBorder(
@@ -227,7 +315,7 @@ class _SectionHeader extends StatelessWidget {
       child: Text(
         title.toUpperCase(),
         style: TextStyle(
-          fontFamily: 'Inter',
+          fontFamily: 'Plus Jakarta Sans',
           fontSize: 11,
           fontWeight: FontWeight.w600,
           letterSpacing: 0.8,
@@ -268,7 +356,7 @@ class _ToggleTile extends StatelessWidget {
               children: [
                 Text(title,
                     style: const TextStyle(
-                      fontFamily: 'Inter',
+                      fontFamily: 'Plus Jakarta Sans',
                       fontWeight: FontWeight.w500,
                       fontSize: 14,
                       color: AppColors.textPrimary,
@@ -319,7 +407,7 @@ class _SelectTile<T> extends StatelessWidget {
           Expanded(
             child: Text(title,
                 style: const TextStyle(
-                  fontFamily: 'Inter',
+                  fontFamily: 'Plus Jakarta Sans',
                   fontWeight: FontWeight.w500,
                   fontSize: 14,
                   color: AppColors.textPrimary,
@@ -360,7 +448,7 @@ class _SelectTile<T> extends StatelessWidget {
                 alignment: Alignment.centerLeft,
                 child: Text(title,
                     style: const TextStyle(
-                      fontFamily: 'Poppins',
+                      fontFamily: 'Plus Jakarta Sans',
                       fontWeight: FontWeight.w600,
                       fontSize: 16,
                       color: AppColors.textPrimary,
@@ -371,7 +459,7 @@ class _SelectTile<T> extends StatelessWidget {
             ...items.map((item) => ListTile(
                   title: Text(labelOf(item),
                       style: TextStyle(
-                        fontFamily: 'Inter',
+                        fontFamily: 'Plus Jakarta Sans',
                         fontSize: 14,
                         color: item == value
                             ? AppColors.primary
@@ -392,6 +480,48 @@ class _SelectTile<T> extends StatelessWidget {
             const SizedBox(height: 8),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Tuile affichant une valeur courante ; [onTap] ouvre le choix.
+class _ValueTile extends StatelessWidget {
+  const _ValueTile({
+    required this.icon,
+    required this.title,
+    required this.valueLabel,
+    required this.onTap,
+  });
+  final IconData icon;
+  final String title;
+  final String valueLabel;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return _TileContainer(
+      onTap: onTap,
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: AppColors.primary),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(title,
+                style: const TextStyle(
+                  fontFamily: 'Plus Jakarta Sans',
+                  fontWeight: FontWeight.w500,
+                  fontSize: 14,
+                  color: AppColors.textPrimary,
+                )),
+          ),
+          Text(valueLabel,
+              style: AppTextStyles.bodySmall
+                  .copyWith(color: AppColors.primary)),
+          const SizedBox(width: 4),
+          const Icon(Icons.chevron_right_rounded,
+              size: 18, color: AppColors.textSecondary),
+        ],
       ),
     );
   }
@@ -424,7 +554,7 @@ class _NavTile extends StatelessWidget {
           Expanded(
             child: Text(title,
                 style: TextStyle(
-                  fontFamily: 'Inter',
+                  fontFamily: 'Plus Jakarta Sans',
                   fontWeight: FontWeight.w500,
                   fontSize: 14,
                   color: c,
@@ -511,7 +641,7 @@ class _LangButton extends StatelessWidget {
               Text(
                 label,
                 style: TextStyle(
-                  fontFamily: 'Inter',
+                  fontFamily: 'Plus Jakarta Sans',
                   fontWeight: FontWeight.w600,
                   fontSize: 14,
                   color: selected ? Colors.white : AppColors.textPrimary,

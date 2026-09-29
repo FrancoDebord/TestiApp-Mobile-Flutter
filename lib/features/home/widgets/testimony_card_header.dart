@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../shared/widgets/organization_badge.dart';
+import '../../community/widgets/follow_button.dart';
 import '../models/testimony_model.dart';
 
 /// Compact author row for content-first card layout.
@@ -22,7 +24,7 @@ class TestimonyAuthorRow extends StatelessWidget {
     return Row(
       children: [
         GestureDetector(
-          onTap: () => context.go('/profile'),
+          onTap: () => openAuthorProfile(context, testimony.author.uid),
           child: CircleAvatar(
             radius: 14,
             backgroundColor: AppColors.primaryLight.withAlpha(40),
@@ -35,7 +37,7 @@ class TestimonyAuthorRow extends StatelessWidget {
                         ? testimony.author.displayName[0].toUpperCase()
                         : '?',
                     style: const TextStyle(
-                      fontFamily: 'Inter',
+                      fontFamily: 'Plus Jakarta Sans',
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
                       color: AppColors.primary,
@@ -47,7 +49,7 @@ class TestimonyAuthorRow extends StatelessWidget {
         const SizedBox(width: 8),
         Expanded(
           child: GestureDetector(
-            onTap: () => context.go('/profile'),
+            onTap: () => openAuthorProfile(context, testimony.author.uid),
             child: RichText(
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -63,6 +65,16 @@ class TestimonyAuthorRow extends StatelessWidget {
                       color: AppColors.textPrimary,
                     ),
                   ),
+                  if (testimony.author.isOrganization ||
+                      testimony.author.isVerified)
+                    WidgetSpan(
+                      alignment: PlaceholderAlignment.middle,
+                      child: OrganizationBadge(
+                        isOrganization: testimony.author.isOrganization,
+                        isVerified: testimony.author.isVerified,
+                        size: 13,
+                      ),
+                    ),
                   const TextSpan(text: '  ·  '),
                   TextSpan(text: _timeAgo(testimony.createdAt)),
                 ],
@@ -72,7 +84,7 @@ class TestimonyAuthorRow extends StatelessWidget {
         ),
         if (showFollow) ...[
           const SizedBox(width: 8),
-          _FollowButton(onTap: null),
+          FollowButton(userId: testimony.author.uid, displayName: testimony.author.displayName, compact: true),
         ],
       ],
     );
@@ -110,6 +122,7 @@ class TestimonyCardHeader extends StatelessWidget {
 
   final Testimony testimony;
   final VoidCallback? onFollowTap;
+  /// Ancien rappel du bouton Suivre : le bouton gère désormais lui-même l'abonnement.
   /// Optional widget placed after the follow button (e.g. a PopupMenuButton).
   final Widget? trailing;
 
@@ -122,7 +135,7 @@ class TestimonyCardHeader extends StatelessWidget {
           children: [
             // Avatar
             GestureDetector(
-              onTap: () => context.go('/profile'),
+              onTap: () => openAuthorProfile(context, testimony.author.uid),
               child: CircleAvatar(
                 radius: 20,
                 backgroundColor: AppColors.primaryLight.withAlpha(40),
@@ -149,12 +162,23 @@ class TestimonyCardHeader extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   GestureDetector(
-                    onTap: () => context.go('/profile'),
-                    child: Text(
-                      testimony.author.displayName,
-                      style: AppTextStyles.labelMedium,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    onTap: () => openAuthorProfile(context, testimony.author.uid),
+                    child: Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            testimony.author.displayName,
+                            style: AppTextStyles.labelMedium,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        OrganizationBadge(
+                          isOrganization: testimony.author.isOrganization,
+                          isVerified: testimony.author.isVerified,
+                          size: 15,
+                        ),
+                      ],
                     ),
                   ),
                   Text(
@@ -165,7 +189,7 @@ class TestimonyCardHeader extends StatelessWidget {
               ),
             ),
             // Follow button
-            _FollowButton(onTap: onFollowTap),
+            FollowButton(userId: testimony.author.uid, displayName: testimony.author.displayName, compact: true),
             if (trailing != null) ...[
               const SizedBox(width: 4),
               trailing!,
@@ -187,33 +211,12 @@ class TestimonyCardHeader extends StatelessWidget {
   }
 }
 
-// ── Follow button ─────────────────────────────────────────────────────────────
+// ── Profil de l'auteur ────────────────────────────────────────────────────────
 
-class _FollowButton extends StatelessWidget {
-  const _FollowButton({this.onTap});
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-        decoration: BoxDecoration(
-          color: AppColors.primary.withAlpha(15),
-          borderRadius: BorderRadius.circular(50),
-          border: Border.all(color: AppColors.primary, width: 1),
-        ),
-        child: Text(
-          'Suivre',
-          style: AppTextStyles.labelSmall.copyWith(
-            color: AppColors.primary,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
-    );
-  }
+/// Ouvre le profil public de l'auteur (son propre profil : onglet « Profil »).
+void openAuthorProfile(BuildContext context, String uid) {
+  if (uid.isEmpty) return;
+  context.push('/users/$uid');
 }
 
 // ── Category badge ────────────────────────────────────────────────────────────
@@ -223,26 +226,26 @@ class _CategoryBadge extends StatelessWidget {
   final TestimonyCategory category;
 
   static const Map<TestimonyCategory, Color> _bgColors = {
-    TestimonyCategory.guerison: Color(0xFFDCFCE7),
-    TestimonyCategory.delivrance: Color(0xFFFEF3C7),
-    TestimonyCategory.conversion: Color(0xFFEDE9FE),
+    TestimonyCategory.guerison: Color(0xFFECFDF3),
+    TestimonyCategory.delivrance: Color(0xFFFFFAEB),
+    TestimonyCategory.conversion: Color(0xFFEAF1FC),
     TestimonyCategory.mariage: Color(0xFFFCE7F3),
     TestimonyCategory.famille: Color(0xFFE0F2FE),
     TestimonyCategory.finances: Color(0xFFD1FAE5),
-    TestimonyCategory.miracles: Color(0xFFFFF7ED),
-    TestimonyCategory.protection: Color(0xFFF0FDF4),
+    TestimonyCategory.miracles: Color(0xFFFFF1E2),
+    TestimonyCategory.protection: Color(0xFFECFDF3),
     TestimonyCategory.ministere: Color(0xFFF5F3FF),
     TestimonyCategory.salut: Color(0xFFFFF1F2),
   };
 
   static const Map<TestimonyCategory, Color> _fgColors = {
-    TestimonyCategory.guerison: Color(0xFF16A34A),
+    TestimonyCategory.guerison: Color(0xFF12B76A),
     TestimonyCategory.delivrance: Color(0xFFD97706),
-    TestimonyCategory.conversion: Color(0xFF7C3AED),
+    TestimonyCategory.conversion: Color(0xFF184797),
     TestimonyCategory.mariage: Color(0xFFDB2777),
     TestimonyCategory.famille: Color(0xFF0284C7),
     TestimonyCategory.finances: Color(0xFF059669),
-    TestimonyCategory.miracles: Color(0xFFEA580C),
+    TestimonyCategory.miracles: Color(0xFFD96F0B),
     TestimonyCategory.protection: Color(0xFF15803D),
     TestimonyCategory.ministere: Color(0xFF6D28D9),
     TestimonyCategory.salut: Color(0xFFE11D48),
@@ -250,8 +253,8 @@ class _CategoryBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bg = _bgColors[category] ?? const Color(0xFFE2E8F0);
-    final fg = _fgColors[category] ?? const Color(0xFF64748B);
+    final bg = _bgColors[category] ?? const Color(0xFFE4E7EC);
+    final fg = _fgColors[category] ?? const Color(0xFF667085);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),

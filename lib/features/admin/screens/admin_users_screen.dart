@@ -55,18 +55,18 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
         title: Text(
           title,
           style: const TextStyle(
-            fontFamily: 'Poppins',
+            fontFamily: 'Plus Jakarta Sans',
             fontWeight: FontWeight.w600,
             fontSize: 16,
-            color: Color(0xFF0F172A),
+            color: Color(0xFF263238),
           ),
         ),
         content: Text(
           message,
           style: const TextStyle(
-            fontFamily: 'Inter',
+            fontFamily: 'Plus Jakarta Sans',
             fontSize: 13,
-            color: Color(0xFF64748B),
+            color: Color(0xFF667085),
           ),
         ),
         actions: [
@@ -74,7 +74,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
             onPressed: () => Navigator.of(context).pop(),
             child: const Text(
               'Annuler',
-              style: TextStyle(fontFamily: 'Inter', color: Color(0xFF64748B)),
+              style: TextStyle(fontFamily: 'Plus Jakarta Sans', color: Color(0xFF667085)),
             ),
           ),
           ElevatedButton(
@@ -92,7 +92,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
             child: const Text(
               'Confirmer',
               style: TextStyle(
-                  fontFamily: 'Inter', fontWeight: FontWeight.w600),
+                  fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -117,16 +117,16 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
             decoration: InputDecoration(
               hintText: 'Rechercher par nom ou e-mail…',
               hintStyle: const TextStyle(
-                fontFamily: 'Inter',
+                fontFamily: 'Plus Jakarta Sans',
                 fontSize: 13,
-                color: Color(0xFF94A3B8),
+                color: Color(0xFF98A2B3),
               ),
               prefixIcon: const Icon(Icons.search_rounded,
-                  size: 18, color: Color(0xFF94A3B8)),
+                  size: 18, color: Color(0xFF98A2B3)),
               suffixIcon: query.isNotEmpty
                   ? IconButton(
                       icon: const Icon(Icons.clear_rounded,
-                          size: 16, color: Color(0xFF94A3B8)),
+                          size: 16, color: Color(0xFF98A2B3)),
                       onPressed: _clearSearch,
                     )
                   : null,
@@ -134,16 +134,16 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                   const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide:
-                    const BorderSide(color: Color(0xFF6B21A8), width: 1.5),
+                    const BorderSide(color: Color(0xFF184797), width: 1.5),
               ),
               filled: true,
               fillColor: Colors.white,
@@ -167,19 +167,19 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                   child: Text(
                     'Utilisateur',
                     style: TextStyle(
-                      fontFamily: 'Inter',
+                      fontFamily: 'Plus Jakarta Sans',
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF64748B),
+                      color: Color(0xFF667085),
                     ),
                   ),
                 ),
                 Text(
                   '${users.length} résultat${users.length != 1 ? 's' : ''}',
                   style: const TextStyle(
-                    fontFamily: 'Inter',
+                    fontFamily: 'Plus Jakarta Sans',
                     fontSize: 11,
-                    color: Color(0xFF94A3B8),
+                    color: Color(0xFF98A2B3),
                   ),
                 ),
               ],
@@ -192,9 +192,9 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                     child: Text(
                       'Aucun utilisateur trouvé.',
                       style: TextStyle(
-                        fontFamily: 'Inter',
+                        fontFamily: 'Plus Jakarta Sans',
                         fontSize: 14,
-                        color: Color(0xFF64748B),
+                        color: Color(0xFF667085),
                       ),
                     ),
                   )
@@ -207,7 +207,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                         onSuspend: () => _showConfirm(
                           'Suspendre ${user.displayName} ?',
                           "L'utilisateur ne pourra plus se connecter temporairement.",
-                          const Color(0xFFF59E0B),
+                          const Color(0xFFF79009),
                           () => ref
                               .read(adminUsersNotifierProvider.notifier)
                               .suspend(user.uid),
@@ -215,7 +215,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                         onBan: () => _showConfirm(
                           'Bannir ${user.displayName} ?',
                           'Cette action est définitive. Le compte sera désactivé.',
-                          const Color(0xFFEF4444),
+                          const Color(0xFFD92D20),
                           () => ref
                               .read(adminUsersNotifierProvider.notifier)
                               .ban(user.uid),
@@ -223,7 +223,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                         onPromote: () => _showConfirm(
                           'Promouvoir ${user.displayName} ?',
                           'Cet utilisateur deviendra modérateur.',
-                          const Color(0xFF6B21A8),
+                          const Color(0xFF184797),
                           () => ref
                               .read(adminUsersNotifierProvider.notifier)
                               .updateRole(user.uid, UserRole.moderateur),
@@ -231,7 +231,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                         onRestore: () => _showConfirm(
                           'Réactiver ${user.displayName} ?',
                           'Le compte sera de nouveau accessible.',
-                          const Color(0xFF22C55E),
+                          const Color(0xFF12B76A),
                           () => ref
                               .read(adminUsersNotifierProvider.notifier)
                               .activate(user.uid),
@@ -261,23 +261,23 @@ class _SearchPrompt extends StatelessWidget {
             width: 72,
             height: 72,
             decoration: BoxDecoration(
-              color: const Color(0xFF6B21A8).withAlpha(15),
+              color: const Color(0xFF184797).withAlpha(15),
               shape: BoxShape.circle,
             ),
             child: const Icon(
               Icons.manage_search_rounded,
               size: 36,
-              color: Color(0xFF6B21A8),
+              color: Color(0xFF184797),
             ),
           ),
           const SizedBox(height: 16),
           const Text(
             'Rechercher un utilisateur',
             style: TextStyle(
-              fontFamily: 'Poppins',
+              fontFamily: 'Plus Jakarta Sans',
               fontWeight: FontWeight.w600,
               fontSize: 16,
-              color: Color(0xFF0F172A),
+              color: Color(0xFF263238),
             ),
           ),
           const SizedBox(height: 6),
@@ -285,9 +285,9 @@ class _SearchPrompt extends StatelessWidget {
             'Saisissez un nom ou une adresse e-mail\npour trouver un compte.',
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontFamily: 'Inter',
+              fontFamily: 'Plus Jakarta Sans',
               fontSize: 13,
-              color: Color(0xFF64748B),
+              color: Color(0xFF667085),
               height: 1.5,
             ),
           ),

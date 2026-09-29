@@ -88,7 +88,7 @@ class _ChartCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: const Color(0xFFE4E7EC)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withAlpha(6),
@@ -103,18 +103,18 @@ class _ChartCard extends StatelessWidget {
           Text(
             title,
             style: const TextStyle(
-              fontFamily: 'Poppins',
+              fontFamily: 'Plus Jakarta Sans',
               fontWeight: FontWeight.w600,
               fontSize: 14,
-              color: Color(0xFF0F172A),
+              color: Color(0xFF263238),
             ),
           ),
           Text(
             subtitle,
             style: const TextStyle(
-              fontFamily: 'Inter',
+              fontFamily: 'Plus Jakarta Sans',
               fontSize: 11,
-              color: Color(0xFF64748B),
+              color: Color(0xFF667085),
             ),
           ),
           const SizedBox(height: 16),
@@ -156,37 +156,45 @@ class _BarChartPlaceholder extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  // Stacked bars
-                  Stack(
-                    alignment: Alignment.bottomCenter,
-                    children: [
-                      // Submitted (background)
-                      Container(
-                        height: 110 * (bar.submitted / maxVal),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF6B21A8).withAlpha(25),
-                          borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(4)),
-                        ),
-                      ),
-                      // Approved (foreground)
-                      Container(
-                        height: 110 * (bar.approved / maxVal),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF6B21A8),
-                          borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(4)),
-                        ),
-                      ),
-                    ],
+                  // Stacked bars : les barres prennent la place laissée par
+                  // le libellé (au lieu de 110 px fixes qui débordaient).
+                  Expanded(
+                    child: LayoutBuilder(builder: (context, c) {
+                      final h = c.maxHeight;
+                      return Stack(
+                        alignment: Alignment.bottomCenter,
+                        children: [
+                          // Submitted (background)
+                          Container(
+                            height: h * (bar.submitted / maxVal),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF184797).withAlpha(25),
+                              borderRadius: const BorderRadius.vertical(
+                                  top: Radius.circular(4)),
+                            ),
+                          ),
+                          // Approved (foreground)
+                          Container(
+                            height: h * (bar.approved / maxVal),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF184797),
+                              borderRadius: const BorderRadius.vertical(
+                                  top: Radius.circular(4)),
+                            ),
+                          ),
+                        ],
+                      );
+                    }),
                   ),
                   const SizedBox(height: 6),
                   Text(
                     bar.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.clip,
                     style: const TextStyle(
-                      fontFamily: 'Inter',
+                      fontFamily: 'Plus Jakarta Sans',
                       fontSize: 10,
-                      color: Color(0xFF64748B),
+                      color: Color(0xFF667085),
                     ),
                   ),
                 ],
@@ -232,9 +240,9 @@ class _LineChartPlaceholder extends StatelessWidget {
             children: labels
                 .map((l) => Text(l,
                     style: const TextStyle(
-                        fontFamily: 'Inter',
+                        fontFamily: 'Plus Jakarta Sans',
                         fontSize: 10,
-                        color: Color(0xFF64748B))))
+                        color: Color(0xFF667085))))
                 .toList(),
           ),
         ],
@@ -251,7 +259,7 @@ class _LineChartPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final linePaint = Paint()
-      ..color = const Color(0xFF6B21A8)
+      ..color = const Color(0xFF184797)
       ..strokeWidth = 2.5
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
@@ -261,8 +269,8 @@ class _LineChartPainter extends CustomPainter {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          const Color(0xFF6B21A8).withAlpha(60),
-          const Color(0xFF6B21A8).withAlpha(0),
+          const Color(0xFF184797).withAlpha(60),
+          const Color(0xFF184797).withAlpha(0),
         ],
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height))
       ..style = PaintingStyle.fill;
@@ -292,7 +300,7 @@ class _LineChartPainter extends CustomPainter {
 
     // Draw dots
     final dotPaint = Paint()
-      ..color = const Color(0xFF6B21A8)
+      ..color = const Color(0xFF184797)
       ..style = PaintingStyle.fill;
     for (var i = 0; i < points.length; i++) {
       final x = i * step;
@@ -312,11 +320,11 @@ class _PieChartPlaceholder extends StatelessWidget {
   final List<dynamic> top5;
 
   static const _colors = [
-    Color(0xFF6B21A8),
-    Color(0xFFA855F7),
-    Color(0xFFF59E0B),
-    Color(0xFF22C55E),
-    Color(0xFF3B82F6),
+    Color(0xFF184797),
+    Color(0xFF4B7ACB),
+    Color(0xFFF79009),
+    Color(0xFF12B76A),
+    Color(0xFF2B5DB0),
   ];
 
   @override
@@ -367,9 +375,9 @@ class _PieChartPlaceholder extends StatelessWidget {
                         child: Text(
                           top5[i].name as String,
                           style: const TextStyle(
-                            fontFamily: 'Inter',
+                            fontFamily: 'Plus Jakarta Sans',
                             fontSize: 11,
-                            color: Color(0xFF0F172A),
+                            color: Color(0xFF263238),
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -377,10 +385,10 @@ class _PieChartPlaceholder extends StatelessWidget {
                       Text(
                         '${((top5[i].testimonyCount as int) / total * 100).toStringAsFixed(0)}%',
                         style: const TextStyle(
-                          fontFamily: 'Inter',
+                          fontFamily: 'Plus Jakarta Sans',
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF64748B),
+                          color: Color(0xFF667085),
                         ),
                       ),
                     ],
@@ -449,7 +457,7 @@ class _TopCategoriesTable extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: const Color(0xFFE4E7EC)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -457,10 +465,10 @@ class _TopCategoriesTable extends StatelessWidget {
           const Text(
             'Top catégories',
             style: TextStyle(
-              fontFamily: 'Poppins',
+              fontFamily: 'Plus Jakarta Sans',
               fontWeight: FontWeight.w600,
               fontSize: 14,
-              color: Color(0xFF0F172A),
+              color: Color(0xFF263238),
             ),
           ),
           const SizedBox(height: 12),
@@ -475,22 +483,32 @@ class _TopCategoriesTable extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
+                        flex: 3,
                         child: Text(
                           cat.name as String,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            fontFamily: 'Inter',
+                            fontFamily: 'Plus Jakarta Sans',
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
-                            color: Color(0xFF0F172A),
+                            color: Color(0xFF263238),
                           ),
                         ),
                       ),
-                      Text(
-                        '${cat.testimonyCount} témoignages',
-                        style: const TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 11,
-                          color: Color(0xFF64748B),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        flex: 2,
+                        child: Text(
+                          '${cat.testimonyCount} témoignages',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.end,
+                          style: const TextStyle(
+                            fontFamily: 'Plus Jakarta Sans',
+                            fontSize: 11,
+                            color: Color(0xFF667085),
+                          ),
                         ),
                       ),
                     ],
@@ -500,9 +518,9 @@ class _TopCategoriesTable extends StatelessWidget {
                     borderRadius: BorderRadius.circular(4),
                     child: LinearProgressIndicator(
                       value: pct,
-                      backgroundColor: const Color(0xFFE2E8F0),
+                      backgroundColor: const Color(0xFFE4E7EC),
                       valueColor: const AlwaysStoppedAnimation<Color>(
-                          Color(0xFF6B21A8)),
+                          Color(0xFF184797)),
                       minHeight: 6,
                     ),
                   ),

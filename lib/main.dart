@@ -15,6 +15,8 @@ import 'features/auth/providers/auth_notifier.dart'
     show AuthStateAuthenticated, authStateProvider, currentUserProvider;
 import 'features/home/providers/home_providers.dart' show feedNotifierProvider;
 import 'firebase_options.dart';
+import 'core/theme/app_colors.dart';
+import 'core/theme/app_text_styles.dart' show AppFonts;
 import 'l10n/app_localizations.dart';
 import 'services/database_seed_service.dart';
 import 'services/fcm_service.dart';
@@ -187,6 +189,13 @@ class _TemoignagesAppState extends ConsumerState<TemoignagesApp>
         } else {
           router.pushNamed(AppRoutes.notifications);
         }
+      case 'live_started':
+        final liveId = intent.liveId;
+        if (liveId != null) {
+          router.push('/lives/$liveId');
+        } else {
+          router.pushNamed(AppRoutes.notifications);
+        }
       case 'testimony_approved':
       case 'testimony_rejected':
       case 'pending_correction':
@@ -198,41 +207,128 @@ class _TemoignagesAppState extends ConsumerState<TemoignagesApp>
 
   // ── Theme ─────────────────────────────────────────────────────────────────
 
+  /// Thème de la charte ARISE & SHINE Krea (même palette que le site).
   ThemeData _buildTheme() {
+    const radius10 = BorderRadius.all(Radius.circular(10));
+    OutlineInputBorder border(Color c, [double w = 1]) =>
+        OutlineInputBorder(borderRadius: radius10, borderSide: BorderSide(color: c, width: w));
+    const buttonText = TextStyle(fontFamily: AppFonts.family, fontSize: 15, fontWeight: FontWeight.w600);
+    const buttonShape = RoundedRectangleBorder(borderRadius: radius10);
+    const buttonSize = Size(64, 48);
+
     return ThemeData(
       useMaterial3: true,
+      fontFamily: AppFonts.family,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF6B21A8),
-        primary:   const Color(0xFF6B21A8),
-        secondary: const Color(0xFFF59E0B),
-        surface:   const Color(0xFFFFFFFF),
-        onSurface: const Color(0xFF0F172A),
+        seedColor: AppColors.primary,
+        primary:   AppColors.primary,
+        onPrimary: Colors.white,
+        secondary: AppColors.secondary,
+        onSecondary: Colors.white,
+        tertiary:  AppColors.sun,
+        onTertiary: AppColors.primaryDark,
+        error:     AppColors.danger,
+        surface:   AppColors.surface,
+        onSurface: AppColors.textPrimary,
+        onSurfaceVariant: AppColors.textSecondary,
+        outline:   AppColors.inputBorder,
+        outlineVariant: AppColors.border,
       ),
-      scaffoldBackgroundColor: const Color(0xFFF8FAFC),
-      dividerColor: const Color(0xFFE2E8F0),
+      scaffoldBackgroundColor: AppColors.background,
+      dividerColor: AppColors.border,
+      appBarTheme: const AppBarTheme(
+        backgroundColor: AppColors.surface,
+        foregroundColor: AppColors.textPrimary,
+        surfaceTintColor: Colors.transparent,
+        titleTextStyle: TextStyle(
+          fontFamily: AppFonts.family, fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.primary),
+      ),
+      // Cartes : blanches, bordure fine, 16 px, ombre très légère.
+      cardTheme: const CardThemeData(
+        color: AppColors.surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(16)),
+          side: BorderSide(color: AppColors.border),
+        ),
+      ),
+      // Boutons : 48 px, 10 px d'arrondi, 15 px / 600.
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.primary, foregroundColor: Colors.white,
+          minimumSize: buttonSize, padding: const EdgeInsets.symmetric(horizontal: 20),
+          shape: buttonShape, textStyle: buttonText,
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary, foregroundColor: Colors.white, elevation: 0,
+          minimumSize: buttonSize, padding: const EdgeInsets.symmetric(horizontal: 20),
+          shape: buttonShape, textStyle: buttonText,
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.primary, side: const BorderSide(color: AppColors.primary),
+          minimumSize: buttonSize, padding: const EdgeInsets.symmetric(horizontal: 20),
+          shape: buttonShape, textStyle: buttonText,
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.primary, shape: buttonShape, textStyle: buttonText),
+      ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: AppColors.secondary, foregroundColor: Colors.white),
+      // Champs : 48 px, bordure #D0D5DD, focus bleu, erreur rouge.
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: AppColors.surface,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        border: border(AppColors.inputBorder),
+        enabledBorder: border(AppColors.inputBorder),
+        focusedBorder: border(AppColors.primary, 1.5),
+        errorBorder: border(AppColors.danger),
+        focusedErrorBorder: border(AppColors.danger, 1.5),
+        hintStyle: const TextStyle(fontFamily: AppFonts.family, color: AppColors.textSecondary),
+      ),
+      // Étiquettes : pilule, fond bleu clair une fois choisies.
+      chipTheme: const ChipThemeData(
+        shape: StadiumBorder(side: BorderSide(color: AppColors.border)),
+        selectedColor: AppColors.primarySoft,
+        labelStyle: TextStyle(fontFamily: AppFonts.family, fontSize: 13, fontWeight: FontWeight.w600),
+      ),
+      tabBarTheme: const TabBarThemeData(
+        labelColor: AppColors.primary,
+        unselectedLabelColor: AppColors.textSecondary,
+        indicatorColor: AppColors.primary,
+      ),
+      progressIndicatorTheme: const ProgressIndicatorThemeData(color: AppColors.primary),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: const Color(0xFFFFFFFF),
-        indicatorColor: const Color(0xFF6B21A8).withAlpha(30),
+        backgroundColor: AppColors.surface,
+        indicatorColor: AppColors.primarySoft,
+        indicatorShape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return const TextStyle(
-              fontFamily: 'Inter',
+              fontFamily: AppFonts.family,
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF6B21A8),
+              color: AppColors.primary,
             );
           }
           return const TextStyle(
-            fontFamily: 'Inter',
+            fontFamily: AppFonts.family,
             fontSize: 12,
-            color: Color(0xFF64748B),
+            color: AppColors.textSecondary,
           );
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return const IconThemeData(color: Color(0xFF6B21A8));
+            return const IconThemeData(color: AppColors.primary);
           }
-          return const IconThemeData(color: Color(0xFF64748B));
+          return const IconThemeData(color: AppColors.textSecondary);
         }),
       ),
     );

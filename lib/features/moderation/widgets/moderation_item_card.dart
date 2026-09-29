@@ -38,7 +38,7 @@ class ModerationItemCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: const Color(0xFFE4E7EC)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withAlpha(8),
@@ -66,31 +66,36 @@ class ModerationItemCard extends StatelessWidget {
                         children: [
                           Text(
                             item.author.displayName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              fontFamily: 'Inter',
+                              fontFamily: 'Plus Jakarta Sans',
                               fontWeight: FontWeight.w600,
                               fontSize: 13,
-                              color: Color(0xFF0F172A),
+                              color: Color(0xFF263238),
                             ),
                           ),
                           Text(
                             item.author.country,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              fontFamily: 'Inter',
+                              fontFamily: 'Plus Jakarta Sans',
                               fontSize: 11,
-                              color: Color(0xFF64748B),
+                              color: Color(0xFF667085),
                             ),
                           ),
                         ],
                       ),
                     ),
+                    const SizedBox(width: 8),
                     // Submitted time
                     Text(
                       _timeAgo(item.submittedAt),
                       style: const TextStyle(
-                        fontFamily: 'Inter',
+                        fontFamily: 'Plus Jakarta Sans',
                         fontSize: 11,
-                        color: Color(0xFF94A3B8),
+                        color: Color(0xFF98A2B3),
                       ),
                     ),
                   ],
@@ -100,10 +105,10 @@ class ModerationItemCard extends StatelessWidget {
                 Text(
                   item.truncatedTitle,
                   style: const TextStyle(
-                    fontFamily: 'Poppins',
+                    fontFamily: 'Plus Jakarta Sans',
                     fontWeight: FontWeight.w600,
                     fontSize: 13,
-                    color: Color(0xFF0F172A),
+                    color: Color(0xFF263238),
                     height: 1.4,
                   ),
                 ),
@@ -111,22 +116,32 @@ class ModerationItemCard extends StatelessWidget {
                 // Category + type chips row
                 Row(
                   children: [
-                    _CategoryChip(label: item.category),
-                    const SizedBox(width: 6),
-                    TestimonyTypeBadge(type: item.type),
-                    const Spacer(),
+                    // Les puces passent à la ligne si la catégorie est longue.
+                    Expanded(
+                      child: Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          _CategoryChip(label: item.category),
+                          TestimonyTypeBadge(type: item.type),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
                     // Preview link
                     GestureDetector(
                       onTap: onPreview,
+                      behavior: HitTestBehavior.opaque,
                       child: const Text(
                         'Prévisualiser',
                         style: TextStyle(
-                          fontFamily: 'Inter',
+                          fontFamily: 'Plus Jakarta Sans',
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
-                          color: Color(0xFF6B21A8),
+                          color: Color(0xFF184797),
                           decoration: TextDecoration.underline,
-                          decorationColor: Color(0xFF6B21A8),
+                          decorationColor: Color(0xFF184797),
                         ),
                       ),
                     ),
@@ -136,7 +151,7 @@ class ModerationItemCard extends StatelessWidget {
             ),
           ),
           // ── Divider ─────────────────────────────────────────────────────────
-          const Divider(height: 1, color: Color(0xFFE2E8F0)),
+          const Divider(height: 1, color: Color(0xFFE4E7EC)),
           // ── Action buttons ──────────────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -146,7 +161,7 @@ class ModerationItemCard extends StatelessWidget {
                   child: _ActionButton(
                     label: 'Approuver',
                     icon: Icons.check_circle_outline_rounded,
-                    color: const Color(0xFF22C55E),
+                    color: const Color(0xFF12B76A),
                     onTap: onApprove,
                   ),
                 ),
@@ -155,7 +170,7 @@ class ModerationItemCard extends StatelessWidget {
                   child: _ActionButton(
                     label: 'Modif.',
                     icon: Icons.edit_outlined,
-                    color: const Color(0xFFF59E0B),
+                    color: const Color(0xFFF79009),
                     onTap: onRequestEdit,
                   ),
                 ),
@@ -164,7 +179,7 @@ class ModerationItemCard extends StatelessWidget {
                   child: _ActionButton(
                     label: 'Rejeter',
                     icon: Icons.cancel_outlined,
-                    color: const Color(0xFFEF4444),
+                    color: const Color(0xFFD92D20),
                     onTap: onReject,
                   ),
                 ),
@@ -198,14 +213,14 @@ class _AuthorAvatar extends StatelessWidget {
         .join();
     return CircleAvatar(
       radius: 18,
-      backgroundColor: const Color(0xFF6B21A8).withAlpha(20),
+      backgroundColor: const Color(0xFF184797).withAlpha(20),
       child: Text(
         initials,
         style: const TextStyle(
-          fontFamily: 'Inter',
+          fontFamily: 'Plus Jakarta Sans',
           fontWeight: FontWeight.w700,
           fontSize: 12,
-          color: Color(0xFF6B21A8),
+          color: Color(0xFF184797),
         ),
       ),
     );
@@ -221,16 +236,18 @@ class _CategoryChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
       decoration: BoxDecoration(
-        color: const Color(0xFF6B21A8).withAlpha(15),
+        color: const Color(0xFF184797).withAlpha(15),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
         label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: const TextStyle(
-          fontFamily: 'Inter',
+          fontFamily: 'Plus Jakarta Sans',
           fontSize: 11,
           fontWeight: FontWeight.w500,
-          color: Color(0xFF6B21A8),
+          color: Color(0xFF184797),
         ),
       ),
     );
@@ -259,19 +276,23 @@ class _ActionButton extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(8),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(icon, size: 14, color: color),
               const SizedBox(width: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: color,
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: 'Plus Jakarta Sans',
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                  ),
                 ),
               ),
             ],

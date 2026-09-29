@@ -14,6 +14,7 @@ import '../../../features/auth/providers/auth_notifier.dart'
 import '../../../features/home/models/testimony_model.dart';
 import '../../../features/home/providers/home_providers.dart';
 import '../../../services/api_service.dart';
+import '../../journal/data/journal_repository.dart' show journalRefreshProvider;
 import '../models/publish_models.dart';
 
 // Converts a relative server URL (e.g. "/storage/videos/x.mp4") to absolute.
@@ -22,6 +23,19 @@ String? _absoluteUrl(String? raw) {
   if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
   final root = AppConstants.baseUrl.replaceFirst(RegExp(r'/api/v1.*$'), '');
   return raw.startsWith('/') ? '$root$raw' : '$root/$raw';
+}
+
+/// Message d'échec d'upload : raison renvoyée par Laravel si disponible
+/// (ex. « The file failed to upload. » quand PHP refuse la taille du fichier).
+String _uploadErrorMessage(Object e, String fallback) {
+  if (e is LaravelApiException) {
+    final detail = e.displayMessage;
+    return detail.isNotEmpty ? '$fallback\n$detail' : fallback;
+  }
+  if (e is DioException && e.type == DioExceptionType.receiveTimeout) {
+    return '$fallback\nLe serveur a mis trop de temps à répondre.';
+  }
+  return fallback;
 }
 
 // =============================================================================
@@ -34,8 +48,13 @@ class PublishNotifier extends Notifier<PublishDraft> {
 
   // ── Format selector ─────────────────────────────────────────────────────────
 
-  void selectFormat(TestimonyFormat format) {
-    state = PublishDraft(format: format);
+  /// [journal] : nouvelle entrée du carnet privé (visibilité privée d'office).
+  void selectFormat(TestimonyFormat format, {bool journal = false}) {
+    state = PublishDraft(
+      format: format,
+      visibility:
+          journal ? TestimonyVisibility.private : TestimonyVisibility.public,
+    );
   }
 
   // ── Step 1: Details ─────────────────────────────────────────────────────────
@@ -46,7 +65,7 @@ class PublishNotifier extends Notifier<PublishDraft> {
 
   void updateCategory(CategoryModel cat) => state = state.copyWith(
         category: cat.slug,
-        categoryId: cat.id > 0 ? cat.id : null,
+        categoryId: cat.id.isNotEmpty ? cat.id : null,
       );
 
   void updateCoverImage(String path) =>
@@ -121,7 +140,7 @@ class PublishNotifier extends Notifier<PublishDraft> {
         state = state.copyWith(
           isUploadingMedia: false,
           status: PublishStatus.draft,
-          uploadError: "Échec de l'envoi de l'image de couverture. Réessaie.",
+          uploadError: _uploadErrorMessage(e, "Échec de l'envoi de l'image de couverture. Réessaie."),
         );
         return;
       }
@@ -148,7 +167,7 @@ class PublishNotifier extends Notifier<PublishDraft> {
         state = state.copyWith(
           isUploadingMedia: false,
           status: PublishStatus.draft,
-          uploadError: "Échec de l'envoi audio. Réessaie.",
+          uploadError: _uploadErrorMessage(e, "Échec de l'envoi audio. Réessaie."),
         );
         return;
       }
@@ -180,7 +199,7 @@ class PublishNotifier extends Notifier<PublishDraft> {
         state = state.copyWith(
           isUploadingMedia: false,
           status: PublishStatus.draft,
-          uploadError: "Échec de l'envoi vidéo. Réessaie.",
+          uploadError: _uploadErrorMessage(e, "Échec de l'envoi vidéo. Réessaie."),
         );
         return;
       }
@@ -234,7 +253,8 @@ class PublishNotifier extends Notifier<PublishDraft> {
     final postBody = <String, dynamic>{
       'title'       : state.title,
       'type'        : typeStr,
-      'category'    : catSlug,
+      // Facultative dans le carnet privé (le serveur met « autre »).
+      'category'    : catSlug.isEmpty ? null : catSlug,
       'category_id' : catId,
       'body_text'   : bodyText,
       'media_url'   : mediaUrl,
@@ -243,7 +263,7 @@ class PublishNotifier extends Notifier<PublishDraft> {
       'bible_verse' : state.bibleVerse.isNotEmpty ? state.bibleVerse : null,
       'visibility'  : switch (state.visibility) {
         TestimonyVisibility.private => 'private',
-        TestimonyVisibility.friends => 'friends',
+        TestimonyVisibility.friends => 'followers', // valeur attendue par l'API
         TestimonyVisibility.public  => 'public',
       },
     };
@@ -308,7 +328,7 @@ class PublishNotifier extends Notifier<PublishDraft> {
         testimony = TextTestimony(
           id: id, author: author, title: state.title,
           category: category, createdAt: now, stats: TestimonyStats.zero,
-          preview: body.substring(0, math.min(220, body.length)),
+          preview: body,
           coverImageUrl: coverUrl,
         );
         dbRow = _buildRow(
@@ -355,6 +375,17 @@ class PublishNotifier extends Notifier<PublishDraft> {
           bodyText: null, mediaUrl: mediaUrl, coverUrl: coverUrl,
           durationSec: durationSec, bibleVerse: null, now: now,
         );
+    }
+
+    // Carnet privé : ne jamais l'ajouter au fil ni au cache du fil.
+    if (state.visibility == TestimonyVisibility.private) {
+      ref.read(journalRefreshProvider.notifier).bump();
+      state = state.copyWith(
+        status: savedOffline
+            ? PublishStatus.pendingSync
+            : PublishStatus.savedToJournal,
+      );
+      return;
     }
 
     // ── Sauvegarder en SQLite (cache local) ───────────────────────────────

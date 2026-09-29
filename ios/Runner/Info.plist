@@ -25,9 +25,9 @@
 
 	<!-- Caméra, microphone, galerie photos -->
 	<key>NSCameraUsageDescription</key>
-	<string>Témoignages a besoin d'accéder à votre caméra pour enregistrer vos témoignages vidéo.</string>
+	<string>Témoignages a besoin d'accéder à votre caméra pour enregistrer vos témoignages vidéo et diffuser en direct.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Témoignages a besoin d'accéder à votre microphone pour enregistrer l'audio de vos témoignages.</string>
+	<string>Témoignages a besoin d'accéder à votre microphone pour enregistrer l'audio de vos témoignages et diffuser en direct.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Témoignages a besoin d'accéder à vos photos pour choisir une image ou une vidéo.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>

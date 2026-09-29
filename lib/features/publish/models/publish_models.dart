@@ -30,7 +30,16 @@ extension TestimonyFormatLabel on TestimonyFormat {
 }
 
 /// Workflow status chips shown in the status bar.
-enum PublishStatus { draft, submitted, inReview, published, pendingSync }
+enum PublishStatus {
+  draft,
+  submitted,
+  inReview,
+  published,
+  pendingSync,
+
+  /// Enregistré dans le carnet privé (jamais soumis à la modération).
+  savedToJournal,
+}
 
 extension PublishStatusLabel on PublishStatus {
   String get label {
@@ -45,11 +54,14 @@ extension PublishStatusLabel on PublishStatus {
         return 'Publié';
       case PublishStatus.pendingSync:
         return 'Hors ligne';
+      case PublishStatus.savedToJournal:
+        return 'Dans mon carnet';
     }
   }
 }
 
 /// Visibility of a published testimony.
+/// `private` = carnet privé : visible uniquement par l'auteur, sans modération.
 enum TestimonyVisibility { public, friends, private }
 
 /// All available testimony categories.
@@ -131,7 +143,7 @@ class PublishDraft {
   PublishStatus status;
   String? errorMessage;
   bool isAuthError;
-  int? categoryId;
+  String? categoryId;
 
   // upload
   bool isUploadingMedia;
@@ -156,7 +168,7 @@ class PublishDraft {
     bool? consentGiven,
     PublishStatus? status,
     bool? isAuthError,
-    int? categoryId,
+    String? categoryId,
     bool? isUploadingMedia,
     Object? errorMessage = _sentinel,
     Object? coverImageRemoteUrl = _sentinel,

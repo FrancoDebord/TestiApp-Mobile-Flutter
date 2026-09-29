@@ -8,6 +8,7 @@ import '../../../features/auth/providers/auth_notifier.dart'
 import '../../../features/home/models/testimony_model.dart';
 import '../../../features/home/providers/home_providers.dart';
 import '../../../services/api_service.dart';
+import '../../../shared/models/user_model.dart';
 import '../models/profile_models.dart';
 import '../models/user_testimony_model.dart';
 
@@ -17,11 +18,36 @@ const _kFirstName   = 'profile_first_name';
 const _kLastName    = 'profile_last_name';
 const _kGender      = 'profile_gender';
 const _kPhone       = 'profile_phone';
+const _kPhoneCountry = 'profile_phone_country';
 const _kEmail       = 'profile_email';
 const _kCountry     = 'profile_country';
 const _kBio         = 'profile_bio';
 const _kTitle       = 'profile_title';
 const _kAvatarPath  = 'profile_avatar_path';
+
+/// Champs propres aux comptes organisation, envoyés dans le même
+/// PUT /users/me que le reste du profil.
+class OrganizationProfileUpdate {
+  const OrganizationProfileUpdate({
+    required this.name,
+    this.type,
+    this.city,
+    this.website,
+  });
+
+  final String name;
+  final OrganizationType? type;
+  final String? city;
+  final String? website;
+
+  Map<String, dynamic> toJson() => {
+        'display_name':         name,
+        'organization_name':    name,
+        'organization_type':    type?.toJson(),
+        'organization_city':    city,
+        'organization_website': website,
+      };
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ProfileExtrasNotifier — champs complémentaires persistants
@@ -41,6 +67,7 @@ class ProfileExtrasNotifier extends AsyncNotifier<ProfileExtras> {
     final ln     = await _storage.read(key: _kLastName)   ?? '';
     final gen    = await _storage.read(key: _kGender)     ?? '';
     final ph     = await _storage.read(key: _kPhone)      ?? '';
+    final pc     = await _storage.read(key: _kPhoneCountry) ?? '';
     final em     = await _storage.read(key: _kEmail)      ?? '';
     final co     = await _storage.read(key: _kCountry)    ?? '';
     final bio    = await _storage.read(key: _kBio)        ?? '';
@@ -62,14 +89,14 @@ class ProfileExtrasNotifier extends AsyncNotifier<ProfileExtras> {
       }
       return ProfileExtras(
         firstName: firstName, lastName: lastName,
-        gender: gen, phone: ph, email: em, country: co, bio: bio,
+        gender: gen, phone: ph, phoneCountry: pc, email: em, country: co, bio: bio,
         title: title, avatarPath: avatar,
       );
     }
 
     return ProfileExtras(
       firstName: fn, lastName: ln, gender: gen,
-      phone: ph, email: em, country: co, bio: bio,
+      phone: ph, phoneCountry: pc, email: em, country: co, bio: bio,
       title: title, avatarPath: avatar,
     );
   }
@@ -85,23 +112,90 @@ class ProfileExtrasNotifier extends AsyncNotifier<ProfileExtras> {
   void _uploadAvatarToServer(String filePath) {
     () async {
       try {
-        final api = ref.read(apiServiceProvider);
-        await api.upload<void>(
-          AppConstants.uploadAvatar,
-          filePath:  filePath,
-          fieldName: 'avatar',
-        );
+        await uploadAvatar(filePath);
       } catch (_) {}
     }();
   }
 
-  Future<void> save(ProfileExtras extras) async {
+  /// Envoie la photo / le logo (POST /users/me/avatar, champ `avatar`),
+  /// mémorise le fichier local et met à jour `avatar_url` de l'utilisateur
+  /// connecté. Lève une exception en cas d'échec (à gérer par l'appelant).
+  Future<String?> uploadAvatar(String filePath) async {
+    final api = ref.read(apiServiceProvider);
+    final res = await api.upload<dynamic>(
+      AppConstants.uploadAvatar,
+      filePath:  filePath,
+      fieldName: 'avatar',
+    );
+    final data = res.data;
+    final url = data is Map ? data['avatar_url'] as String? : null;
+
+    try {
+      await _storage.write(key: _kAvatarPath, value: filePath);
+    } catch (_) {}
+    final current = state.value;
+    if (current != null) {
+      state = AsyncValue.data(current.copyWith(avatarPath: filePath));
+    }
+
+    final user = ref.read(currentUserProvider);
+    if (user != null && url != null && url.isNotEmpty) {
+      await ref
+          .read(authStateProvider.notifier)
+          .updateCurrentUser(user.copyWith(avatarUrl: url));
+    }
+    return url;
+  }
+
+  /// Photo de couverture : POST /users/me/cover (champ `cover`), puis mise à
+  /// jour de `cover_url` de l'utilisateur connecté. Lève [LaravelApiException]
+  /// en cas d'échec (image trop petite, réseau…). Backend :
+  /// docs/fonctionnalites/photo-de-couverture.md
+  Future<String?> uploadCover(String filePath) async {
+    final res = await ref.read(apiServiceProvider).upload<dynamic>(
+          AppConstants.profileCover,
+          filePath:  filePath,
+          fieldName: 'cover',
+        );
+    final data = res.data;
+    final url = data is Map ? data['cover_url'] as String? : null;
+    final user = ref.read(currentUserProvider);
+    if (user != null && url != null && url.isNotEmpty) {
+      await ref
+          .read(authStateProvider.notifier)
+          .updateCurrentUser(user.copyWith(coverUrl: url));
+    }
+    return url;
+  }
+
+  /// Retire la photo de couverture (DELETE /users/me/cover).
+  Future<void> removeCover() async {
+    await ref.read(apiServiceProvider).delete<dynamic>(AppConstants.profileCover);
+    final user = ref.read(currentUserProvider);
+    if (user != null) {
+      await ref
+          .read(authStateProvider.notifier)
+          .updateCurrentUser(user.copyWith(clearCoverUrl: true));
+    }
+  }
+
+  /// Enregistre le profil (localement puis PUT /users/me).
+  ///
+  /// Pour un compte organisation, [organization] est inclus dans la **même**
+  /// requête ; celle-ci est alors attendue et l'utilisateur connecté est mis
+  /// à jour après succès. Retourne `false` si la synchronisation serveur a
+  /// échoué (compte organisation uniquement ; sinon envoi en arrière-plan).
+  Future<bool> save(
+    ProfileExtras extras, {
+    OrganizationProfileUpdate? organization,
+  }) async {
     // Persistance locale immédiate
     await Future.wait([
       _storage.write(key: _kFirstName,  value: extras.firstName),
       _storage.write(key: _kLastName,   value: extras.lastName),
       _storage.write(key: _kGender,     value: extras.gender),
       _storage.write(key: _kPhone,      value: extras.phone),
+      _storage.write(key: _kPhoneCountry, value: extras.phoneCountry),
       _storage.write(key: _kEmail,      value: extras.email),
       _storage.write(key: _kCountry,    value: extras.country),
       _storage.write(key: _kBio,        value: extras.bio),
@@ -111,33 +205,71 @@ class ProfileExtrasNotifier extends AsyncNotifier<ProfileExtras> {
       _storage.write(key: 'local_display_name', value: extras.displayName),
     ]);
 
-    // Synchronisation API (PUT /users/me) — fire-and-forget
-    _syncProfileToApi(extras);
-
     // Mettre à jour le displayName en mémoire dans l'état d'auth
     await ref
         .read(authStateProvider.notifier)
         .updateDisplayName(extras.displayName);
 
     state = AsyncValue.data(extras);
+
+    // Synchronisation API (PUT /users/me) — une seule requête.
+    if (organization == null) {
+      // Compte personne : envoi en arrière-plan, erreurs ignorées.
+      () async {
+        try {
+          await _syncProfileToApi(extras);
+        } catch (_) {}
+      }();
+      return true;
+    }
+
+    try {
+      final res = await _syncProfileToApi(extras, organization: organization);
+      final current = ref.read(currentUserProvider);
+      if (current != null) {
+        final server = res.data;
+        // Base : l'utilisateur renvoyé par le serveur (s'il est exploitable),
+        // puis les champs organisation saisis (un serveur plus ancien peut
+        // les ignorer).
+        final base = server is Map<String, dynamic> && server['id'] is String
+            ? server
+            : current.toJson();
+        await ref.read(authStateProvider.notifier).updateCurrentUser(
+              UserModel.fromJson({
+                ...base,
+                ...organization.toJson(),
+                'account_type': AccountType.organization.toJson(),
+              }),
+            );
+      }
+      return true;
+    } catch (e) {
+      debugPrint('profile save ✗ $e');
+      return false;
+    }
   }
 
-  /// Envoie les données de profil au serveur ; erreurs ignorées silencieusement.
-  void _syncProfileToApi(ProfileExtras extras) {
-    () async {
-      try {
-        final api = ref.read(apiServiceProvider);
-        await api.put<void>(
-          AppConstants.updateProfile,
-          data: {
-            'display_name': extras.displayName,
-            'country'     : extras.country.isNotEmpty ? extras.country : null,
-            'bio'         : extras.bio.isNotEmpty     ? extras.bio     : null,
-            'phone'       : extras.phone.isNotEmpty   ? extras.phone   : null,
-          },
-        );
-      } catch (_) {}
-    }();
+  /// PUT /users/me avec le profil (+ champs organisation éventuels).
+  Future<LaravelResponse<dynamic>> _syncProfileToApi(
+    ProfileExtras extras, {
+    OrganizationProfileUpdate? organization,
+  }) {
+    final api = ref.read(apiServiceProvider);
+    return api.put<dynamic>(
+      AppConstants.updateProfile,
+      data: {
+        'display_name': extras.displayName,
+        'country'     : extras.country.isNotEmpty ? extras.country : null,
+        'bio'         : extras.bio.isNotEmpty     ? extras.bio     : null,
+        // Téléphone : indicatif (code ISO) + numéro national, mis au format international
+        // par le serveur. Un numéro vérifié par SMS ne se change pas ici (docs/fonctionnalites/telephone.md).
+        if (ref.read(currentUserProvider)?.isPhoneVerified != true) ...{
+          'phone'        : extras.phone.isNotEmpty ? extras.phone : null,
+          if (extras.phoneCountry.isNotEmpty) 'phone_country': extras.phoneCountry,
+        },
+        ...?organization?.toJson(),
+      },
+    );
   }
 }
 
@@ -188,6 +320,7 @@ final userProfileProvider = Provider<UserProfile?>((ref) {
     followingCount: user.followingCount,
     bio:            extras?.bio.isNotEmpty == true ? extras!.bio : null,
     avatarUrl:      user.avatarUrl,
+    coverUrl:       user.coverUrl,
     extras:         extras ?? const ProfileExtras(),
   );
 });

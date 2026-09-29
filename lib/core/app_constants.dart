@@ -2,7 +2,7 @@
 //
 // Central constants for the Témoignages application.
 //
-// API base: http://192.168.0.4:8000/api/v1
+// API base: https://testi.airid-africa.com/api/v1
 // Auth: Bearer JWT via Laravel Sanctum (token returned by /auth/login)
 // Envelope: { "success": bool, "data": any, "message": string, "errors"?: map }
 //
@@ -78,11 +78,20 @@ abstract final class AppConstants {
   /// Override at build time: --dart-define=API_BASE_URL=https://your-laravel.app/api/v1
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://192.168.1.74:8000/api/v1',
+    defaultValue: 'https://testi.airid-africa.com/api/v1',
+    // defaultValue: 'http://192.168.1.74:8000/api/v1',
     // Dev: http://192.168.0.4:8000/api/v1  (LAN server)
     // Android emulator localhost alias: http://10.0.2.2:8000/api/v1
     // Production: https://api.testi-app.com/api/v1
   );
+
+  /// Racine du site web (sans /api/v1) : domaine des liens de partage.
+  static String get webBaseUrl =>
+      baseUrl.replaceFirst(RegExp(r'/api/v\d+/?$'), '');
+
+  /// Lien public d'un témoignage — même format que `share_url` côté Laravel
+  /// (route web `testimonies.show`). Ouvert par l'app via les App Links.
+  static String testimonyWebUrl(String id) => '$webBaseUrl/testimonies/$id';
 
   static const int connectTimeoutMs = 8000;
   static const int receiveTimeoutMs = 20000;
@@ -128,6 +137,12 @@ abstract final class AppConstants {
   static String testimonyShare(String id)  => '/testimonies/$id/share';  // POST
   static String testimonyReport(String id) => '/testimonies/$id/report'; // POST
 
+  // Carnet privé (docs/fonctionnalites/carnet-prive.md) :
+  //   GET /journal?type=&q=&page=&limit= · POST /testimonies {visibility: private}
+  static const String journal = '/journal';
+  static String testimonyPublish(String id)     => '/testimonies/$id/publish';      // POST : partager
+  static String testimonyMakePrivate(String id) => '/testimonies/$id/make-private'; // POST : ranger dans le carnet
+
   // Delta sync: GET /testimonies?after=ISO8601&limit=N
   static String feedDelta({required String after, int limit = 20}) =>
       '/testimonies?after=$after&limit=$limit';
@@ -142,10 +157,17 @@ abstract final class AppConstants {
   static String userTestimonies(String id)  => '/users/$id/testimonies';
   static String userFollow(String id)       => '/users/$id/follow';    // POST
   static String userUnfollow(String id)     => '/users/$id/unfollow';  // DELETE
+  // Communauté et abonnements — backend : docs/fonctionnalites/abonnements.md
+  //   GET /community?tab=organizations|people&q=&page=  → comptes (+ is_following), meta de pagination
+  //   GET /users/me/following-ids                       → identifiants des comptes suivis
+  static const String community    = '/community';
+  static const String followingIds = '/users/me/following-ids';
+  static const String myFollowing  = '/users/me/following';     // GET ?q=&page= → « Mes abonnements »
 
   // Self management
   static const String updateProfile    = '/users/me';          // PUT
   static const String uploadAvatar     = '/users/me/avatar';   // POST multipart
+  static const String profileCover     = '/users/me/cover';    // POST multipart « cover » / DELETE
   static const String updateSettings   = '/users/me/settings'; // PUT
   static const String deleteAccount    = '/users/me';          // DELETE
 
@@ -214,13 +236,57 @@ abstract final class AppConstants {
   static String adminActivateUser(String id)=> '/admin/users/$id/activate';// POST
   static String adminUserRole(String id)    => '/admin/users/$id/role';    // PUT
 
-  // ── Live streaming ────────────────────────────────────────────────────────
-  // GET    /live/streams              → [{id, title, author, category, viewer_count}]
-  // POST   /live/streams             → create broadcast session
-  // DELETE /live/streams/{id}        → end session
+  // ── Témoignages en direct (LiveKit) ──────────────────────────────────────
+  // Doc backend : docs/fonctionnalites/lives.md
+  // Lecture publique (connexion facultative) :
+  //   GET  /lives                     → { configured, canGoLive, active[], recent[] }
+  //   GET  /lives/{id}                → direct + liveStats
+  //   POST /lives/{id}/viewer-token   → { url, token, identity }
+  //   GET  /lives/{id}/comments       → 100 derniers commentaires
+  //   GET  /lives/{id}/stats          → { status, viewers, peakViewers, commentCount, reactions }
+  // Authentifié :
+  //   POST   /lives                   { title, description?, category_slug?, comments_enabled? }
+  //                                   → { live, video: { url, token, identity } } (modérateur/admin)
+  //   POST   /lives/{id}/host-token   → reprise du direct par le diffuseur
+  //   POST   /lives/{id}/go-live      → passage à l'antenne (caméra publiée)
+  //   POST   /lives/{id}/end          → terminer / couper
+  //   POST   /lives/{id}/comments     { body }
+  //   DELETE /lives/{id}/comments/{commentId}
+  //   POST   /lives/{id}/comments/{commentId}/pin · DELETE /lives/{id}/pin
+  //   POST   /lives/{id}/bans         { user_id }
+  //   POST   /lives/{id}/reactions    { type: like|pray|amen|worship|fire }
 
-  static const String liveStreams  = '/live/streams';
-  static String liveStream(String id) => '/live/streams/$id';
+  static const String lives = '/lives';
+  static String liveById(String id)       => '/lives/$id';
+  static String liveViewerToken(String id)=> '/lives/$id/viewer-token';
+  static String liveHostToken(String id)  => '/lives/$id/host-token';
+  static String liveGoLive(String id)     => '/lives/$id/go-live';
+  static String liveEnd(String id)        => '/lives/$id/end';
+  static String liveStats(String id)      => '/lives/$id/stats';
+  static String liveViewers(String id)    => '/lives/$id/viewers'; // qui regarde (public)
+  static String liveComments(String id)   => '/lives/$id/comments';
+  static String liveComment(String id, String commentId) =>
+      '/lives/$id/comments/$commentId';
+  static String livePinComment(String id, String commentId) =>
+      '/lives/$id/comments/$commentId/pin';                    // POST
+  static String liveUnpin(String id)      => '/lives/$id/pin';  // DELETE
+  static String liveBans(String id)       => '/lives/$id/bans';
+  static String liveReactions(String id)  => '/lives/$id/reactions';
+
+  // Intervenants (un à la fois) — backend : docs/fonctionnalites/lives-intervenants.md
+  //   GET    /lives/{id}/stage                        → état (file pour le personnel, « mine »)
+  //   POST   /lives/{id}/stage/requests  { message? } → demander à intervenir
+  //   DELETE /lives/{id}/stage/requests/mine          → retirer / refuser / quitter l'antenne
+  //   POST   /lives/{id}/stage/accept    { identity, camera? }
+  //   POST   /lives/{id}/stage/{speakerId}/invite|decline|remove   (diffuseur / modération)
+  //   POST   /lives/{id}/stage/settings  { enabled }                (diffuseur / modération)
+  static String liveStage(String id)          => '/lives/$id/stage';
+  static String liveStageRequests(String id)  => '/lives/$id/stage/requests';
+  static String liveStageMine(String id)      => '/lives/$id/stage/requests/mine';
+  static String liveStageAccept(String id)    => '/lives/$id/stage/accept';
+  static String liveStageSettings(String id)  => '/lives/$id/stage/settings';
+  static String liveStageSpeaker(String id, String speakerId, String action) =>
+      '/lives/$id/stage/$speakerId/$action';
 
   // ── Prayer ────────────────────────────────────────────────────────────────
   // GET    /prayer/requests              → [{id, author, body, prayer_count, message_count, ...}]

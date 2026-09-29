@@ -73,7 +73,7 @@ class HorizontalTestimonyCard extends StatelessWidget {
                           child: Text(
                             testimony.title,
                             style: const TextStyle(
-                              fontFamily: 'Poppins',
+                              fontFamily: 'Plus Jakarta Sans',
                               fontWeight: FontWeight.w600,
                               fontSize: 12.5,
                               color: AppColors.textPrimary,
@@ -108,7 +108,7 @@ class HorizontalTestimonyCard extends StatelessWidget {
                               child: Text(
                                 testimony.author.displayName,
                                 style: const TextStyle(
-                                  fontFamily: 'Inter',
+                                  fontFamily: 'Plus Jakarta Sans',
                                   fontSize: 10.5,
                                   color: AppColors.textSecondary,
                                 ),
@@ -133,7 +133,7 @@ class HorizontalTestimonyCard extends StatelessWidget {
                               Text(
                                 '${_fmt(statValue!)} ${statLabel ?? ''}',
                                 style: const TextStyle(
-                                  fontFamily: 'Inter',
+                                  fontFamily: 'Plus Jakarta Sans',
                                   fontSize: 10.5,
                                   color: AppColors.textSecondary,
                                   fontWeight: FontWeight.w500,
@@ -227,16 +227,16 @@ class _GradientHeader extends StatelessWidget {
   }
 
   List<Color> _gradientForCategory(TestimonyCategory cat) => switch (cat) {
-        TestimonyCategory.guerison    => [const Color(0xFF6B21A8), const Color(0xFFA855F7)],
-        TestimonyCategory.delivrance  => [const Color(0xFF1E3A8A), const Color(0xFF3B82F6)],
-        TestimonyCategory.conversion  => [const Color(0xFF065F46), const Color(0xFF10B981)],
-        TestimonyCategory.mariage     => [const Color(0xFF9D174D), const Color(0xFFF43F5E)],
-        TestimonyCategory.famille     => [const Color(0xFF92400E), const Color(0xFFF59E0B)],
-        TestimonyCategory.finances    => [const Color(0xFF14532D), const Color(0xFF22C55E)],
-        TestimonyCategory.miracles    => [const Color(0xFF7C2D12), const Color(0xFFF97316)],
-        TestimonyCategory.protection  => [const Color(0xFF1E3A5F), const Color(0xFF0EA5E9)],
-        TestimonyCategory.ministere   => [const Color(0xFF4A1D96), const Color(0xFF8B5CF6)],
-        TestimonyCategory.salut       => [const Color(0xFF7F1D1D), const Color(0xFFEF4444)],
+        TestimonyCategory.guerison    => [const Color(0xFF184797), const Color(0xFF4B7ACB)],
+        TestimonyCategory.delivrance  => [const Color(0xFF103675), const Color(0xFF2B5DB0)],
+        TestimonyCategory.conversion  => [const Color(0xFFD96F0B), const Color(0xFF12B76A)],
+        TestimonyCategory.mariage     => [const Color(0xFFF18717), const Color(0xFFFCC11D)],
+        TestimonyCategory.famille     => [const Color(0xFFC48A06), const Color(0xFFF79009)],
+        TestimonyCategory.finances    => [const Color(0xFF184797), const Color(0xFF12B76A)],
+        TestimonyCategory.miracles    => [const Color(0xFFD96F0B), const Color(0xFFF18717)],
+        TestimonyCategory.protection  => [const Color(0xFF103675), const Color(0xFF4B7ACB)],
+        TestimonyCategory.ministere   => [const Color(0xFF103675), const Color(0xFF4B7ACB)],
+        TestimonyCategory.salut       => [const Color(0xFFD96F0B), const Color(0xFFD92D20)],
       };
 
   IconData _iconForType(TestimonyType type) => switch (type) {
@@ -253,16 +253,16 @@ class _CategoryBadge extends StatelessWidget {
   final TestimonyCategory category;
 
   static const _colors = <TestimonyCategory, Color>{
-    TestimonyCategory.guerison:   Color(0xFF6B21A8),
-    TestimonyCategory.delivrance: Color(0xFF1E3A8A),
-    TestimonyCategory.conversion: Color(0xFF065F46),
-    TestimonyCategory.mariage:    Color(0xFF9D174D),
-    TestimonyCategory.famille:    Color(0xFF92400E),
-    TestimonyCategory.finances:   Color(0xFF14532D),
-    TestimonyCategory.miracles:   Color(0xFF7C2D12),
-    TestimonyCategory.protection: Color(0xFF1E3A5F),
-    TestimonyCategory.ministere:  Color(0xFF4A1D96),
-    TestimonyCategory.salut:      Color(0xFF7F1D1D),
+    TestimonyCategory.guerison:   Color(0xFF184797),
+    TestimonyCategory.delivrance: Color(0xFF103675),
+    TestimonyCategory.conversion: Color(0xFFD96F0B),
+    TestimonyCategory.mariage:    Color(0xFFF18717),
+    TestimonyCategory.famille:    Color(0xFFC48A06),
+    TestimonyCategory.finances:   Color(0xFF184797),
+    TestimonyCategory.miracles:   Color(0xFFD96F0B),
+    TestimonyCategory.protection: Color(0xFF103675),
+    TestimonyCategory.ministere:  Color(0xFF103675),
+    TestimonyCategory.salut:      Color(0xFFD96F0B),
   };
 
   @override
@@ -278,7 +278,7 @@ class _CategoryBadge extends StatelessWidget {
       child: Text(
         category.label,
         style: TextStyle(
-          fontFamily: 'Inter',
+          fontFamily: 'Plus Jakarta Sans',
           fontSize: 9.5,
           fontWeight: FontWeight.w600,
           color: color,

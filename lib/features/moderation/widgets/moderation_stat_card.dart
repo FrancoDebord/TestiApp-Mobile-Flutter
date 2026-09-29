@@ -23,11 +23,11 @@ class ModerationStatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: 130,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: const Color(0xFFE4E7EC)),
         boxShadow: [
           BoxShadow(
             color: color.withAlpha(20),
@@ -38,37 +38,50 @@ class ModerationStatCard extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Icon bubble
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: color.withAlpha(25),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: color, size: 18),
+          // Icône + nombre sur une ligne (la hauteur suit la taille du texte).
+          Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: color.withAlpha(25),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: color, size: 17),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    '$count',
+                    maxLines: 1,
+                    style: TextStyle(
+                      fontFamily: 'Plus Jakarta Sans',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 22,
+                      color: color,
+                      height: 1,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 10),
-          // Count
-          Text(
-            '$count',
-            style: TextStyle(
-              fontFamily: 'Poppins',
-              fontWeight: FontWeight.w700,
-              fontSize: 22,
-              color: color,
-              height: 1,
-            ),
-          ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
           // Label
           Text(
             label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              fontFamily: 'Inter',
+              fontFamily: 'Plus Jakarta Sans',
               fontSize: 11,
-              color: Color(0xFF64748B),
+              color: Color(0xFF667085),
               height: 1.3,
             ),
           ),

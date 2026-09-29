@@ -1,13 +1,16 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/app_constants.dart';
+import '../../../core/media/playback_preferences.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../features/home/models/testimony_model.dart';
 import '../../../features/home/providers/home_providers.dart';
 import '../../../services/api_service.dart' show apiServiceProvider;
 import '../../../services/audio_player_service.dart';
+import '../../../shared/widgets/quality_picker_sheet.dart';
+import 'video_player_screen.dart' show singleQualityReason;
 
 // ============================================================================
 // Audio Player Screen — Spotify-inspired full-screen audio player
@@ -26,9 +29,8 @@ import '../../../services/audio_player_service.dart';
 //      │     │        ├─ _TrackInfo            (title + author + flag + date)
 //      │     │        ├─ _CategoryChip
 //      │     │        ├─ _ProgressSection      (slider + times)
-//      │     │        ├─ _PlayerControls       (rewind15 + play/pause + fwd15)
-//      │     │        ├─ _SpeedSelector        (0.75x…2x)
-//      │     │        ├─ _CastRow              (airplay/bluetooth icon)
+//      │     │        ├─ _PlayerControls       (préc. · -15s · play/pause · +15s · suiv.)
+//      │     │        ├─ _SecondaryControls    (répétition · lecture auto · qualité · vitesse)
 //      │     │        └─ _TranscriptToggle     (expandable text)
 //      │     └─ _AudioReactionBar     (❤️ 🙏 💬 🔖 📤)
 //
@@ -53,13 +55,16 @@ class AudioPlayerScreen extends ConsumerStatefulWidget {
 
 class _AudioPlayerScreenState extends ConsumerState<AudioPlayerScreen>
     with SingleTickerProviderStateMixin {
-  double _speed = 1.0;
   bool _transcriptOpen = false;
   bool _isLiked = false;
   bool _isPraying = false;
   bool _isBookmarked = false;
 
+  /// Témoignage demandé (affiché tant que le lecteur n'a pas démarré).
   AudioTestimony? _testimony;
+
+  /// Notifier mémorisé pour pouvoir arrêter la lecture dans dispose().
+  late final AudioPlayerNotifier _audio;
 
   static const _speedOptions = [0.75, 1.0, 1.25, 1.5, 2.0];
 
@@ -72,29 +77,39 @@ class _AudioPlayerScreenState extends ConsumerState<AudioPlayerScreen>
   @override
   void initState() {
     super.initState();
+    _audio = ref.read(audioPlayerProvider.notifier);
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadAndPlay());
   }
 
+  static bool _hasMedia(AudioTestimony t) =>
+      (t.mediaPath?.isNotEmpty ?? false) || t.renditions.isNotEmpty;
+
+  /// Construit la file de lecture : les témoignages audio du fil (dans
+  /// l'ordre affiché), en démarrant sur le témoignage demandé. Si celui-ci
+  /// n'est pas dans le fil, on le charge depuis l'API et on le lit seul.
   Future<void> _loadAndPlay() async {
-    String? source = (widget.mediaPath != null && widget.mediaPath!.isNotEmpty)
-        ? widget.mediaPath
-        : null;
-
-    if (source == null) {
-      final feed = ref.read(feedNotifierProvider);
-      _testimony = feed.whereType<AudioTestimony>()
-          .where((t) => t.id == widget.testimonyId)
-          .firstOrNull;
-      source = _testimony?.mediaPath;
-    }
-
-    if (source == null || source.isEmpty) {
-      await _fetchFromApi();
+    // Déjà en cours de lecture : on ne relance pas.
+    if (ref.read(audioPlayerProvider).currentTestimony?.id ==
+        widget.testimonyId) {
       return;
     }
 
-    await ref.read(audioPlayerProvider.notifier).play(_absUrl(source));
-    if (mounted) setState(() {});
+    // Fil filtré (ce que l'utilisateur voit), sinon fil complet.
+    for (final feed in [
+      ref.read(feedProvider),
+      ref.read(feedNotifierProvider),
+    ]) {
+      final audios =
+          feed.whereType<AudioTestimony>().where(_hasMedia).toList();
+      final idx = audios.indexWhere((t) => t.id == widget.testimonyId);
+      if (idx >= 0) {
+        if (mounted) setState(() => _testimony = audios[idx]);
+        await _audio.setTestimonyQueue(audios, startIndex: idx);
+        return;
+      }
+    }
+
+    await _fetchFromApi();
   }
 
   Future<void> _fetchFromApi() async {
@@ -106,14 +121,20 @@ class _AudioPlayerScreenState extends ConsumerState<AudioPlayerScreen>
       final t = testimonyFromApiJson(resp.data);
       if (t is AudioTestimony && mounted) {
         setState(() => _testimony = t);
-        final src = t.mediaPath;
-        if (src != null && src.isNotEmpty) {
-          await ref.read(audioPlayerProvider.notifier).play(_absUrl(src));
+        if (_hasMedia(t)) {
+          await _audio.setTestimonyQueue([t]);
+          return;
         }
       }
     } catch (_) {
-      if (mounted) setState(() {});
+      // Repli ci-dessous.
     }
+    // Dernier recours : lecture directe du fichier transmis.
+    final src = widget.mediaPath;
+    if (src != null && src.isNotEmpty && mounted) {
+      await _audio.play(_absUrl(src));
+    }
+    if (mounted) setState(() {});
   }
 
   static String _absUrl(String src) {
@@ -124,15 +145,62 @@ class _AudioPlayerScreenState extends ConsumerState<AudioPlayerScreen>
 
   @override
   void dispose() {
-    ref.read(audioPlayerProvider.notifier).stop();
+    _audio.stop();
     super.dispose();
+  }
+
+  // ── Qualité ────────────────────────────────────────────────────────────────
+
+  Future<void> _openQualitySheet(AudioPlayerState player) async {
+    final t = player.currentTestimony ?? _testimony;
+    final hasRenditions = t != null && t.renditions.isNotEmpty;
+    final options = [
+      for (final q in hasRenditions ? AudioQuality.values : [AudioQuality.auto])
+        QualityOption(value: q, label: q.label, hint: q.hint),
+    ];
+    final footer = [
+      if (!hasRenditions) singleQualityReason(t is AudioTestimony ? t.renditionsStatus : null, video: false),
+      'Qualité par défaut modifiable dans Paramètres › Lecture et données.',
+    ].join('\n');
+
+    final choice = await showQualityPickerSheet<AudioQuality>(
+      context,
+      title: 'Qualité audio',
+      options: options,
+      selected: player.qualityOverride ?? AudioQuality.auto,
+      currentLabel: player.qualityOverride == null ? player.qualityLabel : null,
+      footer: footer,
+    );
+    if (choice == null || !mounted) return;
+    await _audio.setQuality(choice == AudioQuality.auto ? null : choice);
+  }
+
+  /// « Auto · 64 kbps », « Faible · 64 kbps »…
+  String _qualityButtonLabel(AudioPlayerState player, PlaybackPreferences prefs) {
+    final mode = (player.qualityOverride ?? prefs.audioQuality).label;
+    final version = player.qualityLabel;
+    return version == null || version.isEmpty ? mode : '$mode · $version';
+  }
+
+  void _cycleSpeed(double current) {
+    final i = _speedOptions.indexOf(current);
+    final next = _speedOptions[(i + 1) % _speedOptions.length];
+    _audio.setSpeed(next);
   }
 
   @override
   Widget build(BuildContext context) {
     final player    = ref.watch(audioPlayerProvider);
+    final prefs     = ref.watch(playbackPreferencesProvider);
+    final prefsCtl  = ref.read(playbackPreferencesProvider.notifier);
     final isPlaying = player.isPlaying;
     final progress  = player.progress;
+
+    // Témoignage réellement en cours (change lors de l'enchaînement auto).
+    final current = player.currentTestimony ?? _testimony;
+
+    final canNext = player.hasNext ||
+        (player.queueLength > 1 && prefs.repeatMode == RepeatMode.all);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
@@ -159,10 +227,10 @@ class _AudioPlayerScreenState extends ConsumerState<AudioPlayerScreen>
                         const SizedBox(height: 32),
                         const _CoverArt(),
                         const SizedBox(height: 28),
-                        _TrackInfo(testimony: _testimony),
+                        _TrackInfo(testimony: current),
                         const SizedBox(height: 12),
                         _CategoryChipLight(
-                            label: _testimony?.category.label ?? ''),
+                            label: current?.category.label ?? ''),
                         const SizedBox(height: 28),
 
                         // ── Slider de progression réel ────────────────────
@@ -170,42 +238,40 @@ class _AudioPlayerScreenState extends ConsumerState<AudioPlayerScreen>
                           progress: progress,
                           elapsed: _fmtDuration(player.position),
                           total:   _fmtDuration(player.duration),
-                          onChanged: (v) => ref
-                              .read(audioPlayerProvider.notifier)
-                              .seekToFraction(v),
+                          onChanged: (v) => _audio.seekToFraction(v),
                         ),
                         const SizedBox(height: 24),
 
-                        // ── Contrôles réels ───────────────────────────────
+                        // ── Contrôles principaux ──────────────────────────
                         _PlayerControls(
                           isPlaying: isPlaying,
-                          onPlayPause: () => isPlaying
-                              ? ref.read(audioPlayerProvider.notifier).pause()
-                              : ref.read(audioPlayerProvider.notifier).resume(),
-                          onRewind: () => ref
-                              .read(audioPlayerProvider.notifier)
-                              .skipBackward(),
-                          onForward: () => ref
-                              .read(audioPlayerProvider.notifier)
-                              .skipForward(),
+                          isLoading: player.isLoading,
+                          onPlayPause: () =>
+                              isPlaying ? _audio.pause() : _audio.resume(),
+                          onRewind: () => _audio.skipBackward(),
+                          onForward: () => _audio.skipForward(),
+                          onPrevious:
+                              player.hasPrevious ? _audio.playPrevious : null,
+                          onNext: canNext ? _audio.playNext : null,
                         ),
                         const SizedBox(height: 28),
 
-                        // ── Vitesse réelle ────────────────────────────────
-                        _SpeedSelector(
-                          current: _speed,
-                          options: _speedOptions,
-                          onSelect: (s) {
-                            setState(() => _speed = s);
-                            ref.read(audioPlayerProvider.notifier).setSpeed(s);
-                          },
+                        // ── Répétition · lecture auto · qualité · vitesse ─
+                        _SecondaryControls(
+                          repeatMode: prefs.repeatMode,
+                          autoplayNext: prefs.autoplayNext,
+                          qualityLabel: _qualityButtonLabel(player, prefs),
+                          speed: player.speed,
+                          onRepeat: prefsCtl.cycleRepeatMode,
+                          onAutoplay: () =>
+                              prefsCtl.setAutoplayNext(!prefs.autoplayNext),
+                          onQuality: () => _openQualitySheet(player),
+                          onSpeed: () => _cycleSpeed(player.speed),
                         ),
-                        const SizedBox(height: 20),
-                        const _CastRow(),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 24),
                         _TranscriptToggle(
                           open: _transcriptOpen,
-                          transcript: _testimony?.transcriptPreview,
+                          transcript: current?.transcriptPreview,
                           onToggle: () => setState(
                               () => _transcriptOpen = !_transcriptOpen),
                         ),
@@ -234,6 +300,7 @@ class _AudioPlayerScreenState extends ConsumerState<AudioPlayerScreen>
   }
 }
 
+
 // ============================================================================
 // App Bar
 // ============================================================================
@@ -260,7 +327,7 @@ class _AudioAppBar extends StatelessWidget {
               'Témoignage Audio',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontFamily: 'Poppins',
+                fontFamily: 'Plus Jakarta Sans',
                 color: Colors.white,
                 fontWeight: FontWeight.w600,
                 fontSize: 16,
@@ -326,7 +393,7 @@ class _CoverArt extends StatelessWidget {
                 Text(
                   'GUÉRISON',
                   style: TextStyle(
-                    fontFamily: 'Poppins',
+                    fontFamily: 'Plus Jakarta Sans',
                     color: Colors.white54,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -354,7 +421,7 @@ class _CoverArt extends StatelessWidget {
                   Text(
                     'AUDIO',
                     style: TextStyle(
-                      fontFamily: 'Inter',
+                      fontFamily: 'Plus Jakarta Sans',
                       color: Colors.white70,
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
@@ -391,7 +458,7 @@ class _TrackInfo extends StatelessWidget {
           title,
           textAlign: TextAlign.center,
           style: const TextStyle(
-            fontFamily: 'Poppins',
+            fontFamily: 'Plus Jakarta Sans',
             fontWeight: FontWeight.w600,
             fontSize: 20,
             color: Colors.white,
@@ -404,7 +471,7 @@ class _TrackInfo extends StatelessWidget {
         Text(
           author,
           style: const TextStyle(
-            fontFamily: 'Inter',
+            fontFamily: 'Plus Jakarta Sans',
             fontSize: 16,
             color: Colors.white60,
           ),
@@ -414,7 +481,7 @@ class _TrackInfo extends StatelessWidget {
           Text(
             dur,
             style: TextStyle(
-              fontFamily: 'Inter',
+              fontFamily: 'Plus Jakarta Sans',
               fontSize: 13,
               color: Colors.white.withValues(alpha: 0.45),
             ),
@@ -446,7 +513,7 @@ class _CategoryChipLight extends StatelessWidget {
       child: Text(
         label,
         style: const TextStyle(
-          fontFamily: 'Inter',
+          fontFamily: 'Plus Jakarta Sans',
           fontWeight: FontWeight.w500,
           fontSize: 12,
           color: AppColors.primaryLight,
@@ -502,7 +569,7 @@ class _ProgressSection extends StatelessWidget {
               Text(
                 elapsed,
                 style: const TextStyle(
-                  fontFamily: 'Inter',
+                  fontFamily: 'Plus Jakarta Sans',
                   color: Colors.white70,
                   fontSize: 12,
                 ),
@@ -510,7 +577,7 @@ class _ProgressSection extends StatelessWidget {
               Text(
                 total,
                 style: const TextStyle(
-                  fontFamily: 'Inter',
+                  fontFamily: 'Plus Jakarta Sans',
                   color: Colors.white38,
                   fontSize: 12,
                 ),
@@ -523,35 +590,51 @@ class _ProgressSection extends StatelessWidget {
   }
 }
 
+
 // ============================================================================
-// Player Controls
+// Player Controls — préc. · -15s · play/pause · +15s · suiv.
 // ============================================================================
 
 class _PlayerControls extends StatelessWidget {
   const _PlayerControls({
     required this.isPlaying,
+    required this.isLoading,
     required this.onPlayPause,
     required this.onRewind,
     required this.onForward,
+    this.onPrevious,
+    this.onNext,
   });
 
   final bool isPlaying;
+  final bool isLoading;
   final VoidCallback onPlayPause;
   final VoidCallback onRewind;
   final VoidCallback onForward;
 
+  /// `null` = bouton désactivé (pas de témoignage précédent / suivant).
+  final VoidCallback? onPrevious;
+  final VoidCallback? onNext;
+
   @override
   Widget build(BuildContext context) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        // Rewind 15s
+        IconButton(
+          onPressed: onPrevious,
+          icon: const Icon(Icons.skip_previous_rounded),
+          iconSize: 34,
+          color: Colors.white,
+          disabledColor: Colors.white24,
+          tooltip: 'Précédent',
+        ),
+        // Reculer de 15 s
         _SkipButton(
           onTap: onRewind,
           icon: Icons.replay_10_rounded,
           label: '15s',
         ),
-        const SizedBox(width: 32),
         // Play / Pause (large)
         GestureDetector(
           onTap: onPlayPause,
@@ -562,20 +645,35 @@ class _PlayerControls extends StatelessWidget {
               shape: BoxShape.circle,
               color: Colors.white,
             ),
-            child: Icon(
-              isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-              color: AppColors.primary,
-              size: 42,
-            ),
+            child: isLoading && !isPlaying
+                ? const Padding(
+                    padding: EdgeInsets.all(22),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 3,
+                      color: AppColors.primary,
+                    ),
+                  )
+                : Icon(
+                    isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                    color: AppColors.primary,
+                    size: 42,
+                  ),
           ),
         ),
-        const SizedBox(width: 32),
-        // Forward 15s
+        // Avancer de 15 s
         _SkipButton(
           onTap: onForward,
           icon: Icons.forward_10_rounded,
           label: '15s',
           isForward: true,
+        ),
+        IconButton(
+          onPressed: onNext,
+          icon: const Icon(Icons.skip_next_rounded),
+          iconSize: 34,
+          color: Colors.white,
+          disabledColor: Colors.white24,
+          tooltip: 'Suivant',
         ),
       ],
     );
@@ -606,7 +704,7 @@ class _SkipButton extends StatelessWidget {
           Text(
             label,
             style: const TextStyle(
-              fontFamily: 'Inter',
+              fontFamily: 'Plus Jakarta Sans',
               color: Colors.white54,
               fontSize: 11,
             ),
@@ -618,98 +716,137 @@ class _SkipButton extends StatelessWidget {
 }
 
 // ============================================================================
-// Speed Selector
+// Secondary Controls — répétition · lecture auto · qualité · vitesse
 // ============================================================================
 
-class _SpeedSelector extends StatelessWidget {
-  const _SpeedSelector({
-    required this.current,
-    required this.options,
-    required this.onSelect,
+class _SecondaryControls extends StatelessWidget {
+  const _SecondaryControls({
+    required this.repeatMode,
+    required this.autoplayNext,
+    required this.qualityLabel,
+    required this.speed,
+    required this.onRepeat,
+    required this.onAutoplay,
+    required this.onQuality,
+    required this.onSpeed,
   });
 
-  final double current;
-  final List<double> options;
-  final ValueChanged<double> onSelect;
+  final RepeatMode repeatMode;
+  final bool autoplayNext;
+  final String qualityLabel;
+  final double speed;
+  final VoidCallback onRepeat;
+  final VoidCallback onAutoplay;
+  final VoidCallback onQuality;
+  final VoidCallback onSpeed;
 
-  String _label(double v) {
-    if (v == v.truncateToDouble()) {
-      return '${v.toInt()}x';
-    }
-    return '${v}x';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white10,
-        borderRadius: BorderRadius.circular(30),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: options.map((speed) {
-          final selected = speed == current;
-          return GestureDetector(
-            onTap: () => onSelect(speed),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                color: selected ? Colors.white : Colors.transparent,
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Text(
-                _label(speed),
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 13,
-                  fontWeight:
-                      selected ? FontWeight.w700 : FontWeight.w400,
-                  color: selected ? AppColors.primary : Colors.white54,
-                ),
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-}
-
-// ============================================================================
-// Cast Row
-// ============================================================================
-
-class _CastRow extends StatelessWidget {
-  const _CastRow();
+  static String _speedLabel(double v) =>
+      v == v.truncateToDouble() ? '${v.toInt()}x' : '${v}x';
 
   @override
   Widget build(BuildContext context) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        IconButton(
-          onPressed: () {},
-          icon: const Icon(Icons.airplay_rounded),
-          color: Colors.white54,
-          iconSize: 22,
-          tooltip: 'AirPlay',
+        Expanded(
+          child: _SecondaryButton(
+            icon: repeatMode == RepeatMode.one
+                ? Icons.repeat_one_rounded
+                : repeatMode == RepeatMode.all
+                    ? Icons.repeat_rounded
+                    : Icons.repeat,
+            label: switch (repeatMode) {
+              RepeatMode.off => 'Répéter',
+              RepeatMode.one => 'Répéter 1',
+              RepeatMode.all => 'Tout répéter',
+            },
+            tooltip: repeatMode.label,
+            active: repeatMode != RepeatMode.off,
+            onTap: onRepeat,
+          ),
         ),
-        const SizedBox(width: 8),
-        IconButton(
-          onPressed: () {},
-          icon: const Icon(Icons.bluetooth_audio_rounded),
-          color: Colors.white54,
-          iconSize: 22,
-          tooltip: 'Bluetooth',
+        Expanded(
+          child: _SecondaryButton(
+            icon: Icons.playlist_play_rounded,
+            label: 'Lecture auto',
+            tooltip: autoplayNext
+                ? 'Lecture automatique activée'
+                : 'Lecture automatique désactivée',
+            active: autoplayNext,
+            onTap: onAutoplay,
+          ),
+        ),
+        Expanded(
+          child: _SecondaryButton(
+            icon: Icons.high_quality_outlined,
+            label: qualityLabel,
+            tooltip: 'Qualité',
+            onTap: onQuality,
+          ),
+        ),
+        Expanded(
+          child: _SecondaryButton(
+            icon: Icons.speed_rounded,
+            label: _speedLabel(speed),
+            tooltip: 'Vitesse de lecture',
+            active: speed != 1.0,
+            onTap: onSpeed,
+          ),
         ),
       ],
     );
   }
 }
+
+class _SecondaryButton extends StatelessWidget {
+  const _SecondaryButton({
+    required this.icon,
+    required this.label,
+    required this.tooltip,
+    required this.onTap,
+    this.active = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final String tooltip;
+  final VoidCallback onTap;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = active ? AppColors.primaryLight : Colors.white70;
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+          child: Column(
+            children: [
+              Icon(icon, color: color, size: 24),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: 'Plus Jakarta Sans',
+                  fontSize: 11,
+                  fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 
 // ============================================================================
 // Transcript Toggle
@@ -755,7 +892,7 @@ class _TranscriptToggle extends StatelessWidget {
                   child: Text(
                     'Transcription',
                     style: TextStyle(
-                      fontFamily: 'Inter',
+                      fontFamily: 'Plus Jakarta Sans',
                       color: Colors.white70,
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
@@ -789,7 +926,7 @@ class _TranscriptToggle extends StatelessWidget {
             child: Text(
               transcript ?? _transcript,
               style: const TextStyle(
-                fontFamily: 'Inter',
+                fontFamily: 'Plus Jakarta Sans',
                 color: Colors.white70,
                 fontSize: 14,
                 height: 1.7,
@@ -985,7 +1122,7 @@ class _MiniAudioPlayerState extends State<MiniAudioPlayer> {
                     const Text(
                       'Comment Dieu a guéri ma fille...',
                       style: TextStyle(
-                        fontFamily: 'Poppins',
+                        fontFamily: 'Plus Jakarta Sans',
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
                         color: AppColors.textPrimary,
@@ -996,7 +1133,7 @@ class _MiniAudioPlayerState extends State<MiniAudioPlayer> {
                     const Text(
                       'Marie Nkosi',
                       style: TextStyle(
-                        fontFamily: 'Inter',
+                        fontFamily: 'Plus Jakarta Sans',
                         fontSize: 11,
                         color: AppColors.textSecondary,
                       ),

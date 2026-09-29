@@ -120,14 +120,14 @@ class _MaintenanceBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFFEF3C7),
+        color: const Color(0xFFFFFAEB),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFF59E0B).withAlpha(80)),
+        border: Border.all(color: const Color(0xFFF79009).withAlpha(80)),
       ),
       child: Row(
         children: [
           const Icon(Icons.construction_rounded,
-              color: Color(0xFFF59E0B), size: 20),
+              color: Color(0xFFF79009), size: 20),
           const SizedBox(width: 10),
           const Expanded(
             child: Column(
@@ -136,18 +136,18 @@ class _MaintenanceBanner extends StatelessWidget {
                 Text(
                   'Mode maintenance actif',
                   style: TextStyle(
-                    fontFamily: 'Poppins',
+                    fontFamily: 'Plus Jakarta Sans',
                     fontWeight: FontWeight.w600,
                     fontSize: 13,
-                    color: Color(0xFF92400E),
+                    color: Color(0xFFC48A06),
                   ),
                 ),
                 Text(
                   'L\'application est inaccessible aux utilisateurs.',
                   style: TextStyle(
-                    fontFamily: 'Inter',
+                    fontFamily: 'Plus Jakarta Sans',
                     fontSize: 11,
-                    color: Color(0xFF92400E),
+                    color: Color(0xFFC48A06),
                   ),
                 ),
               ],
@@ -156,13 +156,13 @@ class _MaintenanceBanner extends StatelessWidget {
           TextButton(
             onPressed: onDisable,
             style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFF92400E),
+              foregroundColor: const Color(0xFFC48A06),
               padding:
                   const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             ),
             child: const Text('Désactiver',
                 style: TextStyle(
-                    fontFamily: 'Inter',
+                    fontFamily: 'Plus Jakarta Sans',
                     fontSize: 12,
                     fontWeight: FontWeight.w600)),
           ),
@@ -191,7 +191,7 @@ class _SettingsSection extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: const Color(0xFFE4E7EC)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -200,21 +200,23 @@ class _SettingsSection extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
             child: Row(
               children: [
-                Icon(icon, size: 16, color: const Color(0xFF6B21A8)),
+                Icon(icon, size: 16, color: const Color(0xFF184797)),
                 const SizedBox(width: 8),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                    color: Color(0xFF0F172A),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontFamily: 'Plus Jakarta Sans',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      color: Color(0xFF263238),
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          const Divider(height: 1, color: Color(0xFFE2E8F0)),
+          const Divider(height: 1, color: Color(0xFFE4E7EC)),
           ...tiles,
         ],
       ),
@@ -245,7 +247,7 @@ class _ToggleTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+        border: Border(bottom: BorderSide(color: Color(0xFFE4E7EC))),
       ),
       child: ListTile(
         contentPadding:
@@ -255,25 +257,27 @@ class _ToggleTile extends StatelessWidget {
           height: 34,
           decoration: BoxDecoration(
             color: value
-                ? const Color(0xFF6B21A8).withAlpha(15)
-                : const Color(0xFFF1F5F9),
+                ? const Color(0xFF184797).withAlpha(15)
+                : const Color(0xFFF2F4F7),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(icon,
               size: 16,
               color: value
-                  ? const Color(0xFF6B21A8)
-                  : const Color(0xFF94A3B8)),
+                  ? const Color(0xFF184797)
+                  : const Color(0xFF98A2B3)),
         ),
         title: Row(
           children: [
-            Text(
-              label,
-              style: const TextStyle(
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.w500,
-                fontSize: 13,
-                color: Color(0xFF0F172A),
+            Flexible(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontFamily: 'Plus Jakarta Sans',
+                  fontWeight: FontWeight.w500,
+                  fontSize: 13,
+                  color: Color(0xFF263238),
+                ),
               ),
             ),
             if (isExperimental) ...[
@@ -282,16 +286,16 @@ class _ToggleTile extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFF7ED),
+                  color: const Color(0xFFFFF1E2),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: const Text(
                   'Bêta',
                   style: TextStyle(
-                    fontFamily: 'Inter',
+                    fontFamily: 'Plus Jakarta Sans',
                     fontSize: 9,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFFF59E0B),
+                    color: Color(0xFFF79009),
                   ),
                 ),
               ),
@@ -301,16 +305,16 @@ class _ToggleTile extends StatelessWidget {
         subtitle: Text(
           sublabel,
           style: const TextStyle(
-            fontFamily: 'Inter',
+            fontFamily: 'Plus Jakarta Sans',
             fontSize: 11,
-            color: Color(0xFF64748B),
+            color: Color(0xFF667085),
           ),
         ),
         trailing: Switch(
           value: value,
           onChanged: onChanged,
-          activeThumbColor: const Color(0xFF6B21A8),
-          activeTrackColor: const Color(0xFF6B21A8).withAlpha(80),
+          activeThumbColor: const Color(0xFF184797),
+          activeTrackColor: const Color(0xFF184797).withAlpha(80),
           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
       ),
@@ -335,7 +339,7 @@ class _DangerZone extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFEF4444).withAlpha(60)),
+        border: Border.all(color: const Color(0xFFD92D20).withAlpha(60)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -345,21 +349,23 @@ class _DangerZone extends StatelessWidget {
             child: Row(
               children: [
                 const Icon(Icons.warning_amber_rounded,
-                    size: 16, color: Color(0xFFEF4444)),
+                    size: 16, color: Color(0xFFD92D20)),
                 const SizedBox(width: 8),
-                const Text(
-                  'Zone dangereuse',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                    color: Color(0xFFEF4444),
+                const Expanded(
+                  child: Text(
+                    'Zone dangereuse',
+                    style: TextStyle(
+                      fontFamily: 'Plus Jakarta Sans',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      color: Color(0xFFD92D20),
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          const Divider(height: 1, color: Color(0xFFE2E8F0)),
+          const Divider(height: 1, color: Color(0xFFE4E7EC)),
           ListTile(
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -368,25 +374,25 @@ class _DangerZone extends StatelessWidget {
               height: 34,
               decoration: BoxDecoration(
                 color: maintenanceMode
-                    ? const Color(0xFFFEF3C7)
-                    : const Color(0xFFFEF2F2),
+                    ? const Color(0xFFFFFAEB)
+                    : const Color(0xFFFEF3F2),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
                 Icons.construction_rounded,
                 size: 16,
                 color: maintenanceMode
-                    ? const Color(0xFFF59E0B)
-                    : const Color(0xFFEF4444),
+                    ? const Color(0xFFF79009)
+                    : const Color(0xFFD92D20),
               ),
             ),
             title: const Text(
               'Mode maintenance',
               style: TextStyle(
-                fontFamily: 'Inter',
+                fontFamily: 'Plus Jakarta Sans',
                 fontWeight: FontWeight.w500,
                 fontSize: 13,
-                color: Color(0xFF0F172A),
+                color: Color(0xFF263238),
               ),
             ),
             subtitle: Text(
@@ -394,23 +400,23 @@ class _DangerZone extends StatelessWidget {
                   ? 'Application hors ligne pour les utilisateurs'
                   : 'Mettre l\'app en mode maintenance',
               style: const TextStyle(
-                fontFamily: 'Inter',
+                fontFamily: 'Plus Jakarta Sans',
                 fontSize: 11,
-                color: Color(0xFF64748B),
+                color: Color(0xFF667085),
               ),
             ),
             trailing: ElevatedButton(
               onPressed: onToggleMaintenance,
               style: ElevatedButton.styleFrom(
                 backgroundColor: maintenanceMode
-                    ? const Color(0xFF22C55E)
-                    : const Color(0xFFEF4444),
+                    ? const Color(0xFF12B76A)
+                    : const Color(0xFFD92D20),
                 foregroundColor: Colors.white,
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(
                     horizontal: 12, vertical: 8),
                 textStyle: const TextStyle(
-                  fontFamily: 'Inter',
+                  fontFamily: 'Plus Jakarta Sans',
                   fontWeight: FontWeight.w600,
                   fontSize: 12,
                 ),

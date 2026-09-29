@@ -63,7 +63,7 @@ class _ReviewBottomSheetState extends State<ReviewBottomSheet> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: const Color(0xFFE2E8F0),
+                color: const Color(0xFFE4E7EC),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -72,10 +72,10 @@ class _ReviewBottomSheetState extends State<ReviewBottomSheet> {
           Text(
             _isReject ? 'Rejeter le témoignage' : 'Demander une modification',
             style: const TextStyle(
-              fontFamily: 'Poppins',
+              fontFamily: 'Plus Jakarta Sans',
               fontWeight: FontWeight.w600,
               fontSize: 17,
-              color: Color(0xFF0F172A),
+              color: Color(0xFF263238),
             ),
           ),
           const SizedBox(height: 4),
@@ -83,9 +83,9 @@ class _ReviewBottomSheetState extends State<ReviewBottomSheet> {
           Text(
             widget.item.truncatedTitle,
             style: const TextStyle(
-              fontFamily: 'Inter',
+              fontFamily: 'Plus Jakarta Sans',
               fontSize: 13,
-              color: Color(0xFF64748B),
+              color: Color(0xFF667085),
               height: 1.4,
             ),
           ),
@@ -98,7 +98,7 @@ class _ReviewBottomSheetState extends State<ReviewBottomSheet> {
               decoration: BoxDecoration(
                 color: const Color(0xFFF8FAFC),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
+                border: Border.all(color: const Color(0xFFE4E7EC)),
               ),
               child: Text(
                 widget.item.contentPreview!,
@@ -106,7 +106,7 @@ class _ReviewBottomSheetState extends State<ReviewBottomSheet> {
                   fontFamily: 'Playfair Display',
                   fontStyle: FontStyle.italic,
                   fontSize: 13,
-                  color: Color(0xFF0F172A),
+                  color: Color(0xFF263238),
                   height: 1.6,
                 ),
                 maxLines: 4,
@@ -121,10 +121,10 @@ class _ReviewBottomSheetState extends State<ReviewBottomSheet> {
             const Text(
               'Motif du rejet',
               style: TextStyle(
-                fontFamily: 'Inter',
+                fontFamily: 'Plus Jakarta Sans',
                 fontWeight: FontWeight.w600,
                 fontSize: 13,
-                color: Color(0xFF0F172A),
+                color: Color(0xFF263238),
               ),
             ),
             const SizedBox(height: 8),
@@ -133,9 +133,9 @@ class _ReviewBottomSheetState extends State<ReviewBottomSheet> {
               hint: const Text(
                 'Sélectionner un motif',
                 style: TextStyle(
-                  fontFamily: 'Inter',
+                  fontFamily: 'Plus Jakarta Sans',
                   fontSize: 13,
-                  color: Color(0xFF94A3B8),
+                  color: Color(0xFF98A2B3),
                 ),
               ),
               decoration: InputDecoration(
@@ -143,16 +143,16 @@ class _ReviewBottomSheetState extends State<ReviewBottomSheet> {
                     const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                  borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                  borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide:
-                      const BorderSide(color: Color(0xFF6B21A8), width: 1.5),
+                      const BorderSide(color: Color(0xFF184797), width: 1.5),
                 ),
                 filled: true,
                 fillColor: const Color(0xFFF8FAFC),
@@ -164,9 +164,9 @@ class _ReviewBottomSheetState extends State<ReviewBottomSheet> {
                       child: Text(
                         r.label,
                         style: const TextStyle(
-                          fontFamily: 'Inter',
+                          fontFamily: 'Plus Jakarta Sans',
                           fontSize: 13,
-                          color: Color(0xFF0F172A),
+                          color: Color(0xFF263238),
                         ),
                       ),
                     ),
@@ -185,10 +185,10 @@ class _ReviewBottomSheetState extends State<ReviewBottomSheet> {
                 ? 'Note optionnelle pour le modérateur'
                 : 'Instructions pour l\'auteur',
             style: const TextStyle(
-              fontFamily: 'Inter',
+              fontFamily: 'Plus Jakarta Sans',
               fontWeight: FontWeight.w600,
               fontSize: 13,
-              color: Color(0xFF0F172A),
+              color: Color(0xFF263238),
             ),
           ),
           const SizedBox(height: 8),
@@ -201,23 +201,23 @@ class _ReviewBottomSheetState extends State<ReviewBottomSheet> {
                   ? 'Ajouter une note interne (optionnel)…'
                   : 'Expliquer les modifications attendues…',
               hintStyle: const TextStyle(
-                fontFamily: 'Inter',
+                fontFamily: 'Plus Jakarta Sans',
                 fontSize: 13,
-                color: Color(0xFF94A3B8),
+                color: Color(0xFF98A2B3),
               ),
               contentPadding: const EdgeInsets.all(14),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide:
-                    const BorderSide(color: Color(0xFF6B21A8), width: 1.5),
+                    const BorderSide(color: Color(0xFF184797), width: 1.5),
               ),
               filled: true,
               fillColor: const Color(0xFFF8FAFC),
@@ -242,10 +242,10 @@ class _ReviewBottomSheetState extends State<ReviewBottomSheet> {
                   : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor:
-                    _isReject ? const Color(0xFFEF4444) : const Color(0xFFF59E0B),
+                    _isReject ? const Color(0xFFD92D20) : const Color(0xFFF79009),
                 foregroundColor: Colors.white,
-                disabledBackgroundColor: const Color(0xFFE2E8F0),
-                disabledForegroundColor: const Color(0xFF94A3B8),
+                disabledBackgroundColor: const Color(0xFFE4E7EC),
+                disabledForegroundColor: const Color(0xFF98A2B3),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -254,7 +254,7 @@ class _ReviewBottomSheetState extends State<ReviewBottomSheet> {
               child: Text(
                 _isReject ? 'Confirmer le rejet' : 'Envoyer la demande',
                 style: const TextStyle(
-                  fontFamily: 'Inter',
+                  fontFamily: 'Plus Jakarta Sans',
                   fontWeight: FontWeight.w600,
                   fontSize: 15,
                 ),

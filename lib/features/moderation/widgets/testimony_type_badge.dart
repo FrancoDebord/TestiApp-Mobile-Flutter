@@ -18,20 +18,20 @@ class TestimonyTypeBadge extends StatelessWidget {
       TestimonyType.text => (
           'TEXTE',
           Icons.article_rounded,
-          const Color(0xFFEFF6FF),
-          const Color(0xFF3B82F6),
+          const Color(0xFFEAF1FC),
+          const Color(0xFF2B5DB0),
         ),
       TestimonyType.audio => (
           'AUDIO',
           Icons.headphones_rounded,
-          const Color(0xFFFFF7ED),
-          const Color(0xFFF59E0B),
+          const Color(0xFFFFF1E2),
+          const Color(0xFFF79009),
         ),
       TestimonyType.video => (
           'VIDEO',
           Icons.play_circle_rounded,
-          const Color(0xFFF0FDF4),
-          const Color(0xFF22C55E),
+          const Color(0xFFECFDF3),
+          const Color(0xFF12B76A),
         ),
     };
 
@@ -46,14 +46,18 @@ class TestimonyTypeBadge extends StatelessWidget {
         children: [
           Icon(icon, size: 11, color: fg),
           const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: fg,
-              letterSpacing: 0.4,
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: 'Plus Jakarta Sans',
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: fg,
+                letterSpacing: 0.4,
+              ),
             ),
           ),
         ],

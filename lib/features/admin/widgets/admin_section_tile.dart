@@ -33,13 +33,13 @@ class AdminSectionTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           color: isSelected
-              ? const Color(0xFF6B21A8).withAlpha(12)
+              ? const Color(0xFF184797).withAlpha(12)
               : Colors.white,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: isSelected
-                ? const Color(0xFF6B21A8).withAlpha(60)
-                : const Color(0xFFE2E8F0),
+                ? const Color(0xFF184797).withAlpha(60)
+                : const Color(0xFFE4E7EC),
           ),
         ),
         child: Row(
@@ -50,7 +50,7 @@ class AdminSectionTile extends StatelessWidget {
               height: 40,
               decoration: BoxDecoration(
                 color: isSelected
-                    ? const Color(0xFF6B21A8).withAlpha(20)
+                    ? const Color(0xFF184797).withAlpha(20)
                     : const Color(0xFFF8FAFC),
                 borderRadius: BorderRadius.circular(10),
               ),
@@ -58,8 +58,8 @@ class AdminSectionTile extends StatelessWidget {
                 icon,
                 size: 20,
                 color: isSelected
-                    ? const Color(0xFF6B21A8)
-                    : const Color(0xFF64748B),
+                    ? const Color(0xFF184797)
+                    : const Color(0xFF667085),
               ),
             ),
             const SizedBox(width: 12),
@@ -71,20 +71,20 @@ class AdminSectionTile extends StatelessWidget {
                   Text(
                     label,
                     style: TextStyle(
-                      fontFamily: 'Poppins',
+                      fontFamily: 'Plus Jakarta Sans',
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
                       color: isSelected
-                          ? const Color(0xFF6B21A8)
-                          : const Color(0xFF0F172A),
+                          ? const Color(0xFF184797)
+                          : const Color(0xFF263238),
                     ),
                   ),
                   Text(
                     sublabel,
                     style: const TextStyle(
-                      fontFamily: 'Inter',
+                      fontFamily: 'Plus Jakarta Sans',
                       fontSize: 11,
-                      color: Color(0xFF64748B),
+                      color: Color(0xFF667085),
                     ),
                   ),
                 ],
@@ -96,13 +96,13 @@ class AdminSectionTile extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF6B21A8),
+                  color: const Color(0xFF184797),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
                   '$badgeCount',
                   style: const TextStyle(
-                    fontFamily: 'Inter',
+                    fontFamily: 'Plus Jakarta Sans',
                     fontWeight: FontWeight.w700,
                     fontSize: 11,
                     color: Colors.white,
@@ -111,7 +111,7 @@ class AdminSectionTile extends StatelessWidget {
               )
             else
               const Icon(Icons.chevron_right_rounded,
-                  size: 18, color: Color(0xFF94A3B8)),
+                  size: 18, color: Color(0xFF98A2B3)),
           ],
         ),
       ),

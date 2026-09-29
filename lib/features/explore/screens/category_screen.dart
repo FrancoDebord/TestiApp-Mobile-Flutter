@@ -8,9 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../home/models/testimony_model.dart';
-import '../../home/widgets/audio_testimony_card.dart';
-import '../../home/widgets/text_testimony_card.dart';
-import '../../home/widgets/video_testimony_card.dart';
+import '../../home/widgets/testimony_feed_item.dart';
 import '../models/explore_models.dart';
 import '../providers/explore_providers.dart';
 
@@ -23,16 +21,16 @@ class _CatMeta {
 }
 
 const _catMeta = <TestimonyCategory, _CatMeta>{
-  TestimonyCategory.guerison:   _CatMeta(colors: [Color(0xFF6B21A8), Color(0xFFA855F7)], icon: Icons.healing_outlined),
-  TestimonyCategory.delivrance: _CatMeta(colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)], icon: Icons.lock_open_outlined),
-  TestimonyCategory.conversion: _CatMeta(colors: [Color(0xFF065F46), Color(0xFF10B981)], icon: Icons.rotate_right_rounded),
-  TestimonyCategory.mariage:    _CatMeta(colors: [Color(0xFF9D174D), Color(0xFFF43F5E)], icon: Icons.favorite_rounded),
-  TestimonyCategory.famille:    _CatMeta(colors: [Color(0xFF92400E), Color(0xFFF59E0B)], icon: Icons.people_alt_outlined),
-  TestimonyCategory.finances:   _CatMeta(colors: [Color(0xFF14532D), Color(0xFF22C55E)], icon: Icons.attach_money_rounded),
-  TestimonyCategory.miracles:   _CatMeta(colors: [Color(0xFF7C2D12), Color(0xFFF97316)], icon: Icons.auto_awesome_rounded),
-  TestimonyCategory.protection: _CatMeta(colors: [Color(0xFF1E3A5F), Color(0xFF0EA5E9)], icon: Icons.shield_outlined),
-  TestimonyCategory.ministere:  _CatMeta(colors: [Color(0xFF4A1D96), Color(0xFF8B5CF6)], icon: Icons.record_voice_over_outlined),
-  TestimonyCategory.salut:      _CatMeta(colors: [Color(0xFF7F1D1D), Color(0xFFEF4444)], icon: Icons.star_rounded),
+  TestimonyCategory.guerison:   _CatMeta(colors: [Color(0xFF184797), Color(0xFF4B7ACB)], icon: Icons.healing_outlined),
+  TestimonyCategory.delivrance: _CatMeta(colors: [Color(0xFF103675), Color(0xFF2B5DB0)], icon: Icons.lock_open_outlined),
+  TestimonyCategory.conversion: _CatMeta(colors: [Color(0xFFD96F0B), Color(0xFF12B76A)], icon: Icons.rotate_right_rounded),
+  TestimonyCategory.mariage:    _CatMeta(colors: [Color(0xFFF18717), Color(0xFFFCC11D)], icon: Icons.favorite_rounded),
+  TestimonyCategory.famille:    _CatMeta(colors: [Color(0xFFC48A06), Color(0xFFF79009)], icon: Icons.people_alt_outlined),
+  TestimonyCategory.finances:   _CatMeta(colors: [Color(0xFF184797), Color(0xFF12B76A)], icon: Icons.attach_money_rounded),
+  TestimonyCategory.miracles:   _CatMeta(colors: [Color(0xFFD96F0B), Color(0xFFF18717)], icon: Icons.auto_awesome_rounded),
+  TestimonyCategory.protection: _CatMeta(colors: [Color(0xFF103675), Color(0xFF4B7ACB)], icon: Icons.shield_outlined),
+  TestimonyCategory.ministere:  _CatMeta(colors: [Color(0xFF103675), Color(0xFF4B7ACB)], icon: Icons.record_voice_over_outlined),
+  TestimonyCategory.salut:      _CatMeta(colors: [Color(0xFFD96F0B), Color(0xFFD92D20)], icon: Icons.star_rounded),
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -56,7 +54,7 @@ class CategoryScreen extends ConsumerWidget {
     final cat      = _category;
     final meta     = _catMeta[cat] ??
         const _CatMeta(
-          colors: [Color(0xFF6B21A8), Color(0xFFA855F7)],
+          colors: [Color(0xFF184797), Color(0xFF4B7ACB)],
           icon: Icons.star_rounded,
         );
     final results    = ref.watch(categoryResultsProvider(cat));
@@ -108,7 +106,7 @@ class CategoryScreen extends ConsumerWidget {
                       Text(
                         cat.label,
                         style: const TextStyle(
-                          fontFamily: 'Poppins',
+                          fontFamily: 'Plus Jakarta Sans',
                           fontWeight: FontWeight.w700,
                           fontSize: 22,
                           color: Colors.white,
@@ -117,7 +115,7 @@ class CategoryScreen extends ConsumerWidget {
                       Text(
                         '${results.length} témoignage${results.length != 1 ? 's' : ''}',
                         style: TextStyle(
-                          fontFamily: 'Inter',
+                          fontFamily: 'Plus Jakarta Sans',
                           fontSize: 13,
                           color: Colors.white.withAlpha(200),
                         ),
@@ -222,7 +220,7 @@ class _FilterBarDelegate extends SliverPersistentHeaderDelegate {
                         child: Text(
                           f.label,
                           style: TextStyle(
-                            fontFamily: 'Inter',
+                            fontFamily: 'Plus Jakarta Sans',
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
                             color: selected
@@ -280,7 +278,7 @@ class _SortButton extends StatelessWidget {
             Text(
               current.label,
               style: const TextStyle(
-                fontFamily: 'Inter',
+                fontFamily: 'Plus Jakarta Sans',
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
                 color: AppColors.textSecondary,
@@ -369,8 +367,6 @@ class _EmptyCategory extends StatelessWidget {
 
 // ── Dispatch card ─────────────────────────────────────────────────────────────
 
-Widget _buildCard(Testimony t) => switch (t) {
-      TextTestimony()  => TextTestimonyCard(testimony: t),
-      AudioTestimony() => AudioTestimonyCard(testimony: t),
-      VideoTestimony() => VideoTestimonyCard(testimony: t),
-    };
+/// Grande carte ou ligne compacte selon l'affichage choisi (feedLayoutProvider).
+Widget _buildCard(Testimony t) =>
+    TestimonyFeedItem(key: ValueKey(t.id), testimony: t);

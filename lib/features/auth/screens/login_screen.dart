@@ -133,7 +133,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final errorMessage = _errorMessage;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF6B21A8),
+      backgroundColor: const Color(0xFF184797),
       body: Column(
         children: [
           // ── Purple wave header ─────────────────────────────────────────────
@@ -165,7 +165,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   const Text(
                     'Bon retour !',
                     style: TextStyle(
-                      fontFamily: 'Poppins',
+                      fontFamily: 'Plus Jakarta Sans',
                       fontWeight: FontWeight.w600,
                       fontSize: 24,
                       color: Colors.white,
@@ -175,7 +175,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   Text(
                     'Connectez-vous à votre compte',
                     style: TextStyle(
-                      fontFamily: 'Inter',
+                      fontFamily: 'Plus Jakarta Sans',
                       fontSize: 13,
                       color: Colors.white.withAlpha(204),
                     ),
@@ -236,7 +236,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             _obscurePassword
                                 ? Icons.visibility_off_outlined
                                 : Icons.visibility_outlined,
-                            color: const Color(0xFF64748B),
+                            color: const Color(0xFF667085),
                             size: 20,
                           ),
                           onPressed: () => setState(
@@ -260,9 +260,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           child: const Text(
                             'Mot de passe oublié ?',
                             style: TextStyle(
-                              fontFamily: 'Inter',
+                              fontFamily: 'Plus Jakarta Sans',
                               fontSize: 13,
-                              color: Color(0xFF6B21A8),
+                              color: Color(0xFF184797),
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -319,9 +319,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           const Text(
                             "Pas encore de compte ? ",
                             style: TextStyle(
-                              fontFamily: 'Inter',
+                              fontFamily: 'Plus Jakarta Sans',
                               fontSize: 14,
-                              color: Color(0xFF64748B),
+                              color: Color(0xFF667085),
                             ),
                           ),
                           GestureDetector(
@@ -330,10 +330,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             child: const Text(
                               "S'inscrire",
                               style: TextStyle(
-                                fontFamily: 'Inter',
+                                fontFamily: 'Plus Jakarta Sans',
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
-                                color: Color(0xFF6B21A8),
+                                color: Color(0xFF184797),
                               ),
                             ),
                           ),
@@ -384,7 +384,7 @@ class _SocialButton extends StatelessWidget {
       label: Text(
         label,
         style: TextStyle(
-          fontFamily: 'Inter',
+          fontFamily: 'Plus Jakarta Sans',
           fontWeight: FontWeight.w600,
           fontSize: 14,
           color: color,

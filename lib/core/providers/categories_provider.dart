@@ -16,13 +16,16 @@ class CategoryModel {
     this.isActive = true,
   });
 
-  final int    id;
+  /// Identifiant serveur (UUID) ; vide pour la liste de secours.
+  final String id;
   final String name;
   final String slug;
   final bool   isActive;
 
   factory CategoryModel.fromJson(Map<String, dynamic> j) => CategoryModel(
-    id:       (j['id'] as num).toInt(),
+    // UUID côté serveur : l'ancien `as num` échouait toujours, et l'app
+    // retombait sur la liste de secours (slugs inconnus du serveur).
+    id:       '${j['id'] ?? ''}',
     name:     j['name']     as String? ?? '',
     slug:     j['slug']     as String? ?? '',
     isActive: (j['is_active'] ?? j['isActive']) as bool? ?? true,
@@ -31,18 +34,23 @@ class CategoryModel {
 
 // ── Fallback hardcodé si serveur inaccessible ─────────────────────────────────
 
+// Mêmes slugs que la table `categories` du serveur (CategorySeeder) :
+// un slug inconnu fait échouer le partage (« category invalid »).
 const _kFallbackCategories = [
-  CategoryModel(id: 0, name: 'Guérison',         slug: 'guerison'),
-  CategoryModel(id: 0, name: 'Délivrance',        slug: 'delivrance'),
-  CategoryModel(id: 0, name: 'Conversion',        slug: 'conversion'),
-  CategoryModel(id: 0, name: 'Mariage',           slug: 'mariage'),
-  CategoryModel(id: 0, name: 'Famille',           slug: 'famille'),
-  CategoryModel(id: 0, name: 'Finances',          slug: 'finances'),
-  CategoryModel(id: 0, name: 'Miracles',          slug: 'miracles'),
-  CategoryModel(id: 0, name: 'Protection divine', slug: 'protection_divine'),
-  CategoryModel(id: 0, name: 'Ministère',         slug: 'ministere'),
-  CategoryModel(id: 0, name: 'Salut',             slug: 'salut'),
+  CategoryModel(id: '', name: 'Guérison',          slug: 'guerison'),
+  CategoryModel(id: '', name: 'Délivrance',         slug: 'delivrance'),
+  CategoryModel(id: '', name: 'Protection',         slug: 'protection'),
+  CategoryModel(id: '', name: 'Provision',          slug: 'provision'),
+  CategoryModel(id: '', name: 'Famille',            slug: 'famille'),
+  CategoryModel(id: '', name: 'Salut',              slug: 'salut'),
+  CategoryModel(id: '', name: 'Mariage',            slug: 'mariage'),
+  CategoryModel(id: '', name: 'Emploi & Carrière',  slug: 'emploi'),
+  CategoryModel(id: '', name: 'Études',             slug: 'etudes'),
+  CategoryModel(id: '', name: 'Autre',              slug: 'autre'),
 ];
+
+@visibleForTesting
+const List<CategoryModel> kFallbackCategoriesForTest = _kFallbackCategories;
 
 // ── Notifier ──────────────────────────────────────────────────────────────────
 

@@ -61,7 +61,7 @@ class _CollapsedBanner extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [Color(0xFF6B21A8), Color(0xFF9333EA)],
+            colors: [Color(0xFF184797), Color(0xFF2B5DB0)],
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
           ),
@@ -112,7 +112,7 @@ class _ExpandedBanner extends ConsumerWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF4C1D95), Color(0xFF6B21A8), Color(0xFF9333EA)],
+          colors: [Color(0xFF103675), Color(0xFF184797), Color(0xFF2B5DB0)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -255,7 +255,7 @@ class _InteractionButton extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              fontFamily: 'Inter',
+              fontFamily: 'Plus Jakarta Sans',
               fontSize: 12,
               fontWeight: active ? FontWeight.w600 : FontWeight.w400,
               color: active ? AppColors.secondary : Colors.white70,

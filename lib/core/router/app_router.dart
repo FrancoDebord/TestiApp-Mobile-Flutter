@@ -14,7 +14,13 @@ import '../../features/explore/screens/explore_screen.dart';
 import '../../features/explore/screens/search_results_screen.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/home/screens/trending_screen.dart';
-import '../../features/testimony/screens/live_discovery_screen.dart';
+import '../../features/live/screens/live_setup_screen.dart';
+import '../../features/live/screens/live_studio_screen.dart';
+import '../../features/live/screens/live_viewer_screen.dart';
+import '../../features/live/screens/lives_screen.dart';
+import '../../features/journal/models/journal_entry.dart';
+import '../../features/journal/screens/journal_entry_screen.dart';
+import '../../features/journal/screens/journal_screen.dart';
 import '../../features/admin/screens/admin_dashboard_screen.dart';
 import '../../features/moderation/screens/moderation_detail_screen.dart';
 import '../../features/moderation/screens/moderation_screen.dart';
@@ -35,6 +41,9 @@ import '../../features/testimony/screens/testimony_detail_screen.dart';
 import '../../features/auth/providers/auth_notifier.dart'
     show AuthStateAuthenticated, AuthStateLoading, authStateProvider;
 import '../../shared/models/user_model.dart';
+import '../../features/community/screens/community_screen.dart';
+import '../../features/community/screens/following_screen.dart';
+import '../../features/community/screens/user_profile_screen.dart';
 import 'app_routes.dart';
 import 'app_transitions.dart';
 import '../../shared/widgets/scaffold_with_bottom_nav.dart';
@@ -45,6 +54,16 @@ import '../../shared/widgets/scaffold_with_bottom_nav.dart';
 
 /// The single GoRouter instance, exposed as a Riverpod provider so the
 /// redirect logic can read auth state reactively.
+/// Lien entrant (share_url, testi://…) reçu avant que la session soit prête :
+/// pendant le splash ou pendant que l'utilisateur se connecte. Rejoué dès que
+/// l'utilisateur est authentifié, pour ouvrir le témoignage demandé.
+String? _pendingDeepLink;
+
+bool _isContentDeepLink(String location) =>
+    location.startsWith('/testimony/') ||
+    location.startsWith('/testimonies/') ||
+    (location.startsWith('/lives/') && location != '/lives/new');
+
 final appRouterProvider = Provider<GoRouter>((ref) {
   // Re-evaluate redirect whenever auth changes.
   final authListenable = ref.watch(_authListenableProvider);
@@ -69,7 +88,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final location = state.matchedLocation;
 
       // Show splash while determining auth status.
-      if (isLoading) return AppPaths.splash;
+      // Un lien de témoignage reçu à ce moment est mémorisé, sinon le splash
+      // puis l'accueil le feraient disparaître.
+      if (isLoading) {
+        if (_isContentDeepLink(location)) {
+          _pendingDeepLink = state.uri.toString();
+        }
+        return AppPaths.splash;
+      }
+
+      // Session prête : rejouer le lien mémorisé à la place de l'écran
+      // d'arrivée (splash, accueil ou page de connexion).
+      if (isAuthed && _pendingDeepLink != null && !_isContentDeepLink(location)) {
+        final target = _pendingDeepLink;
+        _pendingDeepLink = null;
+        return target;
+      }
 
       // Unauthenticated user on splash after auth resolves â†’ go to onboarding.
       if (!isAuthed && location == AppPaths.splash) return '/onboarding';
@@ -84,7 +118,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       };
       final isPublicRoute = publicRoutes.contains(location);
 
-      if (!isAuthed && !isPublicRoute) return '/register';
+      if (!isAuthed && !isPublicRoute) {
+        // Garder le témoignage demandé pour l'ouvrir après la connexion.
+        if (_isContentDeepLink(location)) {
+          _pendingDeepLink = state.uri.toString();
+        }
+        return '/register';
+      }
 
       // â”€â”€ Authenticated â€” redirect away from auth/public pages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       if (isAuthed && isPublicRoute && location != AppPaths.splash) {
@@ -99,6 +139,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       }
 
       // â”€â”€ Admin guard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // Diffusion en direct : modérateurs et administrateurs uniquement.
+      final isBroadcastRoute = location == '/lives/new' ||
+          (location.startsWith('/lives/') && location.endsWith('/studio'));
+      if (isBroadcastRoute && isAuthed && !authState.user.canModerate) {
+        return '/lives';
+      }
+
       final isAdminRoute = location.startsWith('/admin');
       if (isAdminRoute && isAuthed) {
         final user = authState.user;
@@ -165,6 +212,13 @@ List<RouteBase> _buildRoutes() {
 
     // â”€â”€ Testimony detail â€” accessible from any tab via push â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // Uses its own Navigator so it sits above the bottom-nav shell.
+    // Lien public share_url (https://<domaine>/testimonies/{id}), intercepté
+    // par les App Links (Android) / Universal Links (iOS).
+    GoRoute(
+      path: '/testimonies/:id',
+      redirect: (_, state) => '/testimony/${state.pathParameters['id']}',
+    ),
+
     GoRoute(
       path: '/testimony/:id',
       name: AppRoutes.testimonyDetail,
@@ -217,8 +271,80 @@ List<RouteBase> _buildRoutes() {
       name: AppRoutes.liveDiscovery,
       pageBuilder: (context, state) => AppTransitions.slideUp(
         state: state,
-        child: const LiveDiscoveryScreen(),
+        child: const LivesScreen(),
       ),
+    ),
+    // ── Carnet privé (docs backend : fonctionnalites/carnet-prive.md) ────────
+    GoRoute(
+      path: '/journal',
+      pageBuilder: (context, state) => AppTransitions.slideUp(
+        state: state,
+        child: const JournalScreen(),
+      ),
+      routes: [
+        // Parcours d'enregistrement du carnet, HORS du shell : pousser
+        // /publish/preview (onglet « Publier ») depuis cette page racine
+        // mettait deux fois le shell dans la pile → plantage de go_router
+        // (« !keyReservation.contains(key) »). Avant ':id' (sinon « new »
+        // serait lu comme un identifiant).
+        GoRoute(
+          path: 'new',
+          builder: (context, state) => const PublishPreviewScreen(),
+        ),
+        GoRoute(
+          path: ':id',
+          builder: (context, state) => JournalEntryScreen(
+            entryId: state.pathParameters['id']!,
+            initialEntry:
+                state.extra is JournalEntry ? state.extra! as JournalEntry : null,
+          ),
+        ),
+      ],
+    ),
+    // Communauté et profils des auteurs (docs/fonctionnalites/abonnements.md du backend)
+    GoRoute(
+      path: '/community',
+      pageBuilder: (context, state) => AppTransitions.slideUp(
+        state: state,
+        child: const CommunityScreen(),
+      ),
+    ),
+    GoRoute(
+      path: '/following',
+      builder: (context, state) => const FollowingScreen(),
+    ),
+    GoRoute(
+      path: '/users/:id',
+      builder: (context, state) => UserProfileScreen(userId: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/lives',
+      pageBuilder: (context, state) => AppTransitions.slideUp(
+        state: state,
+        child: const LivesScreen(),
+      ),
+      routes: [
+        // Avant ':id' : sinon « new » serait lu comme un identifiant.
+        GoRoute(
+          path: 'new',
+          builder: (context, state) => const LiveSetupScreen(),
+        ),
+        GoRoute(
+          path: ':id',
+          builder: (context, state) =>
+              LiveViewerScreen(liveId: state.pathParameters['id']!),
+          routes: [
+            GoRoute(
+              path: 'studio',
+              builder: (context, state) => LiveStudioScreen(
+                args: state.extra is LiveStudioArgs
+                    ? state.extra! as LiveStudioArgs
+                    : LiveStudioArgs.resume(state.pathParameters['id']!),
+              ),
+            ),
+          ],
+        ),
+      ],
     ),
 
     // â”€â”€ Admin dashboard (Administrateur only â€” guarded by redirect above) â”€â”€â”€
