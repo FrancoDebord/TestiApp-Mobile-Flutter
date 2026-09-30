@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/app_constants.dart';
 import '../../../services/api_service.dart';
+import '../../home/models/testimony_model.dart' show TestimonyProof;
+import '../../home/providers/home_providers.dart' show testimonyFromApiJson;
 import '../models/moderation_models.dart';
 
 // =============================================================================
@@ -188,6 +190,22 @@ final moderationStatsProvider = Provider<ModerationStats>((ref) {
 // =============================================================================
 // Single item (for detail screen — reactive to state changes)
 // =============================================================================
+
+/// Preuves privées d'un témoignage à modérer. Les éléments de /moderation ne
+/// les contiennent pas : on relit GET /testimonies/{id}, qui les renvoie aux
+/// modérateurs et administrateurs. Liste vide en cas d'erreur (403 pour un
+/// témoignage réservé aux abonnés, hors connexion…).
+final moderationProofsProvider = FutureProvider.autoDispose
+    .family<List<TestimonyProof>, String>((ref, id) async {
+  try {
+    final res = await ref
+        .read(apiServiceProvider)
+        .get<dynamic>(AppConstants.testimonyById(id));
+    return testimonyFromApiJson(res.data)?.proofs ?? const [];
+  } catch (_) {
+    return const [];
+  }
+});
 
 final moderationItemByIdProvider =
     Provider.family<ModerationItem?, String>((ref, id) {

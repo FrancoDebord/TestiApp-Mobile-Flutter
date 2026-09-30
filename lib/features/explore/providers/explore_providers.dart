@@ -29,6 +29,19 @@ final searchBarActiveProvider =
   _SearchBarActiveNotifier.new,
 );
 
+/// Demande de focus du champ de recherche (icône loupe de l'accueil) :
+/// chaque appel à [request] incrémente le compteur, écouté par SearchBarWidget.
+class _SearchFocusRequestNotifier extends Notifier<int> {
+  @override
+  int build() => 0;
+  void request() => state++;
+}
+
+final searchFocusRequestProvider =
+    NotifierProvider<_SearchFocusRequestNotifier, int>(
+  _SearchFocusRequestNotifier.new,
+);
+
 // ── Filtres globaux (explore main) ────────────────────────────────────────────
 
 class _TypeFilterNotifier extends Notifier<ExploreTypeFilter> {
@@ -54,6 +67,32 @@ final sortOrderProvider =
     NotifierProvider<_SortOrderNotifier, ExploreSortOrder>(
   _SortOrderNotifier.new,
 );
+
+/// Filtre « Catégorie » de la recherche (slug serveur, null = toutes).
+class _CategoryFilterNotifier extends Notifier<String?> {
+  @override
+  String? build() => null;
+  void update(String? slug) => state = slug;
+  void reset() => state = null;
+}
+
+final exploreCategoryFilterProvider =
+    NotifierProvider<_CategoryFilterNotifier, String?>(
+  _CategoryFilterNotifier.new,
+);
+
+/// `true` si un filtre (type, catégorie, tri) diffère des valeurs par défaut.
+final exploreFiltersActiveProvider = Provider<bool>((ref) =>
+    ref.watch(typeFilterProvider) != ExploreTypeFilter.all ||
+    ref.watch(exploreCategoryFilterProvider) != null ||
+    ref.watch(sortOrderProvider) != ExploreSortOrder.recent);
+
+/// Réinitialise tous les filtres de la recherche.
+void resetExploreFilters(WidgetRef ref) {
+  ref.read(typeFilterProvider.notifier).reset();
+  ref.read(exploreCategoryFilterProvider.notifier).reset();
+  ref.read(sortOrderProvider.notifier).reset();
+}
 
 // ── Filtres spécifiques à l'écran Catégorie ───────────────────────────────────
 
@@ -83,25 +122,46 @@ final categorySortOrderProvider =
 
 /// Utilise feedNotifierProvider (toutes rubriques) plutôt que feedProvider
 /// qui est déjà filtré par catégorie sélectionnée en Home.
+/// Filtrage local (l'API de liste n'accepte pas ces paramètres).
 final exploreResultsProvider = Provider<List<Testimony>>((ref) {
-  final query      = ref.watch(searchQueryProvider).trim().toLowerCase();
-  final typeFilter = ref.watch(typeFilterProvider);
-  final sortOrder  = ref.watch(sortOrderProvider);
+  return filterTestimonies(
+    ref.watch(feedNotifierProvider),
+    query: ref.watch(searchQueryProvider),
+    type: ref.watch(typeFilterProvider),
+    categorySlug: ref.watch(exploreCategoryFilterProvider),
+    sort: ref.watch(sortOrderProvider),
+  );
+});
 
-  var results = ref.watch(feedNotifierProvider);
+/// Filtre + tri d'une liste de témoignages (recherche, écran de résultats).
+List<Testimony> filterTestimonies(
+  List<Testimony> all, {
+  String query = '',
+  ExploreTypeFilter type = ExploreTypeFilter.all,
+  String? categorySlug,
+  ExploreSortOrder sort = ExploreSortOrder.recent,
+}) {
+  final q = query.trim().toLowerCase();
+  var results = _applyTypeFilter(all, type);
 
-  results = _applyTypeFilter(results, typeFilter);
+  if (categorySlug != null && categorySlug.isNotEmpty) {
+    results = results
+        .where((t) =>
+            t.category.slug == categorySlug ||
+            toCategoryApiSlug(t.category) == categorySlug)
+        .toList();
+  }
 
-  if (query.isNotEmpty) {
+  if (q.isNotEmpty) {
     results = results.where((t) {
-      return t.title.toLowerCase().contains(query) ||
-          t.author.displayName.toLowerCase().contains(query) ||
-          t.category.label.toLowerCase().contains(query);
+      return t.title.toLowerCase().contains(q) ||
+          t.author.displayName.toLowerCase().contains(q) ||
+          t.category.label.toLowerCase().contains(q);
     }).toList();
   }
 
-  return _applySortOrder(results, sortOrder);
-});
+  return _applySortOrder(results, sort);
+}
 
 // ── Chargement API par catégorie ──────────────────────────────────────────────
 
@@ -195,6 +255,8 @@ List<Testimony> _applySortOrder(
       sorted.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     case ExploreSortOrder.popular:
       sorted.sort((a, b) => b.stats.views.compareTo(a.stats.views));
+    case ExploreSortOrder.liked:
+      sorted.sort((a, b) => b.stats.likes.compareTo(a.stats.likes));
     case ExploreSortOrder.recommended:
       sorted.sort((a, b) => b.stats.prayers.compareTo(a.stats.prayers));
   }

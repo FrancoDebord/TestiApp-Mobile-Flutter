@@ -3,98 +3,127 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../shared/widgets/app_badge.dart';
 import '../../../shared/widgets/organization_badge.dart';
 import '../../community/widgets/follow_button.dart';
 import '../models/testimony_model.dart';
+import 'testimony_action_bar.dart' show formatCount;
 
-/// Compact author row for content-first card layout.
-/// Avatar (28 px) · Name · timestamp · optional Suivre button.
+/// Compact author row for content-first card layout (maquette « Accueil »).
+/// Avatar (28 px) · Nom · badge organisation · « 3.4k vues » · « il y a 2 jours »
+/// · bouton Suivre optionnel.
 class TestimonyAuthorRow extends StatelessWidget {
   const TestimonyAuthorRow({
     required this.testimony,
     this.showFollow = true,
+    this.showViews = true,
     super.key,
   });
 
   final Testimony testimony;
   final bool showFollow;
+  final bool showViews;
 
   @override
   Widget build(BuildContext context) {
+    final author = testimony.author;
+    final views = testimony.stats.views;
+    final meta = [
+      if (showViews && views > 0) '${formatCount(views)} vues',
+      timeAgoFr(testimony.createdAt),
+    ].join(' · ');
+
     return Row(
       children: [
         GestureDetector(
-          onTap: () => openAuthorProfile(context, testimony.author.uid),
-          child: CircleAvatar(
-            radius: 14,
-            backgroundColor: AppColors.primaryLight.withAlpha(40),
-            backgroundImage: testimony.author.avatarUrl != null
-                ? NetworkImage(testimony.author.avatarUrl!)
-                : null,
-            child: testimony.author.avatarUrl == null
-                ? Text(
-                    testimony.author.displayName.isNotEmpty
-                        ? testimony.author.displayName[0].toUpperCase()
-                        : '?',
-                    style: const TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primary,
-                    ),
-                  )
-                : null,
-          ),
+          onTap: () => openAuthorProfile(context, author.uid),
+          child: AuthorAvatar(author: author, radius: 14),
         ),
         const SizedBox(width: 8),
         Expanded(
           child: GestureDetector(
-            onTap: () => openAuthorProfile(context, testimony.author.uid),
-            child: RichText(
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              text: TextSpan(
-                style: AppTextStyles.bodySmall.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-                children: [
-                  TextSpan(
-                    text: testimony.author.displayName,
-                    style: const TextStyle(
+            onTap: () => openAuthorProfile(context, author.uid),
+            child: Row(
+              children: [
+                Flexible(
+                  child: Text(
+                    author.displayName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.labelSmall.copyWith(
                       fontWeight: FontWeight.w600,
                       color: AppColors.textPrimary,
                     ),
                   ),
-                  if (testimony.author.isOrganization ||
-                      testimony.author.isVerified)
-                    WidgetSpan(
-                      alignment: PlaceholderAlignment.middle,
-                      child: OrganizationBadge(
-                        isOrganization: testimony.author.isOrganization,
-                        isVerified: testimony.author.isVerified,
-                        size: 13,
-                      ),
-                    ),
-                  const TextSpan(text: '  ·  '),
-                  TextSpan(text: _timeAgo(testimony.createdAt)),
-                ],
-              ),
+                ),
+                if (author.isOrganization || author.isVerified)
+                  OrganizationBadge(
+                    isOrganization: author.isOrganization,
+                    isVerified: author.isVerified,
+                    size: 13,
+                  ),
+                Flexible(
+                  child: Text(
+                    '  ·  $meta',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.bodySmall
+                        .copyWith(color: AppColors.textSecondary),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
         if (showFollow) ...[
           const SizedBox(width: 8),
-          FollowButton(userId: testimony.author.uid, displayName: testimony.author.displayName, compact: true),
+          FollowButton(userId: author.uid, displayName: author.displayName, compact: true),
         ],
       ],
     );
   }
+}
 
-  static String _timeAgo(DateTime dt) {
-    final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 60) return 'il y a ${diff.inMinutes} min';
-    if (diff.inHours < 24) return 'il y a ${diff.inHours}h';
-    return 'il y a ${diff.inDays}j';
+/// « il y a 2 jours », « il y a 3 h », « à l'instant »…
+String timeAgoFr(DateTime dt) {
+  final diff = DateTime.now().difference(dt);
+  if (diff.inMinutes < 1) return "à l'instant";
+  if (diff.inMinutes < 60) return 'il y a ${diff.inMinutes} min';
+  if (diff.inHours < 24) return 'il y a ${diff.inHours} h';
+  if (diff.inDays == 1) return 'il y a 1 jour';
+  if (diff.inDays < 30) return 'il y a ${diff.inDays} jours';
+  if (diff.inDays < 365) return 'il y a ${diff.inDays ~/ 30} mois';
+  final years = diff.inDays ~/ 365;
+  return 'il y a $years an${years > 1 ? 's' : ''}';
+}
+
+/// Avatar rond de l'auteur (photo ou initiale sur fond bleu clair).
+class AuthorAvatar extends StatelessWidget {
+  const AuthorAvatar({required this.author, this.radius = 14, super.key});
+  final TestimonyAuthor author;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    final url = author.avatarUrl;
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: AppColors.primarySoft,
+      backgroundImage: url != null ? NetworkImage(url) : null,
+      child: url == null
+          ? Text(
+              author.displayName.isNotEmpty
+                  ? author.displayName[0].toUpperCase()
+                  : '?',
+              style: TextStyle(
+                fontFamily: AppFonts.family,
+                fontSize: radius * 0.8,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primary,
+              ),
+            )
+          : null,
+    );
   }
 }
 
@@ -136,24 +165,7 @@ class TestimonyCardHeader extends StatelessWidget {
             // Avatar
             GestureDetector(
               onTap: () => openAuthorProfile(context, testimony.author.uid),
-              child: CircleAvatar(
-                radius: 20,
-                backgroundColor: AppColors.primaryLight.withAlpha(40),
-                backgroundImage: testimony.author.avatarUrl != null
-                    ? NetworkImage(testimony.author.avatarUrl!)
-                    : null,
-                child: testimony.author.avatarUrl == null
-                    ? Text(
-                        testimony.author.displayName.isNotEmpty
-                            ? testimony.author.displayName[0].toUpperCase()
-                            : '?',
-                        style: AppTextStyles.labelMedium.copyWith(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      )
-                    : null,
-              ),
+              child: AuthorAvatar(author: testimony.author, radius: 20),
             ),
             const SizedBox(width: 10),
             // Name + timestamp
@@ -182,8 +194,10 @@ class TestimonyCardHeader extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    _timeAgo(testimony.createdAt),
+                    timeAgoFr(testimony.createdAt),
                     style: AppTextStyles.bodySmall,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
@@ -203,12 +217,6 @@ class TestimonyCardHeader extends StatelessWidget {
     );
   }
 
-  String _timeAgo(DateTime dt) {
-    final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 60) return 'il y a ${diff.inMinutes} min';
-    if (diff.inHours < 24) return 'il y a ${diff.inHours}h';
-    return 'il y a ${diff.inDays}j';
-  }
 }
 
 // ── Profil de l'auteur ────────────────────────────────────────────────────────
@@ -221,55 +229,29 @@ void openAuthorProfile(BuildContext context, String uid) {
 
 // ── Category badge ────────────────────────────────────────────────────────────
 
+/// Ton de badge de la charte pour chaque catégorie (jaune « Guérison » comme
+/// sur la maquette, bleu / orange / vert pour les autres).
+AppBadgeTone categoryBadgeTone(TestimonyCategory category) => switch (category) {
+      TestimonyCategory.guerison => AppBadgeTone.yellow,
+      TestimonyCategory.miracles => AppBadgeTone.yellow,
+      TestimonyCategory.delivrance => AppBadgeTone.orange,
+      TestimonyCategory.mariage => AppBadgeTone.orange,
+      TestimonyCategory.salut => AppBadgeTone.orange,
+      TestimonyCategory.finances => AppBadgeTone.success,
+      TestimonyCategory.famille => AppBadgeTone.success,
+      TestimonyCategory.conversion => AppBadgeTone.blue,
+      TestimonyCategory.protection => AppBadgeTone.blue,
+      TestimonyCategory.ministere => AppBadgeTone.blue,
+    };
+
 class _CategoryBadge extends StatelessWidget {
   const _CategoryBadge({required this.category});
   final TestimonyCategory category;
 
-  static const Map<TestimonyCategory, Color> _bgColors = {
-    TestimonyCategory.guerison: Color(0xFFECFDF3),
-    TestimonyCategory.delivrance: Color(0xFFFFFAEB),
-    TestimonyCategory.conversion: Color(0xFFEAF1FC),
-    TestimonyCategory.mariage: Color(0xFFFCE7F3),
-    TestimonyCategory.famille: Color(0xFFE0F2FE),
-    TestimonyCategory.finances: Color(0xFFD1FAE5),
-    TestimonyCategory.miracles: Color(0xFFFFF1E2),
-    TestimonyCategory.protection: Color(0xFFECFDF3),
-    TestimonyCategory.ministere: Color(0xFFF5F3FF),
-    TestimonyCategory.salut: Color(0xFFFFF1F2),
-  };
-
-  static const Map<TestimonyCategory, Color> _fgColors = {
-    TestimonyCategory.guerison: Color(0xFF12B76A),
-    TestimonyCategory.delivrance: Color(0xFFD97706),
-    TestimonyCategory.conversion: Color(0xFF184797),
-    TestimonyCategory.mariage: Color(0xFFDB2777),
-    TestimonyCategory.famille: Color(0xFF0284C7),
-    TestimonyCategory.finances: Color(0xFF059669),
-    TestimonyCategory.miracles: Color(0xFFD96F0B),
-    TestimonyCategory.protection: Color(0xFF15803D),
-    TestimonyCategory.ministere: Color(0xFF6D28D9),
-    TestimonyCategory.salut: Color(0xFFE11D48),
-  };
-
   @override
-  Widget build(BuildContext context) {
-    final bg = _bgColors[category] ?? const Color(0xFFE4E7EC);
-    final fg = _fgColors[category] ?? const Color(0xFF667085);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(50),
-      ),
-      child: Text(
-        category.label,
-        style: AppTextStyles.bodySmall.copyWith(
-          color: fg,
-          fontWeight: FontWeight.w600,
-          fontSize: 11,
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => AppBadge(
+        label: category.label,
+        tone: categoryBadgeTone(category),
+        dense: true,
+      );
 }

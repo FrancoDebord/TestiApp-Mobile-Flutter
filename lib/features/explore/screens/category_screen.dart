@@ -7,7 +7,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/theme/app_tokens.dart';
 import '../../home/models/testimony_model.dart';
+import '../../home/widgets/pill_tabs.dart';
 import '../../home/widgets/testimony_feed_item.dart';
 import '../models/explore_models.dart';
 import '../providers/explore_providers.dart';
@@ -20,17 +22,18 @@ class _CatMeta {
   final IconData icon;
 }
 
+// Dégradés de la charte (bleu → bleu foncé, orange → jaune) : app_colors.dart.
 const _catMeta = <TestimonyCategory, _CatMeta>{
-  TestimonyCategory.guerison:   _CatMeta(colors: [Color(0xFF184797), Color(0xFF4B7ACB)], icon: Icons.healing_outlined),
-  TestimonyCategory.delivrance: _CatMeta(colors: [Color(0xFF103675), Color(0xFF2B5DB0)], icon: Icons.lock_open_outlined),
-  TestimonyCategory.conversion: _CatMeta(colors: [Color(0xFFD96F0B), Color(0xFF12B76A)], icon: Icons.rotate_right_rounded),
-  TestimonyCategory.mariage:    _CatMeta(colors: [Color(0xFFF18717), Color(0xFFFCC11D)], icon: Icons.favorite_rounded),
-  TestimonyCategory.famille:    _CatMeta(colors: [Color(0xFFC48A06), Color(0xFFF79009)], icon: Icons.people_alt_outlined),
-  TestimonyCategory.finances:   _CatMeta(colors: [Color(0xFF184797), Color(0xFF12B76A)], icon: Icons.attach_money_rounded),
-  TestimonyCategory.miracles:   _CatMeta(colors: [Color(0xFFD96F0B), Color(0xFFF18717)], icon: Icons.auto_awesome_rounded),
-  TestimonyCategory.protection: _CatMeta(colors: [Color(0xFF103675), Color(0xFF4B7ACB)], icon: Icons.shield_outlined),
-  TestimonyCategory.ministere:  _CatMeta(colors: [Color(0xFF103675), Color(0xFF4B7ACB)], icon: Icons.record_voice_over_outlined),
-  TestimonyCategory.salut:      _CatMeta(colors: [Color(0xFFD96F0B), Color(0xFFD92D20)], icon: Icons.star_rounded),
+  TestimonyCategory.guerison:   _CatMeta(colors: AppColors.guerisonGradient,   icon: Icons.healing_outlined),
+  TestimonyCategory.delivrance: _CatMeta(colors: AppColors.delivranceGradient, icon: Icons.lock_open_outlined),
+  TestimonyCategory.conversion: _CatMeta(colors: AppColors.conversionGradient, icon: Icons.rotate_right_rounded),
+  TestimonyCategory.mariage:    _CatMeta(colors: AppColors.mariageGradient,    icon: Icons.favorite_rounded),
+  TestimonyCategory.famille:    _CatMeta(colors: AppColors.familleGradient,    icon: Icons.people_alt_outlined),
+  TestimonyCategory.finances:   _CatMeta(colors: AppColors.financesGradient,   icon: Icons.attach_money_rounded),
+  TestimonyCategory.miracles:   _CatMeta(colors: AppColors.miraclesGradient,   icon: Icons.auto_awesome_rounded),
+  TestimonyCategory.protection: _CatMeta(colors: AppColors.protectionGradient, icon: Icons.shield_outlined),
+  TestimonyCategory.ministere:  _CatMeta(colors: AppColors.ministereGradient,  icon: Icons.record_voice_over_outlined),
+  TestimonyCategory.salut:      _CatMeta(colors: AppColors.salutGradient,      icon: Icons.star_rounded),
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -54,7 +57,7 @@ class CategoryScreen extends ConsumerWidget {
     final cat      = _category;
     final meta     = _catMeta[cat] ??
         const _CatMeta(
-          colors: [Color(0xFF184797), Color(0xFF4B7ACB)],
+          colors: AppColors.blueGradient,
           icon: Icons.star_rounded,
         );
     final results    = ref.watch(categoryResultsProvider(cat));
@@ -73,9 +76,11 @@ class CategoryScreen extends ConsumerWidget {
             expandedHeight: 160,
             pinned: true,
             backgroundColor: meta.colors.first,
+            foregroundColor: Colors.white,
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                  color: Colors.white, size: 20),
+              tooltip: 'Retour',
+              icon: const Icon(Icons.arrow_back_rounded,
+                  color: Colors.white, size: 22),
               onPressed: () => Navigator.of(context).pop(),
             ),
             flexibleSpace: FlexibleSpaceBar(
@@ -89,38 +94,47 @@ class CategoryScreen extends ConsumerWidget {
                   ),
                 ),
                 child: SafeArea(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const SizedBox(height: 16),
-                      Container(
-                        width: 64, height: 64,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withAlpha(30),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(meta.icon,
-                            color: Colors.white, size: 32),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(56, 8, 56, 12),
+                    // FittedBox : jamais de débordement, même en grande police.
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 56, height: 56,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withAlpha(40),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(meta.icon,
+                                color: Colors.white, size: 28),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            cat.label,
+                            maxLines: 1,
+                            style: TextStyle(
+                              fontFamily: AppFonts.family,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 22,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${results.length} témoignage${results.length != 1 ? 's' : ''}',
+                            maxLines: 1,
+                            style: TextStyle(
+                              fontFamily: AppFonts.family,
+                              fontSize: 13,
+                              color: Colors.white.withAlpha(220),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 10),
-                      Text(
-                        cat.label,
-                        style: const TextStyle(
-                          fontFamily: 'Plus Jakarta Sans',
-                          fontWeight: FontWeight.w700,
-                          fontSize: 22,
-                          color: Colors.white,
-                        ),
-                      ),
-                      Text(
-                        '${results.length} témoignage${results.length != 1 ? 's' : ''}',
-                        style: TextStyle(
-                          fontFamily: 'Plus Jakarta Sans',
-                          fontSize: 13,
-                          color: Colors.white.withAlpha(200),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -178,70 +192,39 @@ class _FilterBarDelegate extends SliverPersistentHeaderDelegate {
   final ValueChanged<ExploreSortOrder>  onSortChanged;
 
   @override
-  double get minExtent => 60;
+  double get minExtent => 64;
   @override
-  double get maxExtent => 60;
+  double get maxExtent => 64;
 
   @override
   Widget build(
       BuildContext context, double shrinkOffset, bool overlapsContent) {
     return Container(
-      height: 60,
-      color: AppColors.surface,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+      height: 64,
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(bottom: BorderSide(color: AppColors.border)),
+      ),
       child: Row(
         children: [
-          // Chips type
+          // Onglets type (Tous / Vidéos / Audios / Textes)
           Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: ExploreTypeFilter.values.map((f) {
-                  final selected = f == typeFilter;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: GestureDetector(
-                      onTap: () => onTypeChanged(f),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 180),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: selected
-                              ? AppColors.primary
-                              : AppColors.background,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: selected
-                                ? AppColors.primary
-                                : AppColors.border,
-                          ),
-                        ),
-                        child: Text(
-                          f.label,
-                          style: TextStyle(
-                            fontFamily: 'Plus Jakarta Sans',
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: selected
-                                ? Colors.white
-                                : AppColors.textSecondary,
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
+            child: PillTabs<ExploreTypeFilter>(
+              tabs: [
+                for (final f in kExploreTypeTabs) PillTab(f, f.tabLabel),
+              ],
+              selected: typeFilter,
+              onSelected: onTypeChanged,
+              padding: const EdgeInsets.only(left: 16, right: 8),
             ),
           ),
 
           // Bouton tri
-          const SizedBox(width: 8),
           _SortButton(
             current: sortOrder,
             onChanged: onSortChanged,
           ),
+          const SizedBox(width: 12),
         ],
       ),
     );
@@ -260,33 +243,27 @@ class _SortButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => _showSheet(context),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: AppColors.background,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.sort_rounded,
-                size: 16, color: AppColors.textSecondary),
-            const SizedBox(width: 4),
-            Text(
-              current.label,
-              style: const TextStyle(
-                fontFamily: 'Plus Jakarta Sans',
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const Icon(Icons.keyboard_arrow_down_rounded,
-                size: 16, color: AppColors.textSecondary),
-          ],
+    return Tooltip(
+      message: 'Trier : ${current.popularityLabel}',
+      child: InkWell(
+        onTap: () => _showSheet(context),
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 36),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppColors.primarySoft,
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.sort_rounded, size: 18, color: AppColors.primary),
+              SizedBox(width: 2),
+              Icon(Icons.keyboard_arrow_down_rounded,
+                  size: 16, color: AppColors.primary),
+            ],
+          ),
         ),
       ),
     );
@@ -320,7 +297,8 @@ class _SortButton extends StatelessWidget {
               const SizedBox(height: 8),
               ...ExploreSortOrder.values.map((o) => ListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: Text(o.label, style: AppTextStyles.bodyMedium),
+                    title: Text(o.popularityLabel,
+                        style: AppTextStyles.bodyMedium),
                     trailing: o == current
                         ? const Icon(Icons.check_rounded,
                             color: AppColors.primary, size: 20)
@@ -352,6 +330,7 @@ class _EmptyCategory extends StatelessWidget {
             size: 60, color: AppColors.textSecondary.withAlpha(80)),
         const SizedBox(height: 16),
         Text('Aucun témoignage pour l\'instant',
+            textAlign: TextAlign.center,
             style:
                 AppTextStyles.h4.copyWith(color: AppColors.textSecondary)),
         const SizedBox(height: 8),

@@ -103,7 +103,18 @@ class LiveRoomController extends ChangeNotifier {
       !_onStage && _stage.mine?.isInvited == true ? _stage.mine : null;
 
   /// Identité LiveKit du diffuseur (« host-{id} ») : sa caméra va dans le lecteur principal.
+  /// La caméra externe (« host-camera-{liveId} ») commence aussi par « host- ».
   static bool isHostIdentity(String identity) => identity.startsWith('host-');
+
+  /// Flux d'une caméra IP / encodeur (LiveKit Ingress).
+  static bool isCameraIdentity(String identity) =>
+      identity.startsWith('host-camera-');
+
+  /// Direct diffusé par une caméra externe : l'appareil ne publie ni caméra ni micro.
+  bool get usesExternalCamera => _live.source.isExternal;
+
+  /// Caméra externe : l'image du flux est reçue (condition pour passer à l'antenne).
+  bool get cameraFeedReceived => usesExternalCamera && _video != null;
 
   final List<LiveComment> _comments = [];
   List<LiveComment> get comments => List.unmodifiable(_comments);
@@ -204,6 +215,18 @@ class LiveRoomController extends ChangeNotifier {
       await _connect(creds);
       final local = _room!.localParticipant!;
 
+      // Caméra IP / encodeur : rien n'est publié d'ici. Le diffuseur pilote le
+      // direct (commentaires, antenne…) et voit l'aperçu du flux « host-camera- ».
+      if (usesExternalCamera) {
+        _micEnabled = false;
+        _cameraEnabled = false;
+        _grabRemoteVideo();
+        unawaited(_loadStage());
+        _startPolling();
+        _notify();
+        return true;
+      }
+
       if (previewTrack != null) {
         await local.publishVideoTrack(previewTrack);
         _video = previewTrack;
@@ -267,8 +290,19 @@ class LiveRoomController extends ChangeNotifier {
       ..on<lk.DataReceivedEvent>(_onData)
       // Caméra du diffuseur en grand ; celle d'un intervenant dans le médaillon.
       ..on<lk.TrackSubscribedEvent>((e) {
+        final identity = e.participant.identity;
+        // Studio : le son de la caméra externe est coupé (pas d'écho ni de larsen).
+        if (isHostMode && isCameraIdentity(identity) && e.track is lk.AudioTrack) {
+          unawaited(e.publication.disable().catchError((_) {}));
+          return;
+        }
         if (e.track is! lk.VideoTrack) return;
-        if (!isHostMode && isHostIdentity(e.participant.identity)) {
+        // Spectateur : seule une piste vidéo compte, donc parmi plusieurs
+        // participants « host- » (connexion du diffuseur sans piste + caméra
+        // externe), c'est celui qui envoie réellement l'image qui est affiché.
+        if (isHostMode && isCameraIdentity(identity)) {
+          _video = e.track as lk.VideoTrack;
+        } else if (!isHostMode && isHostIdentity(identity)) {
           _video = e.track as lk.VideoTrack;
         } else if (!_onStage) {
           _guestVideo = e.track as lk.VideoTrack;
@@ -323,7 +357,9 @@ class LiveRoomController extends ChangeNotifier {
       for (final pub in p.videoTrackPublications) {
         final t = pub.track;
         if (t == null) continue;
-        if (!isHostMode && isHostIdentity(p.identity)) {
+        if (isHostMode && isCameraIdentity(p.identity)) {
+          _video = t; // aperçu de la caméra externe dans le studio
+        } else if (!isHostMode && isHostIdentity(p.identity)) {
           _video = t;
         } else {
           _guestVideo = t;

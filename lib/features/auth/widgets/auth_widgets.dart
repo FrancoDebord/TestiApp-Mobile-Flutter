@@ -1,14 +1,95 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../core/theme/app_tokens.dart';
+import '../../../shared/widgets/app_logo.dart';
+
 // =============================================================================
-// Shared auth UI components
-// Used by: LoginScreen, RegisterScreen, ForgotPasswordScreen, VerifyEmailScreen
+// Composants communs des écrans d'authentification (charte ARISE & SHINE)
+// Utilisés par : LoginScreen, RegisterScreen, ForgotPasswordScreen,
+// VerifyEmailScreen, PhoneAuthScreen.
+// Style : fond clair, logo dessiné, titres bleus, champs blancs bordure fine,
+// boutons 48 px radius 10.
 // =============================================================================
 
-// ── Purple gradient header shell ──────────────────────────────────────────────
-// Wraps the top section of every auth screen in a left→right purple gradient.
-// The white card body sits below it with rounded top corners (28 px radius),
-// creating the "wave" visual without needing a ClipPath.
+// ── En-tête clair (logo + titre + sous-titre) ────────────────────────────────
+
+class AuthScreenHeader extends StatelessWidget {
+  const AuthScreenHeader({
+    required this.title,
+    this.subtitle,
+    this.onBack,
+    this.markSize = 64,
+    this.icon,
+    super.key,
+  });
+
+  final String title;
+  final String? subtitle;
+
+  /// Affiche une flèche retour en haut à gauche si non nul.
+  final VoidCallback? onBack;
+  final double markSize;
+
+  /// Icône à la place du logo (ex. enveloppe pour « vérifier l'e-mail »).
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(
+          height: 48,
+          child: onBack == null
+              ? null
+              : Align(
+                  alignment: Alignment.centerLeft,
+                  child: IconButton(
+                    tooltip: 'Retour',
+                    onPressed: onBack,
+                    icon: const Icon(Icons.arrow_back_rounded,
+                        color: AppColors.primary),
+                  ),
+                ),
+        ),
+        Center(
+          child: icon == null
+              ? AppLogoMark(size: markSize)
+              : Container(
+                  width: markSize,
+                  height: markSize,
+                  decoration: const BoxDecoration(
+                    color: AppColors.primarySoft,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon,
+                      color: AppColors.primary, size: markSize * 0.46),
+                ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        Text(
+          title,
+          textAlign: TextAlign.center,
+          style: AppTextStyles.h2,
+        ),
+        if (subtitle != null) ...[
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            subtitle!,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.bodyMedium
+                .copyWith(color: AppColors.textSecondary, height: 1.5),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+// ── En-tête historique ───────────────────────────────────────────────────────
+// Conservé pour compatibilité : désormais un simple bandeau clair.
 
 class AuthWaveHeader extends StatelessWidget {
   const AuthWaveHeader({required this.child, super.key});
@@ -17,23 +98,11 @@ class AuthWaveHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF184797), Color(0xFF2B5DB0)],
-        ),
-      ),
-      child: child,
-    );
+    return ColoredBox(color: AppColors.surface, child: child);
   }
 }
 
-// ── Labelled text form field ──────────────────────────────────────────────────
-// Covers: email, password (with show/hide toggle), name, and plain text inputs.
-// The leading icon, optional trailing widget, keyboard type, and validation
-// callback are all injectable so the widget is usable for every auth field.
+// ── Champ de saisie avec libellé ─────────────────────────────────────────────
 
 class AuthTextField extends StatelessWidget {
   const AuthTextField({
@@ -63,6 +132,12 @@ class AuthTextField extends StatelessWidget {
   final Widget? suffixIcon;
   final ValueChanged<String>? onFieldSubmitted;
 
+  static OutlineInputBorder _border(Color color, [double width = 1]) =>
+      OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppRadius.field),
+        borderSide: BorderSide(color: color, width: width),
+      );
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -70,12 +145,9 @@ class AuthTextField extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(
-            fontFamily: 'Plus Jakarta Sans',
-            fontWeight: FontWeight.w500,
-            fontSize: 13,
-            color: Color(0xFF263238),
-          ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: AppTextStyles.labelMedium.copyWith(fontSize: 13),
         ),
         const SizedBox(height: 6),
         TextFormField(
@@ -86,48 +158,33 @@ class AuthTextField extends StatelessWidget {
           validator: validator,
           enabled: enabled,
           onFieldSubmitted: onFieldSubmitted,
-          style: const TextStyle(
-            fontFamily: 'Plus Jakarta Sans',
-            fontSize: 15,
-            color: Color(0xFF263238),
-          ),
+          style: AppTextStyles.bodyMedium.copyWith(fontSize: 15, height: 1.3),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: const TextStyle(
-              fontFamily: 'Plus Jakarta Sans',
-              color: Color(0xFFD0D5DD),
+              fontFamily: AppFonts.family,
+              color: AppColors.textSecondary,
               fontSize: 15,
             ),
-            prefixIcon: Icon(prefixIcon, color: const Color(0xFF98A2B3), size: 20),
+            prefixIcon:
+                Icon(prefixIcon, color: AppColors.textSecondary, size: 20),
             suffixIcon: suffixIcon,
             filled: true,
-            fillColor: Colors.white,
+            fillColor: AppColors.surface,
+            isDense: true,
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF184797), width: 1.8),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFD92D20)),
-            ),
-            focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFD92D20), width: 1.8),
-            ),
+            border: _border(AppColors.inputBorder),
+            enabledBorder: _border(AppColors.inputBorder),
+            disabledBorder: _border(AppColors.border),
+            focusedBorder: _border(AppColors.primary, 1.6),
+            errorBorder: _border(AppColors.danger),
+            focusedErrorBorder: _border(AppColors.danger, 1.6),
+            errorMaxLines: 3,
             errorStyle: const TextStyle(
-              fontFamily: 'Plus Jakarta Sans',
+              fontFamily: AppFonts.family,
               fontSize: 12,
-              color: Color(0xFFD92D20),
+              color: AppColors.danger,
             ),
           ),
         ),
@@ -136,30 +193,33 @@ class AuthTextField extends StatelessWidget {
   }
 }
 
-// ── Full-width primary filled button ─────────────────────────────────────────
-// Shows a CircularProgressIndicator in place of the label while loading.
+// ── Bouton principal pleine largeur ──────────────────────────────────────────
 
 class AuthPrimaryButton extends StatelessWidget {
   const AuthPrimaryButton({
     required this.label,
     required this.isLoading,
     required this.onPressed,
+    this.color = AppColors.primary,
     super.key,
   });
 
   final String label;
   final bool isLoading;
   final VoidCallback? onPressed;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
     return FilledButton(
       onPressed: onPressed,
       style: FilledButton.styleFrom(
-        backgroundColor: const Color(0xFF184797),
-        disabledBackgroundColor: const Color(0xFF184797).withAlpha(128),
-        minimumSize: const Size.fromHeight(52),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        backgroundColor: color,
+        disabledBackgroundColor: color.withAlpha(128),
+        minimumSize: const Size.fromHeight(48),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.button)),
         elevation: 0,
       ),
       child: isLoading
@@ -171,10 +231,12 @@ class AuthPrimaryButton extends StatelessWidget {
             )
           : Text(
               label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                fontFamily: 'Plus Jakarta Sans',
+                fontFamily: AppFonts.family,
                 fontWeight: FontWeight.w600,
-                fontSize: 16,
+                fontSize: 15,
                 color: Colors.white,
               ),
             ),
@@ -182,8 +244,7 @@ class AuthPrimaryButton extends StatelessWidget {
   }
 }
 
-// ── Inline error banner ───────────────────────────────────────────────────────
-// Displayed above the form when a network or auth error occurs.
+// ── Bandeau d'erreur ─────────────────────────────────────────────────────────
 
 class AuthErrorBanner extends StatelessWidget {
   const AuthErrorBanner({required this.message, super.key});
@@ -193,24 +254,25 @@ class AuthErrorBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFD92D20).withAlpha(20),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFD92D20).withAlpha(80)),
+        color: AppColors.dangerSoft,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.danger.withAlpha(80)),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Icon(Icons.error_outline_rounded,
-              color: Color(0xFFD92D20), size: 18),
+              color: AppColors.danger, size: 18),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               message,
               style: const TextStyle(
-                fontFamily: 'Plus Jakarta Sans',
+                fontFamily: AppFonts.family,
                 fontSize: 13,
-                color: Color(0xFFD92D20),
+                color: AppColors.danger,
               ),
             ),
           ),
@@ -220,34 +282,37 @@ class AuthErrorBanner extends StatelessWidget {
   }
 }
 
-// ── "Ou continuer avec" row divider ──────────────────────────────────────────
+// ── Séparateur « ou continuer avec » ─────────────────────────────────────────
 
 class AuthOrDivider extends StatelessWidget {
-  const AuthOrDivider({super.key});
+  const AuthOrDivider({this.label = 'ou continuer avec', super.key});
+
+  final String label;
 
   @override
   Widget build(BuildContext context) {
-    return const Row(
+    return Row(
       children: [
-        Expanded(child: Divider(color: Color(0xFFE4E7EC))),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 12),
-          child: Text(
-            'ou continuer avec',
-            style: TextStyle(
-              fontFamily: 'Plus Jakarta Sans',
-              fontSize: 12,
-              color: Color(0xFF98A2B3),
+        const Expanded(child: Divider(color: AppColors.border)),
+        Flexible(
+          flex: 3,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              style: AppTextStyles.bodySmall,
             ),
           ),
         ),
-        Expanded(child: Divider(color: Color(0xFFE4E7EC))),
+        const Expanded(child: Divider(color: AppColors.border)),
       ],
     );
   }
 }
 
-// ── Social auth button (Google / Apple) ───────────────────────────────────────
+// ── Bouton social (contour gris) ─────────────────────────────────────────────
 
 class AuthSocialButton extends StatelessWidget {
   const AuthSocialButton({
@@ -265,22 +330,78 @@ class AuthSocialButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return OutlinedButton.icon(
       onPressed: onPressed,
-      icon: Icon(icon, size: 20, color: const Color(0xFF263238)),
+      icon: Icon(icon, size: 20, color: AppColors.textPrimary),
       label: Text(
         label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: const TextStyle(
-          fontFamily: 'Plus Jakarta Sans',
-          fontWeight: FontWeight.w500,
+          fontFamily: AppFonts.family,
+          fontWeight: FontWeight.w600,
           fontSize: 14,
-          color: Color(0xFF263238),
+          color: AppColors.textPrimary,
         ),
       ),
       style: OutlinedButton.styleFrom(
         minimumSize: const Size.fromHeight(48),
-        side: const BorderSide(color: Color(0xFFE4E7EC)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        backgroundColor: Colors.white,
+        side: const BorderSide(color: AppColors.inputBorder),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.button)),
+        backgroundColor: AppColors.surface,
       ),
     );
   }
+}
+
+// ── Logo « G » de Google (dessiné, couleurs de la marque) ────────────────────
+
+class GoogleGMark extends StatelessWidget {
+  const GoogleGMark({this.size = 20, super.key});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox.square(
+      dimension: size,
+      child: const CustomPaint(painter: _GoogleGPainter()),
+    );
+  }
+}
+
+class _GoogleGPainter extends CustomPainter {
+  const _GoogleGPainter();
+
+  // Couleurs officielles de la marque Google (exception à la charte).
+  static const _blue = Color(0xFF4285F4);
+  static const _red = Color(0xFFEA4335);
+  static const _yellow = Color(0xFFFBBC05);
+  static const _green = Color(0xFF34A853);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final s = size.shortestSide;
+    final stroke = s * 0.2;
+    final rect = Rect.fromCircle(
+        center: Offset(s / 2, s / 2), radius: (s - stroke) / 2);
+    Paint arc(Color c) => Paint()
+      ..color = c
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke;
+    const d = 3.14159265 / 180;
+    // Angles dans le sens horaire depuis l'axe +x ; ouverture en haut à droite.
+    canvas.drawArc(rect, 0, 45 * d, false, arc(_blue));
+    canvas.drawArc(rect, 45 * d, 95 * d, false, arc(_green));
+    canvas.drawArc(rect, 140 * d, 80 * d, false, arc(_yellow));
+    canvas.drawArc(rect, 220 * d, 95 * d, false, arc(_red));
+    // Barre horizontale du G.
+    canvas.drawRect(
+      Rect.fromLTWH(s / 2, s / 2 - stroke / 2, s / 2 - stroke / 2 + 0.5,
+          stroke),
+      Paint()..color = _blue,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

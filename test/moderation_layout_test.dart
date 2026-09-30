@@ -47,6 +47,9 @@ Widget _app(Widget child, {double textScale = 1.0}) => ProviderScope(
         moderationStatsProvider.overrideWithValue(_stats),
         for (final i in _items)
           moderationItemByIdProvider(i.id).overrideWithValue(i),
+        // Preuves privées : pas d'appel réseau dans les tests de mise en page.
+        for (final i in _items)
+          moderationProofsProvider(i.id).overrideWith((ref) async => const []),
       ],
       child: MaterialApp(
         builder: (context, c) => MediaQuery(

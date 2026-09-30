@@ -122,7 +122,6 @@ class _CategoryCard extends StatelessWidget {
                       data.category.label,
                       style: AppTextStyles.labelMedium.copyWith(
                         color: Colors.white,
-                        fontFamily: 'Plus Jakarta Sans',
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
                       ),

@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../../core/app_constants.dart';
 import '../../../core/local_db/daos/testimony_dao.dart';
+import '../../../core/media/youtube.dart';
 import '../../../core/local_db/database_service.dart';
 import '../../../services/api_service.dart';
 import '../models/testimony_model.dart';
@@ -112,7 +113,7 @@ Testimony _applyStatsDelta(
       bibleVerse: t.bibleVerse, bibleVerseRef: t.bibleVerseRef,
       isFeatured: t.isFeatured, isLiked: t.isLiked,
       isPrayed: t.isPrayed, isSaved: t.isSaved,
-      shareUrl: t.shareUrl,
+      shareUrl: t.shareUrl, proofs: t.proofs,
     );
   }
   if (t is AudioTestimony) {
@@ -125,7 +126,7 @@ Testimony _applyStatsDelta(
       bibleVerse: t.bibleVerse, bibleVerseRef: t.bibleVerseRef,
       isFeatured: t.isFeatured, isLiked: t.isLiked,
       isPrayed: t.isPrayed, isSaved: t.isSaved,
-      shareUrl: t.shareUrl,
+      shareUrl: t.shareUrl, proofs: t.proofs,
     );
   }
   if (t is VideoTestimony) {
@@ -135,9 +136,10 @@ Testimony _applyStatsDelta(
       durationSeconds: t.durationSeconds, thumbnailUrl: t.thumbnailUrl,
       mediaPath: t.mediaPath, renditions: t.renditions, renditionsStatus: t.renditionsStatus,
       bibleVerse: t.bibleVerse, bibleVerseRef: t.bibleVerseRef,
+      youtubeId: t.youtubeId,
       isFeatured: t.isFeatured, isLiked: t.isLiked,
       isPrayed: t.isPrayed, isSaved: t.isSaved,
-      shareUrl: t.shareUrl,
+      shareUrl: t.shareUrl, proofs: t.proofs,
     );
   }
   return t;
@@ -160,6 +162,12 @@ String? _absUrl(String? raw) {
   if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
   final root = AppConstants.baseUrl.replaceFirst(RegExp(r'/api/v1.*$'), '');
   return raw.startsWith('/') ? '$root$raw' : '$root/$raw';
+}
+
+/// Identifiant YouTube valide (11 caractères) ou `null`.
+String? _validYouTubeId(dynamic raw) {
+  final v = raw?.toString() ?? '';
+  return RegExp(r'^[A-Za-z0-9_-]{11}$').hasMatch(v) ? v : null;
 }
 
 Testimony? testimonyFromApiJson(dynamic raw) {
@@ -201,8 +209,11 @@ Testimony? testimonyFromApiJson(dynamic raw) {
     final bibleVerse    = (m['bibleVerse']      ?? m['bible_verse'])                          as String?;
     final bibleVerseRef = (m['verseReference']  ?? m['verse_reference'])                      as String?;
     final shareUrl      = (m['shareUrl']        ?? m['share_url'])                            as String?;
+    final youtubeId     = _validYouTubeId(m['youtubeId'] ?? m['youtube_id']);
+    // Preuves privées : clé absente pour le public (liste vide).
+    final proofs        = TestimonyProof.parseList(m['proofs'], absUrl: _absUrl);
 
-    switch (type) {
+    switch (youtubeId != null ? 'video' : type) {
       case 'audio':
         final body = (m['bodyText'] ?? m['body_text']) as String? ?? '';
         return AudioTestimony(
@@ -216,20 +227,22 @@ Testimony? testimonyFromApiJson(dynamic raw) {
           coverImageUrl: (m['coverUrl'] ?? m['cover_url']) as String?,
           bibleVerse: bibleVerse, bibleVerseRef: bibleVerseRef,
           isFeatured: isFeatured, isLiked: isLiked, isPrayed: isPrayed, isSaved: isSaved,
-          shareUrl: shareUrl,
+          shareUrl: shareUrl, proofs: proofs,
         );
       case 'video':
         return VideoTestimony(
           id: id, author: author, title: title,
           category: category, createdAt: createdAt, stats: stats,
           durationSeconds: _parseInt(m['duration'] ?? m['duration_seconds']),
-          thumbnailUrl:    (m['coverUrl'] ?? m['cover_url']) as String? ?? '',
+          thumbnailUrl:    (m['coverUrl'] ?? m['cover_url']) as String? ??
+              (youtubeId != null ? youTubeThumbnailUrl(youtubeId) : ''),
           mediaPath:       _absUrl((m['mediaUrl'] ?? m['media_url']) as String?),
           renditions:      renditions,
           renditionsStatus: m['renditionsStatus'] as String?,
           bibleVerse: bibleVerse, bibleVerseRef: bibleVerseRef,
+          youtubeId: youtubeId,
           isFeatured: isFeatured, isLiked: isLiked, isPrayed: isPrayed, isSaved: isSaved,
-          shareUrl: shareUrl,
+          shareUrl: shareUrl, proofs: proofs,
         );
       default:
         final body = (m['bodyText'] ?? m['body_text']) as String? ?? '';
@@ -240,7 +253,7 @@ Testimony? testimonyFromApiJson(dynamic raw) {
           coverImageUrl: (m['coverUrl'] ?? m['cover_url']) as String?,
           bibleVerse: bibleVerse, bibleVerseRef: bibleVerseRef,
           isFeatured: isFeatured, isLiked: isLiked, isPrayed: isPrayed, isSaved: isSaved,
-          shareUrl: shareUrl,
+          shareUrl: shareUrl, proofs: proofs,
         );
     }
   } catch (_) {
@@ -252,23 +265,51 @@ Testimony? testimonyFromApiJson(dynamic raw) {
 // FeedNotifier — liste mutable chargée depuis l'API (+ SQLite en fallback)
 // ============================================================================
 
+/// Pagination d'une liste Laravel (`meta` : currentPage, lastPage…).
+/// Accepte camelCase ou snake_case ; sans `meta`, une seule page.
+({int currentPage, int lastPage}) parsePageMeta(Object? meta) {
+  if (meta is! Map) return (currentPage: 1, lastPage: 1);
+  final current = _parseInt(meta['currentPage'] ?? meta['current_page']);
+  final last    = _parseInt(meta['lastPage'] ?? meta['last_page']);
+  final c = current < 1 ? 1 : current;
+  return (currentPage: c, lastPage: last < c ? c : last);
+}
+
+/// Fil « Pour vous » : GET /testimonies?sort=for_you&limit=20&page=N.
+/// Le serveur mélange récents et plus vus pour un nouveau compte, puis classe
+/// selon les centres d'intérêt et les comptes suivis.
 class FeedNotifier extends Notifier<List<Testimony>> {
+  int  _page     = 0;
+  int  _lastPage = 1;
+  bool _loadingMore = false;
+
   @override
   List<Testimony> build() {
     Future.microtask(_loadFromApi);
     return const [];
   }
 
+  /// Reste-t-il des pages à charger ?
+  bool get hasMore => _page < _lastPage;
+
   // ── Chargement depuis l'API ───────────────────────────────────────────────
+
+  Future<LaravelResponse<List<dynamic>>> _fetchPage(int page) =>
+      ref.read(apiServiceProvider).get<List<dynamic>>(
+        AppConstants.testimonies,
+        query: AppConstants.forYouFeedQuery(page: page),
+      );
 
   Future<void> _loadFromApi({bool silent = false}) async {
     try {
-      final api      = ref.read(apiServiceProvider);
-      final response = await api.get<List<dynamic>>(AppConstants.testimonies);
+      final response = await _fetchPage(1);
       final items = response.data
           .map(testimonyFromApiJson)
           .whereType<Testimony>()
           .toList();
+      final meta = parsePageMeta(response.meta);
+      _page     = meta.currentPage;
+      _lastPage = meta.lastPage;
       state = items;
       // Synchronise l'état liked/prayed depuis le serveur.
       ref.read(interactionProvider.notifier).seedFromFeed(items);
@@ -277,6 +318,37 @@ class FeedNotifier extends Notifier<List<Testimony>> {
       if (!silent) await _loadFromDb();
     } finally {
       if (!silent) ref.read(feedIsLoadingProvider.notifier).done();
+    }
+  }
+
+  /// Page suivante (défilement infini). Ignoré pendant un chargement en cours
+  /// ou quand la dernière page est atteinte.
+  Future<void> loadMore() async {
+    if (_loadingMore || !hasMore || _page == 0) return;
+    _loadingMore = true;
+    ref.read(feedLoadingMoreProvider.notifier).set(true);
+    try {
+      final response = await _fetchPage(_page + 1);
+      final known = {for (final t in state) t.id};
+      final items = response.data
+          .map(testimonyFromApiJson)
+          .whereType<Testimony>()
+          // Le classement peut évoluer entre deux pages : pas de doublons.
+          .where((t) => !known.contains(t.id))
+          .toList();
+      final meta = parsePageMeta(response.meta);
+      // Toujours avancer, même si le serveur renvoie une page courante figée.
+      _page     = meta.currentPage > _page ? meta.currentPage : _page + 1;
+      _lastPage = meta.lastPage;
+      if (items.isNotEmpty) {
+        state = [...state, ...items];
+        ref.read(interactionProvider.notifier).seedFromFeed(items);
+      }
+    } catch (_) {
+      // Réseau indisponible : on réessaiera au prochain défilement.
+    } finally {
+      _loadingMore = false;
+      ref.read(feedLoadingMoreProvider.notifier).set(false);
     }
   }
 
@@ -395,6 +467,18 @@ class _FeedLoadingNotifier extends Notifier<bool> {
 final feedIsLoadingProvider =
     NotifierProvider<_FeedLoadingNotifier, bool>(_FeedLoadingNotifier.new);
 
+class _FeedFlagNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+  void set(bool value) {
+    if (state != value) state = value;
+  }
+}
+
+/// `true` pendant le chargement d'une page supplémentaire (loader en bas du fil).
+final feedLoadingMoreProvider =
+    NotifierProvider<_FeedFlagNotifier, bool>(_FeedFlagNotifier.new);
+
 // ============================================================================
 // Feed filtré par catégorie (utilisé par HomeScreen)
 // ============================================================================
@@ -402,9 +486,30 @@ final feedIsLoadingProvider =
 final feedProvider = Provider<List<Testimony>>((ref) {
   final all      = ref.watch(feedNotifierProvider);
   final selected = ref.watch(selectedCategoryProvider);
-  if (selected == null) return all;
-  return all.where((t) => t.category == selected).toList();
+  final type     = ref.watch(selectedFeedTypeProvider);
+  if (selected == null && type == null) return all;
+  return all
+      .where((t) =>
+          (selected == null || t.category == selected) &&
+          (type == null || t.type == type))
+      .toList();
 });
+
+// ============================================================================
+// Filtre par type (onglets « Tous / Vidéos / Audios / Textes » de l'accueil)
+// ============================================================================
+
+class _SelectedFeedTypeNotifier extends Notifier<TestimonyType?> {
+  @override
+  TestimonyType? build() => null;
+  void select(TestimonyType? type) => state = type;
+}
+
+/// `null` = tous les types.
+final selectedFeedTypeProvider =
+    NotifierProvider<_SelectedFeedTypeNotifier, TestimonyType?>(
+  _SelectedFeedTypeNotifier.new,
+);
 
 // ============================================================================
 // Featured

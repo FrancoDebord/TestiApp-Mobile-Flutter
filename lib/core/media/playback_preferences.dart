@@ -101,6 +101,7 @@ class PlaybackPreferences {
     this.autoplayNext = true,
     this.repeatMode = RepeatMode.off,
     this.feedLayout = FeedLayout.cards,
+    this.offlineMode = false,
   });
 
   final VideoQuality videoQuality;
@@ -115,6 +116,10 @@ class PlaybackPreferences {
   final RepeatMode repeatMode;
   final FeedLayout feedLayout;
 
+  /// Mode hors ligne : lire uniquement les témoignages téléchargés, sans
+  /// consommer de données (Paramètres › Mode hors ligne).
+  final bool offlineMode;
+
   PlaybackPreferences copyWith({
     VideoQuality? videoQuality,
     AudioQuality? audioQuality,
@@ -122,6 +127,7 @@ class PlaybackPreferences {
     bool? autoplayNext,
     RepeatMode? repeatMode,
     FeedLayout? feedLayout,
+    bool? offlineMode,
   }) =>
       PlaybackPreferences(
         videoQuality: videoQuality ?? this.videoQuality,
@@ -130,6 +136,7 @@ class PlaybackPreferences {
         autoplayNext: autoplayNext ?? this.autoplayNext,
         repeatMode: repeatMode ?? this.repeatMode,
         feedLayout: feedLayout ?? this.feedLayout,
+        offlineMode: offlineMode ?? this.offlineMode,
       );
 
   Map<String, dynamic> toJson() => {
@@ -139,6 +146,7 @@ class PlaybackPreferences {
         'autoplay_next': autoplayNext,
         'repeat_mode': repeatMode.name,
         'feed_layout': feedLayout.name,
+        'offline_mode': offlineMode,
       };
 
   factory PlaybackPreferences.fromJson(Map<String, dynamic> j) {
@@ -153,6 +161,7 @@ class PlaybackPreferences {
       autoplayNext: j['autoplay_next'] as bool? ?? true,
       repeatMode: pick(RepeatMode.values, j['repeat_mode'], RepeatMode.off),
       feedLayout: pick(FeedLayout.values, j['feed_layout'], FeedLayout.cards),
+      offlineMode: j['offline_mode'] as bool? ?? false,
     );
   }
 }
@@ -218,6 +227,7 @@ class PlaybackPreferencesNotifier extends Notifier<PlaybackPreferences> {
       ));
   void cycleRepeatMode() => setRepeatMode(state.repeatMode.next);
   void setFeedLayout(FeedLayout l) => _update(state.copyWith(feedLayout: l));
+  void setOfflineMode(bool v) => _update(state.copyWith(offlineMode: v));
 }
 
 final playbackPreferencesProvider =
@@ -246,3 +256,8 @@ final isMeteredConnectionProvider = StreamProvider<bool>((ref) async* {
   }
   yield* c.onConnectivityChanged.map(metered);
 });
+
+/// `true` quand le mode hors ligne est activé dans les paramètres.
+final offlineModeProvider = Provider<bool>(
+  (ref) => ref.watch(playbackPreferencesProvider).offlineMode,
+);

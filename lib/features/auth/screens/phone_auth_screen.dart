@@ -12,12 +12,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../core/theme/app_tokens.dart';
+import '../../../shared/widgets/app_button.dart';
+import '../../../shared/widgets/app_logo.dart';
 import '../providers/auth_notifier.dart';
+import '../widgets/auth_widgets.dart';
 
 // ── Constantes ─────────────────────────────────────────────────────────────────
 
-const _kPurple = Color(0xFF184797);
-const _kGold   = Color(0xFFF79009);
+const _kPurple = AppColors.primary;
+const _kGold   = AppColors.secondary;
 
 // ── Indicatifs pays ─────────────────────────────────────────────────────────────
 
@@ -111,7 +116,7 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
     });
 
     return Scaffold(
-      backgroundColor: _kPurple,
+      backgroundColor: AppColors.surface,
       body: Column(
         children: [
           // ── Header ───────────────────────────────────────────────────────────
@@ -124,32 +129,13 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Container(
-                      width: 72, height: 72,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withAlpha(26),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.white.withAlpha(77), width: 1.5),
-                      ),
-                      child: const Center(
-                        child: Text('✝', style: TextStyle(color: Colors.white, fontSize: 32)),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Témoignages',
-                      style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w700,
-                        fontSize: 28, color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
+                    const AppLogo(markSize: 72, titleSize: 24),
+                    const SizedBox(height: 8),
                     Text(
                       'Partagez les œuvres de Dieu',
-                      style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans', fontSize: 14,
-                        color: Colors.white.withAlpha(204),
-                      ),
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.bodyMedium
+                          .copyWith(color: AppColors.textSecondary),
                     ),
                   ],
                 ),
@@ -162,7 +148,7 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
             flex: 3,
             child: Container(
               decoration: const BoxDecoration(
-                color: Color(0xFFF8FAFC),
+                color: AppColors.background,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
               ),
               child: SingleChildScrollView(
@@ -173,16 +159,16 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
                     const Text(
                       'Entrez votre numéro',
                       style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600,
-                        fontSize: 20, color: Color(0xFF263238),
+                        fontFamily: AppFonts.family, fontWeight: FontWeight.w600,
+                        fontSize: 20, color: AppColors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 6),
                     Text(
                       'Nous vous enverrons un code de vérification par SMS.',
                       style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans', fontSize: 14,
-                        color: Colors.grey.shade600, height: 1.5,
+                        fontFamily: AppFonts.family, fontSize: 14,
+                        color: AppColors.textSecondary, height: 1.5,
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -211,7 +197,7 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFE4E7EC), width: 1.5),
+                        border: Border.all(color: AppColors.border, width: 1.5),
                       ),
                       child: Row(
                         children: [
@@ -221,7 +207,7 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                               decoration: const BoxDecoration(
-                                border: Border(right: BorderSide(color: Color(0xFFE4E7EC))),
+                                border: Border(right: BorderSide(color: AppColors.border)),
                               ),
                               child: Row(
                                 children: [
@@ -230,11 +216,11 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
                                   Text(
                                     _selectedCountry.code,
                                     style: const TextStyle(
-                                      fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600,
-                                      fontSize: 15, color: Color(0xFF263238),
+                                      fontFamily: AppFonts.family, fontWeight: FontWeight.w600,
+                                      fontSize: 15, color: AppColors.textPrimary,
                                     ),
                                   ),
-                                  const Icon(Icons.arrow_drop_down_rounded, size: 20, color: Color(0xFF667085)),
+                                  const Icon(Icons.arrow_drop_down_rounded, size: 20, color: AppColors.textSecondary),
                                 ],
                               ),
                             ),
@@ -246,10 +232,10 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
                               keyboardType: TextInputType.phone,
                               enabled: !_isLoading,
                               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                              style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 16),
+                              style: const TextStyle(fontFamily: AppFonts.family, fontSize: 16),
                               decoration: const InputDecoration(
                                 hintText: '07 12 34 56 78',
-                                hintStyle: TextStyle(color: Color(0xFF98A2B3)),
+                                hintStyle: TextStyle(color: AppColors.textSecondary),
                                 border: InputBorder.none,
                                 contentPadding: EdgeInsets.symmetric(horizontal: 14),
                               ),
@@ -267,14 +253,14 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
                       onPressed: _isLoading ? null : _sendOtp,
                       style: FilledButton.styleFrom(
                         backgroundColor: _kPurple,
-                        minimumSize: const Size.fromHeight(52),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        minimumSize: const Size.fromHeight(48),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.button)),
                       ),
                       child: _isLoading
                           ? const SizedBox(width: 22, height: 22,
                               child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
                           : const Text('Continuer', style: TextStyle(
-                              fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600,
+                              fontFamily: AppFonts.family, fontWeight: FontWeight.w600,
                               fontSize: 16, color: Colors.white)),
                     ),
 
@@ -283,21 +269,23 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
                     const SizedBox(height: 20),
 
                     // ── Social ────────────────────────────────────────────────
-                    Row(children: [
-                      Expanded(child: _SocialBtn(
-                        label: 'Google', color: const Color(0xFFDB4437),
-                        icon: Icons.g_mobiledata_rounded,
-                        onPressed: _isLoading ? null : () =>
-                            ref.read(authStateProvider.notifier).signInWithGoogle(),
-                      )),
-                      const SizedBox(width: 12),
-                      Expanded(child: _SocialBtn(
-                        label: 'Facebook', color: const Color(0xFF1877F2),
-                        icon: Icons.facebook_rounded,
-                        onPressed: _isLoading ? null : () =>
-                            ref.read(authStateProvider.notifier).signInWithFacebook(),
-                      )),
-                    ]),
+                    AppButton(
+                      label: 'Continuer avec Google',
+                      variant: AppButtonVariant.outline,
+                      leading: const GoogleGMark(size: 20),
+                      fullWidth: true,
+                      onPressed: _isLoading ? null : () =>
+                          ref.read(authStateProvider.notifier).signInWithGoogle(),
+                    ),
+                    const SizedBox(height: 12),
+                    AppButton(
+                      label: 'Continuer avec Facebook',
+                      variant: AppButtonVariant.outline,
+                      leadingIcon: Icons.facebook_rounded,
+                      fullWidth: true,
+                      onPressed: _isLoading ? null : () =>
+                          ref.read(authStateProvider.notifier).signInWithFacebook(),
+                    ),
                   ],
                 ),
               ),
@@ -324,11 +312,11 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
           children: [
             const SizedBox(height: 8),
             Container(width: 40, height: 4,
-                decoration: BoxDecoration(color: Colors.grey.shade300,
+                decoration: BoxDecoration(color: AppColors.border,
                     borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 16),
             const Text('Choisir un pays', style: TextStyle(
-                fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600, fontSize: 16)),
+                fontFamily: AppFonts.family, fontWeight: FontWeight.w600, fontSize: 16)),
             const SizedBox(height: 8),
             Expanded(
               child: ListView.builder(
@@ -338,9 +326,9 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
                   final c = _countries[i];
                   return ListTile(
                     leading: Text(c.flag, style: const TextStyle(fontSize: 24)),
-                    title: Text(c.name, style: const TextStyle(fontFamily: 'Plus Jakarta Sans')),
+                    title: Text(c.name, style: const TextStyle(fontFamily: AppFonts.family)),
                     trailing: Text(c.code, style: const TextStyle(
-                        color: Color(0xFF184797), fontWeight: FontWeight.w600)),
+                        color: AppColors.primary, fontWeight: FontWeight.w600)),
                     onTap: () {
                       setState(() => _selectedCountry = c);
                       Navigator.pop(context);
@@ -458,12 +446,12 @@ class _OtpScreenState extends ConsumerState<_OtpScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _kPurple,
+      backgroundColor: AppColors.surface,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.primary),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -474,8 +462,8 @@ class _OtpScreenState extends ConsumerState<_OtpScreen> {
           const Expanded(
             child: Center(
               child: Text('Vérification', style: TextStyle(
-                fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w700,
-                fontSize: 26, color: Colors.white,
+                fontFamily: AppFonts.family, fontWeight: FontWeight.w700,
+                fontSize: 26, color: AppColors.primary,
               )),
             ),
           ),
@@ -485,7 +473,7 @@ class _OtpScreenState extends ConsumerState<_OtpScreen> {
             flex: 3,
             child: Container(
               decoration: const BoxDecoration(
-                color: Color(0xFFF8FAFC),
+                color: AppColors.background,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
               ),
               padding: const EdgeInsets.fromLTRB(24, 32, 24, 40),
@@ -494,8 +482,8 @@ class _OtpScreenState extends ConsumerState<_OtpScreen> {
                 children: [
                   Text(
                     'Code envoyé au ${widget.phoneNumber}',
-                    style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 14,
-                        color: Color(0xFF667085)),
+                    style: const TextStyle(fontFamily: AppFonts.family, fontSize: 14,
+                        color: AppColors.textSecondary),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 28),
@@ -517,7 +505,7 @@ class _OtpScreenState extends ConsumerState<_OtpScreen> {
                   // OTP cells
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(_cellCount, (i) => Padding(
+                    children: List.generate(_cellCount, (i) => Flexible(child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 5),
                       child: SizedBox(
                         width: 46, height: 56,
@@ -540,8 +528,8 @@ class _OtpScreenState extends ConsumerState<_OtpScreen> {
                             maxLength: 1,
                             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                             style: const TextStyle(
-                              fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w700,
-                              fontSize: 22, color: Color(0xFF263238),
+                              fontFamily: AppFonts.family, fontWeight: FontWeight.w700,
+                              fontSize: 22, color: AppColors.textPrimary,
                             ),
                             decoration: InputDecoration(
                               counterText: '',
@@ -549,7 +537,7 @@ class _OtpScreenState extends ConsumerState<_OtpScreen> {
                               fillColor: Colors.white,
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
+                                borderSide: const BorderSide(color: AppColors.border),
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -567,7 +555,7 @@ class _OtpScreenState extends ConsumerState<_OtpScreen> {
                           ),
                         ),
                       ),
-                    )),
+                    ))),
                   ),
 
                   const SizedBox(height: 32),
@@ -576,14 +564,14 @@ class _OtpScreenState extends ConsumerState<_OtpScreen> {
                     onPressed: (_isComplete && !_isLoading) ? _verify : null,
                     style: FilledButton.styleFrom(
                       backgroundColor: _kPurple,
-                      minimumSize: const Size.fromHeight(52),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      minimumSize: const Size.fromHeight(48),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.button)),
                     ),
                     child: _isLoading
                         ? const SizedBox(width: 22, height: 22,
                             child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
                         : const Text('Confirmer', style: TextStyle(
-                            fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600,
+                            fontFamily: AppFonts.family, fontWeight: FontWeight.w600,
                             fontSize: 16, color: Colors.white)),
                   ),
 
@@ -597,8 +585,8 @@ class _OtpScreenState extends ConsumerState<_OtpScreen> {
                             ? 'Renvoyer dans 0:${_secondsLeft.toString().padLeft(2, '0')}'
                             : 'Renvoyer le code',
                         style: TextStyle(
-                          fontFamily: 'Plus Jakarta Sans', fontSize: 14,
-                          color: _secondsLeft > 0 ? const Color(0xFF98A2B3) : _kPurple,
+                          fontFamily: AppFonts.family, fontSize: 14,
+                          color: _secondsLeft > 0 ? AppColors.textSecondary : _kPurple,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -666,7 +654,7 @@ class _ProfileScreenState extends ConsumerState<_ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _kPurple,
+      backgroundColor: AppColors.surface,
       body: Column(
         children: [
           Expanded(
@@ -687,12 +675,12 @@ class _ProfileScreenState extends ConsumerState<_ProfileScreen> {
                     ),
                     const SizedBox(height: 12),
                     const Text('Bienvenue !', style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w700,
-                        fontSize: 24, color: Colors.white)),
+                        fontFamily: AppFonts.family, fontWeight: FontWeight.w700,
+                        fontSize: 24, color: AppColors.primary)),
                     const SizedBox(height: 4),
                     Text('Complétez votre profil pour commencer',
-                        style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13,
-                            color: Colors.white.withAlpha(200))),
+                        style: TextStyle(fontFamily: AppFonts.family, fontSize: 13,
+                            color: AppColors.textSecondary)),
                   ],
                 ),
               ),
@@ -702,7 +690,7 @@ class _ProfileScreenState extends ConsumerState<_ProfileScreen> {
             flex: 3,
             child: Container(
               decoration: const BoxDecoration(
-                color: Color(0xFFF8FAFC),
+                color: AppColors.background,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
               ),
               padding: const EdgeInsets.fromLTRB(24, 32, 24, 40),
@@ -734,8 +722,8 @@ class _ProfileScreenState extends ConsumerState<_ProfileScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text('Pays', style: TextStyle(
-                            fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w500,
-                            fontSize: 14, color: Color(0xFF263238))),
+                            fontFamily: AppFonts.family, fontWeight: FontWeight.w500,
+                            fontSize: 14, color: AppColors.textPrimary)),
                         const SizedBox(height: 6),
                         DropdownButtonFormField<String>(
                           value: _country, // ignore: deprecated_member_use
@@ -743,7 +731,7 @@ class _ProfileScreenState extends ConsumerState<_ProfileScreen> {
                             filled: true, fillColor: Colors.white,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Color(0xFFE4E7EC), width: 1.5),
+                              borderSide: const BorderSide(color: AppColors.border, width: 1.5),
                             ),
                             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                           ),
@@ -762,14 +750,14 @@ class _ProfileScreenState extends ConsumerState<_ProfileScreen> {
                       onPressed: _isLoading ? null : _submit,
                       style: FilledButton.styleFrom(
                         backgroundColor: _kPurple,
-                        minimumSize: const Size.fromHeight(52),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        minimumSize: const Size.fromHeight(48),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.button)),
                       ),
                       child: _isLoading
                           ? const SizedBox(width: 22, height: 22,
                               child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
                           : const Text("C'est parti !", style: TextStyle(
-                              fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600,
+                              fontFamily: AppFonts.family, fontWeight: FontWeight.w600,
                               fontSize: 16, color: Colors.white)),
                     ),
                   ],
@@ -786,19 +774,19 @@ class _ProfileScreenState extends ConsumerState<_ProfileScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
-            fontWeight: FontWeight.w500, fontSize: 14, color: Color(0xFF263238))),
+        Text(label, style: const TextStyle(fontFamily: AppFonts.family,
+            fontWeight: FontWeight.w500, fontSize: 14, color: AppColors.textPrimary)),
         const SizedBox(height: 6),
         TextField(
           controller: ctrl, enabled: !_isLoading,
-          style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 15),
+          style: const TextStyle(fontFamily: AppFonts.family, fontSize: 15),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: const TextStyle(color: Color(0xFF98A2B3)),
+            hintStyle: const TextStyle(color: AppColors.textSecondary),
             filled: true, fillColor: Colors.white,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFE4E7EC), width: 1.5),
+              borderSide: const BorderSide(color: AppColors.border, width: 1.5),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
@@ -818,42 +806,6 @@ class _OrDivider extends StatelessWidget {
   const _OrDivider();
 
   @override
-  Widget build(BuildContext context) => Row(children: [
-    const Expanded(child: Divider()),
-    Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      child: Text('ou continuer avec', style: TextStyle(
-          color: Colors.grey.shade500, fontSize: 13, fontFamily: 'Plus Jakarta Sans')),
-    ),
-    const Expanded(child: Divider()),
-  ]);
+  Widget build(BuildContext context) => const AuthOrDivider();
 }
 
-class _SocialBtn extends StatelessWidget {
-  const _SocialBtn({
-    required this.label,
-    required this.icon,
-    required this.color,
-    this.onPressed,
-  });
-
-  final String label;
-  final IconData icon;
-  final Color color;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) => OutlinedButton.icon(
-    onPressed: onPressed,
-    style: OutlinedButton.styleFrom(
-      minimumSize: const Size.fromHeight(48),
-      side: BorderSide(color: color.withAlpha(100), width: 1.5),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      backgroundColor: color.withAlpha(12),
-      foregroundColor: color,
-    ),
-    icon: Icon(icon, size: 22, color: color),
-    label: Text(label, style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-        fontWeight: FontWeight.w600, fontSize: 14, color: color)),
-  );
-}

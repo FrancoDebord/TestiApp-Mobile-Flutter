@@ -42,6 +42,10 @@ const _kProfileCountry    = 'profile_country';
 const _kAutoLoginEmail    = 'auto_login_email';
 const _kAutoLoginPassword = 'auto_login_password';
 
+/// Mode invité : navigation sans compte, conservée au redémarrage.
+/// Effacé dès qu'une session est ouverte ou à la déconnexion.
+const kGuestModeStorageKey = 'guest_mode';
+
 // ── Auth state ─────────────────────────────────────────────────────────────────
 
 sealed class AuthState {
@@ -62,6 +66,14 @@ final class AuthStateAuthenticated extends AuthState {
 /// Non connecté — affiche l'écran téléphone
 final class AuthStateUnauthenticated extends AuthState {
   const AuthStateUnauthenticated();
+}
+
+/// Mode invité : l'utilisateur parcourt l'application sans compte
+/// (accueil, explorer, téléchargements, profil, lecture des témoignages).
+/// Les actions (publier, commenter, réagir…) demandent un compte :
+/// voir lib/shared/widgets/guest_gate.dart.
+final class AuthStateGuest extends AuthState {
+  const AuthStateGuest();
 }
 
 /// OTP envoyé — attend la saisie du code
@@ -91,14 +103,15 @@ final class AuthStateNeedsProfile extends AuthState {
 // ── Notifier ───────────────────────────────────────────────────────────────────
 
 class AuthNotifier extends AsyncNotifier<AuthState> {
-  late final FirebaseAuth _firebaseAuth;
+  // Accès paresseux : Firebase n'est sollicité que pour le flux téléphone
+  // (permet aussi de tester le notifier sans initialiser Firebase).
+  FirebaseAuth get _firebaseAuth => FirebaseAuth.instance;
   late final ApiService _api;
   late final FlutterSecureStorage _storage;
   late final SocialAuthService _social;
 
   @override
   Future<AuthState> build() async {
-    _firebaseAuth = FirebaseAuth.instance;
     _api          = ref.read(apiServiceProvider);
     _storage      = ref.read(secureStorageProvider);
     _social       = ref.read(socialAuthServiceProvider);
@@ -122,12 +135,12 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     // de se reconnecter avec les credentials sauvegardés si disponibles.
     if (token == 'local_auth' || token == 'offline_mode') {
       await _clearTokens();
-      return await _tryAutoLoginWithCredentials() ?? const AuthStateUnauthenticated();
+      return await _tryAutoLoginWithCredentials() ?? await _signedOutState();
     }
 
     // Pas de jeton → tentative de reconnexion automatique avec les credentials
     if (token == null || token.isEmpty) {
-      return await _tryAutoLoginWithCredentials() ?? const AuthStateUnauthenticated();
+      return await _tryAutoLoginWithCredentials() ?? await _signedOutState();
     }
 
     // ── Cas 1 : cache disponible → affichage immédiat ─────────────────────
@@ -209,6 +222,28 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     } catch (_) {
       return null;
     }
+  }
+
+  // ── Mode invité ──────────────────────────────────────────────────────────
+
+  /// État « non connecté » : invité si le mode invité a été choisi
+  /// (persisté), sinon écran de connexion.
+  Future<AuthState> _signedOutState() async {
+    final guest = await _storage.read(key: kGuestModeStorageKey);
+    return guest == '1' ? const AuthStateGuest() : const AuthStateUnauthenticated();
+  }
+
+  /// Bouton « Mode invité » : parcourir sans compte.
+  Future<void> continueAsGuest() async {
+    await _storage.write(key: kGuestModeStorageKey, value: '1');
+    state = const AsyncValue.data(AuthStateGuest());
+  }
+
+  /// Quitte le mode invité (ex. bouton « Se connecter » du profil invité) :
+  /// retour à l'état non connecté, l'écran de connexion prend le relais.
+  Future<void> leaveGuestMode() async {
+    await _storage.delete(key: kGuestModeStorageKey);
+    state = const AsyncValue.data(AuthStateUnauthenticated());
   }
 
   // ── Phone OTP — Étape 1 : Envoyer le code ──────────────────────────────────
@@ -367,6 +402,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
       await _storage.write(key: AppConstants.keyUserId, value: id);
       await _storage.write(
           key: _kLocalDisplayName, value: displayName);
+      await _storage.delete(key: kGuestModeStorageKey);
       return AuthStateAuthenticated(UserModel(
         id: id,
         displayName: displayName,
@@ -506,7 +542,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     final result = await _social.signInWithGoogle();
     final next = switch (result) {
       SocialAuthSuccess()              => await _exchangeSocialToken(result),
-      SocialAuthCancelled()            => const AuthStateUnauthenticated(),
+      SocialAuthCancelled()            => await _signedOutState(),
       SocialAuthError(:final message)  => throw Exception(message),
     };
     state = AsyncValue.data(next);
@@ -516,7 +552,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     final result = await _social.signInWithFacebook();
     final next = switch (result) {
       SocialAuthSuccess()              => await _exchangeSocialToken(result),
-      SocialAuthCancelled()            => const AuthStateUnauthenticated(),
+      SocialAuthCancelled()            => await _signedOutState(),
       SocialAuthError(:final message)  => throw Exception(message),
     };
     state = AsyncValue.data(next);
@@ -551,6 +587,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     await Future.wait([
       _storage.delete(key: _kAutoLoginEmail),
       _storage.delete(key: _kAutoLoginPassword),
+      _storage.delete(key: kGuestModeStorageKey),
     ]);
     state = const AsyncValue.data(AuthStateUnauthenticated());
   }
@@ -573,6 +610,8 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
 
     final user = UserModel.fromJson(userData);
     await _storage.write(key: AppConstants.keyUserId, value: user.id);
+    // Une vraie session remplace le mode invité.
+    await _storage.delete(key: kGuestModeStorageKey);
     await _cacheUser(user);
     return AuthStateAuthenticated(user);
   }
@@ -664,6 +703,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
       updatedAt: DateTime.now().toIso8601String(),
     );
     await _storage.write(key: AppConstants.keyUserId, value: user.id);
+    await _storage.delete(key: kGuestModeStorageKey);
     return AuthStateAuthenticated(user);
   }
 

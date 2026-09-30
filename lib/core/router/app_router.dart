@@ -25,7 +25,11 @@ import '../../features/admin/screens/admin_dashboard_screen.dart';
 import '../../features/moderation/screens/moderation_detail_screen.dart';
 import '../../features/moderation/screens/moderation_screen.dart';
 import '../../features/notifications/screens/notifications_screen.dart';
+import '../../features/downloads/screens/downloads_screen.dart';
+import '../../features/profile/screens/about_screen.dart';
 import '../../features/profile/screens/change_password_screen.dart';
+import '../../features/profile/screens/help_screen.dart';
+import '../../features/profile/screens/language_screen.dart';
 import '../../features/profile/screens/delete_account_screen.dart';
 import '../../features/profile/screens/edit_profile_screen.dart';
 import '../../features/profile/screens/my_testimonies_screen.dart';
@@ -38,8 +42,14 @@ import '../../features/testimony/screens/featured_testimony_screen.dart';
 import '../../features/testimony/screens/report_testimony_screen.dart';
 import '../../features/testimony/screens/testimony_comments_screen.dart';
 import '../../features/testimony/screens/testimony_detail_screen.dart';
+import '../../features/auth/guest_access.dart';
 import '../../features/auth/providers/auth_notifier.dart'
-    show AuthStateAuthenticated, AuthStateLoading, authStateProvider;
+    show
+        AuthStateAuthenticated,
+        AuthStateGuest,
+        AuthStateLoading,
+        authStateProvider;
+import '../../shared/widgets/guest_gate.dart' show showAccountRequiredSheet;
 import '../../shared/models/user_model.dart';
 import '../../features/community/screens/community_screen.dart';
 import '../../features/community/screens/following_screen.dart';
@@ -64,11 +74,41 @@ bool _isContentDeepLink(String location) =>
     location.startsWith('/testimonies/') ||
     (location.startsWith('/lives/') && location != '/lives/new');
 
+/// Devient vrai dès que la session a été résolue une première fois : un
+/// rechargement ultérieur de l'état (ex. envoi d'un code SMS) ne renvoie
+/// plus vers le splash, l'écran courant reste affiché.
+bool _authResolvedOnce = false;
+
+/// Évite d'empiler plusieurs feuilles « compte requis » (le redirect peut
+/// être réévalué plusieurs fois pour une même navigation).
+bool _guestSheetOpen = false;
+
+/// Mode invité : explique pourquoi un compte est nécessaire, par-dessus
+/// l'écran courant (appelé depuis le redirect, donc après la frame).
+void _promptGuestAccount(GoRouter router, String location) {
+  if (_guestSheetOpen) return;
+  _guestSheetOpen = true;
+  WidgetsBinding.instance.addPostFrameCallback((_) async {
+    final ctx = router.routerDelegate.navigatorKey.currentContext;
+    if (ctx == null || !ctx.mounted) {
+      _guestSheetOpen = false;
+      return;
+    }
+    try {
+      await showAccountRequiredSheet(ctx,
+          reason: guestBlockedReason(location));
+    } finally {
+      _guestSheetOpen = false;
+    }
+  });
+}
+
 final appRouterProvider = Provider<GoRouter>((ref) {
   // Re-evaluate redirect whenever auth changes.
   final authListenable = ref.watch(_authListenableProvider);
 
-  return GoRouter(
+  late final GoRouter router;
+  router = GoRouter(
     // â”€â”€ Initial location â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     initialLocation: AppPaths.splash,
 
@@ -85,16 +125,50 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final authState = ref.read(authStateProvider).value;
       final isLoading = authState == null || authState is AuthStateLoading;
       final isAuthed = authState is AuthStateAuthenticated;
+      final isGuest = authState is AuthStateGuest;
       final location = state.matchedLocation;
 
       // Show splash while determining auth status.
       // Un lien de témoignage reçu à ce moment est mémorisé, sinon le splash
       // puis l'accueil le feraient disparaître.
       if (isLoading) {
+        // Rechargement après la première résolution (ex. code SMS en cours
+        // d'envoi) : rester sur l'écran courant.
+        if (_authResolvedOnce && location != AppPaths.splash) return null;
         if (_isContentDeepLink(location)) {
           _pendingDeepLink = state.uri.toString();
         }
         return AppPaths.splash;
+      }
+      _authResolvedOnce = true;
+
+      // ── Mode invité ──────────────────────────────────────────────────────
+      // Navigation libre dans les onglets et la lecture ; les actions
+      // réservées aux membres demandent un compte.
+      if (isGuest) {
+        if (_pendingDeepLink != null && !_isContentDeepLink(location)) {
+          final target = _pendingDeepLink!;
+          _pendingDeepLink = null;
+          if (guestCanAccess(target)) return target;
+        }
+        if (location == AppPaths.splash) return '/home';
+        if (guestCanAccess(location)) return null;
+
+        // Onglet « Publier » : feuille « Créez un compte pour … » et on
+        // reste sur l'écran courant.
+        if (location == AppPaths.publishPath ||
+            location.startsWith('${AppPaths.publishPath}/')) {
+          _promptGuestAccount(router, location);
+          final current =
+              router.routerDelegate.currentConfiguration.uri.toString();
+          return current.isNotEmpty &&
+                  current != location &&
+                  guestCanAccess(current)
+              ? current
+              : '/home';
+        }
+        // Autres écrans réservés : connexion (retour possible).
+        return '/login';
       }
 
       // Session prête : rejouer le lien mémorisé à la place de l'écran
@@ -161,6 +235,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     // â”€â”€ Route tree â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     routes: _buildRoutes(),
   );
+  return router;
 });
 
 // ============================================================================
@@ -381,6 +456,16 @@ List<RouteBase> _buildRoutes() {
     ),
 
     // â”€â”€ Error â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Notifications : cloche de l'accueil, liens des notifications push ──
+    GoRoute(
+      path: '/notifications',
+      name: AppRoutes.notifications,
+      pageBuilder: (context, state) => AppTransitions.slideRight(
+        state: state,
+        child: const NotificationsScreen(),
+      ),
+    ),
+
     GoRoute(
       path: '/404',
       name: AppRoutes.notFound,
@@ -513,11 +598,11 @@ List<RouteBase> _buildRoutes() {
         StatefulShellBranch(
           routes: [
             GoRoute(
-              path: '/notifications',
-              name: AppRoutes.notifications,
+              path: '/downloads',
+              name: AppRoutes.downloads,
               pageBuilder: (context, state) => AppTransitions.none(
                 state: state,
-                child: const NotificationsScreen(),
+                child: const DownloadsScreen(),
               ),
             ),
           ],
@@ -566,6 +651,33 @@ List<RouteBase> _buildRoutes() {
                     child: const SettingsScreen(),
                   ),
                   routes: [
+                    GoRoute(
+                      path: 'language',
+                      name: AppRoutes.language,
+                      pageBuilder: (context, state) =>
+                          AppTransitions.slideRight(
+                        state: state,
+                        child: const LanguageScreen(),
+                      ),
+                    ),
+                    GoRoute(
+                      path: 'help',
+                      name: AppRoutes.help,
+                      pageBuilder: (context, state) =>
+                          AppTransitions.slideRight(
+                        state: state,
+                        child: const HelpScreen(),
+                      ),
+                    ),
+                    GoRoute(
+                      path: 'about',
+                      name: AppRoutes.about,
+                      pageBuilder: (context, state) =>
+                          AppTransitions.slideRight(
+                        state: state,
+                        child: const AboutScreen(),
+                      ),
+                    ),
                     GoRoute(
                       path: 'change-password',
                       name: AppRoutes.changePassword,

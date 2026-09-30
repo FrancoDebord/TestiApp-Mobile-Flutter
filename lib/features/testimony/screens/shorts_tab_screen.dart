@@ -6,6 +6,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/app_text_styles.dart';
 import '../../home/models/testimony_model.dart';
 import '../../home/providers/home_providers.dart';
 import 'shorts_screen.dart';
@@ -18,6 +19,8 @@ class ShortsTabScreen extends ConsumerWidget {
     final videos = ref
         .watch(feedNotifierProvider)
         .whereType<VideoTestimony>()
+        // Vidéos YouTube : lecteur YouTube (hors défilement des Shorts).
+        .where((v) => !v.isYouTube)
         .toList();
 
     if (videos.isEmpty) {
@@ -34,7 +37,7 @@ class ShortsTabScreen extends ConsumerWidget {
                 'Aucun Short disponible',
                 style: TextStyle(
                   color: Colors.white54,
-                  fontFamily: 'Plus Jakarta Sans',
+                  fontFamily: AppFonts.family,
                   fontSize: 16,
                 ),
               ),
@@ -43,7 +46,7 @@ class ShortsTabScreen extends ConsumerWidget {
                 'Publiez une vidéo courte pour commencer.',
                 style: TextStyle(
                   color: Colors.white38,
-                  fontFamily: 'Plus Jakarta Sans',
+                  fontFamily: AppFonts.family,
                   fontSize: 13,
                 ),
                 textAlign: TextAlign.center,

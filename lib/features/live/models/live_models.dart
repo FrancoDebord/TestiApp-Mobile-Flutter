@@ -16,6 +16,61 @@ enum LiveStatus {
       };
 }
 
+/// Caméra du direct (backend : docs/fonctionnalites/lives-camera-ip.md).
+/// - [browser] : caméra et micro de l'appareil du diffuseur ;
+/// - [rtmp] : caméra IP ou encodeur qui envoie vers l'adresse RTMP + clé fournies ;
+/// - [url] : le service vidéo lit lui-même l'adresse du flux de la caméra.
+enum LiveSource {
+  browser('browser'),
+  rtmp('rtmp'),
+  url('url');
+
+  const LiveSource(this.apiValue);
+  final String apiValue;
+
+  static LiveSource parse(Object? raw) => switch (raw) {
+        'rtmp' => LiveSource.rtmp,
+        'url'  => LiveSource.url,
+        _      => LiveSource.browser,
+      };
+
+  /// Caméra externe : rien n'est publié depuis l'appareil du diffuseur.
+  bool get isExternal => this != LiveSource.browser;
+}
+
+/// Adresse de la caméra externe (champ `camera`, envoyé au seul diffuseur).
+class LiveCamera {
+  const LiveCamera({this.url, this.streamKey, this.sourceUrl});
+
+  /// null si le champ est absent (spectateur, caméra de l'appareil).
+  static LiveCamera? fromJson(Object? raw) {
+    if (raw is! Map) return null;
+    String? str(Object? v) {
+      final s = v?.toString().trim() ?? '';
+      return s.isEmpty ? null : s;
+    }
+
+    return LiveCamera(
+      url: str(raw['url']),
+      streamKey: str(raw['streamKey'] ?? raw['stream_key']),
+      sourceUrl: str(raw['sourceUrl'] ?? raw['source_url']),
+    );
+  }
+
+  /// Adresse du serveur RTMP (mode rtmp).
+  final String? url;
+
+  /// Clé de diffusion (secrète, mode rtmp).
+  final String? streamKey;
+
+  /// Adresse du flux lu par le service vidéo (mode url ; peut contenir un mot de passe).
+  final String? sourceUrl;
+}
+
+/// Adresse de flux acceptée par le serveur pour `camera_url`.
+final RegExp liveCameraUrlPattern =
+    RegExp(r'^(rtsps?|rtmps?|https?|srt)://\S+$', caseSensitive: false);
+
 /// Réactions acceptées par `POST /lives/{id}/reactions`.
 enum LiveReactionType {
   like('like', '❤️', "J'aime"),
@@ -151,6 +206,8 @@ class LiveSession {
     this.createdAt,
     this.liveStats,
     this.pinnedComment,
+    this.source = LiveSource.browser,
+    this.camera,
   });
 
   factory LiveSession.fromJson(Map<String, dynamic> m) {
@@ -179,6 +236,8 @@ class LiveSession {
           ? LiveStats.fromJson(Map<String, dynamic>.from(liveStats))
           : null,
       pinnedComment: _commentOrNull(m['pinnedComment']),
+      source: LiveSource.parse(m['source']),
+      camera: LiveCamera.fromJson(m['camera']),
     );
   }
 
@@ -204,6 +263,12 @@ class LiveSession {
 
   /// Commentaire épinglé en haut du direct (null : aucun).
   final LiveComment? pinnedComment;
+
+  /// Caméra utilisée (appareil, RTMP, adresse de flux).
+  final LiveSource source;
+
+  /// Connexion de la caméra externe : fournie au seul diffuseur.
+  final LiveCamera? camera;
 
   bool get isOnAir => status == LiveStatus.live;
 

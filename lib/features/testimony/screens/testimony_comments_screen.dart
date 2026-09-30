@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
 import '../../../features/auth/providers/auth_notifier.dart'
     show currentUserProvider;
 import '../../../shared/models/comment_model.dart';
+import '../../../shared/widgets/guest_gate.dart';
 import '../providers/comments_provider.dart';
 
 // =============================================================================
@@ -27,7 +29,7 @@ class TestimonyCommentsScreen extends ConsumerWidget {
     final async = ref.watch(commentsProvider(testimonyId));
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
@@ -39,14 +41,14 @@ class TestimonyCommentsScreen extends ConsumerWidget {
           data:    (list) => Text(
             'Commentaires (${list.length})',
             style: const TextStyle(
-              fontFamily: 'Plus Jakarta Sans',
+              fontFamily: AppFonts.family,
               fontWeight: FontWeight.w600,
               fontSize: 18,
-              color: Color(0xFF263238),
+              color: AppColors.textPrimary,
             ),
           ),
         ),
-        foregroundColor: const Color(0xFF263238),
+        foregroundColor: AppColors.textPrimary,
       ),
       body: Column(
         children: [
@@ -83,9 +85,16 @@ class TestimonyCommentsScreen extends ConsumerWidget {
             ),
           ),
           _CommentInput(
-            onSubmit: (text) => ref
-                .read(commentsProvider(testimonyId).notifier)
-                .addComment(text),
+            onSubmit: (text) async {
+              // Mode invité : commenter demande un compte.
+              if (!await requireAccount(context, ref,
+                  reason: 'commenter les témoignages')) {
+                return;
+              }
+              ref
+                  .read(commentsProvider(testimonyId).notifier)
+                  .addComment(text);
+            },
           ),
         ],
       ),
@@ -131,9 +140,9 @@ class _CommentTile extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: AppColors.surface,
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFE4E7EC)),
+                    border: Border.all(color: AppColors.border),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -141,19 +150,19 @@ class _CommentTile extends StatelessWidget {
                       Text(
                         comment.user?.displayName ?? 'Anonyme',
                         style: const TextStyle(
-                          fontFamily: 'Plus Jakarta Sans',
+                          fontFamily: AppFonts.family,
                           fontWeight: FontWeight.w600,
                           fontSize: 13,
-                          color: Color(0xFF263238),
+                          color: AppColors.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         comment.text,
                         style: const TextStyle(
-                          fontFamily: 'Plus Jakarta Sans',
+                          fontFamily: AppFonts.family,
                           fontSize: 14,
-                          color: Color(0xFF344054),
+                          color: AppColors.textPrimary,
                           height: 1.5,
                         ),
                       ),
@@ -167,9 +176,9 @@ class _CommentTile extends StatelessWidget {
                     Text(
                       _formatDate(comment.createdAt),
                       style: const TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
+                        fontFamily: AppFonts.family,
                         fontSize: 11,
-                        color: Color(0xFF98A2B3),
+                        color: AppColors.textSecondary,
                       ),
                     ),
                     if (comment.repliesCount > 0) ...[
@@ -177,7 +186,7 @@ class _CommentTile extends StatelessWidget {
                       Text(
                         '${comment.repliesCount} réponse${comment.repliesCount > 1 ? 's' : ''}',
                         style: const TextStyle(
-                          fontFamily: 'Plus Jakarta Sans',
+                          fontFamily: AppFonts.family,
                           fontSize: 11,
                           color: AppColors.primary,
                           fontWeight: FontWeight.w500,
@@ -191,9 +200,9 @@ class _CommentTile extends StatelessWidget {
                         child: const Text(
                           'Supprimer',
                           style: TextStyle(
-                            fontFamily: 'Plus Jakarta Sans',
+                            fontFamily: AppFonts.family,
                             fontSize: 11,
-                            color: Color(0xFFD92D20),
+                            color: AppColors.danger,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -217,7 +226,7 @@ class _CommentTile extends StatelessWidget {
         title: const Text(
           'Supprimer ce commentaire ?',
           style: TextStyle(
-            fontFamily: 'Plus Jakarta Sans',
+            fontFamily: AppFonts.family,
             fontWeight: FontWeight.w600,
             fontSize: 16,
           ),
@@ -225,16 +234,16 @@ class _CommentTile extends StatelessWidget {
         content: const Text(
           'Cette action est irréversible.',
           style: TextStyle(
-              fontFamily: 'Plus Jakarta Sans',
+              fontFamily: AppFonts.family,
               fontSize: 13,
-              color: Color(0xFF667085)),
+              color: AppColors.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('Annuler',
                 style: TextStyle(
-                    fontFamily: 'Plus Jakarta Sans', color: Color(0xFF667085))),
+                    fontFamily: AppFonts.family, color: AppColors.textSecondary)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -242,7 +251,7 @@ class _CommentTile extends StatelessWidget {
               onDelete();
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFD92D20),
+              backgroundColor: AppColors.danger,
               foregroundColor: Colors.white,
               elevation: 0,
               shape: RoundedRectangleBorder(
@@ -250,7 +259,7 @@ class _CommentTile extends StatelessWidget {
             ),
             child: const Text('Supprimer',
                 style: TextStyle(
-                    fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600)),
+                    fontFamily: AppFonts.family, fontWeight: FontWeight.w600)),
           ),
         ],
       ),
@@ -301,7 +310,7 @@ class _Avatar extends StatelessWidget {
       child: Text(
         initials.isEmpty ? '?' : initials,
         style: TextStyle(
-          fontFamily: 'Plus Jakarta Sans',
+          fontFamily: AppFonts.family,
           fontWeight: FontWeight.w700,
           fontSize: radius * 0.7,
           color: AppColors.primary,
@@ -351,7 +360,7 @@ class _CommentInputState extends State<_CommentInput> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.white,
+      color: AppColors.surface,
       padding: EdgeInsets.only(
         left: 16,
         right: 8,
@@ -371,12 +380,12 @@ class _CommentInputState extends State<_CommentInput> {
                 decoration: InputDecoration(
                   hintText: 'Ajouter un commentaire…',
                   hintStyle: const TextStyle(
-                    fontFamily: 'Plus Jakarta Sans',
+                    fontFamily: AppFonts.family,
                     fontSize: 14,
-                    color: Color(0xFF98A2B3),
+                    color: AppColors.textSecondary,
                   ),
                   filled: true,
-                  fillColor: const Color(0xFFF2F4F7),
+                  fillColor: AppColors.background,
                   contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16, vertical: 10),
                   border: OutlineInputBorder(
@@ -385,9 +394,9 @@ class _CommentInputState extends State<_CommentInput> {
                   ),
                 ),
                 style: const TextStyle(
-                  fontFamily: 'Plus Jakarta Sans',
+                  fontFamily: AppFonts.family,
                   fontSize: 14,
-                  color: Color(0xFF263238),
+                  color: AppColors.textPrimary,
                 ),
                 onSubmitted: (_) => _send(),
               ),
@@ -441,19 +450,19 @@ class _EmptyState extends StatelessWidget {
           const Text(
             'Aucun commentaire',
             style: TextStyle(
-              fontFamily: 'Plus Jakarta Sans',
+              fontFamily: AppFonts.family,
               fontWeight: FontWeight.w600,
               fontSize: 16,
-              color: Color(0xFF263238),
+              color: AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 6),
           const Text(
             'Soyez le premier à réagir !',
             style: TextStyle(
-              fontFamily: 'Plus Jakarta Sans',
+              fontFamily: AppFonts.family,
               fontSize: 13,
-              color: Color(0xFF667085),
+              color: AppColors.textSecondary,
             ),
           ),
         ],
@@ -474,14 +483,14 @@ class _ErrorState extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           const Icon(Icons.cloud_off_rounded,
-              size: 48, color: Color(0xFF98A2B3)),
+              size: 48, color: AppColors.textSecondary),
           const SizedBox(height: 12),
           const Text(
             'Impossible de charger les commentaires',
             style: TextStyle(
-                fontFamily: 'Plus Jakarta Sans',
+                fontFamily: AppFonts.family,
                 fontSize: 14,
-                color: Color(0xFF667085)),
+                color: AppColors.textSecondary),
           ),
           const SizedBox(height: 16),
           TextButton.icon(
@@ -490,7 +499,7 @@ class _ErrorState extends StatelessWidget {
             label: const Text(
               'Réessayer',
               style: TextStyle(
-                  fontFamily: 'Plus Jakarta Sans',
+                  fontFamily: AppFonts.family,
                   color: AppColors.primary,
                   fontWeight: FontWeight.w600),
             ),

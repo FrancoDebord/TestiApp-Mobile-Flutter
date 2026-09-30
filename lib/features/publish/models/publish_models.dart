@@ -79,6 +79,51 @@ const List<String> kTestimonyCategories = [
 ];
 
 // ---------------------------------------------------------------------------
+// Preuves du témoignage (facultatives, jamais publiées)
+// ---------------------------------------------------------------------------
+
+/// Taille maximale d'une preuve (même limite que le serveur : 10 Mo).
+const int kMaxProofBytes = 10 * 1024 * 1024;
+
+/// Extensions acceptées par POST /testimonies/{id}/proofs.
+const List<String> kProofExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'webp'];
+
+/// Fichier local choisi pour un emplacement de preuve (1 ou 2).
+class ProofAttachment {
+  const ProofAttachment({
+    required this.path,
+    required this.name,
+    required this.size,
+  });
+
+  final String path;
+  final String name;
+
+  /// Taille en octets.
+  final int size;
+
+  String get extension {
+    final dot = name.lastIndexOf('.');
+    return dot < 0 ? '' : name.substring(dot + 1).toLowerCase();
+  }
+
+  bool get isPdf => extension == 'pdf';
+}
+
+/// Raison du refus d'un fichier de preuve, ou `null` s'il est accepté.
+String? proofRejectionReason({required String name, required int size}) {
+  final dot = name.lastIndexOf('.');
+  final ext = dot < 0 ? '' : name.substring(dot + 1).toLowerCase();
+  if (!kProofExtensions.contains(ext)) {
+    return 'Format non accepté : image (JPG, PNG, WebP) ou PDF uniquement.';
+  }
+  if (size > kMaxProofBytes) {
+    return 'Fichier trop lourd : 10 Mo au maximum.';
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
 // Draft / in-progress form state
 // ---------------------------------------------------------------------------
 
@@ -102,6 +147,11 @@ class PublishDraft {
     this.videoTrimEnd = Duration.zero,
     this.videoThumbnailIndex = 0,
     this.videoRemoteUrl,
+    this.useYouTube = false,
+    this.youtubeUrl = '',
+    this.proofs = const {},
+    this.proofsPublic = false,
+    this.failedProofPositions = const [],
     this.visibility = TestimonyVisibility.public,
     this.consentGiven = false,
     this.status = PublishStatus.draft,
@@ -137,6 +187,19 @@ class PublishDraft {
   int videoThumbnailIndex;
   String? videoRemoteUrl;
 
+  /// Administrateurs : vidéo publiée par lien YouTube au lieu d'un fichier.
+  bool useYouTube;
+  String youtubeUrl;
+
+  // preuves : emplacement (1 ou 2) → fichier local
+  Map<int, ProofAttachment> proofs;
+
+  /// Accord de l'auteur pour montrer ses preuves au public une fois le témoignage publié.
+  bool proofsPublic;
+
+  /// Emplacements dont l'envoi a échoué après la publication (message à afficher).
+  List<int> failedProofPositions;
+
   // publication
   TestimonyVisibility visibility;
   bool consentGiven;
@@ -148,6 +211,23 @@ class PublishDraft {
   // upload
   bool isUploadingMedia;
   String? uploadError;
+
+  /// Titre envoyé au serveur : le titre saisi, sinon (titre facultatif) la
+  /// première ligne de la description, sinon un libellé selon le format.
+  String get effectiveTitle {
+    final t = title.trim();
+    if (t.isNotEmpty) return t;
+    final desc = (format == TestimonyFormat.audio ? audioTranscript : bodyText)
+        .replaceAll(RegExp(r'^[#>\-\s]+|[*_~]'), '')
+        .trim();
+    if (desc.isNotEmpty) {
+      final line = desc.split('\n').first.trim();
+      if (line.isNotEmpty) {
+        return line.length > 60 ? '${line.substring(0, 60).trimRight()}…' : line;
+      }
+    }
+    return 'Mon témoignage';
+  }
 
   PublishDraft copyWith({
     TestimonyFormat? format,
@@ -164,6 +244,11 @@ class PublishDraft {
     Duration? videoTrimStart,
     Duration? videoTrimEnd,
     int? videoThumbnailIndex,
+    bool? useYouTube,
+    String? youtubeUrl,
+    Map<int, ProofAttachment>? proofs,
+    bool? proofsPublic,
+    List<int>? failedProofPositions,
     TestimonyVisibility? visibility,
     bool? consentGiven,
     PublishStatus? status,
@@ -200,6 +285,11 @@ class PublishDraft {
       videoRemoteUrl: videoRemoteUrl == _sentinel
           ? this.videoRemoteUrl
           : videoRemoteUrl as String?,
+      useYouTube: useYouTube ?? this.useYouTube,
+      youtubeUrl: youtubeUrl ?? this.youtubeUrl,
+      proofs: proofs ?? this.proofs,
+      proofsPublic: proofsPublic ?? this.proofsPublic,
+      failedProofPositions: failedProofPositions ?? this.failedProofPositions,
       visibility: visibility ?? this.visibility,
       consentGiven: consentGiven ?? this.consentGiven,
       status: status ?? this.status,

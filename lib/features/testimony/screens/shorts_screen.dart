@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:share_plus/share_plus.dart' show ShareParams, SharePlus;
 import 'package:video_player/video_player.dart';
 
@@ -19,6 +18,8 @@ import '../../../features/auth/providers/auth_notifier.dart'
 import '../../../l10n/app_localizations.dart';
 import '../../home/models/testimony_model.dart';
 import '../../home/providers/home_providers.dart';
+import '../../../shared/widgets/guest_gate.dart';
+import '../widgets/testimony_info.dart';
 import 'video_player_screen.dart' show showVideoQualitySheet, videoQualityChipLabel;
 
 // ============================================================================
@@ -123,11 +124,11 @@ class _ShortsScreenState extends ConsumerState<ShortsScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         flexibleSpace: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [Color(0xCC000000), Colors.transparent],
+              colors: [Colors.black.withValues(alpha: 0.8), Colors.transparent],
             ),
           ),
         ),
@@ -137,7 +138,8 @@ class _ShortsScreenState extends ConsumerState<ShortsScreen> {
         ),
         title: Text(
           AppLocalizations.of(context).navShorts,
-          style: GoogleFonts.poppins(
+          style: TextStyle(
+            fontFamily: AppFonts.family,
             color: Colors.white,
             fontWeight: FontWeight.w600,
             fontSize: 18,
@@ -337,7 +339,8 @@ class _ShortPageState extends ConsumerState<_ShortPage> {
     if (kIsWeb || path.startsWith('http://') || path.startsWith('https://')) {
       return VideoPlayerController.networkUrl(Uri.parse(path));
     }
-    return VideoPlayerController.file(File(path));
+    // Fichier local (vidéo téléchargée).
+    return VideoPlayerController.file(File(localFilePath(path)));
   }
 
   Future<void> _initVideo() async {
@@ -521,11 +524,11 @@ class _ShortPageState extends ConsumerState<_ShortPage> {
             top: 0, left: 0, right: 0,
             height: 120,
             child: Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Color(0xAA000000), Colors.transparent],
+                  colors: [Colors.black.withValues(alpha: 0.67), Colors.transparent],
                 ),
               ),
             ),
@@ -535,11 +538,11 @@ class _ShortPageState extends ConsumerState<_ShortPage> {
             bottom: 0, left: 0, right: 0,
             height: 200,
             child: Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.bottomCenter,
                   end: Alignment.topCenter,
-                  colors: [Color(0xDD000000), Colors.transparent],
+                  colors: [Colors.black.withValues(alpha: 0.87), Colors.transparent],
                 ),
               ),
             ),
@@ -550,7 +553,10 @@ class _ShortPageState extends ConsumerState<_ShortPage> {
             left: 16,
             right: 72, // leave room for the action column
             bottom: 24,
-            child: _ShortInfo(testimony: widget.testimony),
+            child: _ShortInfo(
+              testimony: widget.testimony,
+              isOffline: OfflineMedia.isLocalPath(_currentUrl),
+            ),
           ),
 
           // ── 4. Bottom-right actions ─────────────────────────────────────
@@ -639,7 +645,8 @@ class _PlaceholderGradient extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               label,
-              style: GoogleFonts.poppins(
+              style: TextStyle(
+            fontFamily: AppFonts.family,
                 color: Colors.white70,
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
@@ -657,8 +664,11 @@ class _PlaceholderGradient extends StatelessWidget {
 // ============================================================================
 
 class _ShortInfo extends StatelessWidget {
-  const _ShortInfo({required this.testimony});
+  const _ShortInfo({required this.testimony, this.isOffline = false});
   final VideoTestimony testimony;
+
+  /// Lecture d'un fichier téléchargé.
+  final bool isOffline;
 
   @override
   Widget build(BuildContext context) {
@@ -680,7 +690,8 @@ class _ShortInfo extends StatelessWidget {
               child: testimony.author.avatarUrl == null
                   ? Text(
                       initials,
-                      style: GoogleFonts.poppins(
+                      style: TextStyle(
+            fontFamily: AppFonts.family,
                         color: Colors.white,
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
@@ -707,7 +718,8 @@ class _ShortInfo extends StatelessWidget {
         // Title
         Text(
           testimony.title,
-          style: GoogleFonts.poppins(
+          style: TextStyle(
+            fontFamily: AppFonts.family,
             color: Colors.white,
             fontWeight: FontWeight.w600,
             fontSize: 15,
@@ -718,22 +730,14 @@ class _ShortInfo extends StatelessWidget {
         ),
         const SizedBox(height: 8),
 
-        // Category chip
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: Colors.white.withAlpha(51),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white.withAlpha(77)),
-          ),
-          child: Text(
-            testimony.category.label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
+        // Catégorie (badge jaune) + « Hors ligne » si fichier téléchargé
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            CategoryBadge(category: testimony.category),
+            if (isOffline) const OfflineBadge(),
+          ],
         ),
       ],
     );
@@ -764,25 +768,35 @@ class _ShortActions extends ConsumerWidget {
     final effectiveLikes   = testimony.stats.likes   + (liked  ? 1 : 0);
     final effectivePrayers = testimony.stats.prayers + (prayed ? 1 : 0);
 
+    // Actions réservées aux membres (mode invité : feuille « compte requis »).
+    Future<void> guarded(String reason, void Function() action) async {
+      if (await requireAccount(context, ref, reason: reason)) action();
+    }
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         // ── Heart / Like ────────────────────────────────────────────────
         _ActionButton(
-          icon: liked ? Icons.favorite : Icons.favorite_border,
-          color: liked ? Colors.redAccent : Colors.white,
+          icon: liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+          color: liked ? AppColors.danger : Colors.white,
           label: _formatCount(effectiveLikes),
-          onTap: () =>
-              ref.read(interactionProvider.notifier).toggleLike(testimony.id),
+          onTap: () => guarded(
+            'réagir aux témoignages',
+            () => ref.read(interactionProvider.notifier).toggleLike(testimony.id),
+          ),
         ),
         const SizedBox(height: 20),
 
-        // ── Praying hands ───────────────────────────────────────────────
-        _EmojiActionButton(
-          emoji: '🙏',
+        // ── Prière ──────────────────────────────────────────────────────
+        _ActionButton(
+          icon: Icons.volunteer_activism_rounded,
+          color: prayed ? AppColors.sun : Colors.white,
           label: _formatCount(effectivePrayers),
-          onTap: () =>
-              ref.read(interactionProvider.notifier).togglePray(testimony.id),
+          onTap: () => guarded(
+            'réagir aux témoignages',
+            () => ref.read(interactionProvider.notifier).togglePray(testimony.id),
+          ),
         ),
         const SizedBox(height: 20),
 
@@ -791,23 +805,28 @@ class _ShortActions extends ConsumerWidget {
           icon: Icons.chat_bubble_outline_rounded,
           color: Colors.white,
           label: _formatCount(testimony.stats.comments),
-          onTap: () => _openComments(context),
+          onTap: () => guarded(
+            'commenter les témoignages',
+            () => _openComments(context),
+          ),
         ),
         const SizedBox(height: 20),
 
         // ── Bookmark / Save ─────────────────────────────────────────────
         _ActionButton(
-          icon: saved ? Icons.bookmark : Icons.bookmark_border,
+          icon: saved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
           color: saved ? AppColors.secondary : Colors.white,
           label: saved ? 'Sauvegardé' : AppLocalizations.of(context).detailSave,
-          onTap: () =>
-              ref.read(interactionProvider.notifier).toggleSave(testimony.id),
+          onTap: () => guarded(
+            'enregistrer vos favoris',
+            () => ref.read(interactionProvider.notifier).toggleSave(testimony.id),
+          ),
         ),
         const SizedBox(height: 20),
 
         // ── Share ───────────────────────────────────────────────────────
         _ActionButton(
-          icon: Icons.share_outlined,
+          icon: Icons.share_rounded,
           color: Colors.white,
           label: AppLocalizations.of(context).detailShare,
           onTap: () => SharePlus.instance.share(
@@ -865,42 +884,6 @@ class _ActionButton extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, color: color, size: 30),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Reusable action button (emoji text) ──────────────────────────────────────
-
-class _EmojiActionButton extends StatelessWidget {
-  const _EmojiActionButton({
-    required this.emoji,
-    required this.label,
-    required this.onTap,
-  });
-
-  final String emoji;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(emoji, style: const TextStyle(fontSize: 28)),
           const SizedBox(height: 4),
           Text(
             label,
@@ -1030,7 +1013,7 @@ class _ShortsCommentsSheetState
                 Text(
                   AppLocalizations.of(context).detailComments,
                   style: const TextStyle(
-                    fontFamily: 'Plus Jakarta Sans',
+                    fontFamily: AppFonts.family,
                     fontWeight: FontWeight.w600,
                     fontSize: 15,
                     color: AppColors.textPrimary,
@@ -1178,7 +1161,7 @@ class _CommentTile extends StatelessWidget {
             height: 32,
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                colors: [AppColors.primary, Color(0xFF2B5DB0)],
+                colors: AppColors.blueGradient,
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -1188,7 +1171,7 @@ class _CommentTile extends StatelessWidget {
             child: Text(
               initials,
               style: const TextStyle(
-                fontFamily: 'Plus Jakarta Sans',
+                fontFamily: AppFonts.family,
                 fontWeight: FontWeight.w700,
                 fontSize: 12,
                 color: Colors.white,
@@ -1205,7 +1188,7 @@ class _CommentTile extends StatelessWidget {
                     Text(
                       comment.author,
                       style: const TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
+                        fontFamily: AppFonts.family,
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
                         color: AppColors.textPrimary,

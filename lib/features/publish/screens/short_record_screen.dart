@@ -313,9 +313,13 @@ class _ShortRecordScreenState extends State<ShortRecordScreen>
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
+                elevation: 0,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 28,
                   vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
                 ),
               ),
             ),
@@ -396,13 +400,13 @@ class _ShortRecordScreenState extends State<ShortRecordScreen>
                     child: OutlinedButton.icon(
                       onPressed: _resetRecording,
                       icon: const Icon(Icons.refresh),
-                      label: const Text('REPRENDRE'),
+                      label: const Text('Reprendre'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.white,
                         side: const BorderSide(color: Colors.white54),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(10),
                         ),
                       ),
                     ),
@@ -418,13 +422,14 @@ class _ShortRecordScreenState extends State<ShortRecordScreen>
                             'duration': _elapsedSeconds,
                           }),
                       icon: const Icon(Icons.check),
-                      label: const Text('UTILISER'),
+                      label: const Text('Utiliser'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.success,
+                        backgroundColor: AppColors.secondary,
                         foregroundColor: Colors.white,
+                        elevation: 0,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(10),
                         ),
                       ),
                     ),

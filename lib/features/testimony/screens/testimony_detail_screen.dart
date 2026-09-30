@@ -1,6 +1,7 @@
 import '../../home/widgets/compact_testimony_tile.dart';
 import '../../home/widgets/testimony_card_header.dart' show openAuthorProfile;
 import '../../community/widgets/follow_button.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,7 +11,9 @@ import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
 import '../../../core/app_constants.dart';
 import '../../../core/local_db/daos/comment_dao.dart';
 import '../../../core/local_db/database_service.dart';
+import '../../../core/media/media_quality.dart' show OfflineMedia;
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_tokens.dart';
 import '../../../services/api_service.dart' show apiServiceProvider;
 import '../../../shared/models/comment_model.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -20,8 +23,14 @@ import '../../../features/home/models/testimony_model.dart';
 import '../../../features/home/providers/home_providers.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/utils/rich_text_utils.dart';
-import '../../../shared/widgets/organization_badge.dart';
+import '../../../shared/widgets/guest_gate.dart';
+import '../../../shared/widgets/testimony_proofs_card.dart';
+import '../../../shared/widgets/youtube_video_player.dart';
 import '../../../services/audio_player_service.dart' show audioPlayerProvider;
+import '../providers/recommendations_provider.dart';
+import '../providers/tts_provider.dart';
+import '../widgets/testimony_info.dart';
+import '../widgets/tts_listen_card.dart';
 import 'audio_player_screen.dart';
 import 'video_player_screen.dart';
 
@@ -82,7 +91,7 @@ class _LocalComment {
 ///      │        ├─ _AuthorCard
 ///      │        ├─ _MetaRow             (category chip + date)
 ///      │        ├─ _TitleText
-///      │        ├─ _ReactionSummaryRow  (❤️ 🙏 💬 counts)
+///      │        ├─ TestimonyStatsRow    (❤ · partage · commentaires · télécharger)
 ///      │        ├─ _ContentBody
 ///      │        ├─ _AudioPlayerEmbed?   (if audio type)
 ///      │        ├─ _VideoPlayerEmbed?   (if video type)
@@ -110,16 +119,47 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
   // ── Testimony (fallback when not in feed) ─────────────────────────────────
   Testimony? _singleTestimony;
 
+  /// Preuves privées relues sur le serveur (auteur, modération) : la version
+  /// du fil peut être ancienne ou ne pas les contenir.
+  List<TestimonyProof>? _proofs;
+
   // ── Commentaires locaux ───────────────────────────────────────────────────
   List<_LocalComment> _comments = [];
   bool _loadingComments = true;
 
+  // ── Lecture vocale (témoignages texte) ────────────────────────────────────
+  late final TtsController _tts;
+  bool _autoReadHandled = false;
+
   @override
   void initState() {
     super.initState();
+    _tts = ref.read(ttsControllerProvider.notifier);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initFromTestimony();
       _loadComments();
+    });
+  }
+
+  @override
+  void dispose() {
+    // Quitter l'écran arrête la lecture vocale de ce témoignage.
+    final id = widget.testimonyId;
+    Future.microtask(() => _tts.stopFor(id));
+    super.dispose();
+  }
+
+  /// « Lecture automatique » : démarre la lecture vocale à l'ouverture d'un
+  /// témoignage texte. Sur le web, les navigateurs bloquent le son sans geste
+  /// de l'utilisateur : la lecture n'y démarre qu'après un appui.
+  void _maybeAutoRead(Testimony t) {
+    if (_autoReadHandled || t is! TextTestimony) return;
+    final tts = ref.read(ttsControllerProvider);
+    if (!tts.prefsLoaded) return;
+    _autoReadHandled = true;
+    if (!tts.autoRead || kIsWeb || tts.isFor(t.id)) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) startTestimonyReading(context, ref, t);
     });
   }
 
@@ -129,6 +169,10 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
     if (t == null) {
       _fetchSingleTestimony();
       return;
+    }
+    final user = ref.read(currentUserProvider);
+    if (user != null && (user.id == t.author.uid || user.canModerate)) {
+      _fetchSingleTestimony(proofsOnly: true);
     }
     if (mounted) {
       setState(() {
@@ -140,13 +184,17 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
     }
   }
 
-  Future<void> _fetchSingleTestimony() async {
+  Future<void> _fetchSingleTestimony({bool proofsOnly = false}) async {
     try {
       final api = ref.read(apiServiceProvider);
       final response = await api.get<Map<String, dynamic>>(
         AppConstants.testimonyById(widget.testimonyId),
       );
       final t = testimonyFromApiJson(response.data);
+      if (t != null && mounted && proofsOnly) {
+        setState(() => _proofs = t.proofs);
+        return;
+      }
       if (t != null && mounted) {
         setState(() {
           _singleTestimony = t;
@@ -304,6 +352,12 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
     }
   }
 
+  /// Auteur ou équipe de modération : les preuves affichées peuvent être privées.
+  bool _canSeePrivateProofs(Testimony t) {
+    final user = ref.read(currentUserProvider);
+    return user != null && (user.id == t.author.uid || user.canModerate);
+  }
+
   @override
   Widget build(BuildContext context) {
     final feed = ref.watch(feedNotifierProvider);
@@ -324,6 +378,7 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
 
     final currentUser = ref.watch(currentUserProvider);
     final isOwnProfile = testimony.author.uid == (currentUser?.id ?? '');
+    final fr = AppLocalizations.of(context).isFr;
 
     final isAudio = testimony is AudioTestimony;
     final isText = testimony is TextTestimony;
@@ -333,6 +388,13 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
         : isAudio
         ? testimony.transcriptPreview
         : testimony.title;
+
+    // Lecture automatique (préférence locale, lue de façon asynchrone).
+    if (isText && ref.watch(ttsControllerProvider.select((s) => s.prefsLoaded))) {
+      _maybeAutoRead(testimony);
+    }
+
+    final verse = _extractBibleVerse(testimony);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
@@ -344,15 +406,14 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
           if (!didPop) context.go('/home');
         },
         child: Scaffold(
-          backgroundColor: AppColors.background,
+          backgroundColor: AppColors.surface,
           extendBodyBehindAppBar: true,
           body: CustomScrollView(
             slivers: [
               _HeroSliverAppBar(
                 category: testimony.category,
                 isBookmarked: _isBookmarked,
-                onBookmark: () =>
-                    setState(() => _isBookmarked = !_isBookmarked),
+                onBookmark: _toggleSave,
                 onShare: () => _shareTestimony(testimony),
               ),
               SliverToBoxAdapter(
@@ -361,37 +422,23 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
                   children: [
                     const SizedBox(height: 16),
 
-                    // Auteur
-                    _AuthorCard(
-                      author: testimony.author,
-                      isOwnProfile: isOwnProfile,
-                    ),
-
-                    // Catégorie + date
-                    _MetaRow(
-                      category: testimony.category.label,
-                      timeAgo: _fmtTime(testimony.createdAt),
-                    ),
-
-                    // Titre réel
-                    _TitleText(title: testimony.title),
-
-                    // Compteurs de réactions
-                    _ReactionSummaryRow(
-                      likeCount: _likeCount,
-                      prayCount: _prayCount,
-                      commentCount: _comments.length,
-                    ),
-
-                    // Corps du témoignage
-                    if (isText || isAudio) _ContentBody(text: bodyText),
-
-                    // Lecteur audio inline
+                    // Lecteur audio inline (en haut, comme le lecteur vidéo)
                     if (testimony is AudioTestimony)
                       _AudioPlayerEmbed(testimony: testimony),
 
-                    // Lecteur vidéo inline
-                    if (testimony is VideoTestimony)
+                    // Lecteur vidéo inline (lecteur YouTube si publiée par lien)
+                    if (testimony is VideoTestimony && testimony.isYouTube)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                        child: ClipRRect(
+                          borderRadius: AppRadius.cardRadius,
+                          child: YouTubeVideoPlayer(
+                            videoId: testimony.youtubeId!,
+                            autoPlay: false,
+                          ),
+                        ),
+                      )
+                    else if (testimony is VideoTestimony)
                       _VideoPlayerEmbed(
                         testimonyId: testimony.id,
                         durationSeconds: testimony.durationSeconds,
@@ -399,10 +446,61 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
                         thumbnailUrl: testimony.thumbnailUrl,
                       ),
 
+                    // Titre
+                    _TitleText(title: testimony.title),
+
+                    // Auteur : avatar, nom + badge, « vues · date », Suivre
+                    _AuthorCard(
+                      author: testimony.author,
+                      isOwnProfile: isOwnProfile,
+                      meta: viewsAndAge(testimony, fr: fr),
+                    ),
+
+                    // Catégorie (badge jaune)
+                    _MetaRow(category: testimony.category),
+
+                    // Lecture vocale d'un témoignage texte
+                    if (testimony is TextTestimony)
+                      TtsListenCard(testimony: testimony),
+
+                    // Corps du témoignage
+                    if (isText || isAudio) _ContentBody(text: bodyText),
+
+                    // ❤ · partage · commentaires · télécharger
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(10, 0, 8, 12),
+                      child: TestimonyStatsRow(
+                        testimony: testimony,
+                        likes: _likeCount,
+                        isLiked: _isLiked,
+                        comments: _comments.length,
+                        prayers: _prayCount,
+                        isPraying: _isPraying,
+                        onLike: _toggleLike,
+                        onPray: _togglePray,
+                        onShare: () => _onShare(testimony),
+                        onComment: () => _showCommentsSheet(context),
+                        fr: fr,
+                      ),
+                    ),
+                    const Divider(
+                      height: 1,
+                      indent: 16,
+                      endIndent: 16,
+                      color: AppColors.border,
+                    ),
+                    const SizedBox(height: 16),
+
                     // Verset biblique (masqué si le témoignage n'en a pas)
                     _BibleVerseSection(
-                      verse: _extractBibleVerse(testimony),
+                      verse: verse,
                       verseRef: _extractBibleVerseRef(testimony),
+                    ),
+
+                    // Preuves : auteur et modération, ou public si l'auteur les a publiées
+                    TestimonyProofsCard(
+                      proofs: _proofs ?? testimony.proofs,
+                      forStaffOrAuthor: _canSeePrivateProofs(testimony),
                     ),
 
                     // Commentaires (preview + saisie)
@@ -428,51 +526,70 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
             isLiked: _isLiked,
             isPraying: _isPraying,
             isBookmarked: _isBookmarked,
-            onLike: () {
-              final wasLiked = _isLiked;
-              setState(() {
-                _isLiked = !_isLiked;
-                _likeCount += _isLiked ? 1 : -1;
-              });
-              if (!wasLiked) {
-                ref
-                    .read(interactionProvider.notifier)
-                    .setReaction(widget.testimonyId, ReactionType.like);
-              } else {
-                ref
-                    .read(interactionProvider.notifier)
-                    .removeReaction(widget.testimonyId);
-              }
-            },
-            onPray: () {
-              setState(() {
-                _isPraying = !_isPraying;
-                _prayCount += _isPraying ? 1 : -1;
-              });
-              ref
-                  .read(interactionProvider.notifier)
-                  .togglePray(widget.testimonyId);
-            },
+            onLike: _toggleLike,
+            onPray: _togglePray,
             onComment: () => _showCommentsSheet(context),
-            onBookmark: () {
-              setState(() => _isBookmarked = !_isBookmarked);
-              ref
-                  .read(interactionProvider.notifier)
-                  .toggleSave(widget.testimonyId);
-            },
-            onShare: () {
-              _shareTestimony(testimony);
-              ref
-                  .read(interactionProvider.notifier)
-                  .recordShare(widget.testimonyId);
-            },
+            onBookmark: _toggleSave,
+            onShare: () => _onShare(testimony),
           ),
         ),
       ),
     );
   }
 
-  void _showCommentsSheet(BuildContext context) {
+  // ── Actions réservées aux membres (mode invité : feuille « compte requis »)
+
+  Future<void> _toggleLike() async {
+    if (!await requireAccount(context, ref, reason: 'réagir aux témoignages')) {
+      return;
+    }
+    if (!mounted) return;
+    final wasLiked = _isLiked;
+    setState(() {
+      _isLiked = !_isLiked;
+      _likeCount += _isLiked ? 1 : -1;
+    });
+    if (!wasLiked) {
+      ref
+          .read(interactionProvider.notifier)
+          .setReaction(widget.testimonyId, ReactionType.like);
+    } else {
+      ref.read(interactionProvider.notifier).removeReaction(widget.testimonyId);
+    }
+  }
+
+  Future<void> _togglePray() async {
+    if (!await requireAccount(context, ref, reason: 'réagir aux témoignages')) {
+      return;
+    }
+    if (!mounted) return;
+    setState(() {
+      _isPraying = !_isPraying;
+      _prayCount += _isPraying ? 1 : -1;
+    });
+    ref.read(interactionProvider.notifier).togglePray(widget.testimonyId);
+  }
+
+  Future<void> _toggleSave() async {
+    if (!await requireAccount(context, ref, reason: 'enregistrer vos favoris')) {
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _isBookmarked = !_isBookmarked);
+    ref.read(interactionProvider.notifier).toggleSave(widget.testimonyId);
+  }
+
+  void _onShare(Testimony testimony) {
+    _shareTestimony(testimony);
+    ref.read(interactionProvider.notifier).recordShare(widget.testimonyId);
+  }
+
+  Future<void> _showCommentsSheet(BuildContext context) async {
+    if (!await requireAccount(context, ref,
+        reason: 'commenter les témoignages')) {
+      return;
+    }
+    if (!context.mounted) return;
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -494,13 +611,6 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
       builder: (_) =>
           _ShareSheet(title: testimony.title, link: testimony.shareLink),
     );
-  }
-
-  String _fmtTime(DateTime dt) {
-    final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 60) return 'il y a ${diff.inMinutes} min';
-    if (diff.inHours < 24) return 'il y a ${diff.inHours}h';
-    return 'il y a ${diff.inDays}j';
   }
 
   static String? _extractBibleVerse(Testimony t) {
@@ -551,10 +661,11 @@ class _HeroSliverAppBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SliverAppBar(
-      expandedHeight: 280,
+      expandedHeight: 200,
       pinned: true,
       stretch: true,
       backgroundColor: AppColors.primary,
+      foregroundColor: AppColors.surface,
       leading: Padding(
         padding: const EdgeInsets.all(8),
         child: _CircleIconButton(
@@ -568,82 +679,67 @@ class _HeroSliverAppBar extends StatelessWidget {
               ? Icons.bookmark_rounded
               : Icons.bookmark_border_rounded,
           onTap: onBookmark,
-          color: isBookmarked ? AppColors.secondary : Colors.white,
+          color: isBookmarked ? AppColors.secondary : AppColors.primary,
         ),
-        const SizedBox(width: 4),
+        const SizedBox(width: 6),
         _CircleIconButton(icon: Icons.share_rounded, onTap: onShare),
-        const SizedBox(width: 8),
+        const SizedBox(width: 12),
       ],
       flexibleSpace: FlexibleSpaceBar(
         stretchModes: const [StretchMode.zoomBackground],
         background: Stack(
           fit: StackFit.expand,
           children: [
-            // Category gradient background
+            // Dégradé bleu → bleu foncé (seul dégradé autorisé par la charte)
             Container(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: AppColors.guerisonGradient,
+                  colors: AppColors.blueGradient,
                 ),
               ),
             ),
-            // Decorative pattern overlay
+            // Motif discret de croix
             Opacity(
-              opacity: 0.12,
+              opacity: 0.08,
               child: CustomPaint(painter: _CrossPatternPainter()),
             ),
-            // Category icon + label (dynamiques)
+            // Icône + catégorie (dynamiques)
             Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    _categoryIcon(category),
-                    size: 64,
-                    color: Colors.white54,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    category.label.toUpperCase(),
-                    style: const TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
-                      color: Colors.white54,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 3,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        color: AppColors.surface.withValues(alpha: 0.14),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        _categoryIcon(category),
+                        size: 32,
+                        color: AppColors.sun,
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 10),
+                    Text(
+                      category.label.toUpperCase(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.labelSmall.copyWith(
+                        color: AppColors.surface.withValues(alpha: 0.85),
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 2.5,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-            // Bottom gradient fade to background
-            const Align(
-              alignment: Alignment.bottomCenter,
-              child: _GradientFade(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _GradientFade extends StatelessWidget {
-  const _GradientFade();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 80,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Colors.transparent,
-            AppColors.background.withValues(alpha: 0.9),
           ],
         ),
       ),
@@ -655,7 +751,7 @@ class _CircleIconButton extends StatelessWidget {
   const _CircleIconButton({
     required this.icon,
     required this.onTap,
-    this.color = Colors.white,
+    this.color = AppColors.primary,
   });
 
   final IconData icon;
@@ -670,7 +766,7 @@ class _CircleIconButton extends StatelessWidget {
         width: 36,
         height: 36,
         decoration: BoxDecoration(
-          color: Colors.black26,
+          color: AppColors.surface.withValues(alpha: 0.92),
           shape: BoxShape.circle,
         ),
         child: Icon(icon, color: color, size: 18),
@@ -684,133 +780,56 @@ class _CircleIconButton extends StatelessWidget {
 // ============================================================================
 
 class _AuthorCard extends StatelessWidget {
-  const _AuthorCard({required this.author, required this.isOwnProfile});
+  const _AuthorCard({
+    required this.author,
+    required this.isOwnProfile,
+    required this.meta,
+  });
 
   final TestimonyAuthor author;
   final bool isOwnProfile;
 
-  static String _initials(String name) {
-    final parts = name.trim().split(' ');
-    if (parts.length >= 2 && parts.last.isNotEmpty) {
-      return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
-    }
-    return name.isNotEmpty ? name[0].toUpperCase() : '?';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      // Profil de l'auteur (docs/fonctionnalites/abonnements.md du backend)
-      onTap: () => openAuthorProfile(context, author.uid),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Row(
-          children: [
-            // Avatar
-            CircleAvatar(
-              radius: 24,
-              backgroundImage: author.avatarUrl != null
-                  ? NetworkImage(author.avatarUrl!)
-                  : null,
-              backgroundColor: AppColors.primary.withAlpha(40),
-              child: author.avatarUrl == null
-                  ? Text(
-                      _initials(author.displayName),
-                      style: const TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16,
-                      ),
-                    )
-                  : null,
-            ),
-            const SizedBox(width: 12),
-            // Nom
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          author.displayName,
-                          style: AppTextStyles.labelMedium,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      OrganizationBadge(
-                        isOrganization: author.isOrganization,
-                        isVerified: author.isVerified,
-                        size: 16,
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            // Suivre (masqué sur son propre témoignage) : état partagé avec toute l'application.
-            if (!isOwnProfile)
-              FollowButton(
-                userId: author.uid,
-                displayName: author.displayName,
-                compact: true,
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ============================================================================
-// Meta Row (category chip + date)
-// ============================================================================
-
-class _MetaRow extends StatelessWidget {
-  const _MetaRow({required this.category, required this.timeAgo});
-  final String category;
-  final String timeAgo;
+  /// « 12,4k vues · il y a 5 jours ».
+  final String meta;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-      child: Row(
-        children: [
-          _CategoryChip(label: category),
-          const SizedBox(width: 8),
-          Text(timeAgo, style: AppTextStyles.bodySmall),
-        ],
+      padding: const EdgeInsets.fromLTRB(12, 0, 16, 4),
+      child: TestimonyAuthorRow(
+        author: author,
+        meta: meta,
+        // Profil de l'auteur (docs/fonctionnalites/abonnements.md du backend)
+        onTap: () => openAuthorProfile(context, author.uid),
+        // Suivre (masqué sur son propre témoignage) : état partagé avec toute l'application.
+        trailing: isOwnProfile
+            ? null
+            : FollowButton(
+                userId: author.uid,
+                displayName: author.displayName,
+                compact: true,
+              ),
       ),
     );
   }
 }
 
-class _CategoryChip extends StatelessWidget {
-  const _CategoryChip({required this.label});
+// ============================================================================
+// Meta Row (badge de catégorie)
+// ============================================================================
 
-  final String label;
+class _MetaRow extends StatelessWidget {
+  const _MetaRow({required this.category});
+  final TestimonyCategory category;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          fontFamily: 'Plus Jakarta Sans',
-          fontWeight: FontWeight.w500,
-          fontSize: 12,
-          color: AppColors.primary,
-        ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 6,
+        children: [CategoryBadge(category: category)],
       ),
     );
   }
@@ -827,58 +846,8 @@ class _TitleText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
       child: Text(title, style: AppTextStyles.h2),
-    );
-  }
-}
-
-// ============================================================================
-// Reaction Summary Row
-// ============================================================================
-
-class _ReactionSummaryRow extends StatelessWidget {
-  const _ReactionSummaryRow({
-    required this.likeCount,
-    required this.prayCount,
-    required this.commentCount,
-  });
-
-  final int likeCount;
-  final int prayCount;
-  final int commentCount;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      child: Row(
-        children: [
-          _ReactionCount(emoji: '❤️', count: likeCount),
-          const SizedBox(width: 16),
-          _ReactionCount(emoji: '🙏', count: prayCount),
-          const SizedBox(width: 16),
-          _ReactionCount(emoji: '💬', count: commentCount),
-        ],
-      ),
-    );
-  }
-}
-
-class _ReactionCount extends StatelessWidget {
-  const _ReactionCount({required this.emoji, required this.count});
-
-  final String emoji;
-  final int count;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Text(emoji, style: const TextStyle(fontSize: 15)),
-        const SizedBox(width: 4),
-        Text('$count', style: AppTextStyles.labelSmall),
-      ],
     );
   }
 }
@@ -894,7 +863,7 @@ class _ContentBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       // Texte complet mis en forme, dévoilé morceau par morceau.
       child: ProgressiveRichText(
         text: text,
@@ -902,7 +871,7 @@ class _ContentBody extends StatelessWidget {
         initialChars: 700,
         stepChars: 1200,
         linkStyle: const TextStyle(
-          fontFamily: 'Plus Jakarta Sans',
+          fontFamily: AppFonts.family,
           fontWeight: FontWeight.w600,
           fontSize: 14,
           color: AppColors.primary,
@@ -928,6 +897,8 @@ class _AudioPlayerEmbed extends ConsumerStatefulWidget {
 class _AudioPlayerEmbedState extends ConsumerState<_AudioPlayerEmbed> {
   static String _absUrl(String src) {
     if (src.startsWith('http://') || src.startsWith('https://')) return src;
+    // Fichier téléchargé : chemin local, pas d'adresse du serveur.
+    if (OfflineMedia.isLocalPath(src)) return src;
     final root = AppConstants.baseUrl.replaceAll(RegExp(r'/api/v\d+$'), '');
     return src.startsWith('/') ? '$root$src' : '$root/$src';
   }
@@ -950,7 +921,9 @@ class _AudioPlayerEmbedState extends ConsumerState<_AudioPlayerEmbed> {
         (absPath.isNotEmpty && player.url == absPath);
     final isPlaying = isThisTrack && player.isPlaying;
     final progress = isThisTrack ? player.progress : 0.0;
-    final elapsed = isThisTrack ? _fmt(player.position) : '0:00';
+    final elapsed = isThisTrack ? _fmt(player.position) : '00:00';
+    final isOffline = isThisTrack && player.qualityLabel == OfflineMedia.label;
+    final l10n = AppLocalizations.of(context);
 
     return GestureDetector(
       onTap: () => Navigator.of(context).push(
@@ -960,38 +933,24 @@ class _AudioPlayerEmbedState extends ConsumerState<_AudioPlayerEmbed> {
         ),
       ),
       child: Container(
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: AppColors.guerisonGradient,
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.25),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        padding: const EdgeInsets.all(14),
+        decoration: AppShadows.cardDecoration,
         child: Column(
           children: [
             Row(
               children: [
                 Container(
-                  width: 40,
-                  height: 40,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
-                    color: Colors.white24,
-                    borderRadius: BorderRadius.circular(8),
+                    color: AppColors.primarySoft,
+                    borderRadius: BorderRadius.circular(AppRadius.md),
                   ),
                   child: const Icon(
-                    Icons.mic_rounded,
-                    color: Colors.white,
-                    size: 20,
+                    Icons.graphic_eq_rounded,
+                    color: AppColors.primary,
+                    size: 24,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -1000,28 +959,33 @@ class _AudioPlayerEmbedState extends ConsumerState<_AudioPlayerEmbed> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        AppLocalizations.of(context).detailAudioLabel,
-                        style: const TextStyle(
-                          fontFamily: 'Plus Jakarta Sans',
-                          color: Colors.white,
+                        l10n.detailAudioLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.labelMedium.copyWith(
                           fontWeight: FontWeight.w600,
-                          fontSize: 14,
+                          color: AppColors.primary,
                         ),
                       ),
                       Text(
-                        '${t.formattedDuration}  ·  ${AppLocalizations.of(context).detailTapToOpen}',
-                        style: TextStyle(
-                          fontFamily: 'Plus Jakarta Sans',
-                          color: Colors.white.withValues(alpha: 0.8),
-                          fontSize: 12,
-                        ),
+                        '${t.formattedDuration}  ·  ${l10n.detailTapToOpen}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.bodySmall,
                       ),
                     ],
                   ),
                 ),
+                if (isOffline) ...[
+                  const SizedBox(width: 6),
+                  const OfflineBadge(),
+                ],
+                const SizedBox(width: 8),
                 GestureDetector(
                   onTap: () {
                     final audio = ref.read(audioPlayerProvider.notifier);
+                    // Un seul son à la fois : arrêter la lecture vocale.
+                    ref.read(ttsControllerProvider.notifier).stop();
                     if (isPlaying) {
                       audio.pause();
                     } else if (isThisTrack) {
@@ -1035,14 +999,14 @@ class _AudioPlayerEmbedState extends ConsumerState<_AudioPlayerEmbed> {
                     width: 44,
                     height: 44,
                     decoration: const BoxDecoration(
-                      color: Colors.white,
+                      color: AppColors.primary,
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
                       isPlaying
                           ? Icons.pause_rounded
                           : Icons.play_arrow_rounded,
-                      color: AppColors.primary,
+                      color: AppColors.surface,
                       size: 26,
                     ),
                   ),
@@ -1051,11 +1015,13 @@ class _AudioPlayerEmbedState extends ConsumerState<_AudioPlayerEmbed> {
             ),
             const SizedBox(height: 12),
             ClipRRect(
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(AppRadius.pill),
               child: LinearProgressIndicator(
                 value: progress,
-                backgroundColor: Colors.white24,
-                valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                backgroundColor: AppColors.border,
+                valueColor: const AlwaysStoppedAnimation<Color>(
+                  AppColors.secondary,
+                ),
                 minHeight: 4,
               ),
             ),
@@ -1063,22 +1029,8 @@ class _AudioPlayerEmbedState extends ConsumerState<_AudioPlayerEmbed> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  elapsed,
-                  style: TextStyle(
-                    fontFamily: 'Plus Jakarta Sans',
-                    color: Colors.white.withValues(alpha: 0.8),
-                    fontSize: 11,
-                  ),
-                ),
-                Text(
-                  t.formattedDuration,
-                  style: TextStyle(
-                    fontFamily: 'Plus Jakarta Sans',
-                    color: Colors.white.withValues(alpha: 0.8),
-                    fontSize: 11,
-                  ),
-                ),
+                Text(elapsed, style: AppTextStyles.bodySmall),
+                Text(t.formattedDuration, style: AppTextStyles.bodySmall),
               ],
             ),
           ],
@@ -1110,6 +1062,7 @@ class _VideoPlayerEmbed extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final thumb = thumbnailUrl;
     return GestureDetector(
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute<void>(
@@ -1117,91 +1070,62 @@ class _VideoPlayerEmbed extends StatelessWidget {
               VideoPlayerScreen(testimonyId: testimonyId, mediaPath: mediaPath),
         ),
       ),
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-        height: 200,
-        decoration: BoxDecoration(
-          color: Colors.black,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            // Thumbnail placeholder
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: ClipRRect(
+          borderRadius: AppRadius.cardRadius,
+          child: AspectRatio(
+            aspectRatio: 16 / 9,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                // Zone vidéo (reste sombre) ; miniature si disponible.
+                const ColoredBox(color: AppColors.primaryDark),
+                if (thumb != null && thumb.startsWith('http'))
+                  Image.network(
+                    thumb,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => const SizedBox.shrink(),
                   ),
-                ),
-              ),
-            ),
-            // Play button overlay
-            Center(
-              child: Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.9),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.3),
-                      blurRadius: 12,
+                // Bouton lecture
+                Center(
+                  child: Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: AppColors.surface.withValues(alpha: 0.92),
+                      shape: BoxShape.circle,
                     ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.play_arrow_rounded,
-                  color: AppColors.primary,
-                  size: 36,
-                ),
-              ),
-            ),
-            // HD badge
-            Positioned(
-              top: 10,
-              right: 10,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.black54,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: const Text(
-                  'HD',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    fontFamily: 'Plus Jakarta Sans',
+                    child: const Icon(
+                      Icons.play_arrow_rounded,
+                      color: AppColors.primary,
+                      size: 36,
+                    ),
                   ),
                 ),
-              ),
-            ),
-            // Duration badge
-            Positioned(
-              bottom: 10,
-              right: 10,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.black54,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  durationSeconds > 0 ? _fmt(durationSeconds) : '--:--',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontFamily: 'Plus Jakarta Sans',
+                // Durée
+                Positioned(
+                  bottom: 10,
+                  right: 10,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryDark.withValues(alpha: 0.75),
+                      borderRadius: BorderRadius.circular(AppRadius.xs),
+                    ),
+                    child: Text(
+                      durationSeconds > 0 ? _fmt(durationSeconds) : '--:--',
+                      style: AppTextStyles.labelSmall.copyWith(
+                        color: AppColors.surface,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ),
-              ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -1209,7 +1133,7 @@ class _VideoPlayerEmbed extends StatelessWidget {
 }
 
 // ============================================================================
-// Bible Verse Section
+// Bible Verse Section (carte « Insight »)
 // ============================================================================
 
 class _BibleVerseSection extends StatelessWidget {
@@ -1221,44 +1145,12 @@ class _BibleVerseSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (verse == null || verse!.isEmpty) return const SizedBox.shrink();
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 4,
-                height: 20,
-                decoration: BoxDecoration(
-                  color: AppColors.secondary,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Text(
-                AppLocalizations.of(context).detailBibleTitle,
-                style: AppTextStyles.h4,
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Text('"$verse"', style: AppTextStyles.verseQuote),
-          if (verseRef != null && verseRef!.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerRight,
-              child: Text('— $verseRef', style: AppTextStyles.verseReference),
-            ),
-          ],
-        ],
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+      child: InsightVerseCard(
+        verse: verse!,
+        reference: verseRef,
+        title: AppLocalizations.of(context).detailBibleTitle,
       ),
     );
   }
@@ -1312,7 +1204,7 @@ class _CommentsSection extends StatelessWidget {
                   ),
                   child: Text(
                     AppLocalizations.of(context).detailSeeAll,
-                    style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13),
+                    style: const TextStyle(fontFamily: AppFonts.family, fontSize: 13),
                   ),
                 ),
             ],
@@ -1335,7 +1227,7 @@ class _CommentsSection extends StatelessWidget {
                       color: AppColors.primary,
                       fontWeight: FontWeight.w700,
                       fontSize: 14,
-                      fontFamily: 'Plus Jakarta Sans',
+                      fontFamily: AppFonts.family,
                     ),
                   ),
                 ),
@@ -1354,7 +1246,7 @@ class _CommentsSection extends StatelessWidget {
                     child: Text(
                       AppLocalizations.of(context).detailAddComment,
                       style: const TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
+                        fontFamily: AppFonts.family,
                         color: AppColors.textSecondary,
                         fontSize: 14,
                       ),
@@ -1443,7 +1335,7 @@ class _CommentItem extends StatelessWidget {
                   color: AppColors.textSecondary,
                   fontWeight: FontWeight.w600,
                   fontSize: 13,
-                  fontFamily: 'Plus Jakarta Sans',
+                  fontFamily: AppFonts.family,
                 ),
               ),
             ),
@@ -1484,7 +1376,7 @@ class _CommentItem extends StatelessWidget {
                                 : Icons.favorite_border_rounded,
                             size: 13,
                             color: isLiked
-                                ? Colors.redAccent
+                                ? AppColors.danger
                                 : AppColors.textSecondary,
                           ),
                           const SizedBox(width: 3),
@@ -1498,7 +1390,7 @@ class _CommentItem extends StatelessWidget {
                       child: Text(
                         AppLocalizations.of(context).detailReply,
                         style: const TextStyle(
-                          fontFamily: 'Plus Jakarta Sans',
+                          fontFamily: AppFonts.family,
                           fontSize: 12,
                           color: AppColors.primary,
                           fontWeight: FontWeight.w500,
@@ -1528,12 +1420,19 @@ class _SimilarTestimonies extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Même catégorie d'abord, puis les autres témoignages récents (8 au plus).
+    // Suggestions du serveur d'abord (intérêts, comptes suivis, déjà vus en fin).
+    final recAsync = ref.watch(recommendationsProvider(excludeId));
+    // Pas de liste locale affichée puis remplacée : on attend la réponse.
+    if (recAsync.isLoading) return const SizedBox.shrink();
+    final recommended = recAsync.value ?? const <Testimony>[];
+    // Repli local : même catégorie d'abord, puis les autres témoignages récents (8 au plus).
     final all = ref.watch(feedNotifierProvider).where((t) => t.id != excludeId);
-    final similar = [
-      ...all.where((t) => t.category == category),
-      ...all.where((t) => t.category != category),
-    ].take(8).toList();
+    final similar = recommended.isNotEmpty
+        ? recommended
+        : [
+            ...all.where((t) => t.category == category),
+            ...all.where((t) => t.category != category),
+          ].take(8).toList();
 
     if (similar.isEmpty) return const SizedBox.shrink();
 
@@ -1582,54 +1481,52 @@ class _StickyReactionBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 12,
-            offset: const Offset(0, -4),
-          ),
-        ],
+        border: Border(top: BorderSide(color: AppColors.border)),
+        boxShadow: AppShadows.card,
       ),
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
           child: Builder(
             builder: (context) {
               final l10n = AppLocalizations.of(context);
               return Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
                   _ReactionButton(
-                    emoji: '❤️',
+                    icon: isLiked
+                        ? Icons.favorite_rounded
+                        : Icons.favorite_border_rounded,
                     label: l10n.detailLike,
                     active: isLiked,
                     activeColor: AppColors.danger,
                     onTap: onLike,
                   ),
                   _ReactionButton(
-                    emoji: '🙏',
+                    icon: Icons.volunteer_activism_rounded,
                     label: l10n.detailPray,
                     active: isPraying,
                     activeColor: AppColors.primary,
                     onTap: onPray,
                   ),
                   _ReactionButton(
-                    emoji: '💬',
+                    icon: Icons.chat_bubble_outline_rounded,
                     label: l10n.detailComment,
                     onTap: onComment,
                   ),
                   _ReactionButton(
-                    emoji: '🔖',
+                    icon: isBookmarked
+                        ? Icons.bookmark_rounded
+                        : Icons.bookmark_border_rounded,
                     label: l10n.detailSave,
                     active: isBookmarked,
                     activeColor: AppColors.secondary,
                     onTap: onBookmark,
                   ),
                   _ReactionButton(
-                    emoji: '📤',
+                    icon: Icons.share_rounded,
                     label: l10n.detailShare,
                     onTap: onShare,
                   ),
@@ -1645,14 +1542,14 @@ class _StickyReactionBar extends StatelessWidget {
 
 class _ReactionButton extends StatelessWidget {
   const _ReactionButton({
-    required this.emoji,
+    required this.icon,
     required this.label,
     required this.onTap,
     this.active = false,
     this.activeColor = AppColors.primary,
   });
 
-  final String emoji;
+  final IconData icon;
   final String label;
   final VoidCallback onTap;
   final bool active;
@@ -1660,26 +1557,30 @@ class _ReactionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(emoji, style: const TextStyle(fontSize: 20)),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(
-                fontFamily: 'Plus Jakarta Sans',
-                fontSize: 10,
-                fontWeight: active ? FontWeight.w600 : FontWeight.w400,
-                color: active ? activeColor : AppColors.textSecondary,
+    final color = active ? activeColor : AppColors.textSecondary;
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 22, color: color),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.labelSmall.copyWith(
+                  fontSize: 11,
+                  fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+                  color: color,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -1907,7 +1808,7 @@ class _CommentsBottomSheetState extends State<_CommentsBottomSheet> {
                               AppLocalizations.of(context).detailNoComments,
                               textAlign: TextAlign.center,
                               style: const TextStyle(
-                                fontFamily: 'Plus Jakarta Sans',
+                                fontFamily: AppFonts.family,
                                 fontSize: 14,
                                 color: AppColors.textSecondary,
                                 height: 1.5,
@@ -1959,7 +1860,7 @@ class _CommentsBottomSheetState extends State<_CommentsBottomSheet> {
                         child: Text(
                           '${AppLocalizations.of(context).detailReplyingTo} @${_replyingToName!.replaceAll(' ', '_')}',
                           style: const TextStyle(
-                            fontFamily: 'Plus Jakarta Sans',
+                            fontFamily: AppFonts.family,
                             fontSize: 12,
                             color: AppColors.primary,
                             fontWeight: FontWeight.w500,
@@ -2066,16 +1967,16 @@ class _CommentInputBar extends StatelessWidget {
             height: 36,
             decoration: const BoxDecoration(
               shape: BoxShape.circle,
-              gradient: LinearGradient(colors: AppColors.guerisonGradient),
+              color: AppColors.primarySoft,
             ),
             child: const Center(
               child: Text(
                 'V',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: AppColors.primary,
                   fontWeight: FontWeight.w600,
                   fontSize: 14,
-                  fontFamily: 'Plus Jakarta Sans',
+                  fontFamily: AppFonts.family,
                 ),
               ),
             ),
@@ -2089,7 +1990,7 @@ class _CommentInputBar extends StatelessWidget {
               decoration: InputDecoration(
                 hintText: AppLocalizations.of(context).detailCommentHint,
                 hintStyle: const TextStyle(
-                  fontFamily: 'Plus Jakarta Sans',
+                  fontFamily: AppFonts.family,
                   color: AppColors.textSecondary,
                   fontSize: 14,
                 ),
@@ -2129,7 +2030,7 @@ class _CommentInputBar extends StatelessWidget {
               ),
               child: const Icon(
                 Icons.send_rounded,
-                color: Colors.white,
+                color: AppColors.surface,
                 size: 18,
               ),
             ),
@@ -2224,7 +2125,7 @@ class _MentionTile extends StatelessWidget {
                   color: AppColors.primary,
                   fontWeight: FontWeight.w700,
                   fontSize: 12,
-                  fontFamily: 'Plus Jakarta Sans',
+                  fontFamily: AppFonts.family,
                 ),
               ),
             ),
@@ -2233,7 +2134,7 @@ class _MentionTile extends StatelessWidget {
               child: Text(
                 '@${username.replaceAll(' ', '_')}',
                 style: const TextStyle(
-                  fontFamily: 'Plus Jakarta Sans',
+                  fontFamily: AppFonts.family,
                   fontWeight: FontWeight.w600,
                   fontSize: 14,
                   color: AppColors.primary,
@@ -2243,7 +2144,7 @@ class _MentionTile extends StatelessWidget {
             Text(
               username,
               style: const TextStyle(
-                fontFamily: 'Plus Jakarta Sans',
+                fontFamily: AppFonts.family,
                 fontSize: 13,
                 color: AppColors.textSecondary,
               ),
@@ -2292,7 +2193,7 @@ class _ShareSheet extends StatelessWidget {
           Text(
             AppLocalizations.of(context).detailShareTitle,
             style: const TextStyle(
-              fontFamily: 'Plus Jakarta Sans',
+              fontFamily: AppFonts.family,
               fontWeight: FontWeight.w700,
               fontSize: 16,
               color: AppColors.textPrimary,
@@ -2302,7 +2203,7 @@ class _ShareSheet extends StatelessWidget {
           Text(
             link,
             style: const TextStyle(
-              fontFamily: 'Plus Jakarta Sans',
+              fontFamily: AppFonts.family,
               fontSize: 12,
               color: AppColors.textSecondary,
             ),
@@ -2384,7 +2285,7 @@ class _ShareOption extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                fontFamily: 'Plus Jakarta Sans',
+                fontFamily: AppFonts.family,
                 fontWeight: FontWeight.w600,
                 fontSize: 13,
                 color: color,
@@ -2405,7 +2306,7 @@ class _CrossPatternPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white
+      ..color = AppColors.surface
       ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke;
 

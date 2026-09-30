@@ -33,8 +33,11 @@ abstract final class AppRoutes {
   static const String publish = 'publish';
   static const String publishPreview = 'publish-preview';
 
-  // ── Tab: Notifications ──────────────────────────────────────────────────
+  // ── Notifications (cloche de l'accueil, ouverte par-dessus les onglets) ──
   static const String notifications = 'notifications';
+
+  // ── Tab: Téléchargements ────────────────────────────────────────────────
+  static const String downloads = 'downloads';
 
   // ── Tab: Profil ─────────────────────────────────────────────────────────
   static const String profile = 'profile';
@@ -44,6 +47,9 @@ abstract final class AppRoutes {
   static const String settings = 'settings';
   static const String changePassword = 'change-password';
   static const String deleteAccount = 'delete-account';
+  static const String language = 'language';
+  static const String help = 'help';
+  static const String about = 'about';
 
   // ── Testimony detail (accessible from any tab) ──────────────────────────
   static const String testimonyDetail = 'testimony-detail';
@@ -95,6 +101,7 @@ abstract final class AppPaths {
   static const String shortsPath = '/shorts';
   static const String publishPath = '/publish';
   static const String notificationsPath = '/notifications';
+  static const String downloadsPath = '/downloads';
   static const String profilePath = '/profile';
 
   // Nested under home

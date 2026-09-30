@@ -1,183 +1,284 @@
+// lib/features/explore/widgets/filter_row.dart
+//
+// Filtres de la recherche (maquette « Recherche & filtres ») :
+//   • onglets Tous / Vidéos / Audios / Textes (appliqués tout de suite) ;
+//   • panneau « Filtres » : Type, Catégorie, Popularité en listes déroulantes,
+//     bouton « Appliquer les filtres » + lien « Réinitialiser ».
+// Le filtrage est local (exploreResultsProvider) : l'API de liste des
+// témoignages n'accepte pas ces paramètres.
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/providers/categories_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/theme/app_tokens.dart';
+import '../../../shared/widgets/app_button.dart';
+import '../../home/widgets/pill_tabs.dart';
 import '../models/explore_models.dart';
 import '../providers/explore_providers.dart';
 
-/// Filter row: Type dropdown + Sort dropdown.
-///
-/// Widget tree:
-/// Padding
-///   └─ Row
-///       ├─ `_FilterDropdown<ExploreTypeFilter>` (Type)
-///       ├─ SizedBox
-///       └─ `_FilterDropdown<ExploreSortOrder>` (Tri)
-class FilterRow extends ConsumerWidget {
-  const FilterRow({super.key});
+/// Onglets de type en pilule (appliqués immédiatement).
+class ExploreTypeTabs extends ConsumerWidget {
+  const ExploreTypeTabs({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final typeFilter = ref.watch(typeFilterProvider);
-    final sortOrder = ref.watch(sortOrderProvider);
+    return PillTabs<ExploreTypeFilter>(
+      tabs: [for (final f in kExploreTypeTabs) PillTab(f, f.tabLabel)],
+      selected: ref.watch(typeFilterProvider),
+      onSelected: (f) => ref.read(typeFilterProvider.notifier).update(f),
+    );
+  }
+}
+
+/// Panneau « Filtres » repliable.
+class ExploreFiltersPanel extends ConsumerStatefulWidget {
+  const ExploreFiltersPanel({this.initiallyOpen = true, super.key});
+
+  final bool initiallyOpen;
+
+  @override
+  ConsumerState<ExploreFiltersPanel> createState() =>
+      _ExploreFiltersPanelState();
+}
+
+class _ExploreFiltersPanelState extends ConsumerState<ExploreFiltersPanel> {
+  late bool _open = widget.initiallyOpen;
+
+  // Brouillon : appliqué seulement avec « Appliquer les filtres ».
+  late ExploreTypeFilter _type = ref.read(typeFilterProvider);
+  late String? _category = ref.read(exploreCategoryFilterProvider);
+  late ExploreSortOrder _sort = ref.read(sortOrderProvider);
+
+  void _apply() {
+    ref.read(typeFilterProvider.notifier).update(_type);
+    ref.read(exploreCategoryFilterProvider.notifier).update(_category);
+    ref.read(sortOrderProvider.notifier).update(_sort);
+    FocusScope.of(context).unfocus();
+    setState(() => _open = false);
+  }
+
+  void _reset() {
+    resetExploreFilters(ref);
+    setState(() {
+      _type = ExploreTypeFilter.all;
+      _category = null;
+      _sort = ExploreSortOrder.recent;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Onglets de type ou réinitialisation ailleurs → le brouillon suit.
+    ref.listen<ExploreTypeFilter>(
+        typeFilterProvider, (_, v) => setState(() => _type = v));
+    ref.listen<String?>(
+        exploreCategoryFilterProvider, (_, v) => setState(() => _category = v));
+    ref.listen<ExploreSortOrder>(
+        sortOrderProvider, (_, v) => setState(() => _sort = v));
+
+    final categories = ref.watch(categoriesListProvider);
+    final active = ref.watch(exploreFiltersActiveProvider);
+    // Catégorie choisie absente de la liste (liste rechargée) → « Toutes ».
+    final categoryValue =
+        categories.any((c) => c.slug == _category) ? _category : null;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          // Type filter
-          _FilterDropdown<ExploreTypeFilter>(
-            label: 'Type',
-            value: typeFilter,
-            items: ExploreTypeFilter.values,
-            labelOf: (v) => v.label,
-            onChanged: (v) =>
-                ref.read(typeFilterProvider.notifier).update(v),
-          ),
-          const SizedBox(width: 10),
-          // Sort order
-          _FilterDropdown<ExploreSortOrder>(
-            label: 'Tri',
-            value: sortOrder,
-            items: ExploreSortOrder.values,
-            labelOf: (v) => v.label,
-            onChanged: (v) =>
-                ref.read(sortOrderProvider.notifier).update(v),
-          ),
-        ],
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
+      child: DecoratedBox(
+        decoration: AppShadows.cardDecoration,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // ── En-tête repliable ─────────────────────────────────────────
+            Semantics(
+              button: true,
+              expanded: _open,
+              child: InkWell(
+                onTap: () => setState(() => _open = !_open),
+                borderRadius: AppRadius.cardRadius,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.tune_rounded,
+                          size: 20, color: AppColors.primary),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Filtres',
+                          style: AppTextStyles.h4,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (active && !_open)
+                        Container(
+                          width: 8,
+                          height: 8,
+                          margin: const EdgeInsets.only(right: 8),
+                          decoration: const BoxDecoration(
+                            color: AppColors.secondary,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      AnimatedRotation(
+                        turns: _open ? 0.5 : 0,
+                        duration: const Duration(milliseconds: 180),
+                        child: const Icon(Icons.expand_more_rounded,
+                            color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // ── Champs ────────────────────────────────────────────────────
+            AnimatedSize(
+              duration: const Duration(milliseconds: 180),
+              alignment: Alignment.topCenter,
+              child: !_open
+                  ? const SizedBox(width: double.infinity)
+                  : Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _FieldLabel('Type'),
+                          _Dropdown<ExploreTypeFilter>(
+                            value: _type,
+                            items: [
+                              for (final f in kExploreTypeTabs)
+                                (f, f.dropdownLabel),
+                            ],
+                            onChanged: (v) => setState(() => _type = v),
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          _FieldLabel('Catégorie'),
+                          _Dropdown<String?>(
+                            value: categoryValue,
+                            items: [
+                              (null, 'Toutes les catégories'),
+                              for (final c in categories) (c.slug, c.name),
+                            ],
+                            onChanged: (v) => setState(() => _category = v),
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          _FieldLabel('Popularité'),
+                          _Dropdown<ExploreSortOrder>(
+                            value: _sort,
+                            items: [
+                              for (final o in ExploreSortOrder.values)
+                                (o, o.popularityLabel),
+                            ],
+                            onChanged: (v) => setState(() => _sort = v),
+                          ),
+                          const SizedBox(height: AppSpacing.lg),
+                          AppButton(
+                            label: 'Appliquer les filtres',
+                            variant: AppButtonVariant.accent,
+                            fullWidth: true,
+                            onPressed: _apply,
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          Center(
+                            child: TextButton(
+                              onPressed: _reset,
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppColors.primary,
+                                minimumSize: const Size(44, 44),
+                              ),
+                              child: Text(
+                                'Réinitialiser',
+                                style: AppTextStyles.labelMedium.copyWith(
+                                  color: AppColors.primary,
+                                  decoration: TextDecoration.underline,
+                                  decorationColor: AppColors.primary,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-// ── Generic dropdown chip ─────────────────────────────────────────────────────
+class _FieldLabel extends StatelessWidget {
+  const _FieldLabel(this.text);
+  final String text;
 
-class _FilterDropdown<T> extends StatelessWidget {
-  const _FilterDropdown({
-    required this.label,
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Text(
+        text,
+        style: AppTextStyles.labelMedium.copyWith(color: AppColors.textPrimary),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+}
+
+/// Liste déroulante de la charte : fond blanc, bordure fine, radius 10.
+class _Dropdown<T> extends StatelessWidget {
+  const _Dropdown({
     required this.value,
     required this.items,
-    required this.labelOf,
     required this.onChanged,
-    super.key,
   });
 
-  final String label;
   final T value;
-  final List<T> items;
-  final String Function(T) labelOf;
+  final List<(T, String)> items;
   final ValueChanged<T> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => _showPicker(context),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              labelOf(value),
-              style: AppTextStyles.labelSmall.copyWith(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(width: 4),
-            const Icon(
-              Icons.keyboard_arrow_down_rounded,
-              size: 16,
-              color: AppColors.textSecondary,
-            ),
-          ],
-        ),
-      ),
+    final border = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(AppRadius.field),
+      borderSide: const BorderSide(color: AppColors.inputBorder),
     );
-  }
-
-  Future<void> _showPicker(BuildContext context) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => _PickerSheet<T>(
-        title: label,
-        items: items,
-        selected: value,
-        labelOf: labelOf,
-        onSelected: onChanged,
-      ),
-    );
-  }
-}
-
-// ── Bottom sheet picker ───────────────────────────────────────────────────────
-
-class _PickerSheet<T> extends StatelessWidget {
-  const _PickerSheet({
-    required this.title,
-    required this.items,
-    required this.selected,
-    required this.labelOf,
-    required this.onSelected,
-    super.key,
-  });
-
-  final String title;
-  final List<T> items;
-  final T selected;
-  final String Function(T) labelOf;
-  final ValueChanged<T> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Handle
-            Center(
-              child: Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.border,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(title, style: AppTextStyles.h4),
-            const SizedBox(height: 12),
-            ...items.map(
-              (item) => ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(labelOf(item), style: AppTextStyles.bodyMedium),
-                trailing: item == selected
-                    ? const Icon(Icons.check_rounded,
-                        color: AppColors.primary, size: 20)
-                    : null,
-                onTap: () {
-                  onSelected(item);
-                  Navigator.of(context).pop();
-                },
-              ),
-            ),
-          ],
+    return DropdownButtonFormField<T>(
+      initialValue: value,
+      key: ValueKey(value),
+      isExpanded: true,
+      icon: const Icon(Icons.keyboard_arrow_down_rounded,
+          color: AppColors.textSecondary),
+      dropdownColor: AppColors.surface,
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textPrimary),
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: AppColors.surface,
+        isDense: true,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        border: border,
+        enabledBorder: border,
+        focusedBorder: border.copyWith(
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
         ),
       ),
+      items: [
+        for (final (v, label) in items)
+          DropdownMenuItem<T>(
+            value: v,
+            child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+          ),
+      ],
+      onChanged: (v) {
+        if (v != null || null is T) onChanged(v as T);
+      },
     );
   }
 }

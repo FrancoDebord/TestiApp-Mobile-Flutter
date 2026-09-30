@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -96,14 +98,14 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     final isSent = _isSent;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF184797),
+      backgroundColor: AppColors.surface,
       // Transparent AppBar with back arrow.
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: Colors.white, size: 20),
+          icon: const Icon(Icons.arrow_back_rounded,
+              color: AppColors.primary),
           onPressed: () => context.canPop()
               ? context.pop()
               : context.goNamed(AppRoutes.login),
@@ -163,31 +165,31 @@ class _InputBody extends StatelessWidget {
                   width: 64,
                   height: 64,
                   decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(26),
+                    color: AppColors.primarySoft,
                     borderRadius: BorderRadius.circular(18),
                     border: Border.all(
-                        color: Colors.white.withAlpha(77), width: 1.5),
+                        color: AppColors.primarySoft, width: 1.5),
                   ),
                   child: const Icon(Icons.lock_reset_rounded,
-                      color: Colors.white, size: 30),
+                      color: AppColors.primary, size: 30),
                 ),
                 const SizedBox(height: 12),
                 const Text(
                   'Mot de passe oublié ?',
                   style: TextStyle(
-                    fontFamily: 'Plus Jakarta Sans',
+                    fontFamily: AppFonts.family,
                     fontWeight: FontWeight.w600,
                     fontSize: 22,
-                    color: Colors.white,
+                    color: AppColors.primary,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'Nous vous enverrons un lien de réinitialisation',
                   style: TextStyle(
-                    fontFamily: 'Plus Jakarta Sans',
+                    fontFamily: AppFonts.family,
                     fontSize: 13,
-                    color: Colors.white.withAlpha(204),
+                    color: AppColors.textSecondary,
                   ),
                 ),
                 const SizedBox(height: 28),
@@ -200,7 +202,7 @@ class _InputBody extends StatelessWidget {
         Expanded(
           child: Container(
             decoration: const BoxDecoration(
-              color: Color(0xFFF8FAFC),
+              color: AppColors.background,
               borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
             ),
             child: SingleChildScrollView(
@@ -215,9 +217,9 @@ class _InputBody extends StatelessWidget {
                       'Saisissez l\'adresse e-mail associée à votre compte. '
                       'Vous recevrez un lien pour créer un nouveau mot de passe.',
                       style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
+                        fontFamily: AppFonts.family,
                         fontSize: 14,
-                        color: Color(0xFF667085),
+                        color: AppColors.textSecondary,
                         height: 1.6,
                       ),
                     ),
@@ -260,9 +262,9 @@ class _InputBody extends StatelessWidget {
                         child: const Text(
                           'Retour à la connexion',
                           style: TextStyle(
-                            fontFamily: 'Plus Jakarta Sans',
+                            fontFamily: AppFonts.family,
                             fontSize: 14,
-                            color: Color(0xFF184797),
+                            color: AppColors.primary,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -319,10 +321,10 @@ class _SuccessBody extends StatelessWidget {
               'E-mail envoyé !',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontFamily: 'Plus Jakarta Sans',
+                fontFamily: AppFonts.family,
                 fontWeight: FontWeight.w600,
                 fontSize: 26,
-                color: Color(0xFF263238),
+                color: AppColors.textPrimary,
               ),
             ),
 
@@ -334,9 +336,9 @@ class _SuccessBody extends StatelessWidget {
               'Vérifiez également vos courriers indésirables.',
               textAlign: TextAlign.center,
               style: const TextStyle(
-                fontFamily: 'Plus Jakarta Sans',
+                fontFamily: AppFonts.family,
                 fontSize: 14,
-                color: Color(0xFF667085),
+                color: AppColors.textSecondary,
                 height: 1.6,
               ),
             ),
@@ -357,17 +359,17 @@ class _SuccessBody extends StatelessWidget {
               onPressed: onResend,
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size.fromHeight(52),
-                side: const BorderSide(color: Color(0xFF184797), width: 1.5),
+                side: const BorderSide(color: AppColors.primary, width: 1.5),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14)),
               ),
               child: const Text(
                 'Renvoyer l\'e-mail',
                 style: TextStyle(
-                  fontFamily: 'Plus Jakarta Sans',
+                  fontFamily: AppFonts.family,
                   fontWeight: FontWeight.w600,
                   fontSize: 16,
-                  color: Color(0xFF184797),
+                  color: AppColors.primary,
                 ),
               ),
             ),
@@ -402,7 +404,7 @@ class _EnvelopePainter extends CustomPainter {
     canvas.drawCircle(
       Offset(cx, cy),
       size.width * 0.38,
-      Paint()..color = const Color(0xFFEAF1FC),
+      Paint()..color = AppColors.primarySoft,
     );
 
     // Envelope body.
@@ -410,11 +412,11 @@ class _EnvelopePainter extends CustomPainter {
       Rect.fromCenter(center: Offset(cx, cy + 4), width: 96, height: 68),
       const Radius.circular(6),
     );
-    canvas.drawRRect(env, Paint()..color = const Color(0xFF184797));
+    canvas.drawRRect(env, Paint()..color = AppColors.primary);
 
     // Envelope flap (inverted V).
     final flapPaint = Paint()
-      ..color = const Color(0xFF2B5DB0)
+      ..color = AppColors.primaryLight
       ..style = PaintingStyle.fill;
     final flap = Path()
       ..moveTo(cx - 48, cy - 30)
@@ -425,7 +427,7 @@ class _EnvelopePainter extends CustomPainter {
 
     // Envelope bottom-left and bottom-right fold lines.
     final linePaint = Paint()
-      ..color = const Color(0xFF2B5DB0)
+      ..color = AppColors.primaryLight
       ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke;
     canvas.drawLine(Offset(cx - 48, cy + 38), Offset(cx - 10, cy + 10), linePaint);
@@ -435,7 +437,7 @@ class _EnvelopePainter extends CustomPainter {
     canvas.drawCircle(
       Offset(cx + 38, cy - 36),
       18,
-      Paint()..color = const Color(0xFF12B76A),
+      Paint()..color = AppColors.success,
     );
 
     // Checkmark tick.

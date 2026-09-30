@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,6 +9,7 @@ import 'package:livekit_client/livekit_client.dart' as lk;
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart' show AppFonts;
 import '../../auth/providers/auth_notifier.dart' show currentUserProvider;
 import '../controllers/live_room_controller.dart';
 import '../data/live_repository.dart';
@@ -58,6 +60,9 @@ class _LiveStudioScreenState extends ConsumerState<LiveStudioScreen> {
   LiveRoomController? _ctrl;
   String? _error;
   Timer? _clock;
+
+  /// Caméra externe : panneau de connexion (masquable pour voir l'aperçu).
+  bool _cameraPanelOpen = true;
 
   /// Nouvelle demande d'intervention : bandeau d'information.
   void _onControllerChange() {
@@ -217,16 +222,21 @@ class _LiveStudioScreenState extends ConsumerState<LiveStudioScreen> {
     final connected = ctrl.link == LiveLinkState.connected ||
         ctrl.link == LiveLinkState.reconnecting;
     final track = ctrl.video;
+    // Caméra IP / encodeur : [track] est le flux distant « host-camera- ».
+    final external = ctrl.usesExternalCamera;
+    // Clavier ouvert (message aux spectateurs) : on masque réactions et
+    // contrôles pour laisser la place à la saisie.
+    final keyboardOpen = View.of(context).viewInsets.bottom > 0;
 
     return Stack(
       fit: StackFit.expand,
       children: [
         // ── Retour caméra ───────────────────────────────────────────────
-        if (track != null && ctrl.cameraEnabled)
+        if (track != null && (external || ctrl.cameraEnabled))
           lk.VideoTrackRenderer(
             track,
-            fit: lk.VideoViewFit.cover,
-            mirrorMode: ctrl.cameraPosition == lk.CameraPosition.front
+            fit: external ? lk.VideoViewFit.contain : lk.VideoViewFit.cover,
+            mirrorMode: !external && ctrl.cameraPosition == lk.CameraPosition.front
                 ? lk.VideoViewMirrorMode.mirror
                 : lk.VideoViewMirrorMode.off,
           )
@@ -234,22 +244,28 @@ class _LiveStudioScreenState extends ConsumerState<LiveStudioScreen> {
           Container(
             color: const Color(0xFF120A1F),
             alignment: Alignment.center,
-            child: Column(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
-                  ctrl.cameraEnabled
-                      ? Icons.videocam_outlined
-                      : Icons.videocam_off_outlined,
+                  external
+                      ? Icons.settings_input_antenna_rounded
+                      : ctrl.cameraEnabled
+                          ? Icons.videocam_outlined
+                          : Icons.videocam_off_outlined,
                   color: Colors.white54,
                   size: 48,
                 ),
                 const SizedBox(height: 10),
                 Text(
                   ctrl.error ??
-                      (ctrl.cameraEnabled
-                          ? 'Ouverture de la caméra…'
-                          : 'Caméra coupée : les spectateurs ne vous voient plus'),
+                      (external
+                          ? 'En attente du flux de la caméra…'
+                          : ctrl.cameraEnabled
+                              ? 'Ouverture de la caméra…'
+                              : 'Caméra coupée : les spectateurs ne vous voient plus'),
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                       color: Colors.white70, fontFamily: 'Plus Jakarta Sans'),
@@ -264,6 +280,7 @@ class _LiveStudioScreenState extends ConsumerState<LiveStudioScreen> {
                   ),
                 ],
               ],
+            ),
             ),
           ),
 
@@ -291,21 +308,40 @@ class _LiveStudioScreenState extends ConsumerState<LiveStudioScreen> {
                   hostId: live.host.id,
                   onUnpin: () => unpinWithFeedback(context, ctrl),
                 ),
-              const Spacer(),
-
+              // Caméra IP / encodeur : adresse, clé et état du flux.
+              if (external && _cameraPanelOpen)
+                Flexible(
+                  flex: 3,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                    child: _CameraConnectionPanel(
+                      live: live,
+                      received: ctrl.cameraFeedReceived,
+                      onClose: () => setState(() => _cameraPanelOpen = false),
+                    ),
+                  ),
+                ),
               // ── Commentaires (modérables, épinglables) ─────────────────
               // Toujours visibles : même commentaires fermés au public, les
-              // messages du diffuseur y apparaissent.
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: SizedBox(
-                  height: MediaQuery.sizeOf(context).height * 0.34,
-                  child: LiveCommentsList(
-                    comments: ctrl.comments,
-                    hostId: live.host.id,
-                    pinnedId: ctrl.pinnedComment?.id,
-                    onModerate: (c) => showCommentModerationSheet(context,
-                        comment: c, controller: ctrl),
+              // messages du diffuseur y apparaissent. La zone rétrécit (clavier
+              // ouvert, petit écran) au lieu de faire déborder la colonne.
+              Expanded(
+                flex: 2,
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                          maxHeight: MediaQuery.sizeOf(context).height * 0.34),
+                      child: LiveCommentsList(
+                        comments: ctrl.comments,
+                        hostId: live.host.id,
+                        pinnedId: ctrl.pinnedComment?.id,
+                        onModerate: (c) => showCommentModerationSheet(context,
+                            comment: c, controller: ctrl),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -325,10 +361,12 @@ class _LiveStudioScreenState extends ConsumerState<LiveStudioScreen> {
               ),
 
               // ── Réactions reçues ─────────────────────────────────────────
+              if (!keyboardOpen)
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
                 child: Wrap(
                   spacing: 8,
+                  runSpacing: 6,
                   children: [
                     for (final t in LiveReactionType.values)
                       Tooltip(
@@ -356,10 +394,23 @@ class _LiveStudioScreenState extends ConsumerState<LiveStudioScreen> {
               ),
 
               // ── Contrôles ────────────────────────────────────────────────
+              if (keyboardOpen)
+                const SizedBox(height: 8)
+              else
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
                 child: Row(
                   children: [
+                    // Caméra externe : ni micro ni caméra de l'appareil.
+                    if (external)
+                      _RoundControl(
+                        icon: Icons.settings_input_antenna_rounded,
+                        tooltip: 'Connexion de la caméra',
+                        active: true,
+                        onTap: () =>
+                            setState(() => _cameraPanelOpen = !_cameraPanelOpen),
+                      )
+                    else ...[
                     _RoundControl(
                       icon: ctrl.micEnabled
                           ? Icons.mic_rounded
@@ -386,6 +437,7 @@ class _LiveStudioScreenState extends ConsumerState<LiveStudioScreen> {
                           ? ctrl.switchCamera
                           : null,
                     ),
+                    ],
                     // File des intervenants (une personne à l'antenne à la fois).
                     if (live.isOnAir) ...[
                       const SizedBox(width: 6),
@@ -402,10 +454,14 @@ class _LiveStudioScreenState extends ConsumerState<LiveStudioScreen> {
                               style: FilledButton.styleFrom(
                                 backgroundColor: AppColors.danger,
                                 minimumSize: const Size.fromHeight(50),
+                                padding: const EdgeInsets.symmetric(horizontal: 12),
                               ),
                               icon: const Icon(Icons.stop_rounded),
-                              label: const Text('Terminer'),
+                              label: const Text('Terminer',
+                                  maxLines: 1, overflow: TextOverflow.ellipsis),
                             )
+                          // Caméra externe : actif seulement quand l'image du flux
+                          // « host-camera- » est reçue (ctrl.video).
                           : FilledButton.icon(
                               onPressed: connected && !ctrl.goingLive && ctrl.video != null
                                   ? () => _goLive(ctrl)
@@ -413,6 +469,7 @@ class _LiveStudioScreenState extends ConsumerState<LiveStudioScreen> {
                               style: FilledButton.styleFrom(
                                 backgroundColor: kLiveRed,
                                 minimumSize: const Size.fromHeight(50),
+                                padding: const EdgeInsets.symmetric(horizontal: 12),
                               ),
                               icon: ctrl.goingLive
                                   ? const SizedBox(
@@ -421,9 +478,14 @@ class _LiveStudioScreenState extends ConsumerState<LiveStudioScreen> {
                                       child: CircularProgressIndicator(
                                           strokeWidth: 2, color: Colors.white))
                                   : const Icon(Icons.sensors_rounded),
-                              label: Text(connected
-                                  ? 'Passer à l\'antenne'
-                                  : 'Connexion…'),
+                              label: Text(!connected
+                                  ? 'Connexion…'
+                                  : external && ctrl.video == null
+                                      ? 'En attente du flux'
+                                      : 'Passer à l\'antenne',
+                                  maxLines: 2,
+                                  textAlign: TextAlign.center,
+                                  overflow: TextOverflow.ellipsis),
                             ),
                     ),
                   ],
@@ -438,6 +500,187 @@ class _LiveStudioScreenState extends ConsumerState<LiveStudioScreen> {
 }
 
 // ── Morceaux d'écran ─────────────────────────────────────────────────────────
+
+/// Connexion de la caméra IP / encodeur (docs/fonctionnalites/lives-camera-ip.md) :
+/// RTMP → adresse du serveur et clé (copie, affichage) ; adresse de flux → explication.
+class _CameraConnectionPanel extends StatefulWidget {
+  const _CameraConnectionPanel({
+    required this.live,
+    required this.received,
+    this.onClose,
+  });
+
+  final LiveSession live;
+  final bool received;
+  final VoidCallback? onClose;
+
+  @override
+  State<_CameraConnectionPanel> createState() => _CameraConnectionPanelState();
+}
+
+class _CameraConnectionPanelState extends State<_CameraConnectionPanel> {
+  bool _showKey = false;
+
+  Future<void> _copy(String value, String what) async {
+    await Clipboard.setData(ClipboardData(text: value));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        behavior: SnackBarBehavior.floating, content: Text('$what copiée')));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final camera = widget.live.camera;
+    final rtmp = widget.live.source == LiveSource.rtmp;
+    const labelStyle = TextStyle(
+        color: Colors.white70, fontFamily: AppFonts.family, fontSize: 12);
+
+    Widget field({
+      required String label,
+      required String? value,
+      required String copyLabel,
+      bool secret = false,
+    }) {
+      final v = value ?? '';
+      final shown = v.isEmpty
+          ? 'Non disponible'
+          : secret && !_showKey
+              ? '•' * 16
+              : v;
+      return Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: labelStyle),
+            Row(
+              children: [
+                Expanded(
+                  child: SelectableText(
+                    shown,
+                    maxLines: 2,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontFamily: 'monospace',
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+                if (secret && v.isNotEmpty)
+                  IconButton(
+                    tooltip: _showKey ? 'Masquer' : 'Afficher',
+                    onPressed: () => setState(() => _showKey = !_showKey),
+                    icon: Icon(
+                      _showKey
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                      color: Colors.white70,
+                      size: 20,
+                    ),
+                  ),
+                if (v.isNotEmpty)
+                  IconButton(
+                    tooltip: 'Copier',
+                    onPressed: () => _copy(v, copyLabel),
+                    icon: const Icon(Icons.copy_rounded,
+                        color: Colors.white70, size: 20),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
+      decoration: BoxDecoration(
+        color: Colors.black.withAlpha(170),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.settings_input_antenna_rounded,
+                  color: Colors.white, size: 18),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Caméra IP',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontFamily: AppFonts.family,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              // État du flux : pastille + libellé
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: widget.received ? AppColors.success : AppColors.sun,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(widget.received ? 'Flux reçu' : 'En attente du flux',
+                  style: labelStyle),
+              if (widget.onClose != null)
+                IconButton(
+                  tooltip: 'Fermer',
+                  onPressed: widget.onClose,
+                  icon: const Icon(Icons.close_rounded,
+                      color: Colors.white70, size: 20),
+                )
+              else
+                const SizedBox(width: 8),
+            ],
+          ),
+          if (rtmp) ...[
+            field(
+              label: 'Adresse du serveur (URL RTMP)',
+              value: camera?.url,
+              copyLabel: 'Adresse',
+            ),
+            field(
+              label: 'Clé de diffusion (ne la partagez pas)',
+              value: camera?.streamKey,
+              copyLabel: 'Clé',
+              secret: true,
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Saisissez ces deux valeurs dans la caméra, OBS ou votre encodeur, '
+              'puis lancez la diffusion. Le direct ne démarre pas tout seul.',
+              style: labelStyle,
+            ),
+          ] else ...[
+            const SizedBox(height: 6),
+            const Text(
+              "Le service vidéo se connecte lui-même à l'adresse du flux de la "
+              "caméra. Si l'image n'arrive pas, vérifiez que l'adresse est "
+              'joignable depuis Internet.',
+              style: labelStyle,
+            ),
+            if (camera?.sourceUrl != null)
+              field(
+                label: 'Adresse du flux',
+                value: camera!.sourceUrl,
+                copyLabel: 'Adresse',
+                secret: true, // peut contenir un mot de passe
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+}
 
 class _StudioTopBar extends StatelessWidget {
   const _StudioTopBar({required this.ctrl, required this.onClose});
@@ -458,21 +701,34 @@ class _StudioTopBar extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 4, 0),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          live.isOnAir
-              ? const LiveBadge()
-              : const LiveBadge(label: 'EN PRÉPARATION', color: Color(0xFF475467)),
-          const SizedBox(width: 6),
-          if (live.isOnAir && live.duration != null)
-            LiveChip(icon: Icons.timer_outlined, label: formatLiveDuration(live.duration!)),
-          const SizedBox(width: 6),
-          LiveViewersChip(liveId: live.id, viewers: ctrl.viewers),
-          const SizedBox(width: 6),
-          Tooltip(
-            message: 'Qualité du réseau : $qLabel',
-            child: LiveChip(icon: qIcon, label: qLabel),
+          // Les pastilles passent à la ligne sur petit écran.
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  live.isOnAir
+                      ? const LiveBadge()
+                      : const LiveBadge(
+                          label: 'EN PRÉPARATION', color: Color(0xFF475467)),
+                  if (live.isOnAir && live.duration != null)
+                    LiveChip(
+                        icon: Icons.timer_outlined,
+                        label: formatLiveDuration(live.duration!)),
+                  LiveViewersChip(liveId: live.id, viewers: ctrl.viewers),
+                  Tooltip(
+                    message: 'Qualité du réseau : $qLabel',
+                    child: LiveChip(icon: qIcon, label: qLabel),
+                  ),
+                ],
+              ),
+            ),
           ),
-          const Spacer(),
           IconButton(
             tooltip: 'Quitter le studio',
             onPressed: onClose,
@@ -527,30 +783,36 @@ class _StudioScrims extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IgnorePointer(
-      child: Column(
-        children: [
-          Container(
-            height: 140,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xAA000000), Colors.transparent],
+      // Hauteurs bornées par la place disponible (clavier ouvert, petit écran).
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final h = constraints.maxHeight;
+          return Column(
+            children: [
+              Container(
+                height: math.min(140, h * 0.25),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Color(0xAA000000), Colors.transparent],
+                  ),
+                ),
               ),
-            ),
-          ),
-          const Spacer(),
-          Container(
-            height: 360,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.bottomCenter,
-                end: Alignment.topCenter,
-                colors: [Color(0xDD000000), Colors.transparent],
+              const Spacer(),
+              Container(
+                height: math.min(360, h * 0.6),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                    colors: [Color(0xDD000000), Colors.transparent],
+                  ),
+                ),
               ),
-            ),
-          ),
-        ],
+            ],
+          );
+        },
       ),
     );
   }

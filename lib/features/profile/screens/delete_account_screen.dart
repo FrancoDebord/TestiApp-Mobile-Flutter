@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../shared/widgets/app_button.dart';
 import '../../../features/auth/providers/auth_notifier.dart'
     show authStateProvider;
 
@@ -49,7 +51,7 @@ class _DeleteAccountScreenState
       appBar: AppBar(
         title: const Text('Supprimer le compte',
             style: TextStyle(
-              fontFamily: 'Plus Jakarta Sans',
+              fontFamily: AppFonts.family,
               fontWeight: FontWeight.w600,
               fontSize: 17,
               color: AppColors.textPrimary,
@@ -86,7 +88,7 @@ class _DeleteAccountScreenState
             const Text(
               'Cette action est irréversible',
               style: TextStyle(
-                fontFamily: 'Plus Jakarta Sans',
+                fontFamily: AppFonts.family,
                 fontWeight: FontWeight.w700,
                 fontSize: 20,
                 color: AppColors.textPrimary,
@@ -124,7 +126,7 @@ class _DeleteAccountScreenState
                   RichText(
                     text: TextSpan(
                       style: const TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
+                        fontFamily: AppFonts.family,
                         fontSize: 13,
                         color: AppColors.textSecondary,
                         height: 1.5,
@@ -138,7 +140,7 @@ class _DeleteAccountScreenState
                           style: const TextStyle(
                             fontWeight: FontWeight.w700,
                             color: AppColors.danger,
-                            fontFamily: 'Plus Jakarta Sans',
+                            fontFamily: AppFonts.family,
                           ),
                         ),
                         const TextSpan(
@@ -151,7 +153,7 @@ class _DeleteAccountScreenState
                     controller: _ctrl,
                     autocorrect: false,
                     style: const TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
+                      fontFamily: AppFonts.family,
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                       color: AppColors.textPrimary,
@@ -161,7 +163,7 @@ class _DeleteAccountScreenState
                       hintText: _kWord,
                       hintStyle: const TextStyle(
                         color: AppColors.textSecondary,
-                        fontFamily: 'Plus Jakarta Sans',
+                        fontFamily: AppFonts.family,
                         fontSize: 15,
                         letterSpacing: 1,
                       ),
@@ -193,33 +195,13 @@ class _DeleteAccountScreenState
             const SizedBox(height: 28),
 
             // Bouton supprimer
-            SizedBox(
-              height: 52,
-              child: FilledButton(
-                onPressed: (_confirmed && !_isDeleting)
-                    ? _delete
-                    : null,
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.danger,
-                  disabledBackgroundColor: AppColors.border,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
-                ),
-                child: _isDeleting
-                    ? const SizedBox(
-                        width: 22, height: 22,
-                        child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2.5))
-                    : const Text(
-                        'Supprimer définitivement',
-                        style: TextStyle(
-                          fontFamily: 'Plus Jakarta Sans',
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
-                        ),
-                      ),
-              ),
+            AppButton(
+              label: 'Supprimer définitivement',
+              variant: AppButtonVariant.danger,
+              size: AppButtonSize.large,
+              fullWidth: true,
+              isLoading: _isDeleting,
+              onPressed: (_confirmed && !_isDeleting) ? _delete : null,
             ),
 
             const SizedBox(height: 12),
@@ -229,7 +211,7 @@ class _DeleteAccountScreenState
               onPressed: () => Navigator.of(context).pop(),
               child: const Text('Annuler',
                   style: TextStyle(
-                    fontFamily: 'Plus Jakarta Sans',
+                    fontFamily: AppFonts.family,
                     fontSize: 14,
                     color: AppColors.textSecondary,
                   )),
@@ -257,7 +239,7 @@ class _WarningItem extends StatelessWidget {
           Expanded(
             child: Text(text,
                 style: const TextStyle(
-                  fontFamily: 'Plus Jakarta Sans',
+                  fontFamily: AppFonts.family,
                   fontSize: 13,
                   color: AppColors.textSecondary,
                   height: 1.4,

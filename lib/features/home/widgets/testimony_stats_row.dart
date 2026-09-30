@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../models/testimony_model.dart';
 
@@ -67,10 +68,10 @@ class _ReactionAvatarRow extends StatelessWidget {
   final TestimonyStats stats;
 
   static const List<Color> _avatarColors = [
-    Color(0xFF184797), // purple
-    Color(0xFF103675), // dark blue
-    Color(0xFFD96F0B), // dark green
-    Color(0xFFF18717), // dark pink
+    AppColors.primary,
+    AppColors.primaryDark,
+    AppColors.secondaryDark,
+    AppColors.secondary,
   ];
 
   static const List<String> _letters = ['M', 'J', 'A', 'S'];
@@ -120,7 +121,7 @@ class _ReactionAvatarRow extends StatelessWidget {
                   ? '${_format(total)} · et ${_format(others)} autres'
                   : _format(total),
               style: AppTextStyles.bodySmall.copyWith(
-                color: const Color(0xFF667085),
+                color: AppColors.textSecondary,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -207,7 +208,7 @@ class _Dot extends StatelessWidget {
     return const Padding(
       padding: EdgeInsets.symmetric(horizontal: 6),
       child: Text('·',
-          style: TextStyle(color: Color(0xFF667085), fontSize: 12)),
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
     );
   }
 }

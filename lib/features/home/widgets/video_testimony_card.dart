@@ -2,18 +2,15 @@ import 'dart:io' show File;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
 import 'package:video_player/video_player.dart' show VideoPlayerController;
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
-import '../../testimony/screens/shorts_screen.dart';
+import '../../../core/theme/app_tokens.dart';
+import '../../../shared/widgets/youtube_video_player.dart' show YouTubeBadge;
 import '../models/testimony_model.dart';
-import '../providers/home_providers.dart';
-import 'testimony_action_bar.dart';
-import 'testimony_card_header.dart';
-import 'testimony_stats_row.dart';
+import 'compact_testimony_tile.dart' show openVideoTestimony;
+import 'feed_card_frame.dart';
 
 class VideoTestimonyCard extends ConsumerWidget {
   const VideoTestimonyCard({required this.testimony, super.key});
@@ -22,120 +19,22 @@ class VideoTestimonyCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final liked  = ref.watch(likedIdsProvider).contains(testimony.id);
-    final prayed = ref.watch(prayedIdsProvider).contains(testimony.id);
-    final saved  = ref.watch(savedIdsProvider).contains(testimony.id);
+    // Shorts dans l'ordre des vidéos du fil (lecteur YouTube pour un lien YouTube).
+    void onPlayTap() => openVideoTestimony(context, ref, testimony);
 
-    // Build the ordered list of VideoTestimonies from the full feed.
-    void onPlayTap() {
-      var allVideos = ref
-          .read(feedNotifierProvider)
-          .whereType<VideoTestimony>()
-          .toList();
-      int startIndex = allVideos.indexWhere((v) => v.id == testimony.id);
-      if (startIndex < 0) {
-        // Témoignage absent du feed principal (catégorie, recherche…) —
-        // on l'insère en tête pour qu'il soit toujours la première page.
-        allVideos = [testimony, ...allVideos];
-        startIndex = 0;
-      }
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => ShortsScreen(
-            testimonies: allVideos,
-            startIndex: startIndex,
-          ),
-        ),
-      );
-    }
+    final verse = testimony.bibleVerse?.trim() ?? '';
 
-    return Card(
-      elevation: 0,
-      color: AppColors.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: AppColors.border),
-      ),
-      child: InkWell(
-        onTap: () => context.push('/testimony/${testimony.id}'),
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ── Top: catégorie + menu ─────────────────────────────────────
-              Row(
-                children: [
-                  CategoryBadge(category: testimony.category),
-                  const Spacer(),
-                  _CardMenu(
-                    isSaved: saved,
-                    onSave: () => ref
-                        .read(interactionProvider.notifier)
-                        .toggleSave(testimony.id),
-                    onShare: () {
-                      SharePlus.instance.share(ShareParams(
-                        text: '${testimony.title}\n\n'
-                            '${testimony.shareLink}\n\n'
-                            'Partagé depuis l\'application Témoignages ✝️',
-                      ));
-                      ref.read(interactionProvider.notifier)
-                          .recordShare(testimony.id);
-                    },
-                    onReport: () =>
-                        context.push('/testimony/${testimony.id}/report'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-
-              // ── Titre ─────────────────────────────────────────────────────
-              Text(
-                testimony.title,
-                style: AppTextStyles.h4.copyWith(fontSize: 17),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 12),
-
-              // ── Vignette vidéo ────────────────────────────────────────────
-              _VideoThumbnail(testimony: testimony, onPlayTap: onPlayTap),
-              const SizedBox(height: 12),
-
-              // ── Auteur compact ────────────────────────────────────────────
-              TestimonyAuthorRow(testimony: testimony),
-              const SizedBox(height: 12),
-
-              TestimonyStatsRow(stats: testimony.stats),
-              const Divider(height: 20, color: AppColors.border),
-
-              TestimonyActionBar(
-                testimony: testimony,
-                isLiked: liked,
-                isPrayed: prayed,
-                currentReaction: ref.watch(reactionsMapProvider)[testimony.id],
-                onReact: (type) => type == null
-                    ? ref.read(interactionProvider.notifier).removeReaction(testimony.id)
-                    : ref.read(interactionProvider.notifier).setReaction(testimony.id, type),
-                onPray: () => ref
-                    .read(interactionProvider.notifier)
-                    .togglePray(testimony.id),
-                onComment: () =>
-                    context.push('/testimony/${testimony.id}/comments'),
-                onShare: () {
-                  SharePlus.instance.share(ShareParams(
-                    text: '${testimony.title}\n\n'
-                        '${testimony.shareLink}',
-                  ));
-                  ref.read(interactionProvider.notifier)
-                      .recordShare(testimony.id);
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
+    return FeedCardFrame(
+      testimony: testimony,
+      media: _VideoThumbnail(testimony: testimony, onPlayTap: onPlayTap),
+      preview: verse.isEmpty
+          ? null
+          : Text(
+              '« $verse »',
+              style: feedPreviewStyle(),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
     );
   }
 }
@@ -150,17 +49,18 @@ class _VideoThumbnail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.zero,
       child: AspectRatio(
         aspectRatio: 16 / 9,
         child: Stack(
           fit: StackFit.expand,
           children: [
             Image.network(
+              // Miniature YouTube (coverUrl) ou couverture du serveur.
               testimony.thumbnailUrl,
               fit: BoxFit.cover,
               errorBuilder: (_, _, _) => Container(
-                color: AppColors.primary.withAlpha(20),
+                color: AppColors.primarySoft,
                 child: const Icon(
                   Icons.video_library_outlined,
                   size: 48,
@@ -173,7 +73,7 @@ class _VideoThumbnail extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, Colors.black.withAlpha(100)],
+                  colors: [Colors.transparent, Colors.black.withAlpha(70)],
                 ),
               ),
             ),
@@ -181,13 +81,14 @@ class _VideoThumbnail extends StatelessWidget {
               child: GestureDetector(
                 onTap: onPlayTap,
                 child: Container(
-                  width: 52, height: 52,
+                  width: 56, height: 56,
                   decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(220),
+                    color: Colors.white,
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                          color: Colors.black.withAlpha(50), blurRadius: 8),
+                          color: AppColors.primaryDark.withAlpha(60),
+                          blurRadius: 12),
                     ],
                   ),
                   child: const Icon(
@@ -200,7 +101,10 @@ class _VideoThumbnail extends StatelessWidget {
             ),
             Positioned(
               bottom: 8, right: 8,
-              child: _SmartDurationBadge(testimony: testimony),
+              // YouTube : badge au lieu de la durée (aucun fichier à sonder).
+              child: testimony.isYouTube
+                  ? const YouTubeBadge()
+                  : _SmartDurationBadge(testimony: testimony),
             ),
           ],
         ),
@@ -249,92 +153,20 @@ class _SmartDurationBadgeState extends State<_SmartDurationBadge> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: Colors.black.withAlpha(170),
-        borderRadius: BorderRadius.circular(4),
+        color: Colors.black.withAlpha(150),
+        borderRadius: BorderRadius.circular(AppRadius.xs),
       ),
       child: Text(
         _fmt(_secs),
-        style: const TextStyle(
-          fontFamily: 'Plus Jakarta Sans',
+        style: TextStyle(
+          fontFamily: AppFonts.family,
           fontSize: 11,
           fontWeight: FontWeight.w600,
           color: Colors.white,
         ),
       ),
-    );
-  }
-}
-
-// ── 3-dot context menu ────────────────────────────────────────────────────────
-
-class _CardMenu extends StatelessWidget {
-  const _CardMenu({
-    required this.isSaved,
-    required this.onSave,
-    required this.onShare,
-    required this.onReport,
-  });
-
-  final bool isSaved;
-  final VoidCallback onSave;
-  final VoidCallback onShare;
-  final VoidCallback onReport;
-
-  @override
-  Widget build(BuildContext context) {
-    return PopupMenuButton<String>(
-      icon: const Icon(Icons.more_vert, size: 20),
-      iconColor: AppColors.textSecondary,
-      padding: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      onSelected: (value) {
-        switch (value) {
-          case 'save':
-            onSave();
-          case 'share':
-            onShare();
-          case 'report':
-            onReport();
-        }
-      },
-      itemBuilder: (_) => [
-        PopupMenuItem(
-          value: 'save',
-          child: Row(
-            children: [
-              Icon(
-                isSaved ? Icons.bookmark : Icons.bookmark_border,
-                size: 18,
-                color: isSaved ? AppColors.primary : null,
-              ),
-              const SizedBox(width: 10),
-              Text(isSaved ? 'Enlever des sauvegardes' : 'Sauvegarder'),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'share',
-          child: Row(
-            children: [
-              Icon(Icons.share_outlined, size: 18),
-              SizedBox(width: 10),
-              Text('Partager'),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'report',
-          child: Row(
-            children: [
-              Icon(Icons.flag_outlined, size: 18, color: Colors.redAccent),
-              SizedBox(width: 10),
-              Text('Signaler', style: TextStyle(color: Colors.redAccent)),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }

@@ -3,35 +3,34 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/router/app_routes.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../core/theme/app_tokens.dart';
 import '../../../services/api_service.dart' show LaravelApiException;
+import '../../../shared/widgets/app_button.dart';
+import '../../../shared/widgets/app_logo.dart';
 import '../providers/auth_notifier.dart';
 import '../widgets/auth_widgets.dart';
+import 'forgot_password_screen.dart';
+import 'phone_auth_screen.dart';
 
 // =============================================================================
-// LOGIN SCREEN
+// CONNEXION / INSCRIPTION (maquette, écran 3)
 // =============================================================================
-// Layout (top → bottom, single-column, scrollable):
-//   1. Purple wave header  — 220 px, logo + "Bon retour !" title
-//   2. White card body     — rounded top corners (28 px), elevation shadow
-//      a. Email field      — leading mail icon, real-time validation
-//      b. Password field   — leading lock icon, trailing show/hide toggle
-//      c. Forgot password  — right-aligned TextButton → /forgot-password
-//      d. Se connecter     — full-width FilledButton (purple), loading state
-//      e. Divider          — "ou continuer avec"
-//      f. Social row       — Google button | Apple button (side by side)
-//      g. Register link    — "Pas encore de compte ? S'inscrire"
+// Vue d'accueil (colonne centrée, défilante) :
+//   1. Logo « Témoignages de Gloire » + « Rejoignez une communauté… »
+//   2. « Se connecter avec numéro »  — bleu, icône téléphone → OTP SMS
+//   3. « Se connecter avec Google »  — contour, logo G
+//   4. « Se connecter avec Email »   — contour, icône enveloppe → sous-vue
+//      e-mail / mot de passe (+ mot de passe oublié)
+//   5. Lien discret « Continuer avec Facebook »
+//   6. « Ou continuer sans compte » puis « Mode invité » (jaune, texte bleu)
+//   7. « Pas encore de compte ? S'inscrire »
 //
-// Validation:
-//   Email    : non-empty + valid RFC pattern → red border + error text below
-//   Password : non-empty, min 8 chars        → red border + error text below
-//   Network errors shown in AuthErrorBanner above the form.
-//
-// Auth wiring:
-//   Calls ref.read(authProvider.notifier).signIn(email, password)
-//   GoRouter redirect handles navigation to /home or /verify-email on success.
+// La redirection vers /home après connexion est gérée par le routeur
+// (changement de l'état d'authentification). Le mode invité est persisté
+// par AuthNotifier.continueAsGuest().
 // =============================================================================
-
-// ── Screen ────────────────────────────────────────────────────────────────────
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -46,6 +45,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _isLoading = false;
+  bool _showEmailForm = false;
   String? _errorMessage;
 
   @override
@@ -76,7 +76,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return null;
   }
 
-  // ── Submit ──────────────────────────────────────────────────────────────────
+  // ── Actions ─────────────────────────────────────────────────────────────────
 
   Future<void> _submit() async {
     setState(() => _errorMessage = null);
@@ -127,223 +127,236 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  /// Connexion par numéro : flux OTP SMS (PhoneAuthScreen).
+  void _openPhoneAuth() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const PhoneAuthScreen()),
+    );
+  }
+
+  void _openForgotPassword() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const ForgotPasswordScreen()),
+    );
+  }
+
+  Future<void> _continueAsGuest() async {
+    setState(() { _isLoading = true; _errorMessage = null; });
+    try {
+      await ref.read(authStateProvider.notifier).continueAsGuest();
+      if (mounted) context.goNamed(AppRoutes.home);
+    } catch (e) {
+      if (mounted) setState(() => _errorMessage = e.toString());
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  // ── Build ───────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
-    final isLoading = _isLoading;
-    final errorMessage = _errorMessage;
-
-    return Scaffold(
-      backgroundColor: const Color(0xFF184797),
-      body: Column(
-        children: [
-          // ── Purple wave header ─────────────────────────────────────────────
-          AuthWaveHeader(
-            child: SafeArea(
-              bottom: false,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const SizedBox(height: 16),
-                  Container(
-                    width: 64,
-                    height: 64,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withAlpha(26),
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(
-                          color: Colors.white.withAlpha(77), width: 1.5),
+    return PopScope(
+      // Retour système dans la sous-vue e-mail : revenir aux choix.
+      canPop: !_showEmailForm,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _showEmailForm) {
+          setState(() => _showEmailForm = false);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.surface,
+        body: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) => SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.xxl, vertical: AppSpacing.xl),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                    minHeight: constraints.maxHeight - AppSpacing.xl * 2),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 440),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 220),
+                      child: _showEmailForm
+                          ? _buildEmailForm()
+                          : _buildChoices(),
                     ),
-                    child: const Center(
-                      child: Text(
-                        '✝',
-                        style: TextStyle(
-                            color: Colors.white, fontSize: 28, height: 1),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Bon retour !',
-                    style: TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
-                      fontWeight: FontWeight.w600,
-                      fontSize: 24,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Connectez-vous à votre compte',
-                    style: TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
-                      fontSize: 13,
-                      color: Colors.white.withAlpha(204),
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                ],
-              ),
-            ),
-          ),
-
-          // ── White card body (scrollable) ───────────────────────────────────
-          Expanded(
-            child: Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFFF8FAFC),
-                borderRadius:
-                    BorderRadius.vertical(top: Radius.circular(28)),
-              ),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 32, 24, 40),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Error banner.
-                      if (errorMessage != null) ...[
-                        AuthErrorBanner(message: errorMessage),
-                        const SizedBox(height: 20),
-                      ],
-
-                      // Email.
-                      AuthTextField(
-                        controller: _emailController,
-                        label: 'Adresse e-mail',
-                        hint: 'exemple@email.com',
-                        prefixIcon: Icons.mail_outline_rounded,
-                        keyboardType: TextInputType.emailAddress,
-                        textInputAction: TextInputAction.next,
-                        validator: _validateEmail,
-                        enabled: !isLoading,
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      // Password.
-                      AuthTextField(
-                        controller: _passwordController,
-                        label: 'Mot de passe',
-                        hint: '••••••••',
-                        prefixIcon: Icons.lock_outline_rounded,
-                        obscureText: _obscurePassword,
-                        textInputAction: TextInputAction.done,
-                        validator: _validatePassword,
-                        enabled: !isLoading,
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility_off_outlined
-                                : Icons.visibility_outlined,
-                            color: const Color(0xFF667085),
-                            size: 20,
-                          ),
-                          onPressed: () => setState(
-                              () => _obscurePassword = !_obscurePassword),
-                        ),
-                        onFieldSubmitted: (_) => _submit(),
-                      ),
-
-                      const SizedBox(height: 8),
-
-                      // Forgot password link.
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: () =>
-                              context.goNamed(AppRoutes.forgotPassword),
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 4, vertical: 2),
-                          ),
-                          child: const Text(
-                            'Mot de passe oublié ?',
-                            style: TextStyle(
-                              fontFamily: 'Plus Jakarta Sans',
-                              fontSize: 13,
-                              color: Color(0xFF184797),
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // Se connecter.
-                      AuthPrimaryButton(
-                        label: 'Se connecter',
-                        isLoading: isLoading,
-                        onPressed: isLoading ? null : _submit,
-                      ),
-
-                      const SizedBox(height: 28),
-
-                      // Divider.
-                      const AuthOrDivider(),
-
-                      const SizedBox(height: 20),
-
-                      // Social row — Google + Facebook.
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _SocialButton(
-                              label: 'Google',
-                              color: const Color(0xFFDB4437),
-                              icon: Icons.g_mobiledata_rounded,
-                              enabled: !isLoading,
-                              onPressed: _signInWithGoogle,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _SocialButton(
-                              label: 'Facebook',
-                              color: const Color(0xFF1877F2),
-                              icon: Icons.facebook_rounded,
-                              enabled: !isLoading,
-                              onPressed: _signInWithFacebook,
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 32),
-
-                      // Register link.
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text(
-                            "Pas encore de compte ? ",
-                            style: TextStyle(
-                              fontFamily: 'Plus Jakarta Sans',
-                              fontSize: 14,
-                              color: Color(0xFF667085),
-                            ),
-                          ),
-                          GestureDetector(
-                            onTap: () =>
-                                context.goNamed(AppRoutes.register),
-                            child: const Text(
-                              "S'inscrire",
-                              style: TextStyle(
-                                fontFamily: 'Plus Jakarta Sans',
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF184797),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
                   ),
                 ),
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _errorBanner() {
+    final message = _errorMessage;
+    if (message == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+      child: AuthErrorBanner(message: message),
+    );
+  }
+
+  Widget _buildChoices() {
+    final isLoading = _isLoading;
+    return Column(
+      key: const ValueKey('login-choices'),
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Center(child: AppLogo(markSize: 90, titleSize: 30)),
+        const SizedBox(height: AppSpacing.md),
+        Text(
+          'Rejoignez une communauté qui partage la gloire de Dieu.',
+          textAlign: TextAlign.center,
+          style: AppTextStyles.bodyMedium
+              .copyWith(color: AppColors.textSecondary, height: 1.5),
+        ),
+        const SizedBox(height: AppSpacing.xxxl),
+        _errorBanner(),
+        AppButton(
+          label: 'Se connecter avec numéro',
+          leadingIcon: Icons.phone_rounded,
+          fullWidth: true,
+          onPressed: isLoading ? null : _openPhoneAuth,
+        ),
+        const SizedBox(height: AppSpacing.md),
+        AppButton(
+          label: 'Se connecter avec Google',
+          variant: AppButtonVariant.outline,
+          leading: const GoogleGMark(size: 20),
+          fullWidth: true,
+          onPressed: isLoading ? null : _signInWithGoogle,
+        ),
+        const SizedBox(height: AppSpacing.md),
+        AppButton(
+          label: 'Se connecter avec Email',
+          variant: AppButtonVariant.outline,
+          leadingIcon: Icons.mail_outline_rounded,
+          fullWidth: true,
+          onPressed: isLoading
+              ? null
+              : () => setState(() {
+                    _showEmailForm = true;
+                    _errorMessage = null;
+                  }),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Center(
+          child: TextButton.icon(
+            onPressed: isLoading ? null : _signInWithFacebook,
+            icon: const Icon(Icons.facebook_rounded,
+                size: 18, color: AppColors.primary),
+            label: Text(
+              'Continuer avec Facebook',
+              style: AppTextStyles.labelSmall.copyWith(
+                  color: AppColors.primary, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        const AuthOrDivider(label: 'Ou continuer sans compte'),
+        const SizedBox(height: AppSpacing.lg),
+        AppButton(
+          label: 'Mode invité',
+          variant: AppButtonVariant.accent,
+          leadingIcon: Icons.explore_outlined,
+          fullWidth: true,
+          onPressed: isLoading ? null : _continueAsGuest,
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        _RegisterLink(
+          onTap: isLoading ? null : () => context.goNamed(AppRoutes.register),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmailForm() {
+    final isLoading = _isLoading;
+    return Form(
+      key: _formKey,
+      child: Column(
+        key: const ValueKey('login-email'),
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AuthScreenHeader(
+            title: 'Connexion par e-mail',
+            subtitle: 'Connectez-vous à votre compte',
+            onBack: isLoading
+                ? null
+                : () => setState(() {
+                      _showEmailForm = false;
+                      _errorMessage = null;
+                    }),
+          ),
+          const SizedBox(height: AppSpacing.xxl),
+          _errorBanner(),
+          AuthTextField(
+            controller: _emailController,
+            label: 'Adresse e-mail',
+            hint: 'exemple@email.com',
+            prefixIcon: Icons.mail_outline_rounded,
+            keyboardType: TextInputType.emailAddress,
+            textInputAction: TextInputAction.next,
+            validator: _validateEmail,
+            enabled: !isLoading,
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          AuthTextField(
+            controller: _passwordController,
+            label: 'Mot de passe',
+            hint: '••••••••',
+            prefixIcon: Icons.lock_outline_rounded,
+            obscureText: _obscurePassword,
+            textInputAction: TextInputAction.done,
+            validator: _validatePassword,
+            enabled: !isLoading,
+            suffixIcon: IconButton(
+              tooltip: _obscurePassword
+                  ? 'Afficher le mot de passe'
+                  : 'Masquer le mot de passe',
+              icon: Icon(
+                _obscurePassword
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined,
+                color: AppColors.textSecondary,
+                size: 20,
+              ),
+              onPressed: () =>
+                  setState(() => _obscurePassword = !_obscurePassword),
+            ),
+            onFieldSubmitted: (_) => _submit(),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: isLoading ? null : _openForgotPassword,
+              child: Text(
+                'Mot de passe oublié ?',
+                style: AppTextStyles.labelSmall.copyWith(
+                    color: AppColors.primary, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          AppButton(
+            label: 'Se connecter',
+            fullWidth: true,
+            isLoading: isLoading,
+            onPressed: isLoading ? null : _submit,
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          _RegisterLink(
+            onTap:
+                isLoading ? null : () => context.goNamed(AppRoutes.register),
           ),
         ],
       ),
@@ -351,45 +364,35 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 }
 
-// ── _SocialButton ─────────────────────────────────────────────────────────────
+// ── « Pas encore de compte ? S'inscrire » ────────────────────────────────────
 
-class _SocialButton extends StatelessWidget {
-  const _SocialButton({
-    required this.label,
-    required this.icon,
-    required this.color,
-    required this.onPressed,
-    this.enabled = true,
-  });
+class _RegisterLink extends StatelessWidget {
+  const _RegisterLink({required this.onTap});
 
-  final String label;
-  final IconData icon;
-  final Color color;
-  final VoidCallback onPressed;
-  final bool enabled;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return OutlinedButton.icon(
-      onPressed: enabled ? onPressed : null,
-      style: OutlinedButton.styleFrom(
-        minimumSize: const Size.fromHeight(48),
-        side: BorderSide(color: color.withAlpha(100), width: 1.5),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        backgroundColor: color.withAlpha(12),
-        foregroundColor: color,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-      ),
-      icon: Icon(icon, size: 22, color: color),
-      label: Text(
-        label,
-        style: TextStyle(
-          fontFamily: 'Plus Jakarta Sans',
-          fontWeight: FontWeight.w600,
-          fontSize: 14,
-          color: color,
+    return Wrap(
+      alignment: WrapAlignment.center,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        Text('Pas encore de compte ? ',
+            style: AppTextStyles.bodyMedium
+                .copyWith(color: AppColors.textSecondary)),
+        InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
+            child: Text(
+              "S'inscrire",
+              style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.secondary, fontWeight: FontWeight.w700),
+            ),
+          ),
         ),
-      ),
+      ],
     );
   }
 }

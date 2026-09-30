@@ -12,6 +12,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../auth/providers/auth_notifier.dart' show currentUserProvider;
 import '../data/live_repository.dart';
+import '../models/live_models.dart';
 import 'live_studio_screen.dart';
 
 enum _CheckState { pending, ok, warning, failed }
@@ -36,8 +37,12 @@ class _LiveSetupScreenState extends ConsumerState<LiveSetupScreen>
   final _form = GlobalKey<FormState>();
   final _title = TextEditingController();
   final _description = TextEditingController();
+  final _cameraUrl = TextEditingController();
   String? _category;
   bool _commentsEnabled = true;
+
+  /// Caméra utilisée : appareil, caméra IP / encodeur (RTMP) ou adresse de flux.
+  LiveSource _source = LiveSource.browser;
 
   _Check _rights = const _Check(_CheckState.pending, 'Vérification…');
   _Check _service = const _Check(_CheckState.pending, 'Vérification…');
@@ -52,9 +57,13 @@ class _LiveSetupScreenState extends ConsumerState<LiveSetupScreen>
   bool _handedOff = false;
   bool _submitting = false;
 
-  bool get _allOk =>
-      [_rights, _service, _network, _camera, _micro]
-          .every((c) => c.state == _CheckState.ok || c.state == _CheckState.warning);
+  /// Caméra externe : caméra et micro de l'appareil ne sont pas vérifiés.
+  bool get _allOk => [
+        _rights,
+        _service,
+        _network,
+        if (!_source.isExternal) ...[_camera, _micro],
+      ].every((c) => c.state == _CheckState.ok || c.state == _CheckState.warning);
 
   @override
   void initState() {
@@ -67,6 +76,7 @@ class _LiveSetupScreenState extends ConsumerState<LiveSetupScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Retour des réglages système après avoir autorisé caméra / micro.
     if (state == AppLifecycleState.resumed &&
+        !_source.isExternal &&
         (_camera.state == _CheckState.failed ||
             _micro.state == _CheckState.failed)) {
       unawaited(_checkDevices());
@@ -78,6 +88,7 @@ class _LiveSetupScreenState extends ConsumerState<LiveSetupScreen>
     WidgetsBinding.instance.removeObserver(this);
     _title.dispose();
     _description.dispose();
+    _cameraUrl.dispose();
     if (!_handedOff) unawaited(_preview?.stop());
     super.dispose();
   }
@@ -91,7 +102,25 @@ class _LiveSetupScreenState extends ConsumerState<LiveSetupScreen>
         : const _Check(_CheckState.failed,
             'Seuls les modérateurs et administrateurs peuvent diffuser.'));
 
-    await Future.wait([_checkService(), _checkNetwork(), _checkDevices()]);
+    await Future.wait([
+      _checkService(),
+      _checkNetwork(),
+      if (!_source.isExternal) _checkDevices(),
+    ]);
+  }
+
+  /// Changement de caméra : libère la caméra de l'appareil pour une caméra
+  /// externe, la rouvre (avec les autorisations) pour l'appareil.
+  Future<void> _selectSource(LiveSource source) async {
+    if (source == _source) return;
+    setState(() => _source = source);
+    if (source.isExternal) {
+      final preview = _preview;
+      setState(() => _preview = null);
+      await preview?.stop();
+    } else {
+      await _checkDevices();
+    }
   }
 
   Future<void> _checkService() async {
@@ -128,7 +157,7 @@ class _LiveSetupScreenState extends ConsumerState<LiveSetupScreen>
   Future<void> _checkDevices() async {
     final statuses =
         await [Permission.camera, Permission.microphone].request();
-    if (!mounted) return;
+    if (!mounted || _source.isExternal) return;
 
     _Check describe(PermissionStatus? s, String what) => switch (s) {
           PermissionStatus.granted ||
@@ -208,12 +237,15 @@ class _LiveSetupScreenState extends ConsumerState<LiveSetupScreen>
         description: _description.text.trim(),
         categorySlug: _category,
         commentsEnabled: _commentsEnabled,
+        source: _source,
+        cameraUrl: _source == LiveSource.url ? _cameraUrl.text : null,
       );
       if (!mounted) return;
       _openStudio(LiveStudioArgs(
         live: live,
         credentials: creds,
-        previewTrack: _preview,
+        // Caméra externe : l'aperçu local n'est pas publié.
+        previewTrack: _source.isExternal ? null : _preview,
         cameraPosition: _position,
       ));
     } on LiveFailure catch (e) {
@@ -249,7 +281,7 @@ class _LiveSetupScreenState extends ConsumerState<LiveSetupScreen>
     if (resume != true || !mounted) return;
     _openStudio(LiveStudioArgs.resume(
       liveId,
-      previewTrack: _preview,
+      previewTrack: _source.isExternal ? null : _preview,
       cameraPosition: _position,
     ));
   }
@@ -277,19 +309,75 @@ class _LiveSetupScreenState extends ConsumerState<LiveSetupScreen>
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
           children: [
-            _PreviewBox(
-              track: _preview,
-              position: _position,
-              onSwitch: _preview == null ? null : _switchCamera,
+            Text('Caméra utilisée', style: AppTextStyles.h4),
+            const SizedBox(height: 4),
+            RadioGroup<LiveSource>(
+              groupValue: _source,
+              onChanged: (v) {
+                if (v != null) unawaited(_selectSource(v));
+              },
+              child: const Column(
+                children: [
+                  RadioListTile<LiveSource>(
+                    contentPadding: EdgeInsets.zero,
+                    value: LiveSource.browser,
+                    title: Text('Caméra de cet appareil'),
+                  ),
+                  RadioListTile<LiveSource>(
+                    contentPadding: EdgeInsets.zero,
+                    value: LiveSource.rtmp,
+                    title: Text('Caméra IP ou encodeur (RTMP)'),
+                    subtitle: Text("Conseillé : le studio donne une adresse et une clé à saisir dans la caméra ou le logiciel (OBS…)."),
+                  ),
+                  RadioListTile<LiveSource>(
+                    contentPadding: EdgeInsets.zero,
+                    value: LiveSource.url,
+                    title: Text('Adresse du flux de la caméra'),
+                    subtitle: Text('Le service vidéo lit lui-même un flux joignable depuis Internet.'),
+                  ),
+                ],
+              ),
             ),
+            if (_source == LiveSource.url) ...[
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _cameraUrl,
+                keyboardType: TextInputType.url,
+                autocorrect: false,
+                decoration: const InputDecoration(
+                  labelText: 'Adresse du flux *',
+                  hintText: 'rtsp://, rtmp://, https:// ou srt://',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (v) {
+                  final value = v?.trim() ?? '';
+                  if (value.isEmpty) return "Indiquez l'adresse du flux de la caméra.";
+                  if (!liveCameraUrlPattern.hasMatch(value)) {
+                    return 'Adresse non reconnue : elle doit commencer par rtsp://, rtmp://, http(s):// ou srt://.';
+                  }
+                  return null;
+                },
+              ),
+            ],
+            const SizedBox(height: 12),
+            if (_source.isExternal)
+              _ExternalCameraHelp(source: _source)
+            else
+              _PreviewBox(
+                track: _preview,
+                position: _position,
+                onSwitch: _preview == null ? null : _switchCamera,
+              ),
             const SizedBox(height: 16),
             Text('Vérifications', style: AppTextStyles.h4),
             const SizedBox(height: 8),
             _CheckTile(icon: Icons.verified_user_outlined, label: 'Droits', check: _rights),
             _CheckTile(icon: Icons.cloud_outlined, label: 'Service vidéo', check: _service, onTap: () => _fixCheck(_service)),
             _CheckTile(icon: Icons.network_check_rounded, label: 'Réseau', check: _network, onTap: () => _fixCheck(_network)),
-            _CheckTile(icon: Icons.videocam_outlined, label: 'Caméra', check: _camera, onTap: () => _fixCheck(_camera)),
-            _CheckTile(icon: Icons.mic_none_rounded, label: 'Micro', check: _micro, onTap: () => _fixCheck(_micro)),
+            if (!_source.isExternal) ...[
+              _CheckTile(icon: Icons.videocam_outlined, label: 'Caméra', check: _camera, onTap: () => _fixCheck(_camera)),
+              _CheckTile(icon: Icons.mic_none_rounded, label: 'Micro', check: _micro, onTap: () => _fixCheck(_micro)),
+            ],
             const SizedBox(height: 20),
             Text('Votre direct', style: AppTextStyles.h4),
             const SizedBox(height: 10),
@@ -363,6 +451,59 @@ class _LiveSetupScreenState extends ConsumerState<LiveSetupScreen>
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Mode d'emploi à la place de l'aperçu quand la caméra est externe.
+class _ExternalCameraHelp extends StatelessWidget {
+  const _ExternalCameraHelp({required this.source});
+
+  final LiveSource source;
+
+  @override
+  Widget build(BuildContext context) {
+    final steps = source == LiveSource.rtmp
+        ? const [
+            "Ouvrez le studio : il affiche l'adresse du serveur et la clé de diffusion.",
+            'Saisissez-les dans la caméra, OBS, vMix ou votre encodeur, puis lancez la diffusion.',
+            "Quand l'image apparaît dans le studio, appuyez sur « Passer à l'antenne ».",
+          ]
+        : const [
+            "Le service vidéo se connecte à l'adresse indiquée (elle doit être joignable depuis Internet).",
+            "Vérifiez l'aperçu dans le studio.",
+            "Appuyez sur « Passer à l'antenne » : le direct ne démarre jamais tout seul.",
+          ];
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.primarySoft,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.settings_input_antenna_rounded, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Expanded(child: Text('Brancher une caméra IP', style: AppTextStyles.h4)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          for (var i = 0; i < steps.length; i++)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text('${i + 1}. ${steps[i]}',
+                  style: AppTextStyles.bodySmall.copyWith(color: AppColors.textPrimary, height: 1.5)),
+            ),
+          const SizedBox(height: 6),
+          Text(
+            "Caméra et micro de ce téléphone ne sont pas utilisés. Réglages conseillés : 720p, 2 à 4 Mbit/s, image clé toutes les 2 secondes, son AAC.",
+            style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary, height: 1.5),
+          ),
+        ],
       ),
     );
   }

@@ -72,6 +72,7 @@ class AppLocalizations {
   String get navPublish       => _t('Publier',      'Publish');
   String get navNotifications => _t('Alertes',      'Alerts');
   String get navProfile       => _t('Profil',       'Profile');
+  String get navDownloads     => _t('Téléchargements', 'Downloads');
 
   // ── Home ─────────────────────────────────────────────────────────────────
   String get homeTitle        => _t('Témoignages',  'Testimonies');
@@ -126,6 +127,37 @@ class AppLocalizations {
   String get profileMyTesti     => _t('Mes témoignages',    'My testimonies');
   String get profileSaved       => _t('Témoignages sauvegardés', 'Saved testimonies');
   String get profileSettings    => _t('Paramètres',   'Settings');
+  String get profileLikes       => _t("J'aime",       'Likes');
+  String get profileDownloads   => _t('Mes téléchargements', 'My downloads');
+  String get profileHelp        => _t('Aide et support', 'Help & support');
+  String get profileAbout       => _t('À propos',     'About');
+  String get profileGuestTitle  => _t('Vous naviguez en invité', 'You are browsing as a guest');
+  String get profileGuestDesc   => _t('Connectez-vous pour publier, suivre et retrouver vos témoignages.', 'Sign in to publish, follow and find your testimonies.');
+  String get profileGuestCta    => _t('Se connecter / Créer un compte', 'Sign in / Create an account');
+  /// « Membre depuis 3 mois » calculé depuis la date d'inscription.
+  String profileMemberSince(DateTime since) {
+    final now = DateTime.now();
+    final months = (now.year - since.year) * 12 + now.month - since.month;
+    final days = now.difference(since).inDays;
+    if (months >= 12) {
+      final y = months ~/ 12;
+      return _t('Membre depuis $y an${y > 1 ? 's' : ''}', 'Member for $y year${y > 1 ? 's' : ''}');
+    }
+    if (months >= 1) {
+      return _t('Membre depuis $months mois', 'Member for $months month${months > 1 ? 's' : ''}');
+    }
+    final d = days < 1 ? 1 : days;
+    return _t('Membre depuis $d jour${d > 1 ? 's' : ''}', 'Member for $d day${d > 1 ? 's' : ''}');
+  }
+  String get settingsAccountSecurity => _t('Compte et sécurité', 'Account & security');
+  String get settingsOffline     => _t('Mode hors ligne', 'Offline mode');
+  String get settingsOfflineDesc => _t('Lire uniquement les témoignages téléchargés', 'Play downloaded testimonies only');
+  String get settingsStorage     => _t('Stockage', 'Storage');
+  String get settingsPlayback    => _t('Lecture et données', 'Playback & data');
+  String get languageChange      => _t('Changer de langue', 'Change language');
+  String get notifTabAll         => _t('Toutes', 'All');
+  String get notifTabNew         => _t('Nouveaux', 'New');
+  String get notifTabPopular     => _t('Populaires', 'Popular');
 
   // ── Settings ──────────────────────────────────────────────────────────────
   String get settingsTitle      => _t('Paramètres',    'Settings');

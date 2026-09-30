@@ -2,27 +2,41 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../downloads/widgets/download_button.dart';
 import '../models/testimony_model.dart';
 import '../providers/home_providers.dart';
 
-/// Shared action bar rendered at the bottom of every testimony card.
+/// Formate un compteur : 1234 → « 1.2k ».
+String formatCount(int n) {
+  if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
+  if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}k';
+  return n.toString();
+}
+
+/// Rangée d'actions en bas de chaque carte de témoignage (maquette « Accueil »).
 ///
 /// Widget tree:
 /// Row
-///   ├─ _ReactionButton  (emoji reaction with long-press picker)
-///   ├─ _ActionButton    (💬 Commenter)
-///   ├─ _ActionButton    (🙏 Je prie)
-///   └─ _ActionButton    (📤 Partager)
+///   ├─ Expanded → Row
+///   │    ├─ _ReactionButton  (❤ rouge + nombre, appui long = choix de réaction)
+///   │    ├─ _StatAction      (🙏 Je prie + nombre)
+///   │    ├─ _StatAction      (💬 commentaires + nombre)
+///   │    └─ _StatAction      (partager)
+///   ├─ DownloadButton        (hors ligne)
+///   └─ bookmark              (sauvegarder)
 class TestimonyActionBar extends StatelessWidget {
   const TestimonyActionBar({
     required this.testimony,
     this.isLiked,
     this.isPrayed,
+    this.isSaved,
     this.currentReaction,
     this.onReact,
     this.onComment,
     this.onPray,
     this.onShare,
+    this.onSave,
+    this.showDownload = true,
     super.key,
   });
 
@@ -31,6 +45,7 @@ class TestimonyActionBar extends StatelessWidget {
   /// Overrides: si null, on utilise la valeur du modèle.
   final bool? isLiked;
   final bool? isPrayed;
+  final bool? isSaved;
 
   /// Réaction courante de l'utilisateur (null = aucune réaction posée).
   final ReactionType? currentReaction;
@@ -43,37 +58,130 @@ class TestimonyActionBar extends StatelessWidget {
   final VoidCallback? onPray;
   final VoidCallback? onShare;
 
+  /// Sauvegarder / retirer des sauvegardes (icône signet à droite).
+  final VoidCallback? onSave;
+
+  /// Bouton de téléchargement hors ligne (audio, vidéo, texte).
+  final bool showDownload;
+
   @override
   Widget build(BuildContext context) {
     final prayed = isPrayed ?? testimony.isPrayed;
+    final saved = isSaved ?? testimony.isSaved;
+    final stats = testimony.stats;
 
     return Row(
       children: [
-        _ReactionButton(
-          currentReaction: currentReaction,
-          onReact: onReact,
+        Expanded(
+          child: Row(
+            children: [
+              Flexible(
+                child: _ReactionButton(
+                  currentReaction: currentReaction,
+                  liked: isLiked ?? testimony.isLiked,
+                  count: stats.likes,
+                  onReact: onReact,
+                ),
+              ),
+              Flexible(
+                child: _StatAction(
+                  icon: prayed
+                      ? Icons.volunteer_activism
+                      : Icons.volunteer_activism_outlined,
+                  count: stats.prayers,
+                  tooltip: 'Je prie',
+                  color: prayed ? AppColors.primary : AppColors.textSecondary,
+                  onTap: onPray,
+                ),
+              ),
+              Flexible(
+                child: _StatAction(
+                  icon: Icons.chat_bubble_outline_rounded,
+                  count: stats.comments,
+                  tooltip: 'Commenter',
+                  color: AppColors.textSecondary,
+                  onTap: onComment,
+                ),
+              ),
+              Flexible(
+                child: _StatAction(
+                  icon: Icons.share_outlined,
+                  tooltip: 'Partager',
+                  color: AppColors.textSecondary,
+                  onTap: onShare,
+                ),
+              ),
+            ],
+          ),
         ),
-        _ActionButton(
-          icon: Icons.chat_bubble_outline_rounded,
-          label: 'Commenter',
-          color: AppColors.textSecondary,
-          onTap: onComment,
-        ),
-        _ActionButton(
-          icon: prayed
-              ? Icons.volunteer_activism
-              : Icons.volunteer_activism_outlined,
-          label: 'Je prie',
-          color: prayed ? AppColors.primary : AppColors.textSecondary,
-          onTap: onPray,
-        ),
-        _ActionButton(
-          icon: Icons.share_outlined,
-          label: 'Partager',
-          color: AppColors.textSecondary,
-          onTap: onShare,
-        ),
+        if (showDownload) DownloadButton(testimony: testimony, size: 21),
+        if (onSave != null)
+          IconButton(
+            tooltip: saved ? 'Enlever des sauvegardes' : 'Sauvegarder',
+            onPressed: onSave,
+            visualDensity: VisualDensity.compact,
+            icon: Icon(
+              saved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+              size: 22,
+              color: saved ? AppColors.primary : AppColors.textSecondary,
+            ),
+          ),
       ],
+    );
+  }
+}
+
+// ── Icône + compteur ─────────────────────────────────────────────────────────
+
+class _StatAction extends StatelessWidget {
+  const _StatAction({
+    required this.icon,
+    required this.tooltip,
+    required this.color,
+    this.count,
+    this.onTap,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final Color color;
+  final int? count;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 40, minWidth: 36),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 20, color: color),
+                if (count != null) ...[
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      formatCount(count!),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.labelSmall.copyWith(
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -83,10 +191,14 @@ class TestimonyActionBar extends StatelessWidget {
 class _ReactionButton extends StatefulWidget {
   const _ReactionButton({
     required this.currentReaction,
+    required this.liked,
+    required this.count,
     required this.onReact,
   });
 
   final ReactionType? currentReaction;
+  final bool liked;
+  final int count;
   final void Function(ReactionType? type)? onReact;
 
   @override
@@ -127,6 +239,9 @@ class _ReactionButtonState extends State<_ReactionButton>
 
     final overlay = Overlay.of(context);
     final buttonOffset = renderBox.localToGlobal(Offset.zero);
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    // Garde la bulle dans l'écran (≈ 300 px de large).
+    final left = (buttonOffset.dx - 8).clamp(8.0, (screenWidth - 308).clamp(8.0, double.infinity));
 
     _overlayEntry = OverlayEntry(
       builder: (ctx) => Stack(
@@ -140,8 +255,8 @@ class _ReactionButtonState extends State<_ReactionButton>
           ),
           // Picker bubble
           Positioned(
-            left: buttonOffset.dx - 80,
-            top:  buttonOffset.dy - 72,
+            left: left,
+            top: buttonOffset.dy - 64,
             child: ScaleTransition(
               alignment: Alignment.bottomLeft,
               scale: _scaleAnimation,
@@ -182,40 +297,49 @@ class _ReactionButtonState extends State<_ReactionButton>
 
   @override
   Widget build(BuildContext context) {
-    final reaction  = widget.currentReaction;
-    final hasReaction = reaction != null;
-    final emoji     = reaction?.emoji ?? '❤️';
-    final label     = reaction?.label ?? "J'aime";
-    final color     = hasReaction ? AppColors.danger : AppColors.textSecondary;
+    final reaction = widget.currentReaction;
+    final active = reaction != null || widget.liked;
 
-    return Expanded(
-      child: GestureDetector(
+    // J'aime (ou aucune réaction) : cœur rouge ; autre réaction : son émoji.
+    final Widget icon = (reaction == null || reaction == ReactionType.like)
+        ? Icon(
+            active ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+            size: 20,
+            color: AppColors.danger,
+          )
+        : Text(reaction.emoji, style: const TextStyle(fontSize: 17));
+
+    return Semantics(
+      button: true,
+      label: reaction?.label ?? "J'aime",
+      child: InkWell(
         onTap: _handleTap,
         onLongPress: _showPicker,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                emoji,
-                style: TextStyle(
-                  fontSize: 18,
-                  // Tint via colorFilter not directly possible on Text; use
-                  // AnimatedDefaultTextStyle to highlight active state.
+        borderRadius: BorderRadius.circular(8),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 40, minWidth: 36),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                icon,
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    formatCount(widget.count),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.labelSmall.copyWith(
+                      color: active
+                          ? AppColors.danger
+                          : AppColors.textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                label,
-                style: AppTextStyles.bodySmall.copyWith(
-                  fontSize: 10,
-                  color: color,
-                  fontWeight:
-                      hasReaction ? FontWeight.w700 : FontWeight.normal,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -233,9 +357,10 @@ class _ReactionPicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      elevation: 8,
+      elevation: 6,
+      shadowColor: AppColors.primaryDark.withAlpha(40),
       borderRadius: BorderRadius.circular(32),
-      color: Colors.white,
+      color: AppColors.surface,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         child: Row(
@@ -295,8 +420,8 @@ class _ReactionPickerItemState extends State<_ReactionPickerItem>
     return GestureDetector(
       onTap: widget.onTap,
       onTapDown: (_) => _controller.forward(),
-      onTapUp:   (_) => _controller.reverse(),
-      onTapCancel:  () => _controller.reverse(),
+      onTapUp: (_) => _controller.reverse(),
+      onTapCancel: () => _controller.reverse(),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4),
         child: ScaleTransition(
@@ -311,45 +436,94 @@ class _ReactionPickerItemState extends State<_ReactionPickerItem>
   }
 }
 
-// ── Single icon action button ─────────────────────────────────────────────────
+// ── Menu « ⋮ » commun aux cartes ─────────────────────────────────────────────
 
-class _ActionButton extends StatelessWidget {
-  const _ActionButton({
-    required this.icon,
-    required this.label,
-    required this.color,
-    this.onTap,
+/// Menu contextuel des cartes : sauvegarder, partager, signaler.
+class TestimonyCardMenu extends StatelessWidget {
+  const TestimonyCardMenu({
+    required this.isSaved,
+    required this.onSave,
+    required this.onShare,
+    required this.onReport,
+    this.iconColor = AppColors.textSecondary,
+    super.key,
   });
 
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback? onTap;
+  final bool isSaved;
+  final VoidCallback onSave;
+  final VoidCallback onShare;
+  final VoidCallback onReport;
+  final Color iconColor;
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.more_vert_rounded, size: 20),
+      iconColor: iconColor,
+      padding: EdgeInsets.zero,
+      tooltip: 'Plus d’options',
+      color: AppColors.surface,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      onSelected: (value) {
+        switch (value) {
+          case 'save':
+            onSave();
+          case 'share':
+            onShare();
+          case 'report':
+            onReport();
+        }
+      },
+      itemBuilder: (_) => [
+        PopupMenuItem(
+          value: 'save',
+          child: Row(
             children: [
-              Icon(icon, size: 20, color: color),
-              const SizedBox(height: 2),
-              Text(
-                label,
-                style: AppTextStyles.bodySmall.copyWith(
-                  fontSize: 10,
-                  color: color,
+              Icon(
+                isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                size: 18,
+                color: isSaved ? AppColors.primary : AppColors.textSecondary,
+              ),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Text(
+                  isSaved ? 'Enlever des sauvegardes' : 'Sauvegarder',
+                  style: AppTextStyles.bodyMedium,
                 ),
               ),
             ],
           ),
         ),
-      ),
+        PopupMenuItem(
+          value: 'share',
+          child: Row(
+            children: [
+              const Icon(Icons.share_outlined,
+                  size: 18, color: AppColors.textSecondary),
+              const SizedBox(width: 10),
+              Flexible(child: Text('Partager', style: AppTextStyles.bodyMedium)),
+            ],
+          ),
+        ),
+        PopupMenuItem(
+          value: 'report',
+          child: Row(
+            children: [
+              const Icon(Icons.flag_outlined,
+                  size: 18, color: AppColors.danger),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Text(
+                  'Signaler',
+                  style: AppTextStyles.bodyMedium
+                      .copyWith(color: AppColors.danger),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

@@ -12,23 +12,42 @@ import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/theme/app_tokens.dart';
 import '../../../shared/utils/rich_text_utils.dart';
 import '../../../shared/widgets/organization_badge.dart';
+import '../../../shared/widgets/youtube_video_player.dart' show YouTubeBadge;
 import '../../testimony/screens/shorts_screen.dart';
+import '../../testimony/screens/video_player_screen.dart' show VideoPlayerScreen;
 import '../models/testimony_model.dart';
 import '../providers/home_providers.dart';
+import 'feed_card_frame.dart' show ensureMember;
 import 'testimony_action_bar.dart';
-import 'testimony_stats_row.dart';
 
 /// Ouvre le lecteur plein écran (Shorts) sur [testimony], dans l'ordre des
 /// vidéos du fil principal — même comportement que la grande carte vidéo.
+/// Une vidéo YouTube s'ouvre dans le lecteur vidéo (lecteur YouTube) : le
+/// défilement vertical des Shorts n'accepte que les fichiers du serveur.
 void openVideoTestimony(
   BuildContext context,
   WidgetRef ref,
   VideoTestimony testimony,
 ) {
-  var allVideos =
-      ref.read(feedNotifierProvider).whereType<VideoTestimony>().toList();
+  if (testimony.isYouTube) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => VideoPlayerScreen(
+          testimonyId: testimony.id,
+          testimony: testimony,
+        ),
+      ),
+    );
+    return;
+  }
+  var allVideos = ref
+      .read(feedNotifierProvider)
+      .whereType<VideoTestimony>()
+      .where((v) => !v.isYouTube)
+      .toList();
   var startIndex = allVideos.indexWhere((v) => v.id == testimony.id);
   if (startIndex < 0) {
     allVideos = [testimony, ...allVideos];
@@ -104,14 +123,12 @@ class _CompactTestimonyTileState extends ConsumerState<CompactTestimonyTile> {
     final t = _t;
     final hasPlay = t is AudioTestimony || t is VideoTestimony;
 
-    return Card(
-      elevation: 0,
-      color: AppColors.surface,
+    return DecoratedBox(
+      decoration: AppShadows.cardDecoration,
+      child: Material(
+      type: MaterialType.transparency,
       clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: AppColors.border),
-      ),
+      borderRadius: AppRadius.cardRadius,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -140,10 +157,18 @@ class _CompactTestimonyTileState extends ConsumerState<CompactTestimonyTile> {
                           onPressed: _play,
                           constraints:
                               const BoxConstraints(minWidth: 44, minHeight: 44),
-                          icon: const Icon(
-                            Icons.play_circle_fill_rounded,
-                            color: AppColors.primary,
-                            size: 30,
+                          icon: Container(
+                            width: 34,
+                            height: 34,
+                            decoration: const BoxDecoration(
+                              color: AppColors.primary,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.play_arrow_rounded,
+                              color: Colors.white,
+                              size: 22,
+                            ),
                           ),
                         ),
                       IconButton(
@@ -183,6 +208,7 @@ class _CompactTestimonyTileState extends ConsumerState<CompactTestimonyTile> {
           ),
         ],
       ),
+      ),
     );
   }
 }
@@ -211,7 +237,13 @@ class _Thumbnail extends StatelessWidget {
               child: Icon(Icons.play_arrow_rounded,
                   color: Colors.white, size: 26),
             ),
-            if (v.durationSeconds > 0)
+            if (v.isYouTube)
+              const Positioned(
+                right: 3,
+                bottom: 3,
+                child: YouTubeBadge(compact: true),
+              )
+            else if (v.durationSeconds > 0)
               Positioned(
                 right: 3,
                 bottom: 3,
@@ -271,7 +303,7 @@ class _IconSquare extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: AppColors.primary.withAlpha(22),
+      color: AppColors.primarySoft,
       alignment: Alignment.center,
       child: Icon(icon, color: AppColors.primary, size: 26),
     );
@@ -292,8 +324,8 @@ class _MiniBadge extends StatelessWidget {
       ),
       child: Text(
         text,
-        style: const TextStyle(
-          fontFamily: 'Plus Jakarta Sans',
+        style: TextStyle(
+          fontFamily: AppFonts.family,
           fontSize: 9,
           fontWeight: FontWeight.w600,
           color: Colors.white,
@@ -386,6 +418,7 @@ class _ExpandedDetails extends ConsumerWidget {
     final t = testimony;
     final liked = ref.watch(likedIdsProvider).contains(t.id);
     final prayed = ref.watch(prayedIdsProvider).contains(t.id);
+    final saved = ref.watch(savedIdsProvider).contains(t.id);
     final reaction = ref.watch(reactionsMapProvider)[t.id];
 
     final previewStyle = AppTextStyles.bodyMedium.copyWith(
@@ -418,7 +451,7 @@ class _ExpandedDetails extends ConsumerWidget {
     };
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+      padding: const EdgeInsets.fromLTRB(16, 0, 8, 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -447,19 +480,35 @@ class _ExpandedDetails extends ConsumerWidget {
               ],
             ),
           ],
-          const SizedBox(height: 12),
-          TestimonyStatsRow(stats: t.stats),
-          const Divider(height: 16, color: AppColors.border),
+          const SizedBox(height: 8),
           TestimonyActionBar(
             testimony: t,
             isLiked: liked,
             isPrayed: prayed,
+            isSaved: saved,
+            onSave: () async {
+              if (!await ensureMember(
+                  context, ref, 'enregistrer vos favoris')) {
+                return;
+              }
+              ref.read(interactionProvider.notifier).toggleSave(t.id);
+            },
             currentReaction: reaction,
-            onReact: (type) => type == null
-                ? ref.read(interactionProvider.notifier).removeReaction(t.id)
-                : ref.read(interactionProvider.notifier).setReaction(t.id, type),
-            onPray: () =>
-                ref.read(interactionProvider.notifier).togglePray(t.id),
+            onReact: (type) async {
+              if (!await ensureMember(
+                  context, ref, 'réagir aux témoignages')) {
+                return;
+              }
+              final n = ref.read(interactionProvider.notifier);
+              type == null ? n.removeReaction(t.id) : n.setReaction(t.id, type);
+            },
+            onPray: () async {
+              if (!await ensureMember(
+                  context, ref, 'réagir aux témoignages')) {
+                return;
+              }
+              ref.read(interactionProvider.notifier).togglePray(t.id);
+            },
             onComment: () => context.push('/testimony/${t.id}/comments'),
             onShare: onShare,
           ),
@@ -505,12 +554,18 @@ class _VideoPreview extends StatelessWidget {
                   fallbackIcon: Icons.video_library_outlined,
                 ),
                 Container(color: Colors.black.withAlpha(40)),
+                if (testimony.isYouTube)
+                  const Positioned(
+                    right: 8,
+                    bottom: 8,
+                    child: YouTubeBadge(),
+                  ),
                 Center(
                   child: Container(
                     width: 52,
                     height: 52,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withAlpha(220),
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.play_arrow_rounded,

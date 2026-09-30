@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
 import '../../../services/api_service.dart';
+import '../../../shared/widgets/guest_gate.dart';
 
 // =============================================================================
 // ReportTestimonyScreen
@@ -61,6 +63,11 @@ class _ReportTestimonyScreenState
   Future<void> _submit() async {
     final reason = _selectedReason;
     if (reason == null) return;
+    // Mode invité : signaler demande un compte.
+    if (!await requireAccount(context, ref, reason: 'signaler un contenu')) {
+      return;
+    }
+    if (!mounted) return;
 
     setState(() => _loading = true);
     try {
@@ -78,7 +85,7 @@ class _ReportTestimonyScreenState
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Signalement envoyé. Merci pour votre contribution.'),
-          backgroundColor: Color(0xFF12B76A),
+          backgroundColor: AppColors.success,
         ),
       );
     } catch (_) {
@@ -86,7 +93,7 @@ class _ReportTestimonyScreenState
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Une erreur est survenue. Veuillez réessayer.'),
-          backgroundColor: Color(0xFFD92D20),
+          backgroundColor: AppColors.danger,
         ),
       );
     } finally {
@@ -97,7 +104,7 @@ class _ReportTestimonyScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
@@ -106,13 +113,13 @@ class _ReportTestimonyScreenState
         title: const Text(
           'Signaler ce témoignage',
           style: TextStyle(
-            fontFamily: 'Plus Jakarta Sans',
+            fontFamily: AppFonts.family,
             fontWeight: FontWeight.w600,
             fontSize: 18,
-            color: Color(0xFF263238),
+            color: AppColors.textPrimary,
           ),
         ),
-        foregroundColor: const Color(0xFF263238),
+        foregroundColor: AppColors.textPrimary,
       ),
       body: Column(
         children: [
@@ -126,23 +133,23 @@ class _ReportTestimonyScreenState
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFFAEB),
+                      color: AppColors.sunSoft,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFFCD34D)),
+                      border: Border.all(color: AppColors.sunBorder),
                     ),
                     child: const Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Icon(Icons.info_outline_rounded,
-                            size: 18, color: Color(0xFFD97706)),
+                            size: 18, color: AppColors.warning),
                         SizedBox(width: 10),
                         Expanded(
                           child: Text(
                             'Votre signalement est anonyme et sera examiné par notre équipe de modération.',
                             style: TextStyle(
-                              fontFamily: 'Plus Jakarta Sans',
+                              fontFamily: AppFonts.family,
                               fontSize: 13,
-                              color: Color(0xFFC48A06),
+                              color: AppColors.sunText,
                               height: 1.5,
                             ),
                           ),
@@ -156,19 +163,19 @@ class _ReportTestimonyScreenState
                   const Text(
                     'Raison du signalement',
                     style: TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
+                      fontFamily: AppFonts.family,
                       fontWeight: FontWeight.w600,
                       fontSize: 15,
-                      color: Color(0xFF263238),
+                      color: AppColors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 4),
                   const Text(
                     'Sélectionnez la raison qui correspond le mieux',
                     style: TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
+                      fontFamily: AppFonts.family,
                       fontSize: 13,
-                      color: Color(0xFF667085),
+                      color: AppColors.textSecondary,
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -185,10 +192,10 @@ class _ReportTestimonyScreenState
                   const Text(
                     'Détails supplémentaires (optionnel)',
                     style: TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
+                      fontFamily: AppFonts.family,
                       fontWeight: FontWeight.w600,
                       fontSize: 15,
-                      color: Color(0xFF263238),
+                      color: AppColors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -201,9 +208,9 @@ class _ReportTestimonyScreenState
                       hintText:
                           'Décrivez le problème avec plus de précision…',
                       hintStyle: const TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
+                        fontFamily: AppFonts.family,
                         fontSize: 14,
-                        color: Color(0xFF98A2B3),
+                        color: AppColors.textSecondary,
                       ),
                       filled: true,
                       fillColor: Colors.white,
@@ -211,12 +218,12 @@ class _ReportTestimonyScreenState
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide:
-                            const BorderSide(color: Color(0xFFE4E7EC)),
+                            const BorderSide(color: AppColors.border),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide:
-                            const BorderSide(color: Color(0xFFE4E7EC)),
+                            const BorderSide(color: AppColors.border),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -225,9 +232,9 @@ class _ReportTestimonyScreenState
                       ),
                     ),
                     style: const TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
+                      fontFamily: AppFonts.family,
                       fontSize: 14,
-                      color: Color(0xFF263238),
+                      color: AppColors.textPrimary,
                     ),
                   ),
                 ],
@@ -252,11 +259,11 @@ class _ReportTestimonyScreenState
                     ? _submit
                     : null,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFD92D20),
+                  backgroundColor: AppColors.danger,
                   foregroundColor: Colors.white,
                   elevation: 0,
-                  disabledBackgroundColor: const Color(0xFFE4E7EC),
-                  disabledForegroundColor: const Color(0xFF98A2B3),
+                  disabledBackgroundColor: AppColors.border,
+                  disabledForegroundColor: AppColors.textSecondary,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14)),
                 ),
@@ -272,7 +279,7 @@ class _ReportTestimonyScreenState
                     : const Text(
                         'Envoyer le signalement',
                         style: TextStyle(
-                          fontFamily: 'Plus Jakarta Sans',
+                          fontFamily: AppFonts.family,
                           fontWeight: FontWeight.w600,
                           fontSize: 15,
                         ),
@@ -313,7 +320,7 @@ class _ReasonTile extends StatelessWidget {
               : Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: selected ? AppColors.primary : const Color(0xFFE4E7EC),
+            color: selected ? AppColors.primary : AppColors.border,
             width: selected ? 1.5 : 1,
           ),
         ),
@@ -326,7 +333,7 @@ class _ReasonTile extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: selected ? AppColors.primary : const Color(0xFFD0D5DD),
+                  color: selected ? AppColors.primary : AppColors.inputBorder,
                   width: 2,
                 ),
                 color: selected ? AppColors.primary : Colors.transparent,
@@ -340,13 +347,13 @@ class _ReasonTile extends StatelessWidget {
             Text(
               reason.label,
               style: TextStyle(
-                fontFamily: 'Plus Jakarta Sans',
+                fontFamily: AppFonts.family,
                 fontSize: 14,
                 fontWeight:
                     selected ? FontWeight.w600 : FontWeight.normal,
                 color: selected
                     ? AppColors.primary
-                    : const Color(0xFF344054),
+                    : AppColors.textPrimary,
               ),
             ),
           ],

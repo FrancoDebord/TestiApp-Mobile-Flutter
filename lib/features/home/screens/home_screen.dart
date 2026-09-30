@@ -3,16 +3,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../features/auth/providers/auth_notifier.dart'
-    show currentUserProvider;
 import '../../../core/media/playback_preferences.dart';
+import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/theme/app_tokens.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/app_logo.dart';
+import '../../../shared/widgets/guest_gate.dart';
+import '../../explore/providers/explore_providers.dart'
+    show searchBarActiveProvider, searchFocusRequestProvider;
+import '../../notifications/providers/notifications_provider.dart'
+    show unreadCountProvider;
+import '../models/testimony_model.dart';
 import '../providers/home_providers.dart';
 import '../widgets/category_chips_row.dart';
 import '../widgets/daily_verse_banner.dart';
 import '../widgets/featured_carousel.dart';
+import '../widgets/pill_tabs.dart';
 import '../widgets/skeleton_card.dart';
 import '../widgets/testimony_feed_item.dart';
 
@@ -25,14 +33,11 @@ import '../widgets/testimony_feed_item.dart';
 ///   └─ CustomScrollView
 ///       ├─ SliverAppBar (pinned, floating)
 ///       │   └─ _HomeAppBarContent
-///       │       ├─ Row
-///       │       │   ├─ _AppLogo
-///       │       │   ├─ Expanded → Column (greeting + subtitle)
-///       │       │   └─ Row (_NotificationBell + _AvatarButton)
-///       │       └─ [space for bottom]
-///       ├─ SliverToBoxAdapter → DailyVerseBanner
+///       │       └─ Row : menu · AppLogo.horizontal · EN DIRECT · 🔍 · 🔔(badge)
+///       ├─ SliverToBoxAdapter → _TypeTabs (Tous / Vidéos / Audios / Textes)
 ///       ├─ SliverToBoxAdapter → CategoryChipsRow
-///       ├─ SliverToBoxAdapter → SizedBox (gap)
+///       ├─ SliverToBoxAdapter → DailyVerseBanner
+///       ├─ SliverToBoxAdapter → _BibleBanner
 ///       ├─ SliverToBoxAdapter → FeaturedCarousel
 ///       ├─ SliverToBoxAdapter → _FeedHeader
 ///       └─ SliverList → _FeedBody
@@ -45,9 +50,6 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(currentUserProvider);
-    final firstName = user?.displayName.split(' ').first ?? 'vous';
-
     return Scaffold(
       backgroundColor: AppColors.background,
       // Menu latéral : Communauté, Directs, Carnet… (écrans sans onglet)
@@ -55,7 +57,16 @@ class HomeScreen extends ConsumerWidget {
       body: RefreshIndicator(
         color: AppColors.primary,
         onRefresh: () => ref.read(feedNotifierProvider.notifier).refresh(),
-        child: CustomScrollView(
+        // Défilement infini : page suivante du fil « Pour vous » à l'approche du bas.
+        child: NotificationListener<ScrollNotification>(
+          onNotification: (n) {
+            if (n.metrics.axis == Axis.vertical &&
+                n.metrics.extentAfter < 800) {
+              ref.read(feedNotifierProvider.notifier).loadMore();
+            }
+            return false;
+          },
+          child: CustomScrollView(
           physics: const BouncingScrollPhysics(
             parent: AlwaysScrollableScrollPhysics(),
           ),
@@ -74,22 +85,35 @@ class HomeScreen extends ConsumerWidget {
               toolbarHeight: 64,
               automaticallyImplyLeading: false,
               titleSpacing: 0,
-              title: _HomeAppBarContent(firstName: firstName),
+              title: const _HomeAppBarContent(),
             ),
 
-            // ── Daily verse banner ─────────────────────────────────────────────
-            const SliverToBoxAdapter(child: DailyVerseBanner()),
-
-            // ── Bible shortcut ─────────────────────────────────────────────────
-            const SliverToBoxAdapter(child: _BibleBanner()),
+            // ── Onglets de type (maquette : Tous / Vidéos / Audios / Textes) ──
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.only(top: 12),
+                child: _TypeTabs(),
+              ),
+            ),
 
             // ── Category chips ─────────────────────────────────────────────────
             const SliverToBoxAdapter(
               child: Padding(
-                padding: EdgeInsets.only(top: 8),
+                padding: EdgeInsets.only(top: 10),
                 child: CategoryChipsRow(),
               ),
             ),
+
+            // ── Daily verse banner ─────────────────────────────────────────────
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.only(top: 6),
+                child: DailyVerseBanner(),
+              ),
+            ),
+
+            // ── Bible shortcut ─────────────────────────────────────────────────
+            const SliverToBoxAdapter(child: _BibleBanner()),
 
             // ── Featured carousel ──────────────────────────────────────────────
             const SliverToBoxAdapter(
@@ -110,9 +134,13 @@ class HomeScreen extends ConsumerWidget {
             // ── Main feed ──────────────────────────────────────────────────────
             const _FeedBody(),
 
+            // Page suivante en cours de chargement
+            const _FeedLoadMoreIndicator(),
+
             // Bottom padding so last card clears the nav bar
             const SliverToBoxAdapter(child: SizedBox(height: 24)),
           ],
+          ),
         ),
       ),
     );
@@ -121,166 +149,158 @@ class HomeScreen extends ConsumerWidget {
 
 // ── App bar content ───────────────────────────────────────────────────────────
 
-/// Row: logo | greeting column | spacer | notification bell | avatar
-class _HomeAppBarContent extends ConsumerWidget {
-  const _HomeAppBarContent({required this.firstName});
-
-  final String firstName;
+/// Row: menu | logo | EN DIRECT | recherche | cloche (badge non lus)
+class _HomeAppBarContent extends StatelessWidget {
+  const _HomeAppBarContent();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     // Pas de SafeArea : SliverAppBar.title est déjà positionné sous la status bar.
-    return Row(
-      children: [
-        const SizedBox(width: 2),
-        IconButton(
-          tooltip: 'Menu',
-          icon: const Icon(Icons.menu_rounded, color: AppColors.textPrimary),
-          onPressed: () => Scaffold.of(context).openDrawer(),
-        ),
-        _AppLogo(),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                'Bonjour, $firstName 👋',
-                style: AppTextStyles.h4.copyWith(fontSize: 15),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+    // Taille de police plafonnée dans l'en-tête (barre de 64 px).
+    return MediaQuery.withClampedTextScaling(
+      maxScaleFactor: 1.15,
+      child: Row(
+        children: [
+          IconButton(
+            tooltip: 'Menu',
+            icon: const Icon(Icons.menu_rounded, color: AppColors.textPrimary),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+          // Logo complet si la place le permet, sinon le seul dessin.
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, c) => Align(
+                alignment: Alignment.centerLeft,
+                child: c.maxWidth >= 120
+                    ? const AppLogo.horizontal()
+                    : const AppLogoMark(size: 34),
               ),
-              Text('Que votre foi grandisse', style: AppTextStyles.bodySmall),
+            ),
+          ),
+          const SizedBox(width: 6),
+          const _LiveButton(),
+          const _SearchButton(),
+          const _NotificationBell(),
+          const SizedBox(width: 4),
+        ],
+      ),
+    );
+  }
+}
+
+/// Pastille « EN DIRECT » → découverte des directs.
+class _LiveButton extends StatelessWidget {
+  const _LiveButton();
+
+  @override
+  Widget build(BuildContext context) {
+    final label = AppLocalizations.of(context).homeLive;
+    return Tooltip(
+      message: label,
+      child: InkWell(
+        onTap: () => context.push('/live-discovery'),
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+          decoration: BoxDecoration(
+            color: AppColors.dangerSoft,
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(
+                width: 7,
+                height: 7,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: AppColors.danger,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                label.toUpperCase(),
+                maxLines: 1,
+                style: TextStyle(
+                  color: AppColors.danger,
+                  fontFamily: AppFonts.family,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 10,
+                  letterSpacing: 0.4,
+                ),
+              ),
             ],
           ),
         ),
-        // Bouton EN DIRECT
-        GestureDetector(
-          onTap: () => context.push('/live-discovery'),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: const Color(0xFFD92D20),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(
-                  width: 7, height: 7,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  AppLocalizations.of(context).homeLive.toUpperCase(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontFamily: 'Plus Jakarta Sans',
-                    fontWeight: FontWeight.w700,
-                    fontSize: 10,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(width: 6),
-        const _NotificationBell(badgeCount: 3),
-        const SizedBox(width: 4),
-        const _AvatarButton(),
-        const SizedBox(width: 8),
-      ],
+      ),
     );
   }
 }
 
-class _AppLogo extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    // Logo ARISE & SHINE Krea (assets/images/arise_shine_krea.png).
-    return Image.asset(
-      'assets/images/arise_shine_krea.png',
-      height: 40,
-      semanticLabel: 'ARISE & SHINE Krea',
-    );
-  }
-}
-
-class _NotificationBell extends StatelessWidget {
-  const _NotificationBell({required this.badgeCount});
-  final int badgeCount;
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        IconButton(
-          icon: const Icon(Icons.notifications_outlined),
-          color: AppColors.textPrimary,
-          onPressed: () {},
-          tooltip: 'Notifications',
-        ),
-        if (badgeCount > 0)
-          Positioned(
-            right: 6,
-            top: 6,
-            child: Container(
-              width: 16,
-              height: 16,
-              decoration: const BoxDecoration(
-                color: AppColors.danger,
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Text(
-                  badgeCount > 9 ? '9+' : '$badgeCount',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 9,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _AvatarButton extends ConsumerWidget {
-  const _AvatarButton();
+/// Loupe → onglet Explorer, en mode recherche (champ focalisé).
+class _SearchButton extends ConsumerWidget {
+  const _SearchButton();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(currentUserProvider);
-    return GestureDetector(
-      onTap: () => context.go('/profile'),
-      child: CircleAvatar(
-        radius: 18,
-        backgroundColor: AppColors.primaryLight.withAlpha(40),
-        backgroundImage:
-            user?.avatarUrl != null ? NetworkImage(user!.avatarUrl!) : null,
-        child: user?.avatarUrl == null
-            ? Text(
-                user?.displayName.isNotEmpty == true
-                    ? user!.displayName[0].toUpperCase()
-                    : '?',
-                style: AppTextStyles.labelMedium.copyWith(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w700,
-                ),
-              )
-            : null,
+    return IconButton(
+      tooltip: 'Rechercher',
+      icon: const Icon(Icons.search_rounded, color: AppColors.primary),
+      onPressed: () {
+        ref.read(searchBarActiveProvider.notifier).update(true);
+        ref.read(searchFocusRequestProvider.notifier).request();
+        context.go(AppPaths.explorePath);
+      },
+    );
+  }
+}
+
+/// Cloche des notifications avec le nombre de non lues.
+class _NotificationBell extends ConsumerWidget {
+  const _NotificationBell();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final count = ref.watch(unreadCountProvider);
+    return IconButton(
+      tooltip: count > 0 ? 'Notifications ($count non lues)' : 'Notifications',
+      onPressed: () async {
+        if (ref.read(isGuestProvider) &&
+            !await requireAccount(context, ref,
+                reason: 'recevoir vos notifications')) {
+          return;
+        }
+        if (context.mounted) context.pushNamed(AppRoutes.notifications);
+      },
+      icon: Badge(
+        isLabelVisible: count > 0,
+        backgroundColor: AppColors.secondary,
+        textColor: Colors.white,
+        label: Text(count > 99 ? '99+' : '$count'),
+        child: Icon(
+          count > 0
+              ? Icons.notifications_rounded
+              : Icons.notifications_none_rounded,
+          color: AppColors.primary,
+        ),
       ),
+    );
+  }
+}
+
+// ── Type tabs ─────────────────────────────────────────────────────────────────
+
+class _TypeTabs extends ConsumerWidget {
+  const _TypeTabs();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return PillTabs<TestimonyType?>(
+      tabs: kTestimonyTypeTabs,
+      selected: ref.watch(selectedFeedTypeProvider),
+      onSelected: (t) => ref.read(selectedFeedTypeProvider.notifier).select(t),
     );
   }
 }
@@ -292,13 +312,12 @@ class _FeedHeader extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context);
     final layout = ref.watch(feedLayoutProvider);
     return Row(
       children: [
         Expanded(
           child: Text(
-            '${l10n.homeTitle} récents',
+            'Pour vous',
             style: AppTextStyles.h3,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -344,14 +363,8 @@ class _LayoutToggle extends StatelessWidget {
               decoration: BoxDecoration(
                 color: selected ? AppColors.surface : Colors.transparent,
                 borderRadius: BorderRadius.circular(10),
-                boxShadow: selected
-                    ? [
-                        BoxShadow(
-                          color: Colors.black.withAlpha(18),
-                          blurRadius: 4,
-                          offset: const Offset(0, 1),
-                        ),
-                      ]
+                border: selected
+                    ? Border.all(color: AppColors.border)
                     : null,
               ),
               child: Icon(
@@ -368,8 +381,8 @@ class _LayoutToggle extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: AppColors.border.withAlpha(140),
-        borderRadius: BorderRadius.circular(12),
+        color: AppColors.primarySoft,
+        borderRadius: BorderRadius.circular(AppRadius.md),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -424,6 +437,30 @@ class _FeedBody extends ConsumerWidget {
   }
 }
 
+/// Petit indicateur en bas du fil pendant le chargement d'une page suivante.
+class _FeedLoadMoreIndicator extends ConsumerWidget {
+  const _FeedLoadMoreIndicator();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final loadingMore = ref.watch(feedLoadingMoreProvider);
+    if (!loadingMore) return const SliverToBoxAdapter(child: SizedBox.shrink());
+    return const SliverToBoxAdapter(
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 16),
+        child: Center(
+          child: SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(
+                strokeWidth: 2.5, color: AppColors.primary),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Squelette shimmer du feed affiché pendant le chargement initial.
 /// Alterne texte / audio / vidéo pour ressembler à un vrai feed mixte.
 class FeedLoadingSkeleton extends StatelessWidget {
@@ -461,7 +498,7 @@ class _EmptyFeed extends StatelessWidget {
             size: 56, color: AppColors.textSecondary.withAlpha(80)),
         const SizedBox(height: 12),
         Text(
-          'Aucun témoignage dans cette catégorie',
+          'Aucun témoignage pour ce filtre',
           style: AppTextStyles.bodyMedium.copyWith(
             color: AppColors.textSecondary,
           ),
@@ -474,70 +511,73 @@ class _EmptyFeed extends StatelessWidget {
 
 // ── Bible shortcut banner ─────────────────────────────────────────────────────
 
+/// Carte bleue unie, accent jaune (charte : pas de gros dégradé).
 class _BibleBanner extends StatelessWidget {
   const _BibleBanner();
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      child: GestureDetector(
-        onTap: () => context.push('/bible'),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF103675), Color(0xFF2B5DB0)],
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-            ),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 40, height: 40,
-                decoration: BoxDecoration(
-                  color: Colors.white.withAlpha(30),
-                  borderRadius: BorderRadius.circular(10),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+      child: Material(
+        color: AppColors.primary,
+        borderRadius: AppRadius.cardRadius,
+        child: InkWell(
+          onTap: () => context.push('/bible'),
+          borderRadius: AppRadius.cardRadius,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppColors.sun,
+                    borderRadius: BorderRadius.circular(AppRadius.button),
+                  ),
+                  child: const Icon(
+                    Icons.menu_book_rounded,
+                    color: AppColors.primaryDark,
+                    size: 22,
+                  ),
                 ),
-                child: const Icon(
-                  Icons.menu_book_rounded,
-                  color: Colors.white,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Bible',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: AppFonts.family,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Text(
+                        'Télécharger et lire hors connexion',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: AppFonts.family,
+                          fontSize: 11,
+                          color: Colors.white.withAlpha(210),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.sun,
                   size: 22,
                 ),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Bible',
-                      style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Text(
-                      'Télécharger et lire hors connexion',
-                      style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
-                        fontSize: 11,
-                        color: Colors.white70,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: Colors.white70,
-                size: 22,
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/theme/app_tokens.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../home/models/testimony_model.dart';
 import '../../home/providers/home_providers.dart';
@@ -41,6 +42,7 @@ class ExploreScreen extends ConsumerWidget {
             pinned: true,
             floating: true,
             snap: true,
+            automaticallyImplyLeading: false,
             backgroundColor: AppColors.surface,
             surfaceTintColor: Colors.transparent,
             elevation: 0,
@@ -56,11 +58,20 @@ class ExploreScreen extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(AppLocalizations.of(context).exploreTitle, style: AppTextStyles.h3),
+                        Text(
+                          isSearching
+                              ? 'Recherche & filtres'
+                              : AppLocalizations.of(context).exploreTitle,
+                          style: AppTextStyles.h3,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                         if (!isSearching)
                           Text(
                             AppLocalizations.of(context).exploreSubtitle,
                             style: AppTextStyles.bodySmall,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                       ],
                     ),
@@ -75,9 +86,7 @@ class ExploreScreen extends ConsumerWidget {
                       },
                       child: Text(
                         AppLocalizations.of(context).exploreCancel,
-                        style: const TextStyle(
-                          fontFamily: 'Plus Jakarta Sans',
-                          fontSize: 14,
+                        style: AppTextStyles.labelMedium.copyWith(
                           color: AppColors.primary,
                         ),
                       ),
@@ -88,7 +97,7 @@ class ExploreScreen extends ConsumerWidget {
             bottom: const PreferredSize(
               preferredSize: Size.fromHeight(64),
               child: Padding(
-                padding: EdgeInsets.only(bottom: 10),
+                padding: EdgeInsets.only(bottom: 12),
                 child: SearchBarWidget(),
               ),
             ),
@@ -116,11 +125,19 @@ class _SearchContent extends ConsumerWidget {
 
     return SliverMainAxisGroup(
       slivers: [
-        // Filtres type + tri
+        // Onglets de type (Tous / Vidéos / Audios / Textes)
+        const SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.only(top: 12),
+            child: ExploreTypeTabs(),
+          ),
+        ),
+
+        // Panneau « Filtres » : Type, Catégorie, Popularité
         const SliverToBoxAdapter(
           child: Padding(
             padding: EdgeInsets.only(top: 12, bottom: 8),
-            child: FilterRow(),
+            child: ExploreFiltersPanel(),
           ),
         ),
 
@@ -140,7 +157,7 @@ class _SearchContent extends ConsumerWidget {
         ),
 
         if (results.isEmpty)
-          const SliverFillRemaining(child: _EmptySearch())
+          const SliverFillRemaining(hasScrollBody: false, child: _EmptySearch())
         else
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
@@ -322,31 +339,44 @@ class _SectionHeader extends StatelessWidget {
 
 // ── Visuel par slug ───────────────────────────────────────────────────────────
 
+/// Pastille colorée de la charte (fond doux + icône) pour chaque rubrique.
 class _CategoryVisual {
-  const _CategoryVisual(this.colorA, this.colorB, this.icon);
-  final int colorA, colorB, icon;
+  const _CategoryVisual(this.bg, this.fg, this.icon);
+  final Color bg, fg;
+  final IconData icon;
 }
 
-const _kVisualMap = <String, _CategoryVisual>{
-  'guerison':         _CategoryVisual(0xFF184797, 0xFF4B7ACB, 0xe3f3),
-  'delivrance':       _CategoryVisual(0xFF103675, 0xFF2B5DB0, 0xe1af),
-  'conversion':       _CategoryVisual(0xFFD96F0B, 0xFF12B76A, 0xef6e),
-  'mariage':          _CategoryVisual(0xFFF18717, 0xFFFCC11D, 0xe87d),
-  'famille':          _CategoryVisual(0xFFC48A06, 0xFFF79009, 0xe533),
-  'finances':         _CategoryVisual(0xFF184797, 0xFF12B76A, 0xe263),
-  'miracles':         _CategoryVisual(0xFFD96F0B, 0xFFF18717, 0xe518),
-  'protection':       _CategoryVisual(0xFF103675, 0xFF4B7ACB, 0xe32a),
-  'protection_divine':_CategoryVisual(0xFF103675, 0xFF4B7ACB, 0xe32a),
-  'ministere':        _CategoryVisual(0xFF103675, 0xFF4B7ACB, 0xe547),
-  'salut':            _CategoryVisual(0xFFD96F0B, 0xFFD92D20, 0xe838),
+const _kBlue = (AppColors.primarySoft, AppColors.primary);
+const _kOrange = (AppColors.secondarySoft, AppColors.secondaryDark);
+const _kYellow = (AppColors.sunSoft, AppColors.sunText);
+const _kGreen = (AppColors.successSoft, AppColors.success);
+
+_CategoryVisual _visual((Color, Color) tone, IconData icon) =>
+    _CategoryVisual(tone.$1, tone.$2, icon);
+
+final _kVisualMap = <String, _CategoryVisual>{
+  'guerison':          _visual(_kYellow, Icons.healing_outlined),
+  'delivrance':        _visual(_kOrange, Icons.lock_open_outlined),
+  'conversion':        _visual(_kBlue, Icons.rotate_right_rounded),
+  'mariage':           _visual(_kOrange, Icons.favorite_border_rounded),
+  'famille':           _visual(_kGreen, Icons.people_alt_outlined),
+  'finances':          _visual(_kGreen, Icons.payments_outlined),
+  'provision':         _visual(_kGreen, Icons.payments_outlined),
+  'miracles':          _visual(_kYellow, Icons.auto_awesome_outlined),
+  'protection':        _visual(_kBlue, Icons.shield_outlined),
+  'protection_divine': _visual(_kBlue, Icons.shield_outlined),
+  'ministere':         _visual(_kBlue, Icons.record_voice_over_outlined),
+  'salut':             _visual(_kOrange, Icons.star_border_rounded),
+  'emploi':            _visual(_kBlue, Icons.work_outline_rounded),
+  'etudes':            _visual(_kYellow, Icons.school_outlined),
 };
 
 // Couleurs de secours pour les catégories inconnues (cycle)
-const _kFallbackVisuals = <_CategoryVisual>[
-  _CategoryVisual(0xFF374151, 0xFF6B7280, 0xe88a), // bookmark
-  _CategoryVisual(0xFF263238, 0xFF4B5563, 0xe7ef), // label
-  _CategoryVisual(0xFF312E81, 0xFF6366F1, 0xe54f), // star_border
-  _CategoryVisual(0xFF064E3B, 0xFF059669, 0xe1b0), // eco
+final _kFallbackVisuals = <_CategoryVisual>[
+  _visual(_kBlue, Icons.bookmark_border_rounded),
+  _visual(_kOrange, Icons.label_outline_rounded),
+  _visual(_kYellow, Icons.star_border_rounded),
+  _visual(_kGreen, Icons.eco_outlined),
 ];
 
 // ── Grille catégories ─────────────────────────────────────────────────────────
@@ -364,7 +394,7 @@ class _CategoriesGrid extends ConsumerWidget {
         crossAxisCount: 2,
         mainAxisSpacing: 12,
         crossAxisSpacing: 12,
-        mainAxisExtent: 76,
+        mainAxisExtent: 72,
       ),
       itemCount: cats.length,
       itemBuilder: (_, i) {
@@ -392,70 +422,61 @@ class _CategoryCard extends StatelessWidget {
     final visual = _kVisualMap[cat.slug] ??
         _kFallbackVisuals[index % _kFallbackVisuals.length];
 
-    return GestureDetector(
-      onTap: () => context.go('/explore/category/${cat.slug}'),
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(visual.colorA), Color(visual.colorB)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+    return DecoratedBox(
+      decoration: AppShadows.cardDecoration,
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: () => context.go('/explore/category/${cat.slug}'),
+          borderRadius: AppRadius.cardRadius,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: visual.bg,
+                    borderRadius: BorderRadius.circular(AppRadius.button),
+                  ),
+                  child: Icon(visual.icon, color: visual.fg, size: 20),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        cat.name,
+                        style: AppTextStyles.labelMedium.copyWith(
+                          color: AppColors.textPrimary,
+                          fontSize: 13,
+                          height: 1.2,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        liveCount > 0
+                            ? '$liveCount témoignage${liveCount > 1 ? 's' : ''}'
+                            : 'Aucun témoignage',
+                        style: AppTextStyles.bodySmall.copyWith(
+                          fontSize: 11,
+                          color: AppColors.textSecondary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: Colors.white.withAlpha(35),
-                borderRadius: BorderRadius.circular(9),
-              ),
-              child: Icon(
-                IconData(visual.icon, fontFamily: 'MaterialIcons'),
-                color: Colors.white,
-                size: 18,
-              ),
-            ),
-            const SizedBox(width: 9),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    cat.name,
-                    style: const TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
-                      fontWeight: FontWeight.w600,
-                      fontSize: 11.5,
-                      color: Colors.white,
-                      height: 1.2,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    liveCount > 0
-                        ? '$liveCount tém.${liveCount > 1 ? 's' : ''}'
-                        : 'Aucun tém.',
-                    style: TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
-                      fontSize: 10,
-                      color: Colors.white.withAlpha(200),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-          ],
         ),
       ),
     );
@@ -505,12 +526,14 @@ class _EmptySearch extends StatelessWidget {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
+        const SizedBox(height: 24),
         Icon(Icons.search_off_rounded,
             size: 60,
             color: AppColors.textSecondary.withAlpha(80)),
         const SizedBox(height: 16),
         Text(
           'Aucun témoignage trouvé',
+          textAlign: TextAlign.center,
           style: AppTextStyles.h4
               .copyWith(color: AppColors.textSecondary),
         ),
@@ -520,6 +543,7 @@ class _EmptySearch extends StatelessWidget {
           style: AppTextStyles.bodySmall,
           textAlign: TextAlign.center,
         ),
+        const SizedBox(height: 24),
       ],
     );
   }

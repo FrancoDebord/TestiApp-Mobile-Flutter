@@ -120,10 +120,9 @@ final filteredNotificationsProvider = Provider<List<AppNotification>>((ref) {
   final all    = ref.watch(notificationsNotifierProvider).value ?? const [];
 
   return switch (filter) {
-    NotificationFilterTab.all       => all,
-    NotificationFilterTab.comments  => all.where((n) => n.isCommentType).toList(),
-    NotificationFilterTab.reactions => all.where((n) => n.isReactionType).toList(),
-    NotificationFilterTab.system    => all.where((n) => n.isSystemType).toList(),
+    NotificationFilterTab.all     => all,
+    NotificationFilterTab.unread  => all.where((n) => !n.isRead).toList(),
+    NotificationFilterTab.popular => all.where((n) => n.isReactionType).toList(),
   };
 });
 

@@ -5,6 +5,7 @@ import 'package:speech_to_text/speech_to_text.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/theme/app_tokens.dart';
 import '../providers/explore_providers.dart';
 
 /// Animated search bar with real voice-search via speech_to_text.
@@ -30,8 +31,13 @@ class _SearchBarWidgetState extends ConsumerState<SearchBarWidget>
     _ctrl = TextEditingController();
     _focus = FocusNode();
 
+    // Le focus active le mode recherche ; le perdre (ex. ouverture d'un
+    // filtre) ne le quitte pas : c'est le bouton « Annuler » qui le fait.
     _focus.addListener(() {
-      ref.read(searchBarActiveProvider.notifier).update(_focus.hasFocus);
+      if (_focus.hasFocus) {
+        ref.read(searchBarActiveProvider.notifier).update(true);
+      }
+      if (mounted) setState(() {});
     });
 
     _ctrl.addListener(() {
@@ -114,35 +120,35 @@ class _SearchBarWidgetState extends ConsumerState<SearchBarWidget>
   Widget build(BuildContext context) {
     final query = ref.watch(searchQueryProvider);
 
+    // Loupe de l'accueil → focalise le champ.
+    ref.listen<int>(searchFocusRequestProvider, (_, _) {
+      if (!_isListening) _focus.requestFocus();
+    });
+    // Mode recherche quitté (« Annuler ») → retire le focus.
+    ref.listen<bool>(searchBarActiveProvider, (_, active) {
+      if (!active && _focus.hasFocus) _focus.unfocus();
+    });
+    // Recherche vidée ailleurs (bouton « Annuler ») → vide aussi le champ.
+    ref.listen<String>(searchQueryProvider, (_, next) {
+      if (next.isEmpty && _ctrl.text.isNotEmpty) _ctrl.clear();
+    });
+
     return Container(
       height: 48,
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: _isListening
-            ? AppColors.primary.withAlpha(10)
-            : AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        color: _isListening ? AppColors.primarySoft : AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.pill),
         border: Border.all(
-          color: _isListening
+          color: (_isListening || _focus.hasFocus)
               ? AppColors.primary
-              : _focus.hasFocus
-                  ? AppColors.primary
-                  : AppColors.border,
+              : AppColors.inputBorder,
           width: (_isListening || _focus.hasFocus) ? 1.5 : 1,
         ),
-        boxShadow: (_isListening || _focus.hasFocus)
-            ? [
-                BoxShadow(
-                  color: AppColors.primary.withAlpha(20),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ]
-            : null,
       ),
       child: Row(
         children: [
-          const SizedBox(width: 14),
+          const SizedBox(width: 16),
           Icon(
             _isListening ? Icons.mic_rounded : Icons.search_rounded,
             color: (_isListening || _focus.hasFocus)
@@ -159,15 +165,19 @@ class _SearchBarWidgetState extends ConsumerState<SearchBarWidget>
                     focusNode: _focus,
                     style: AppTextStyles.bodyMedium,
                     decoration: InputDecoration(
-                      hintText: 'Rechercher un témoignage…',
+                      hintText: 'Rechercher un témoignage...',
                       hintStyle: AppTextStyles.bodyMedium.copyWith(
                         color: AppColors.textSecondary,
                       ),
                       border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      filled: false,
                       isDense: true,
                       contentPadding: EdgeInsets.zero,
                     ),
                     textInputAction: TextInputAction.search,
+                    maxLines: 1,
                   ),
           ),
           if (!_isListening && query.isNotEmpty)
@@ -249,10 +259,12 @@ class _ListeningIndicatorState extends State<_ListeningIndicator>
   Widget build(BuildContext context) {
     return FadeTransition(
       opacity: _fade,
-      child: const Text(
+      child: Text(
         'Parlez maintenant…',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: TextStyle(
-          fontFamily: 'Plus Jakarta Sans',
+          fontFamily: AppFonts.family,
           fontSize: 14,
           color: AppColors.primary,
           fontStyle: FontStyle.italic,

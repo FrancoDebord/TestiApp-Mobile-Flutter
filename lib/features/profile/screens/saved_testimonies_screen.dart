@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../../core/media/playback_preferences.dart';
+import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/theme/app_tokens.dart';
+import '../../../features/downloads/providers/downloads_provider.dart';
+import '../../../features/downloads/widgets/download_tile.dart';
 import '../../../features/home/models/testimony_model.dart';
 import '../../../features/home/providers/home_providers.dart';
 import '../../../features/home/widgets/testimony_feed_item.dart';
@@ -19,20 +23,17 @@ class SavedTestimoniesScreen extends ConsumerWidget {
     // Tab 1 — all saved testimonies (in feed order)
     final savedList = allFeed.where((t) => savedIds.contains(t.id)).toList();
 
-    // Tab 2 — offline-only: saved testimonies that have a local media file
-    final offlineList = savedList.where(_isOffline).toList();
-
     return DefaultTabController(
       length: 2,
       child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
-          title: const Text(
+          title: Text(
             'Témoignages sauvegardés',
-            style: TextStyle(
-              fontFamily: 'Plus Jakarta Sans',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.h4.copyWith(
               fontWeight: FontWeight.w600,
-              fontSize: 17,
               color: AppColors.textPrimary,
             ),
           ),
@@ -60,21 +61,11 @@ class SavedTestimoniesScreen extends ConsumerWidget {
         body: TabBarView(
           children: [
             _SavedTab(testimonies: savedList),
-            _OfflineTab(testimonies: offlineList),
+            const _OfflineTab(),
           ],
         ),
       ),
     );
-  }
-
-  static bool _isOffline(Testimony t) {
-    if (t is AudioTestimony) {
-      return t.mediaPath != null && t.mediaPath!.isNotEmpty;
-    }
-    if (t is VideoTestimony) {
-      return t.mediaPath != null && t.mediaPath!.isNotEmpty;
-    }
-    return false;
   }
 }
 
@@ -130,19 +121,22 @@ class _SavedTab extends StatelessWidget {
       TestimonyFeedItem(key: ValueKey(t.id), testimony: t);
 }
 
-// ── Tab 2: Hors ligne ─────────────────────────────────────────────────────────
+// ── Tab 2: Hors ligne (vrais téléchargements) ────────────────────────────────
 
 class _OfflineTab extends ConsumerWidget {
-  const _OfflineTab({required this.testimonies});
+  const _OfflineTab();
 
-  final List<Testimony> testimonies;
+  void _openDownloads(BuildContext context) =>
+      GoRouter.maybeOf(context)?.go(AppPaths.downloadsPath);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final compact = ref.watch(feedLayoutProvider) == FeedLayout.compact;
-    if (testimonies.isEmpty) {
+    final s = ref.watch(downloadsProvider);
+    final entries = s.sortedEntries;
+
+    if (!s.supported || entries.isEmpty) {
       return Center(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(32),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -162,78 +156,44 @@ class _OfflineTab extends ConsumerWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'Sauvegardez des témoignages avec un fichier audio/vidéo\npour y accéder sans connexion.',
+                s.supported
+                    ? 'Appuyez sur l’icône de téléchargement d’un témoignage\n'
+                        'pour le lire sans connexion.'
+                    : 'Les téléchargements sont disponibles sur l’application '
+                        'mobile.',
                 style: AppTextStyles.bodySmall,
                 textAlign: TextAlign.center,
               ),
+              if (s.supported) ...[
+                const SizedBox(height: 16),
+                TextButton.icon(
+                  onPressed: () => _openDownloads(context),
+                  icon: const Icon(Icons.download_rounded),
+                  label: const Text('Mes téléchargements'),
+                ),
+              ],
             ],
           ),
         ),
       );
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: testimonies.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 12),
-      itemBuilder: (_, i) => _offlineCard(testimonies[i], compact: compact),
-    );
-  }
-
-  Widget _offlineCard(Testimony t, {required bool compact}) {
-    return Stack(
-      key: ValueKey(t.id),
-      clipBehavior: Clip.none,
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(
+          AppSpacing.screen, AppSpacing.sm, AppSpacing.screen, AppSpacing.lg),
       children: [
-        TestimonyFeedItem(testimony: t),
-        // En liste compacte, le badge chevauche le bord supérieur pour ne pas
-        // masquer les boutons lecture / déplier.
-        Positioned(
-          top: compact ? -6 : 10,
-          right: compact ? 20 : 10,
-          child: _OfflineBadge(),
+        for (final e in entries) DownloadTile(key: ValueKey(e.id), entry: e),
+        const SizedBox(height: AppSpacing.md),
+        OutlinedButton.icon(
+          onPressed: () => _openDownloads(context),
+          icon: const Icon(Icons.download_rounded),
+          label: Text(
+            'Gérer dans Mes téléchargements',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
       ],
-    );
-  }
-}
-
-// ── Offline badge ─────────────────────────────────────────────────────────────
-
-class _OfflineBadge extends StatelessWidget {
-  const _OfflineBadge();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppColors.primary,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withAlpha(80),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: const Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text('📥', style: TextStyle(fontSize: 11)),
-          SizedBox(width: 4),
-          Text(
-            'Hors ligne',
-            style: TextStyle(
-              fontFamily: 'Plus Jakarta Sans',
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: Colors.white,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

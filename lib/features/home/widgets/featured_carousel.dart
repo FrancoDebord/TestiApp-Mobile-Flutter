@@ -4,8 +4,12 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/theme/app_tokens.dart';
+import '../../../shared/widgets/app_badge.dart';
+import '../../../shared/widgets/app_logo.dart';
 import '../models/testimony_model.dart';
 import '../providers/home_providers.dart';
+import 'testimony_card_header.dart' show categoryBadgeTone;
 
 /// "À la une" section: section header + horizontal scroll of featured cards.
 ///
@@ -31,7 +35,12 @@ class FeaturedCarousel extends ConsumerWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('À la une', style: AppTextStyles.h3),
+              Flexible(
+                child: Text('À la une',
+                    style: AppTextStyles.h3,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+              ),
               TextButton(
                 onPressed: () => context.push('/trending'),
                 style: TextButton.styleFrom(
@@ -102,7 +111,7 @@ class _FeaturedCard extends StatelessWidget {
     return GestureDetector(
       onTap: () => context.push('/testimony/${testimony.id}'),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadius.cardRadius,
         child: SizedBox(
           width: 260,
           height: 220,
@@ -160,11 +169,15 @@ class _FeaturedCard extends StatelessWidget {
                         const Icon(Icons.person_outline,
                             size: 12, color: Colors.white70),
                         const SizedBox(width: 4),
-                        Text(
-                          testimony.author.displayName,
-                          style: AppTextStyles.bodySmall.copyWith(
-                            color: Colors.white70,
-                            fontSize: 11,
+                        Flexible(
+                          child: Text(
+                            testimony.author.displayName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.bodySmall.copyWith(
+                              color: Colors.white70,
+                              fontSize: 11,
+                            ),
                           ),
                         ),
                       ],
@@ -220,7 +233,7 @@ class _Placeholder extends StatelessWidget {
         ),
       ),
       child: const Center(
-        child: Icon(Icons.church_rounded, size: 48, color: Colors.white30),
+        child: AppLogoMark(size: 72),
       ),
     );
   }
@@ -243,10 +256,10 @@ class _TypeBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.black.withAlpha(130),
-        borderRadius: BorderRadius.circular(8),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
       ),
-      child: Icon(_icon, size: 14, color: Colors.white),
+      child: Icon(_icon, size: 14, color: AppColors.primary),
     );
   }
 }
@@ -258,37 +271,25 @@ class _CategoryPill extends StatelessWidget {
   final TestimonyCategory category;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: AppColors.secondary.withAlpha(220),
-        borderRadius: BorderRadius.circular(50),
-      ),
-      child: Text(
-        category.label,
-        style: const TextStyle(
-          fontFamily: 'Plus Jakarta Sans',
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-          color: Colors.white,
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => AppBadge(
+        label: category.label,
+        tone: categoryBadgeTone(category),
+        dense: true,
+      );
 }
 
 // ── Per-category gradient map (file-private top-level constant) ───────────────
 
+// Dégradés de la charte (bleu → bleu foncé, orange → jaune).
 const Map<TestimonyCategory, List<Color>> _kCategoryGradients = {
-  TestimonyCategory.guerison: [Color(0xFF184797), Color(0xFF4B7ACB)],
-  TestimonyCategory.delivrance: [Color(0xFF103675), Color(0xFF2B5DB0)],
-  TestimonyCategory.conversion: [Color(0xFFD96F0B), Color(0xFF12B76A)],
-  TestimonyCategory.mariage: [Color(0xFFF18717), Color(0xFFFCC11D)],
-  TestimonyCategory.famille: [Color(0xFFC48A06), Color(0xFFF79009)],
-  TestimonyCategory.finances: [Color(0xFF184797), Color(0xFF12B76A)],
-  TestimonyCategory.miracles: [Color(0xFFD96F0B), Color(0xFFF18717)],
-  TestimonyCategory.protection: [Color(0xFF103675), Color(0xFF4B7ACB)],
-  TestimonyCategory.ministere: [Color(0xFF103675), Color(0xFF4B7ACB)],
-  TestimonyCategory.salut: [Color(0xFFD96F0B), Color(0xFFD92D20)],
+  TestimonyCategory.guerison: AppColors.guerisonGradient,
+  TestimonyCategory.delivrance: AppColors.delivranceGradient,
+  TestimonyCategory.conversion: AppColors.conversionGradient,
+  TestimonyCategory.mariage: AppColors.mariageGradient,
+  TestimonyCategory.famille: AppColors.familleGradient,
+  TestimonyCategory.finances: AppColors.financesGradient,
+  TestimonyCategory.miracles: AppColors.miraclesGradient,
+  TestimonyCategory.protection: AppColors.protectionGradient,
+  TestimonyCategory.ministere: AppColors.ministereGradient,
+  TestimonyCategory.salut: AppColors.salutGradient,
 };

@@ -4,30 +4,32 @@
 import 'package:flutter/material.dart';
 
 import '../../core/data/countries.dart';
+import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_text_styles.dart';
 
-const _kBorder = Color(0xFFE4E7EC);
-const _kFocus = Color(0xFF184797);
-const _kHint = Color(0xFF98A2B3);
-const _kText = Color(0xFF263238);
-const _kError = Color(0xFFD92D20);
+const _kBorder = AppColors.inputBorder;
+const _kFocus = AppColors.primary;
+const _kHint = AppColors.textSecondary;
+const _kText = AppColors.textPrimary;
+const _kError = AppColors.danger;
 
 InputDecoration countryFieldDecoration({IconData? prefix, String? hint, String? errorText}) {
   OutlineInputBorder border(Color c, [double w = 1]) => OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: c, width: w));
+      borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: c, width: w));
   return InputDecoration(
     prefixIcon: prefix == null ? null : Icon(prefix, color: _kHint, size: 20),
     hintText: hint,
-    hintStyle: const TextStyle(fontFamily: 'Plus Jakarta Sans', color: Color(0xFFD0D5DD), fontSize: 15),
+    hintStyle: const TextStyle(fontFamily: AppFonts.family, color: AppColors.textSecondary, fontSize: 15),
     errorText: errorText,
     filled: true,
-    fillColor: Colors.white,
+    fillColor: AppColors.surface,
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     border: border(_kBorder),
     enabledBorder: border(_kBorder),
     focusedBorder: border(_kFocus, 1.8),
     errorBorder: border(_kError),
     focusedErrorBorder: border(_kError, 1.8),
-    errorStyle: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 12),
+    errorStyle: const TextStyle(fontFamily: AppFonts.family, fontSize: 12),
   );
 }
 
@@ -45,10 +47,10 @@ class _Label extends StatelessWidget {
           text: text,
           children: [
             if (note != null)
-              TextSpan(text: ' $note', style: const TextStyle(fontWeight: FontWeight.w400, color: Color(0xFF667085))),
+              TextSpan(text: ' $note', style: const TextStyle(fontWeight: FontWeight.w400, color: AppColors.textSecondary)),
           ],
         ),
-        style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w500, fontSize: 13, color: _kText),
+        style: const TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600, fontSize: 14, color: _kText),
       ),
     );
   }
@@ -109,7 +111,7 @@ class _CountrySheetState extends State<_CountrySheet> {
                   ? Center(
                       child: Text(
                         widget.withDial ? 'Aucun pays ni indicatif ne correspond.' : 'Aucun pays ne correspond à votre recherche.',
-                        style: const TextStyle(color: Color(0xFF667085)),
+                        style: const TextStyle(color: AppColors.textSecondary),
                       ),
                     )
                   : ListView.builder(
@@ -122,7 +124,7 @@ class _CountrySheetState extends State<_CountrySheet> {
                           title: Text(c.name,
                               style: TextStyle(fontWeight: selected ? FontWeight.w700 : FontWeight.w400)),
                           trailing: widget.withDial
-                              ? Text(c.dialLabel, style: const TextStyle(color: Color(0xFF667085)))
+                              ? Text(c.dialLabel, style: const TextStyle(color: AppColors.textSecondary))
                               : (selected ? const Icon(Icons.check_rounded, color: _kFocus) : null),
                           selected: selected,
                           onTap: () => Navigator.pop(context, c),
@@ -157,7 +159,7 @@ class CountryPickerField extends FormField<Country> {
               children: [
                 _Label(label),
                 InkWell(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
                   onTap: !enabled
                       ? null
                       : () async {
@@ -183,7 +185,7 @@ class CountryPickerField extends FormField<Country> {
                     ),
                     child: value == null
                         ? null
-                        : Text(value.name, style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 15, color: _kText)),
+                        : Text(value.name, style: const TextStyle(fontFamily: AppFonts.family, fontSize: 15, color: _kText)),
                   ),
                 ),
               ],
@@ -250,7 +252,7 @@ class PhoneNumberField extends StatelessWidget {
             SizedBox(
               width: 118,
               child: InkWell(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(10),
                 onTap: !enabled
                     ? null
                     : () async {
@@ -268,7 +270,7 @@ class PhoneNumberField extends StatelessWidget {
                     value: dial?.dialLabel,
                     child: Text(
                       dial == null ? 'Indicatif' : '${dial!.flag} ${dial!.dialLabel}',
-                      style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 15, color: dial == null ? _kHint : _kText),
+                      style: TextStyle(fontFamily: AppFonts.family, fontSize: 15, color: dial == null ? _kHint : _kText),
                     ),
                   ),
                 ),
@@ -285,7 +287,7 @@ class PhoneNumberField extends StatelessWidget {
                 maxLength: 30,
                 buildCounter: (_, {required currentLength, required isFocused, maxLength}) => null,
                 validator: _validate,
-                style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 15, color: _kText),
+                style: const TextStyle(fontFamily: AppFonts.family, fontSize: 15, color: _kText),
                 decoration: countryFieldDecoration(hint: 'Numéro'),
               ),
             ),
@@ -295,7 +297,7 @@ class PhoneNumberField extends StatelessWidget {
           padding: EdgeInsets.only(top: 6),
           child: Text(
             'Sert uniquement à vérifier votre compte : il n\'est jamais affiché publiquement.',
-            style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 12, color: Color(0xFF667085)),
+            style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: AppColors.textSecondary),
           ),
         ),
       ],

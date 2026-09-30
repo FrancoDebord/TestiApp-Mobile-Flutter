@@ -1,38 +1,47 @@
 import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
 
 import '../../../core/app_constants.dart';
+import '../../../core/media/media_quality.dart' show OfflineMedia;
 import '../../../core/media/playback_preferences.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../core/theme/app_tokens.dart';
 import '../../../features/home/models/testimony_model.dart';
 import '../../../features/home/providers/home_providers.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../services/api_service.dart' show apiServiceProvider;
 import '../../../services/audio_player_service.dart';
+import '../../../shared/widgets/guest_gate.dart';
 import '../../../shared/widgets/quality_picker_sheet.dart';
+import '../../home/widgets/testimony_card_header.dart' show openAuthorProfile;
+import '../providers/tts_provider.dart';
+import '../widgets/testimony_info.dart';
+import 'testimony_comments_screen.dart';
 import 'video_player_screen.dart' show singleQualityReason;
 
 // ============================================================================
-// Audio Player Screen — Spotify-inspired full-screen audio player
+// Audio Player Screen — lecteur plein écran (charte : fond blanc, bleu, orange)
 // ============================================================================
 //
 // Widget tree:
 //   AudioPlayerScreen (StatefulWidget)
-//   └─ Scaffold (black-to-background gradient bg)
-//      ├─ body: SafeArea
-//      │  └─ Column
-//      │     ├─ _AudioAppBar          (back + title + more options)
-//      │     ├─ Expanded
-//      │     │  └─ SingleChildScrollView
-//      │     │     └─ Column
-//      │     │        ├─ _CoverArt             (280×280 rounded square)
-//      │     │        ├─ _TrackInfo            (title + author + flag + date)
-//      │     │        ├─ _CategoryChip
-//      │     │        ├─ _ProgressSection      (slider + times)
-//      │     │        ├─ _PlayerControls       (préc. · -15s · play/pause · +15s · suiv.)
-//      │     │        ├─ _SecondaryControls    (répétition · lecture auto · qualité · vitesse)
-//      │     │        └─ _TranscriptToggle     (expandable text)
-//      │     └─ _AudioReactionBar     (❤️ 🙏 💬 🔖 📤)
+//   └─ Scaffold (fond blanc)
+//      └─ body: SafeArea
+//         └─ Column
+//            ├─ _AudioAppBar          (fermer · titre · favori · partager)
+//            └─ Expanded: SingleChildScrollView
+//               └─ Column
+//                  ├─ _CoverArt             (carré arrondi bleu + onde)
+//                  ├─ _ProgressSection      (barre orange + temps)
+//                  ├─ _PlayerControls       (préc. · -15s · play/pause · +15s · suiv.)
+//                  ├─ _SecondaryControls    (répétition · lecture auto · qualité · vitesse)
+//                  ├─ titre · TestimonyAuthorRow · CategoryBadge
+//                  ├─ TestimonyStatsRow     (❤ · prière · partage · commentaires · télécharger)
+//                  ├─ InsightVerseCard      (verset, si présent)
+//                  └─ _TranscriptToggle     (expandable text)
 //
 // Mini Audio Player (persistent, sits above nav bar):
 //   MiniAudioPlayer (StatefulWidget)
@@ -78,7 +87,19 @@ class _AudioPlayerScreenState extends ConsumerState<AudioPlayerScreen>
   void initState() {
     super.initState();
     _audio = ref.read(audioPlayerProvider.notifier);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadAndPlay());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Un seul son à la fois : l'audio arrête la lecture vocale en cours.
+      ref.read(ttsControllerProvider.notifier).stop();
+      _loadAndPlay();
+    });
+  }
+
+  /// Témoignage affiché + état initial des réactions de l'utilisateur.
+  void _setTestimony(AudioTestimony t) {
+    _testimony = t;
+    _isLiked = t.isLiked;
+    _isPraying = t.isPrayed;
+    _isBookmarked = t.isSaved;
   }
 
   static bool _hasMedia(AudioTestimony t) =>
@@ -103,7 +124,7 @@ class _AudioPlayerScreenState extends ConsumerState<AudioPlayerScreen>
           feed.whereType<AudioTestimony>().where(_hasMedia).toList();
       final idx = audios.indexWhere((t) => t.id == widget.testimonyId);
       if (idx >= 0) {
-        if (mounted) setState(() => _testimony = audios[idx]);
+        if (mounted) setState(() => _setTestimony(audios[idx]));
         await _audio.setTestimonyQueue(audios, startIndex: idx);
         return;
       }
@@ -120,7 +141,7 @@ class _AudioPlayerScreenState extends ConsumerState<AudioPlayerScreen>
       );
       final t = testimonyFromApiJson(resp.data);
       if (t is AudioTestimony && mounted) {
-        setState(() => _testimony = t);
+        setState(() => _setTestimony(t));
         if (_hasMedia(t)) {
           await _audio.setTestimonyQueue([t]);
           return;
@@ -188,6 +209,52 @@ class _AudioPlayerScreenState extends ConsumerState<AudioPlayerScreen>
     _audio.setSpeed(next);
   }
 
+  // ── Actions réservées aux membres (mode invité : feuille « compte requis »)
+
+  Future<bool> _member(String reason) =>
+      requireAccount(context, ref, reason: reason);
+
+  Future<void> _toggleLike(AudioTestimony? t) async {
+    if (!await _member('réagir aux témoignages') || !mounted) return;
+    final wasLiked = _isLiked;
+    setState(() => _isLiked = !_isLiked);
+    if (t == null) return;
+    final interactions = ref.read(interactionProvider.notifier);
+    if (!wasLiked) {
+      interactions.setReaction(t.id, ReactionType.like);
+    } else {
+      interactions.removeReaction(t.id);
+    }
+  }
+
+  Future<void> _togglePray(AudioTestimony? t) async {
+    if (!await _member('réagir aux témoignages') || !mounted) return;
+    setState(() => _isPraying = !_isPraying);
+    if (t != null) ref.read(interactionProvider.notifier).togglePray(t.id);
+  }
+
+  Future<void> _toggleBookmark(AudioTestimony? t) async {
+    if (!await _member('enregistrer vos favoris') || !mounted) return;
+    setState(() => _isBookmarked = !_isBookmarked);
+    if (t != null) ref.read(interactionProvider.notifier).toggleSave(t.id);
+  }
+
+  void _share(AudioTestimony? t) {
+    if (t == null) return;
+    SharePlus.instance.share(ShareParams(text: '${t.title}\n\n${t.shareLink}'));
+    ref.read(interactionProvider.notifier).recordShare(t.id);
+  }
+
+  Future<void> _openComments(AudioTestimony? t) async {
+    if (!await _member('commenter les témoignages') || !mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) =>
+            TestimonyCommentsScreen(testimonyId: t?.id ?? widget.testimonyId),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final player    = ref.watch(audioPlayerProvider);
@@ -195,104 +262,149 @@ class _AudioPlayerScreenState extends ConsumerState<AudioPlayerScreen>
     final prefsCtl  = ref.read(playbackPreferencesProvider.notifier);
     final isPlaying = player.isPlaying;
     final progress  = player.progress;
+    final fr        = AppLocalizations.of(context).isFr;
 
     // Témoignage réellement en cours (change lors de l'enchaînement auto).
     final current = player.currentTestimony ?? _testimony;
+    final isOffline = player.qualityLabel == OfflineMedia.label;
 
     final canNext = player.hasNext ||
         (player.queueLength > 1 && prefs.repeatMode == RepeatMode.all);
 
+    // Compteurs : ceux du serveur, ajustés par les réactions de la session.
+    int adjust(int base, bool now, bool before) =>
+        (base + (now == before ? 0 : (now ? 1 : -1))).clamp(0, 1 << 31);
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light,
+      value: SystemUiOverlayStyle.dark,
       child: Scaffold(
-        backgroundColor: const Color(0xFF0D0D1A),
-        body: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Color(0xFF2D0B4E), Color(0xFF0D0D1A)],
-              stops: [0.0, 0.55],
-            ),
-          ),
-          child: SafeArea(
-            child: Column(
-              children: [
-                _AudioAppBar(onBack: () => Navigator.of(context).pop()),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 32),
-                        const _CoverArt(),
-                        const SizedBox(height: 28),
-                        _TrackInfo(testimony: current),
-                        const SizedBox(height: 12),
-                        _CategoryChipLight(
-                            label: current?.category.label ?? ''),
-                        const SizedBox(height: 28),
-
-                        // ── Slider de progression réel ────────────────────
-                        _ProgressSection(
-                          progress: progress,
-                          elapsed: _fmtDuration(player.position),
-                          total:   _fmtDuration(player.duration),
-                          onChanged: (v) => _audio.seekToFraction(v),
-                        ),
-                        const SizedBox(height: 24),
-
-                        // ── Contrôles principaux ──────────────────────────
-                        _PlayerControls(
+        backgroundColor: AppColors.surface,
+        body: SafeArea(
+          child: Column(
+            children: [
+              _AudioAppBar(
+                onBack: () => Navigator.of(context).pop(),
+                isBookmarked: _isBookmarked,
+                onBookmark: () => _toggleBookmark(current),
+                onShare: () => _share(current),
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 12),
+                      Center(
+                        child: _CoverArt(
+                          category: current?.category,
                           isPlaying: isPlaying,
-                          isLoading: player.isLoading,
-                          onPlayPause: () =>
-                              isPlaying ? _audio.pause() : _audio.resume(),
-                          onRewind: () => _audio.skipBackward(),
-                          onForward: () => _audio.skipForward(),
-                          onPrevious:
-                              player.hasPrevious ? _audio.playPrevious : null,
-                          onNext: canNext ? _audio.playNext : null,
+                          isOffline: isOffline,
                         ),
-                        const SizedBox(height: 28),
+                      ),
+                      const SizedBox(height: 20),
 
-                        // ── Répétition · lecture auto · qualité · vitesse ─
-                        _SecondaryControls(
-                          repeatMode: prefs.repeatMode,
-                          autoplayNext: prefs.autoplayNext,
-                          qualityLabel: _qualityButtonLabel(player, prefs),
-                          speed: player.speed,
-                          onRepeat: prefsCtl.cycleRepeatMode,
-                          onAutoplay: () =>
-                              prefsCtl.setAutoplayNext(!prefs.autoplayNext),
-                          onQuality: () => _openQualitySheet(player),
-                          onSpeed: () => _cycleSpeed(player.speed),
+                      // ── Slider de progression réel ────────────────────
+                      _ProgressSection(
+                        progress: progress,
+                        elapsed: _fmtDuration(player.position),
+                        total:   _fmtDuration(player.duration),
+                        onChanged: (v) => _audio.seekToFraction(v),
+                      ),
+                      const SizedBox(height: 8),
+
+                      // ── Contrôles principaux ──────────────────────────
+                      _PlayerControls(
+                        isPlaying: isPlaying,
+                        isLoading: player.isLoading,
+                        onPlayPause: () =>
+                            isPlaying ? _audio.pause() : _audio.resume(),
+                        onRewind: () => _audio.skipBackward(),
+                        onForward: () => _audio.skipForward(),
+                        onPrevious:
+                            player.hasPrevious ? _audio.playPrevious : null,
+                        onNext: canNext ? _audio.playNext : null,
+                      ),
+                      const SizedBox(height: 12),
+
+                      // ── Répétition · lecture auto · qualité · vitesse ─
+                      _SecondaryControls(
+                        repeatMode: prefs.repeatMode,
+                        autoplayNext: prefs.autoplayNext,
+                        qualityLabel: _qualityButtonLabel(player, prefs),
+                        speed: player.speed,
+                        onRepeat: prefsCtl.cycleRepeatMode,
+                        onAutoplay: () =>
+                            prefsCtl.setAutoplayNext(!prefs.autoplayNext),
+                        onQuality: () => _openQualitySheet(player),
+                        onSpeed: () => _cycleSpeed(player.speed),
+                      ),
+                      const SizedBox(height: 16),
+                      const Divider(height: 1, color: AppColors.border),
+                      const SizedBox(height: 16),
+
+                      // ── Infos (même hiérarchie que le lecteur vidéo) ──
+                      Text(
+                        current?.title ?? (fr ? 'Chargement…' : 'Loading…'),
+                        style: AppTextStyles.h3,
+                        maxLines: 4,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 10),
+                      if (current != null) ...[
+                        TestimonyAuthorRow(
+                          author: current.author,
+                          meta: viewsAndAge(current, fr: fr),
+                          onTap: () =>
+                              openAuthorProfile(context, current.author.uid),
                         ),
-                        const SizedBox(height: 24),
-                        _TranscriptToggle(
-                          open: _transcriptOpen,
-                          transcript: current?.transcriptPreview,
-                          onToggle: () => setState(
-                              () => _transcriptOpen = !_transcriptOpen),
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 6,
+                          children: [
+                            CategoryBadge(category: current.category),
+                            if (isOffline) const OfflineBadge(),
+                          ],
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 6),
+                        TestimonyStatsRow(
+                          testimony: current,
+                          likes: adjust(
+                              current.stats.likes, _isLiked, current.isLiked),
+                          isLiked: _isLiked,
+                          prayers: adjust(current.stats.prayers, _isPraying,
+                              current.isPrayed),
+                          isPraying: _isPraying,
+                          comments: current.stats.comments,
+                          onLike: () => _toggleLike(current),
+                          onPray: () => _togglePray(current),
+                          onShare: () => _share(current),
+                          onComment: () => _openComments(current),
+                          fr: fr,
+                        ),
+                        if (current.bibleVerse?.trim().isNotEmpty ?? false) ...[
+                          const SizedBox(height: 12),
+                          InsightVerseCard(
+                            verse: current.bibleVerse!.trim(),
+                            reference: current.bibleVerseRef,
+                            title: fr ? 'Parole de Dieu' : 'Word of God',
+                          ),
+                        ],
                       ],
-                    ),
+                      const SizedBox(height: 16),
+                      _TranscriptToggle(
+                        open: _transcriptOpen,
+                        transcript: current?.transcriptPreview,
+                        onToggle: () => setState(
+                            () => _transcriptOpen = !_transcriptOpen),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
                   ),
                 ),
-                _AudioReactionBar(
-                  isLiked:      _isLiked,
-                  isPraying:    _isPraying,
-                  isBookmarked: _isBookmarked,
-                  onLike:     () => setState(() => _isLiked      = !_isLiked),
-                  onPray:     () => setState(() => _isPraying    = !_isPraying),
-                  onComment:  () {},
-                  onBookmark: () => setState(
-                      () => _isBookmarked = !_isBookmarked),
-                  onShare:    () {},
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -306,39 +418,54 @@ class _AudioPlayerScreenState extends ConsumerState<AudioPlayerScreen>
 // ============================================================================
 
 class _AudioAppBar extends StatelessWidget {
-  const _AudioAppBar({required this.onBack});
+  const _AudioAppBar({
+    required this.onBack,
+    required this.isBookmarked,
+    required this.onBookmark,
+    required this.onShare,
+  });
 
   final VoidCallback onBack;
+  final bool isBookmarked;
+  final VoidCallback onBookmark;
+  final VoidCallback onShare;
 
   @override
   Widget build(BuildContext context) {
+    final fr = AppLocalizations.of(context).isFr;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+      padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
       child: Row(
         children: [
           IconButton(
             onPressed: onBack,
+            tooltip: fr ? 'Fermer' : 'Close',
             icon: const Icon(Icons.keyboard_arrow_down_rounded),
-            color: Colors.white,
+            color: AppColors.primary,
             iconSize: 28,
           ),
-          const Expanded(
+          Expanded(
             child: Text(
-              'Témoignage Audio',
+              fr ? 'Témoignage audio' : 'Audio testimony',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'Plus Jakarta Sans',
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
-              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.h4.copyWith(color: AppColors.primary),
             ),
           ),
           IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.more_horiz_rounded),
-            color: Colors.white,
-            iconSize: 24,
+            onPressed: onBookmark,
+            tooltip: fr ? 'Sauvegarder' : 'Save',
+            icon: Icon(isBookmarked
+                ? Icons.bookmark_rounded
+                : Icons.bookmark_border_rounded),
+            color: isBookmarked ? AppColors.secondary : AppColors.textSecondary,
+          ),
+          IconButton(
+            onPressed: onShare,
+            tooltip: fr ? 'Partager' : 'Share',
+            icon: const Icon(Icons.share_rounded),
+            color: AppColors.textSecondary,
           ),
         ],
       ),
@@ -347,91 +474,138 @@ class _AudioAppBar extends StatelessWidget {
 }
 
 // ============================================================================
-// Cover Art (280×280)
+// Cover Art (carré arrondi, dégradé bleu, onde)
 // ============================================================================
 
 class _CoverArt extends StatelessWidget {
-  const _CoverArt();
+  const _CoverArt({this.category, this.isPlaying = false, this.isOffline = false});
+
+  final TestimonyCategory? category;
+  final bool isPlaying;
+  final bool isOffline;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 280,
-      height: 280,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: AppColors.guerisonGradient,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.5),
-            blurRadius: 40,
-            offset: const Offset(0, 16),
-          ),
-        ],
-      ),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          // Decorative cross pattern
-          ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: Opacity(
-              opacity: 0.15,
-              child: CustomPaint(painter: _CrossPatternPainter()),
+    return LayoutBuilder(
+      builder: (context, c) {
+        final size = c.maxWidth.clamp(120.0, 240.0);
+        return Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.xl),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: AppColors.blueGradient,
             ),
+            boxShadow: AppShadows.card,
           ),
-          const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.healing_rounded, color: Colors.white60, size: 72),
-                SizedBox(height: 12),
-                Text(
-                  'GUÉRISON',
-                  style: TextStyle(
-                    fontFamily: 'Plus Jakarta Sans',
-                    color: Colors.white54,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 4,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // Motif discret de croix
+              ClipRRect(
+                borderRadius: BorderRadius.circular(AppRadius.xl),
+                child: Opacity(
+                  opacity: 0.08,
+                  child: CustomPaint(painter: _CrossPatternPainter()),
+                ),
+              ),
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _Wave(active: isPlaying, height: size * 0.28),
+                      if (category != null) ...[
+                        const SizedBox(height: 14),
+                        Text(
+                          category!.label.toUpperCase(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.labelSmall.copyWith(
+                            color: AppColors.surface.withValues(alpha: 0.85),
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 2.5,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-              ],
-            ),
-          ),
-          // Mic badge (bottom right)
-          Positioned(
-            bottom: 14,
-            right: 14,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: Colors.black38,
-                borderRadius: BorderRadius.circular(20),
               ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.mic_rounded, color: Colors.white70, size: 14),
-                  SizedBox(width: 4),
-                  Text(
-                    'AUDIO',
-                    style: TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
-                      color: Colors.white70,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 1.5,
-                    ),
+              // Badge micro (bas droite)
+              Positioned(
+                bottom: 12,
+                right: 12,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
                   ),
-                ],
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.mic_rounded,
+                          color: AppColors.sun, size: 14),
+                      const SizedBox(width: 4),
+                      Text(
+                        'AUDIO',
+                        style: AppTextStyles.labelSmall.copyWith(
+                          color: AppColors.surface,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              if (isOffline)
+                const Positioned(top: 12, left: 12, child: OfflineBadge()),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Onde stylisée (barres arrondies) : jaune pendant la lecture.
+class _Wave extends StatelessWidget {
+  const _Wave({required this.active, required this.height});
+
+  final bool active;
+  final double height;
+
+  static const _bars = [0.35, 0.6, 0.9, 0.55, 1.0, 0.7, 0.4, 0.8, 0.5, 0.3];
+
+  @override
+  Widget build(BuildContext context) {
+    final color = active
+        ? AppColors.sun
+        : AppColors.surface.withValues(alpha: 0.7);
+    return SizedBox(
+      height: height,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          for (final b in _bars)
+            Container(
+              width: 5,
+              height: height * b,
+              margin: const EdgeInsets.symmetric(horizontal: 2.5),
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(AppRadius.pill),
               ),
             ),
-          ),
         ],
       ),
     );
@@ -439,92 +613,7 @@ class _CoverArt extends StatelessWidget {
 }
 
 // ============================================================================
-// Track Info
-// ============================================================================
-
-class _TrackInfo extends StatelessWidget {
-  const _TrackInfo({this.testimony});
-  final AudioTestimony? testimony;
-
-  @override
-  Widget build(BuildContext context) {
-    final title  = testimony?.title  ?? 'Chargement…';
-    final author = testimony?.author.displayName ?? '';
-    final dur    = testimony?.formattedDuration ?? '';
-
-    return Column(
-      children: [
-        Text(
-          title,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontFamily: 'Plus Jakarta Sans',
-            fontWeight: FontWeight.w600,
-            fontSize: 20,
-            color: Colors.white,
-            height: 1.35,
-          ),
-          maxLines: 3,
-          overflow: TextOverflow.ellipsis,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          author,
-          style: const TextStyle(
-            fontFamily: 'Plus Jakarta Sans',
-            fontSize: 16,
-            color: Colors.white60,
-          ),
-        ),
-        if (dur.isNotEmpty) ...[
-          const SizedBox(height: 6),
-          Text(
-            dur,
-            style: TextStyle(
-              fontFamily: 'Plus Jakarta Sans',
-              fontSize: 13,
-              color: Colors.white.withValues(alpha: 0.45),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-// ============================================================================
-// Category Chip (light-on-dark variant)
-// ============================================================================
-
-class _CategoryChipLight extends StatelessWidget {
-  const _CategoryChipLight({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-      decoration: BoxDecoration(
-        color: AppColors.primaryLight.withValues(alpha: 0.25),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.primaryLight.withValues(alpha: 0.4)),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          fontFamily: 'Plus Jakarta Sans',
-          fontWeight: FontWeight.w500,
-          fontSize: 12,
-          color: AppColors.primaryLight,
-        ),
-      ),
-    );
-  }
-}
-
-// ============================================================================
-// Progress Section
+// Progress Section (barre orange)
 // ============================================================================
 
 class _ProgressSection extends StatelessWidget {
@@ -551,13 +640,13 @@ class _ProgressSection extends StatelessWidget {
                 const RoundSliderThumbShape(enabledThumbRadius: 7),
             overlayShape:
                 const RoundSliderOverlayShape(overlayRadius: 16),
-            activeTrackColor: Colors.white,
-            inactiveTrackColor: Colors.white24,
-            thumbColor: Colors.white,
-            overlayColor: Colors.white24,
+            activeTrackColor: AppColors.secondary,
+            inactiveTrackColor: AppColors.border,
+            thumbColor: AppColors.secondary,
+            overlayColor: AppColors.secondarySoft,
           ),
           child: Slider(
-            value: progress,
+            value: progress.clamp(0.0, 1.0),
             onChanged: onChanged,
           ),
         ),
@@ -566,22 +655,8 @@ class _ProgressSection extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                elapsed,
-                style: const TextStyle(
-                  fontFamily: 'Plus Jakarta Sans',
-                  color: Colors.white70,
-                  fontSize: 12,
-                ),
-              ),
-              Text(
-                total,
-                style: const TextStyle(
-                  fontFamily: 'Plus Jakarta Sans',
-                  color: Colors.white38,
-                  fontSize: 12,
-                ),
-              ),
+              Text(elapsed, style: AppTextStyles.bodySmall),
+              Text(total, style: AppTextStyles.bodySmall),
             ],
           ),
         ),
@@ -624,9 +699,9 @@ class _PlayerControls extends StatelessWidget {
         IconButton(
           onPressed: onPrevious,
           icon: const Icon(Icons.skip_previous_rounded),
-          iconSize: 34,
-          color: Colors.white,
-          disabledColor: Colors.white24,
+          iconSize: 32,
+          color: AppColors.primary,
+          disabledColor: AppColors.border,
           tooltip: 'Précédent',
         ),
         // Reculer de 15 s
@@ -635,29 +710,34 @@ class _PlayerControls extends StatelessWidget {
           icon: Icons.replay_10_rounded,
           label: '15s',
         ),
-        // Play / Pause (large)
-        GestureDetector(
-          onTap: onPlayPause,
-          child: Container(
-            width: 72,
-            height: 72,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white,
-            ),
-            child: isLoading && !isPlaying
-                ? const Padding(
-                    padding: EdgeInsets.all(22),
-                    child: CircularProgressIndicator(
-                      strokeWidth: 3,
-                      color: AppColors.primary,
+        // Play / Pause (grand, bleu)
+        Semantics(
+          button: true,
+          label: isPlaying ? 'Pause' : 'Lecture',
+          child: GestureDetector(
+            onTap: onPlayPause,
+            child: Container(
+              width: 68,
+              height: 68,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.primary,
+                boxShadow: AppShadows.card,
+              ),
+              child: isLoading && !isPlaying
+                  ? const Padding(
+                      padding: EdgeInsets.all(22),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 3,
+                        color: AppColors.surface,
+                      ),
+                    )
+                  : Icon(
+                      isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                      color: AppColors.surface,
+                      size: 40,
                     ),
-                  )
-                : Icon(
-                    isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                    color: AppColors.primary,
-                    size: 42,
-                  ),
+            ),
           ),
         ),
         // Avancer de 15 s
@@ -670,9 +750,9 @@ class _PlayerControls extends StatelessWidget {
         IconButton(
           onPressed: onNext,
           icon: const Icon(Icons.skip_next_rounded),
-          iconSize: 34,
-          color: Colors.white,
-          disabledColor: Colors.white24,
+          iconSize: 32,
+          color: AppColors.primary,
+          disabledColor: AppColors.border,
           tooltip: 'Suivant',
         ),
       ],
@@ -698,17 +778,10 @@ class _SkipButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: Colors.white, size: 36),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: const TextStyle(
-              fontFamily: 'Plus Jakarta Sans',
-              color: Colors.white54,
-              fontSize: 11,
-            ),
-          ),
+          Icon(icon, color: AppColors.textPrimary, size: 32),
+          Text(label, style: AppTextStyles.bodySmall.copyWith(fontSize: 11)),
         ],
       ),
     );
@@ -815,27 +888,34 @@ class _SecondaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? AppColors.primaryLight : Colors.white70;
+    final color = active ? AppColors.primary : AppColors.textSecondary;
     return Tooltip(
       message: tooltip,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadius.md),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
           child: Column(
             children: [
-              Icon(icon, color: color, size: 24),
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: active ? AppColors.primarySoft : AppColors.background,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                child: Icon(icon, color: color, size: 22),
+              ),
               const SizedBox(height: 4),
               Text(
                 label,
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontFamily: 'Plus Jakarta Sans',
+                style: AppTextStyles.labelSmall.copyWith(
                   fontSize: 11,
-                  fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+                  fontWeight: active ? FontWeight.w600 : FontWeight.w500,
                   color: color,
                 ),
               ),
@@ -863,179 +943,57 @@ class _TranscriptToggle extends StatelessWidget {
   final VoidCallback onToggle;
   final String? transcript;
 
-  static const _transcript =
-      'Tout a commencé en novembre 2022, quand ma fille Esther, âgée de 7 ans, '
-      'a commencé à souffrir de douleurs intenses aux membres. Les médecins ont '
-      'posé un diagnostic alarmant : une leucémie lymphoblastique aiguë de type B.\n\n'
-      'Nous avons entamé un traitement de chimiothérapie lourd. Pendant six mois, '
-      'nous avons vu notre petite fille perdre ses cheveux, son appétit, sa joie...';
-
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        GestureDetector(
-          onTap: onToggle,
-          child: Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: Colors.white10,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.subtitles_outlined,
-                    color: Colors.white70, size: 18),
-                const SizedBox(width: 10),
-                const Expanded(
-                  child: Text(
-                    'Transcription',
-                    style: TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
-                      color: Colors.white70,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
+    final text = transcript?.trim() ?? '';
+    if (text.isEmpty) return const SizedBox.shrink();
+    return Container(
+      decoration: AppShadows.cardDecoration,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            onTap: onToggle,
+            borderRadius: AppRadius.cardRadius,
+            child: Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Row(
+                children: [
+                  const Icon(Icons.subtitles_outlined,
+                      color: AppColors.primary, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Transcription',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.labelMedium
+                          .copyWith(fontWeight: FontWeight.w600),
                     ),
                   ),
-                ),
-                Icon(
-                  open
-                      ? Icons.keyboard_arrow_up_rounded
-                      : Icons.keyboard_arrow_down_rounded,
-                  color: Colors.white54,
-                  size: 20,
-                ),
-              ],
-            ),
-          ),
-        ),
-        AnimatedCrossFade(
-          duration: const Duration(milliseconds: 250),
-          crossFadeState:
-              open ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-          firstChild: const SizedBox.shrink(),
-          secondChild: Container(
-            margin: const EdgeInsets.only(top: 8),
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white12),
-            ),
-            child: Text(
-              transcript ?? _transcript,
-              style: const TextStyle(
-                fontFamily: 'Plus Jakarta Sans',
-                color: Colors.white70,
-                fontSize: 14,
-                height: 1.7,
+                  Icon(
+                    open
+                        ? Icons.keyboard_arrow_up_rounded
+                        : Icons.keyboard_arrow_down_rounded,
+                    color: AppColors.textSecondary,
+                    size: 22,
+                  ),
+                ],
               ),
             ),
           ),
-        ),
-      ],
-    );
-  }
-}
-
-// ============================================================================
-// Audio Reaction Bar (dark variant)
-// ============================================================================
-
-class _AudioReactionBar extends StatelessWidget {
-  const _AudioReactionBar({
-    required this.isLiked,
-    required this.isPraying,
-    required this.isBookmarked,
-    required this.onLike,
-    required this.onPray,
-    required this.onComment,
-    required this.onBookmark,
-    required this.onShare,
-  });
-
-  final bool isLiked;
-  final bool isPraying;
-  final bool isBookmarked;
-  final VoidCallback onLike;
-  final VoidCallback onPray;
-  final VoidCallback onComment;
-  final VoidCallback onBookmark;
-  final VoidCallback onShare;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
-        border: Border(
-          top: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
-        ),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _DarkReactionButton(
-                emoji: '❤️',
-                active: isLiked,
-                onTap: onLike,
-              ),
-              _DarkReactionButton(
-                emoji: '🙏',
-                active: isPraying,
-                onTap: onPray,
-              ),
-              _DarkReactionButton(
-                emoji: '💬',
-                onTap: onComment,
-              ),
-              _DarkReactionButton(
-                emoji: '🔖',
-                active: isBookmarked,
-                onTap: onBookmark,
-              ),
-              _DarkReactionButton(
-                emoji: '📤',
-                onTap: onShare,
-              ),
-            ],
+          AnimatedCrossFade(
+            duration: const Duration(milliseconds: 250),
+            crossFadeState:
+                open ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+            firstChild: const SizedBox(width: double.infinity),
+            secondChild: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+              child: Text(text, style: AppTextStyles.bodyMedium),
+            ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _DarkReactionButton extends StatelessWidget {
-  const _DarkReactionButton({
-    required this.emoji,
-    required this.onTap,
-    this.active = false,
-  });
-
-  final String emoji;
-  final VoidCallback onTap;
-  final bool active;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Text(
-          emoji,
-          style: TextStyle(
-            fontSize: 24,
-            color: active ? null : Colors.white.withValues(alpha: 0.6),
-          ),
-        ),
+        ],
       ),
     );
   }
@@ -1122,7 +1080,7 @@ class _MiniAudioPlayerState extends State<MiniAudioPlayer> {
                     const Text(
                       'Comment Dieu a guéri ma fille...',
                       style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
+                        fontFamily: AppFonts.family,
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
                         color: AppColors.textPrimary,
@@ -1133,7 +1091,7 @@ class _MiniAudioPlayerState extends State<MiniAudioPlayer> {
                     const Text(
                       'Marie Nkosi',
                       style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
+                        fontFamily: AppFonts.family,
                         fontSize: 11,
                         color: AppColors.textSecondary,
                       ),

@@ -7,10 +7,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
 import '../providers/auth_notifier.dart';
 
-const _kPurple = Color(0xFF184797);
-const _kGold   = Color(0xFFF79009);
+const _kPurple = AppColors.primary;
+const _kGold   = AppColors.secondary;
 
 class SimpleRegisterScreen extends ConsumerStatefulWidget {
   const SimpleRegisterScreen({super.key});
@@ -69,7 +70,7 @@ class _SimpleRegisterScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _kPurple,
+      backgroundColor: AppColors.surface,
       body: Column(
         children: [
           // ── Header violet ───────────────────────────────────────────────
@@ -100,19 +101,19 @@ class _SimpleRegisterScreenState
                     const Text(
                       'Bienvenue !',
                       style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
+                        fontFamily: AppFonts.family,
                         fontWeight: FontWeight.w700,
                         fontSize: 28,
-                        color: Colors.white,
+                        color: AppColors.primary,
                       ),
                     ),
                     const SizedBox(height: 6),
                     Text(
                       'Partagez les œuvres de Dieu',
                       style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
+                        fontFamily: AppFonts.family,
                         fontSize: 14,
-                        color: Colors.white.withAlpha(204),
+                        color: AppColors.textSecondary,
                       ),
                     ),
                   ],
@@ -127,7 +128,7 @@ class _SimpleRegisterScreenState
             child: Container(
               width: double.infinity,
               decoration: const BoxDecoration(
-                color: Color(0xFFF8FAFC),
+                color: AppColors.background,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
               ),
               child: SingleChildScrollView(
@@ -139,17 +140,17 @@ class _SimpleRegisterScreenState
                     const Text(
                       'Créer mon compte',
                       style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
+                        fontFamily: AppFonts.family,
                         fontWeight: FontWeight.w600,
                         fontSize: 20,
-                        color: Color(0xFF263238),
+                        color: AppColors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 6),
                     Text(
                       'Entrez juste votre prénom et votre nom.\nAucun mot de passe requis.',
                       style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
+                        fontFamily: AppFonts.family,
                         fontSize: 13,
                         color: Colors.grey.shade600,
                         height: 1.5,
@@ -223,7 +224,7 @@ class _SimpleRegisterScreenState
                           : const Text(
                               "C'est parti !",
                               style: TextStyle(
-                                fontFamily: 'Plus Jakarta Sans',
+                                fontFamily: AppFonts.family,
                                 fontWeight: FontWeight.w600,
                                 fontSize: 16,
                                 color: Colors.white,
@@ -238,7 +239,7 @@ class _SimpleRegisterScreenState
                       child: Text(
                         'Vous pouvez compléter votre profil plus tard.',
                         style: TextStyle(
-                          fontFamily: 'Plus Jakarta Sans',
+                          fontFamily: AppFonts.family,
                           fontSize: 12,
                           color: Colors.grey.shade500,
                         ),
@@ -270,10 +271,10 @@ class _SimpleRegisterScreenState
         Text(
           label,
           style: const TextStyle(
-            fontFamily: 'Plus Jakarta Sans',
+            fontFamily: AppFonts.family,
             fontWeight: FontWeight.w500,
             fontSize: 14,
-            color: Color(0xFF263238),
+            color: AppColors.textPrimary,
           ),
         ),
         const SizedBox(height: 6),
@@ -284,22 +285,22 @@ class _SimpleRegisterScreenState
           textCapitalization: TextCapitalization.words,
           textInputAction:
               isLast ? TextInputAction.done : TextInputAction.next,
-          style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 15),
+          style: const TextStyle(fontFamily: AppFonts.family, fontSize: 15),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle:
-                const TextStyle(color: Color(0xFF98A2B3)),
+                const TextStyle(color: AppColors.textSecondary),
             filled: true,
             fillColor: Colors.white,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide:
-                  const BorderSide(color: Color(0xFFE4E7EC), width: 1.5),
+                  const BorderSide(color: AppColors.border, width: 1.5),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide:
-                  const BorderSide(color: Color(0xFFE4E7EC), width: 1.5),
+                  const BorderSide(color: AppColors.border, width: 1.5),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),

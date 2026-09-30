@@ -159,13 +159,13 @@ class _AppTextFieldState extends State<AppTextField> {
     if (!widget.enabled) return AppColors.border;
     if (_hasError) return AppColors.danger;
     if (_hasFocus) return AppColors.primary;
-    return AppColors.border;
+    return AppColors.inputBorder;
   }
 
   Color get _labelColor {
     if (_hasError) return AppColors.danger;
     if (_hasFocus) return AppColors.primary;
-    return AppColors.textSecondary;
+    return AppColors.textPrimary;
   }
 
   // ── Build ──────────────────────────────────────────────────────────────────
@@ -180,7 +180,10 @@ class _AppTextFieldState extends State<AppTextField> {
         if (widget.label != null) ...[
           Text(
             widget.label!,
-            style: AppTextStyles.labelMedium.copyWith(color: _labelColor),
+            style: AppTextStyles.labelMedium.copyWith(
+              color: _labelColor,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 6),
         ],
@@ -192,8 +195,11 @@ class _AppTextFieldState extends State<AppTextField> {
             color: widget.enabled
                 ? (widget.fillColor ?? AppColors.surface)
                 : AppColors.background,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: _borderColor, width: 1.5),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: _borderColor,
+              width: _hasFocus || _hasError ? 1.5 : 1,
+            ),
             boxShadow: _hasFocus && !_hasError
                 ? [
                     BoxShadow(

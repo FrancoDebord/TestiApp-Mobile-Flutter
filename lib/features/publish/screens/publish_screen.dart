@@ -1,174 +1,314 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/router/app_routes.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../auth/providers/auth_notifier.dart' show currentUserProvider;
 import '../models/publish_models.dart';
 import '../providers/publish_provider.dart';
 import 'short_record_screen.dart';
 
 // =============================================================================
-// PublishScreen — type selector (Accueil → Publier tab root)
+// PublishScreen — « Partager un témoignage » (maquette, écran 5)
 // =============================================================================
 //
-// Widget tree:
-//
 // Scaffold
-//   SafeArea
-//     Column
-//       _PublishHeader          (title + subtitle)
-//       Expanded
-//         ListView
-//           _SpecialCard(short)  ← NEW (top)
-//           _SpecialCard(live)   ← NEW (top)
-//           _FormatCard(text)
-//           _FormatCard(audio)
-//           _FormatCard(video)
-//       _StatusBarRow           (workflow status chips — hidden until draft exists)
+//   AppBar                    (« Partager un témoignage » + retour)
+//   ListView
+//     _PublishTile × 4 (grille 2×2) : vidéo · audio · texte · importer
+//     « Autres façons de partager » : Short · Carnet privé · Live (modération)
+//                                     · Lien YouTube (administrateurs)
+//   _StatusBarRow             (statut du brouillon — masqué sans brouillon)
+//
+// « Importer une image / document » : l'application n'a pas de type de
+// témoignage « image ». Le fichier choisi devient l'image de couverture (image)
+// ou une preuve (PDF / image justificative) d'un témoignage écrit, puis le
+// formulaire texte s'ouvre.
 
 class PublishScreen extends ConsumerWidget {
   const PublishScreen({super.key});
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final draft = ref.watch(publishProvider);
+  void _openFormat(
+    BuildContext context,
+    WidgetRef ref,
+    TestimonyFormat format,
+  ) {
+    ref.read(publishProvider.notifier).selectFormat(format);
+    ref.read(publishStepProvider.notifier).goTo(1);
+    context.pushNamed(AppRoutes.publishPreview, extra: format);
+  }
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const _PublishHeader(),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-                children: [
-                  // ── Card A: Short Témoignage ──────────────────────────────
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: _SpecialCard(
-                      icon: Icons.slow_motion_video_rounded,
-                      iconColor: const Color(0xFFD92D20),
-                      iconBg: const Color(0xFFFEF3F2),
-                      title: 'Short Témoignage',
-                      description: '60 secondes · Impact immédiat',
-                      onTap: () async {
-                        final result = await Navigator.of(context)
-                            .push<Map<String, dynamic>?>(
-                          MaterialPageRoute(
-                            fullscreenDialog: true,
-                            builder: (_) => const ShortRecordScreen(),
-                          ),
-                        );
-                        if (result == null || !context.mounted) return;
+  Future<void> _openShort(BuildContext context, WidgetRef ref) async {
+    final result = await Navigator.of(context).push<Map<String, dynamic>?>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => const ShortRecordScreen(),
+      ),
+    );
+    if (result == null || !context.mounted) return;
 
-                        final path = result['path'] as String?;
-                        final durationSec = result['duration'] as int? ?? 0;
-                        if (path == null) return;
+    final path = result['path'] as String?;
+    final durationSec = result['duration'] as int? ?? 0;
+    if (path == null) return;
 
-                        final notifier = ref.read(publishProvider.notifier);
-                        notifier.selectFormat(TestimonyFormat.video);
-                        notifier.updateVideoPath(path);
-                        if (durationSec > 0) {
-                          notifier.updateVideoDuration(durationSec);
-                          notifier.updateVideoTrim(
-                              Duration.zero, Duration(seconds: durationSec));
-                        }
-                        ref.read(publishStepProvider.notifier).goTo(1);
-                        context.pushNamed(AppRoutes.publishPreview,
-                            extra: TestimonyFormat.video);
-                      },
-                    ),
+    final notifier = ref.read(publishProvider.notifier);
+    notifier.selectFormat(TestimonyFormat.video);
+    notifier.updateVideoPath(path);
+    if (durationSec > 0) {
+      notifier.updateVideoDuration(durationSec);
+      notifier.updateVideoTrim(Duration.zero, Duration(seconds: durationSec));
+    }
+    ref.read(publishStepProvider.notifier).goTo(1);
+    context.pushNamed(AppRoutes.publishPreview, extra: TestimonyFormat.video);
+  }
+
+  void _openYouTube(BuildContext context, WidgetRef ref) {
+    final notifier = ref.read(publishProvider.notifier);
+    notifier.selectFormat(TestimonyFormat.video);
+    notifier.setUseYouTube(true);
+    ref.read(publishStepProvider.notifier).goTo(1);
+    context.pushNamed(AppRoutes.publishPreview, extra: TestimonyFormat.video);
+  }
+
+  /// Importer une image (→ couverture) ou un document (→ preuve 1), puis
+  /// continuer en témoignage écrit.
+  Future<void> _import(BuildContext context, WidgetRef ref) async {
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.border,
+                    borderRadius: BorderRadius.circular(2),
                   ),
-                  // ── Carnet privé : garder un témoignage pour soi ─────────
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: _SpecialCard(
-                      icon: Icons.lock_rounded,
-                      iconColor: AppColors.primary,
-                      iconBg: const Color(0xFFEAF1FC),
-                      title: 'Carnet privé',
-                      description: 'Garder un témoignage pour moi, sans le publier',
-                      onTap: () => context.push('/journal'),
-                    ),
-                  ),
-                  // ── Card B: Live (modérateurs / administrateurs) ──────────
-                  if (ref.watch(currentUserProvider)?.canModerate ?? false)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: _SpecialCard(
-                        icon: Icons.live_tv_rounded,
-                        iconColor: const Color(0xFFD92D20),
-                        iconBg: const Color(0xFFFEF3F2),
-                        title: 'Live',
-                        description: 'Témoignage en direct, en temps réel',
-                        onTap: () => context.push('/lives/new'),
-                      ),
-                    ),
-                  // ── Standard format cards ─────────────────────────────────
-                  ...TestimonyFormat.values.map((format) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: _FormatCard(
-                        format: format,
-                        onTap: () {
-                          ref.read(publishProvider.notifier).selectFormat(format);
-                          ref.read(publishStepProvider.notifier).goTo(1);
-                          context.pushNamed(
-                            AppRoutes.publishPreview,
-                            extra: format,
-                          );
-                        },
-                      ),
-                    );
-                  }),
-                  const SizedBox(height: 80),
-                ],
+                ),
               ),
-            ),
-            if (draft.status != PublishStatus.draft ||
-                draft.title.isNotEmpty)
-              _StatusBarRow(status: draft.status),
-          ],
+              const SizedBox(height: 16),
+              Text('Importer une image / document', style: AppTextStyles.h4),
+              const SizedBox(height: 4),
+              Text(
+                'Le fichier accompagne un témoignage écrit : une image devient '
+                'la couverture, un document (PDF ou image) est joint comme '
+                'preuve.',
+                style: AppTextStyles.bodySmall,
+              ),
+              const SizedBox(height: 8),
+              _SheetOption(
+                icon: Icons.image_outlined,
+                title: 'Image de couverture',
+                subtitle: 'Photo de la galerie',
+                onTap: () => Navigator.of(ctx).pop('cover'),
+              ),
+              _SheetOption(
+                icon: Icons.description_outlined,
+                title: 'Document ou preuve',
+                subtitle: 'PDF, JPG, PNG ou WebP · 10 Mo max.',
+                onTap: () => Navigator.of(ctx).pop('proof'),
+              ),
+            ],
+          ),
         ),
       ),
     );
+    if (choice == null || !context.mounted) return;
+
+    final notifier = ref.read(publishProvider.notifier);
+    try {
+      if (choice == 'cover') {
+        final img = await ImagePicker().pickImage(
+          source: ImageSource.gallery,
+          maxWidth: 1200,
+          maxHeight: 900,
+          imageQuality: 85,
+        );
+        if (img == null || !context.mounted) return;
+        notifier.selectFormat(TestimonyFormat.text);
+        notifier.updateCoverImage(img.path);
+      } else {
+        final f = await FilePicker.pickFile(
+          type: FileType.custom,
+          allowedExtensions: kProofExtensions,
+        );
+        if (f == null || f.path == null || !context.mounted) return;
+        final reason = proofRejectionReason(name: f.name, size: f.size);
+        if (reason != null) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(reason)));
+          return;
+        }
+        notifier.selectFormat(TestimonyFormat.text);
+        notifier.setProof(
+          1,
+          ProofAttachment(path: f.path!, name: f.name, size: f.size),
+        );
+      }
+    } catch (_) {
+      return;
+    }
+    if (!context.mounted) return;
+    ref.read(publishStepProvider.notifier).goTo(1);
+    context.pushNamed(AppRoutes.publishPreview, extra: TestimonyFormat.text);
   }
-}
-
-// -----------------------------------------------------------------------------
-// Header
-// -----------------------------------------------------------------------------
-
-class _PublishHeader extends StatelessWidget {
-  const _PublishHeader();
 
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget build(BuildContext context, WidgetRef ref) {
+    final draft = ref.watch(publishProvider);
+    final user = ref.watch(currentUserProvider);
+    final canLive = user?.canModerate ?? false;
+    final isAdmin = user?.isAdmin ?? false;
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.surface,
+        surfaceTintColor: AppColors.surface,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          tooltip: 'Retour',
+          icon: const Icon(
+            Icons.arrow_back_rounded,
+            color: AppColors.textPrimary,
+          ),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/home');
+            }
+          },
+        ),
+        titleSpacing: 0,
+        title: Text(
+          'Partager un témoignage',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppTextStyles.h4.copyWith(
+            fontWeight: FontWeight.w700,
+            color: AppColors.primary,
+          ),
+        ),
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(1),
+          child: Divider(height: 1, thickness: 1, color: AppColors.border),
+        ),
+      ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            'Partagez votre témoignage',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontFamily: 'Plus Jakarta Sans',
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.screen,
+                AppSpacing.xl,
+                AppSpacing.screen,
+                24,
+              ),
+              children: [
+                Text(
+                  'Quelle forme prend votre témoignage ?',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
                 ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Quelle forme prend votre témoignage ?',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontFamily: 'Plus Jakarta Sans',
-                  color: AppColors.textSecondary,
+                const SizedBox(height: AppSpacing.lg),
+                // ── Grille 2×2 (maquette) ────────────────────────────────
+                _TileRow(
+                  children: [
+                    _PublishTile(
+                      icon: Icons.videocam_rounded,
+                      label: 'Enregistrer une vidéo',
+                      onTap: () =>
+                          _openFormat(context, ref, TestimonyFormat.video),
+                    ),
+                    _PublishTile(
+                      icon: Icons.mic_rounded,
+                      label: 'Enregistrer un audio',
+                      onTap: () =>
+                          _openFormat(context, ref, TestimonyFormat.audio),
+                    ),
+                  ],
                 ),
+                const SizedBox(height: AppSpacing.md),
+                _TileRow(
+                  children: [
+                    _PublishTile(
+                      icon: Icons.article_rounded,
+                      label: 'Écrire un texte',
+                      onTap: () =>
+                          _openFormat(context, ref, TestimonyFormat.text),
+                    ),
+                    _PublishTile(
+                      icon: Icons.add_photo_alternate_rounded,
+                      label: 'Importer une image / document',
+                      onTap: () => _import(context, ref),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.xxl),
+                // ── Autres entrées ───────────────────────────────────────
+                Text(
+                  'Autres façons de partager',
+                  style: AppTextStyles.labelMedium.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                _OptionTile(
+                  icon: Icons.slow_motion_video_rounded,
+                  title: 'Short Témoignage',
+                  description: '60 secondes · Impact immédiat',
+                  onTap: () => _openShort(context, ref),
+                ),
+                _OptionTile(
+                  icon: Icons.lock_rounded,
+                  title: 'Carnet privé',
+                  description: 'Garder un témoignage pour moi, sans le publier',
+                  onTap: () => context.push('/journal'),
+                ),
+                // Live : modérateurs / administrateurs.
+                if (canLive)
+                  _OptionTile(
+                    icon: Icons.live_tv_rounded,
+                    title: 'Live',
+                    description: 'Témoignage en direct, en temps réel',
+                    onTap: () => context.push('/lives/new'),
+                  ),
+                // Lien YouTube (administrateurs) : docs serveur
+                // fonctionnalites/videos-youtube.md
+                if (isAdmin)
+                  _OptionTile(
+                    icon: Icons.smart_display_rounded,
+                    title: 'Lien YouTube',
+                    description:
+                        'Publier une vidéo déjà sur YouTube (administrateurs)',
+                    onTap: () => _openYouTube(context, ref),
+                  ),
+                const SizedBox(height: 80),
+              ],
+            ),
           ),
+          if (draft.status != PublishStatus.draft || draft.title.isNotEmpty)
+            _StatusBarRow(status: draft.status),
         ],
       ),
     );
@@ -176,86 +316,82 @@ class _PublishHeader extends StatelessWidget {
 }
 
 // -----------------------------------------------------------------------------
-// Special card (Short Témoignage / Live) — fully custom fields
+// Grille : deux tuiles de même hauteur par ligne
 // -----------------------------------------------------------------------------
 
-class _SpecialCard extends StatelessWidget {
-  const _SpecialCard({
+class _TileRow extends StatelessWidget {
+  const _TileRow({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: children[0]),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(child: children[1]),
+        ],
+      ),
+    );
+  }
+}
+
+/// Grande tuile blanche (radius 16, bordure fine, ombre légère) avec une
+/// bulle d'icône bleu doux et un libellé centré.
+class _PublishTile extends StatelessWidget {
+  const _PublishTile({
     required this.icon,
-    required this.iconColor,
-    required this.iconBg,
-    required this.title,
-    required this.description,
+    required this.label,
     required this.onTap,
   });
 
   final IconData icon;
-  final Color iconColor;
-  final Color iconBg;
-  final String title;
-  final String description;
+  final String label;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(16),
-      elevation: 0,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          height: 80,
-          decoration: BoxDecoration(
-            border: Border.all(color: AppColors.border),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: iconBg,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: iconColor, size: 24),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
-                        color: AppColors.textPrimary,
-                      ),
+    return DecoratedBox(
+      decoration: AppShadows.cardDecoration,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: AppRadius.cardRadius,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 132),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 18),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: const BoxDecoration(
+                      color: AppColors.primarySoft,
+                      shape: BoxShape.circle,
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      description,
-                      style: const TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
-                      ),
+                    child: Icon(icon, color: AppColors.primary, size: 28),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.labelMedium.copyWith(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: AppColors.textSecondary,
-                size: 20,
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -263,106 +399,111 @@ class _SpecialCard extends StatelessWidget {
   }
 }
 
-// -----------------------------------------------------------------------------
-// Format card
-// -----------------------------------------------------------------------------
-
-class _FormatCard extends StatelessWidget {
-  const _FormatCard({
-    required this.format,
+/// Entrée secondaire (Short, Carnet privé, Live, Lien YouTube).
+class _OptionTile extends StatelessWidget {
+  const _OptionTile({
+    required this.icon,
+    required this.title,
+    required this.description,
     required this.onTap,
   });
 
-  final TestimonyFormat format;
+  final IconData icon;
+  final String title;
+  final String description;
   final VoidCallback onTap;
-
-  static const Map<TestimonyFormat, IconData> _icons = {
-    TestimonyFormat.text: Icons.edit_note_rounded,
-    TestimonyFormat.audio: Icons.mic_rounded,
-    TestimonyFormat.video: Icons.videocam_rounded,
-  };
-
-  static const Map<TestimonyFormat, Color> _iconColors = {
-    TestimonyFormat.text: AppColors.primary,
-    TestimonyFormat.audio: Color(0xFFD92D20),   // danger-red for mic
-    TestimonyFormat.video: AppColors.secondary,
-  };
-
-  static const Map<TestimonyFormat, Color> _iconBg = {
-    TestimonyFormat.text: Color(0xFFEAF1FC),
-    TestimonyFormat.audio: Color(0xFFFEF3F2),
-    TestimonyFormat.video: Color(0xFFFFFAEB),
-  };
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(16),
-      elevation: 0,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          height: 80,
-          decoration: BoxDecoration(
-            border: Border.all(color: AppColors.border),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            children: [
-              // Icon container
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: _iconBg[format],
-                  borderRadius: BorderRadius.circular(12),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Material(
+        color: AppColors.surface,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(AppRadius.md)),
+          side: BorderSide(color: AppColors.border),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: const BoxDecoration(
+                    color: AppColors.primarySoft,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: AppColors.primary, size: 20),
                 ),
-                child: Icon(
-                  _icons[format],
-                  color: _iconColors[format],
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 16),
-              // Title + description
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      format.label,
-                      style: const TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
-                        color: AppColors.textPrimary,
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.labelMedium.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      format.description,
-                      style: const TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
+                      const SizedBox(height: 2),
+                      Text(
+                        description,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.bodySmall,
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: AppColors.textSecondary,
-                size: 20,
-              ),
-            ],
+                const SizedBox(width: AppSpacing.sm),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.textSecondary,
+                  size: 20,
+                ),
+              ],
+            ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _SheetOption extends StatelessWidget {
+  const _SheetOption({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: CircleAvatar(
+        backgroundColor: AppColors.primarySoft,
+        child: Icon(icon, color: AppColors.primary, size: 20),
+      ),
+      title: Text(
+        title,
+        style: AppTextStyles.labelMedium.copyWith(fontWeight: FontWeight.w600),
+      ),
+      subtitle: Text(subtitle, style: AppTextStyles.bodySmall),
+      onTap: onTap,
     );
   }
 }
@@ -380,7 +521,7 @@ class _StatusBarRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: const BoxDecoration(
         color: AppColors.surface,
         border: Border(top: BorderSide(color: AppColors.border)),
@@ -391,14 +532,7 @@ class _StatusBarRow extends StatelessWidget {
           scrollDirection: Axis.horizontal,
           child: Row(
             children: [
-              Text(
-                'Statut :',
-                style: const TextStyle(
-                  fontFamily: 'Plus Jakarta Sans',
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                ),
-              ),
+              Text('Statut :', style: AppTextStyles.bodySmall),
               const SizedBox(width: 8),
               ...PublishStatus.values.map((s) {
                 final isActive = s.index <= status.index;
@@ -445,33 +579,33 @@ class _StatusChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: isCurrent
             ? AppColors.primary
             : isActive
-                ? AppColors.primaryLight.withAlpha(40)
-                : Colors.transparent,
-        borderRadius: BorderRadius.circular(20),
+            ? AppColors.primarySoft
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(AppRadius.pill),
         border: Border.all(
           color: isCurrent
               ? AppColors.primary
               : isActive
-                  ? AppColors.primaryLight
-                  : AppColors.border,
+              ? AppColors.primarySoft
+              : AppColors.border,
         ),
       ),
       child: Text(
         label,
         style: TextStyle(
-          fontFamily: 'Plus Jakarta Sans',
-          fontSize: 10,
-          fontWeight: FontWeight.w500,
+          fontFamily: AppFonts.family,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
           color: isCurrent
               ? Colors.white
               : isActive
-                  ? AppColors.primary
-                  : AppColors.textSecondary,
+              ? AppColors.primary
+              : AppColors.textSecondary,
         ),
       ),
     );

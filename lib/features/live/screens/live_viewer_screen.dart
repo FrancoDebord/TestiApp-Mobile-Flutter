@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -168,7 +169,11 @@ class _LiveViewerScreenState extends ConsumerState<LiveViewerScreen> {
                 ),
               const Spacer(),
               LiveStageSelfBar(ctrl: ctrl),
-              Padding(
+              // La zone du bas rétrécit (clavier ouvert, petit écran) au lieu
+              // de faire déborder la colonne.
+              Flexible(
+                flex: 8,
+                child: Padding(
                 padding: const EdgeInsets.fromLTRB(12, 0, 8, 8),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
@@ -178,8 +183,11 @@ class _LiveViewerScreenState extends ConsumerState<LiveViewerScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           if (_showComments)
-                            SizedBox(
-                              height: MediaQuery.sizeOf(context).height * 0.40,
+                            Flexible(
+                              child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                  maxHeight:
+                                      MediaQuery.sizeOf(context).height * 0.40),
                               child: LiveCommentsList(
                                 comments: ctrl.comments,
                                 hostId: live.host.id,
@@ -189,6 +197,7 @@ class _LiveViewerScreenState extends ConsumerState<LiveViewerScreen> {
                                         comment: c, controller: ctrl)
                                     : null,
                               ),
+                            ),
                             ),
                           const SizedBox(height: 8),
                           Row(
@@ -232,6 +241,9 @@ class _LiveViewerScreenState extends ConsumerState<LiveViewerScreen> {
                         ],
                       ),
                     ),
+                    // Clavier ouvert : la colonne de réactions laisse la
+                    // place à la saisie.
+                    if (View.of(context).viewInsets.bottom == 0)
                     LiveReactionButtons(
                       counts: ctrl.reactions,
                       enabled: canInteract,
@@ -246,6 +258,7 @@ class _LiveViewerScreenState extends ConsumerState<LiveViewerScreen> {
                     ),
                   ],
                 ),
+              ),
               ),
             ],
           ),
@@ -290,8 +303,9 @@ class _VideoArea extends StatelessWidget {
     return Container(
       color: const Color(0xFF120A1F),
       alignment: Alignment.center,
-      padding: const EdgeInsets.all(32),
-      child: Column(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(32),
+        child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           LiveAvatar(person: ctrl.live.host, size: 84),
@@ -322,6 +336,7 @@ class _VideoArea extends StatelessWidget {
           ],
         ],
       ),
+      ),
     );
   }
 }
@@ -332,30 +347,36 @@ class _Scrims extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IgnorePointer(
-      child: Column(
-        children: [
-          Container(
-            height: 160,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xAA000000), Colors.transparent],
+      // Hauteurs bornées par la place disponible (clavier ouvert, petit écran).
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final h = constraints.maxHeight;
+          return Column(
+            children: [
+              Container(
+                height: math.min(160, h * 0.25),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Color(0xAA000000), Colors.transparent],
+                  ),
+                ),
               ),
-            ),
-          ),
-          const Spacer(),
-          Container(
-            height: 320,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.bottomCenter,
-                end: Alignment.topCenter,
-                colors: [Color(0xCC000000), Colors.transparent],
+              const Spacer(),
+              Container(
+                height: math.min(320, h * 0.6),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                    colors: [Color(0xCC000000), Colors.transparent],
+                  ),
+                ),
               ),
-            ),
-          ),
-        ],
+            ],
+          );
+        },
       ),
     );
   }
@@ -385,6 +406,7 @@ class _TopBar extends StatelessWidget {
           LiveAvatar(person: live.host, size: 38),
           const SizedBox(width: 10),
           Expanded(
+            flex: 3,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -413,9 +435,21 @@ class _TopBar extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          if (live.isOnAir) const LiveBadge(),
-          const SizedBox(width: 6),
-          LiveViewersChip(liveId: live.id, viewers: viewers),
+          // Badge + spectateurs : réduits plutôt que de déborder (texte agrandi).
+          Flexible(
+            flex: 2,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (live.isOnAir) const LiveBadge(),
+                  const SizedBox(width: 6),
+                  LiveViewersChip(liveId: live.id, viewers: viewers),
+                ],
+              ),
+            ),
+          ),
           if (onEnd != null)
             IconButton(
               tooltip: 'Couper le direct',

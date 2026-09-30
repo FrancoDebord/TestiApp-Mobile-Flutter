@@ -4,29 +4,26 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/router/app_routes.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../core/theme/app_tokens.dart';
+import '../../../shared/widgets/app_button.dart';
+import '../../../shared/widgets/app_logo.dart';
 
 // =============================================================================
-// ONBOARDING SCREEN — 3 slides with PageView
+// ONBOARDING — Tutoriel / premier lancement (maquette, écran 2)
 // =============================================================================
-// Slide 1 : "Partagez ce que Dieu a fait"
-//           Illustration: hands raised toward light rays (CustomPaint)
-//           Copy: invite users to share their personal testimonies
-//           Actions: Skip (top-right TextButton) | Suivant (primary button)
-//
-// Slide 2 : "Inspirez d'autres croyants"
-//           Illustration: connected hearts / community circle (CustomPaint)
-//           Copy: testimonies encourage the wider body of Christ
-//           Actions: Retour (secondary) | Suivant (primary)
-//
-// Slide 3 : "Commencez votre voyage"
-//           Illustration: open Bible with a rising sun (CustomPaint)
-//           Copy: CTA to register or sign in
-//           Actions: S'inscrire (primary filled) | Se connecter (outlined)
-//
-// Interaction: PageView.builder (physics: BouncingScrollPhysics)
-//              Dot indicator updates on page change
-//              Skip always jumps to slide 3
-//              Suivant advances by one page with animated scroll
+// 4 diapositives (PageView) illustrées en style plat, arrondi et chaleureux
+// (CustomPainter : personnages qui louent / partagent, soleil, étoiles) :
+//   1. « Bienvenue sur Témoignages de Gloire » (« Gloire » en orange)
+//   2. « Partagez ce que Dieu a fait »
+//   3. « Inspirez d'autres croyants »
+//   4. « Commencez votre voyage » (logo)
+// Bas d'écran : points de pagination (actif = pilule bleue), grand bouton
+// « Suivant » (bleu) — « Commencer » (orange) sur la dernière — puis le lien
+// « Passer » (saut à la dernière diapositive).
+// « Commencer » ouvre l'écran Connexion / Inscription (/login), qui mène à
+// l'inscription, aux connexions téléphone / Google / e-mail et au mode invité.
 // =============================================================================
 
 class OnboardingScreen extends StatefulWidget {
@@ -40,40 +37,35 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  static const int _pageCount = 3;
-
-  // Slide data ────────────────────────────────────────────────────────────────
   static const List<_SlideData> _slides = [
     _SlideData(
-      illustrationIndex: 0,
-      title: 'Partagez ce que\nDieu a fait',
-      body:
-          'Votre témoignage est une arme puissante. '
-          'Chaque histoire de grâce mérite d\'être racontée '
-          'et peut changer une vie.',
-      primaryLabel: 'Suivant',
-      secondaryLabel: null,
+      illustration: _Illustration.welcome,
+      title: 'Bienvenue sur',
+      highlightTitle: true,
+      body: 'Découvrez, partagez et vivez des témoignages qui édifient et '
+          'changent des vies.',
     ),
     _SlideData(
-      illustrationIndex: 1,
-      title: 'Inspirez d\'autres\ncroyants',
-      body:
-          'Des milliers de frères et sœurs attendent '
-          'd\'être encouragés par ce que Dieu a accompli '
-          'dans votre vie.',
-      primaryLabel: 'Suivant',
-      secondaryLabel: 'Retour',
+      illustration: _Illustration.share,
+      title: 'Partagez ce que Dieu a fait',
+      body: 'Votre témoignage est une arme puissante : chaque histoire de '
+          'grâce mérite d\'être racontée et peut changer une vie.',
     ),
     _SlideData(
-      illustrationIndex: 2,
-      title: 'Commencez votre\nvoyage',
-      body:
-          'Rejoignez la communauté Témoignages et '
-          'soyez une lumière dans la vie de quelqu\'un aujourd\'hui.',
-      primaryLabel: "S'inscrire",
-      secondaryLabel: 'Se connecter',
+      illustration: _Illustration.inspire,
+      title: 'Inspirez d\'autres croyants',
+      body: 'Des milliers de frères et sœurs attendent d\'être encouragés '
+          'par ce que Dieu a accompli dans votre vie.',
+    ),
+    _SlideData(
+      illustration: _Illustration.start,
+      title: 'Commencez votre voyage',
+      body: 'Rejoignez la communauté et soyez une lumière dans la vie de '
+          'quelqu\'un aujourd\'hui.',
     ),
   ];
+
+  int get _pageCount => _slides.length;
 
   @override
   void dispose() {
@@ -88,16 +80,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         curve: Curves.easeInOut,
       );
     } else {
-      context.goNamed(AppRoutes.register);
-    }
-  }
-
-  void _back() {
-    if (_currentPage > 0) {
-      _pageController.previousPage(
-        duration: const Duration(milliseconds: 400),
-        curve: Curves.easeInOut,
-      );
+      context.goNamed(AppRoutes.login);
     }
   }
 
@@ -114,70 +97,53 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final isLastPage = _currentPage == _pageCount - 1;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AppColors.surface,
       body: SafeArea(
         child: Column(
           children: [
-            // ── Top bar: Skip button (hidden on last slide) ─────────────────
-            SizedBox(
-              height: 56,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    if (!isLastPage)
-                      TextButton(
-                        onPressed: _skip,
-                        child: const Text(
-                          'Passer',
-                          style: TextStyle(
-                            fontFamily: 'Plus Jakarta Sans',
-                            fontSize: 14,
-                            color: Color(0xFF667085),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-
-            // ── Page view ───────────────────────────────────────────────────
+            const SizedBox(height: AppSpacing.lg),
             Expanded(
               child: PageView.builder(
                 controller: _pageController,
                 physics: const BouncingScrollPhysics(),
                 itemCount: _pageCount,
                 onPageChanged: (i) => setState(() => _currentPage = i),
-                itemBuilder: (context, index) {
-                  return _SlidePage(data: _slides[index]);
-                },
+                itemBuilder: (context, index) =>
+                    _SlidePage(data: _slides[index]),
               ),
             ),
-
-            // ── Dot indicator ───────────────────────────────────────────────
-            _DotIndicator(
-              count: _pageCount,
-              current: _currentPage,
-            ),
-
-            const SizedBox(height: 32),
-
-            // ── Action buttons ──────────────────────────────────────────────
+            const SizedBox(height: AppSpacing.lg),
+            _DotIndicator(count: _pageCount, current: _currentPage),
+            const SizedBox(height: AppSpacing.xxl),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: _ActionButtons(
-                slide: _slides[_currentPage],
-                isLastPage: isLastPage,
-                onPrimary: _advance,
-                onSecondary: isLastPage
-                    ? () => context.goNamed(AppRoutes.login)
-                    : _back,
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
+              child: AppButton(
+                key: const ValueKey('onboarding-next'),
+                label: isLastPage ? 'Commencer' : 'Suivant',
+                variant: isLastPage
+                    ? AppButtonVariant.orange
+                    : AppButtonVariant.primary,
+                size: AppButtonSize.large,
+                fullWidth: true,
+                onPressed: _advance,
               ),
             ),
-
-            const SizedBox(height: 40),
+            const SizedBox(height: AppSpacing.xs),
+            // Hauteur réservée : pas de saut de mise en page sur la dernière.
+            SizedBox(
+              height: 44,
+              child: isLastPage
+                  ? null
+                  : TextButton(
+                      onPressed: _skip,
+                      child: Text(
+                        'Passer',
+                        style: AppTextStyles.labelMedium
+                            .copyWith(color: AppColors.primary),
+                      ),
+                    ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
           ],
         ),
       ),
@@ -185,7 +151,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 }
 
-// ── Single slide page ─────────────────────────────────────────────────────────
+// ── Diapositive ──────────────────────────────────────────────────────────────
 
 class _SlidePage extends StatelessWidget {
   const _SlidePage({required this.data});
@@ -194,45 +160,62 @@ class _SlidePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final titleStyle = AppTextStyles.h2.copyWith(fontSize: 24, height: 1.25);
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Illustration — custom painted, 260 × 220 canvas.
-          SizedBox(
-            height: 220,
-            child: _OnboardingIllustration(
-              index: data.illustrationIndex,
+          Expanded(
+            flex: 5,
+            child: Center(
+              child: AspectRatio(
+                aspectRatio: 1.1,
+                child: _OnboardingIllustration(kind: data.illustration),
+              ),
             ),
           ),
-
-          const SizedBox(height: 40),
-
-          // Title.
-          Text(
-            data.title,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontFamily: 'Plus Jakarta Sans',
-              fontWeight: FontWeight.w600,
-              fontSize: 26,
-              color: Color(0xFF263238),
-              height: 1.3,
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Body.
-          Text(
-            data.body,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontFamily: 'Plus Jakarta Sans',
-              fontSize: 15,
-              color: Color(0xFF667085),
-              height: 1.6,
+          const SizedBox(height: AppSpacing.lg),
+          Flexible(
+            flex: 4,
+            child: SingleChildScrollView(
+              physics: const ClampingScrollPhysics(),
+              child: Column(
+                children: [
+                  Text(
+                    data.title,
+                    textAlign: TextAlign.center,
+                    style: data.highlightTitle
+                        ? titleStyle.copyWith(
+                            fontSize: 18, fontWeight: FontWeight.w600)
+                        : titleStyle,
+                  ),
+                  if (data.highlightTitle) ...[
+                    const SizedBox(height: 2),
+                    Text.rich(
+                      TextSpan(children: [
+                        const TextSpan(text: 'Témoignages de '),
+                        TextSpan(
+                          text: 'Gloire',
+                          style: titleStyle.copyWith(
+                              color: AppColors.secondary),
+                        ),
+                      ]),
+                      textAlign: TextAlign.center,
+                      style: titleStyle.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                  ],
+                  const SizedBox(height: AppSpacing.md),
+                  Text(
+                    data.body,
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      fontSize: 15,
+                      color: AppColors.textSecondary,
+                      height: 1.55,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -241,283 +224,339 @@ class _SlidePage extends StatelessWidget {
   }
 }
 
-// ── Illustration widget (CustomPaint; swap with Lottie/SVG asset) ─────────────
+// ── Illustrations ────────────────────────────────────────────────────────────
+
+enum _Illustration { welcome, share, inspire, start }
 
 class _OnboardingIllustration extends StatelessWidget {
-  const _OnboardingIllustration({required this.index});
+  const _OnboardingIllustration({required this.kind});
 
-  final int index;
+  final _Illustration kind;
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(
-      painter: _IllustrationPainter(index),
+    final painted = CustomPaint(
+      painter: _IllustrationPainter(kind),
       child: const SizedBox.expand(),
+    );
+    if (kind != _Illustration.start) return painted;
+    // Dernière diapositive : le logo de l'application au centre.
+    return LayoutBuilder(
+      builder: (context, c) => Stack(
+        alignment: Alignment.center,
+        children: [
+          painted,
+          Align(
+            alignment: const Alignment(0, -0.05),
+            child: AppLogoMark(size: c.maxHeight * 0.46),
+          ),
+        ],
+      ),
     );
   }
 }
 
 class _IllustrationPainter extends CustomPainter {
-  _IllustrationPainter(this.index);
+  _IllustrationPainter(this.kind);
 
-  final int index;
+  final _Illustration kind;
 
-  // ── Slide 0 : Raised hands + light rays ──────────────────────────────────
-
-  void _paintSlide0(Canvas canvas, Size size) {
-    final cx = size.width / 2;
-    final cy = size.height / 2;
-
-    // Soft purple circle background.
-    canvas.drawCircle(
-      Offset(cx, cy),
-      size.width * 0.38,
-      Paint()..color = const Color(0xFFEAF1FC),
-    );
-
-    // Light rays emanating from top-center.
-    final rayPaint = Paint()
-      ..color = const Color(0xFFF79009).withAlpha(180)
-      ..strokeWidth = 3
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-
-    // Rays radiate upward; angle sweeps left-to-right across the top arc.
-    for (int i = -2; i <= 2; i++) {
-      final angle = -math.pi / 2 + i * 0.25;
-      final originX = cx + 20 * i.toDouble();
-      final originY = cy - size.height * 0.20;
-      canvas.drawLine(
-        Offset(originX, originY),
-        Offset(originX + 50 * math.cos(angle), originY + 50 * math.sin(angle)),
-        rayPaint,
-      );
-    }
-
-    // Two simplified hands reaching up.
-    final handPaint = Paint()
-      ..color = const Color(0xFF184797)
-      ..style = PaintingStyle.fill;
-
-    // Left hand.
-    final leftHand = Path()
-      ..moveTo(cx - 35, cy + 40)
-      ..lineTo(cx - 55, cy - 20)
-      ..quadraticBezierTo(cx - 60, cy - 40, cx - 45, cy - 50)
-      ..quadraticBezierTo(cx - 30, cy - 60, cx - 20, cy - 30)
-      ..lineTo(cx - 20, cy + 40)
-      ..close();
-    canvas.drawPath(leftHand, handPaint);
-
-    // Right hand.
-    final rightHand = Path()
-      ..moveTo(cx + 35, cy + 40)
-      ..lineTo(cx + 55, cy - 20)
-      ..quadraticBezierTo(cx + 60, cy - 40, cx + 45, cy - 50)
-      ..quadraticBezierTo(cx + 30, cy - 60, cx + 20, cy - 30)
-      ..lineTo(cx + 20, cy + 40)
-      ..close();
-    canvas.drawPath(rightHand, handPaint);
-
-    // Gold star / sparkle above.
-    _drawStar(canvas, Offset(cx, cy - size.height * 0.38), 12, rayPaint..color = const Color(0xFFF79009));
-  }
-
-  // ── Slide 1 : Community hearts circle ────────────────────────────────────
-
-  void _paintSlide1(Canvas canvas, Size size) {
-    final cx = size.width / 2;
-    final cy = size.height / 2;
-
-    // Light gold circle.
-    canvas.drawCircle(
-      Offset(cx, cy),
-      size.width * 0.38,
-      Paint()..color = const Color(0xFFFFFAEB),
-    );
-
-    // Three hearts positioned in a triangle.
-    const heartPositions = [
-      Offset(0, -0.28),
-      Offset(-0.24, 0.18),
-      Offset(0.24, 0.18),
-    ];
-
-    for (final pos in heartPositions) {
-      _drawHeart(
-        canvas,
-        Offset(cx + pos.dx * size.width, cy + pos.dy * size.height),
-        24,
-        const Color(0xFF184797),
-      );
-    }
-
-    // Connecting lines.
-    final linePaint = Paint()
-      ..color = const Color(0xFF4B7ACB).withAlpha(120)
-      ..strokeWidth = 1.5
-      ..style = PaintingStyle.stroke;
-
-    final pts = heartPositions
-        .map((p) => Offset(cx + p.dx * size.width, cy + p.dy * size.height))
-        .toList();
-    for (int i = 0; i < pts.length; i++) {
-      canvas.drawLine(pts[i], pts[(i + 1) % pts.length], linePaint);
-    }
-
-    // Small gold stars.
-    final starPaint = Paint()..color = const Color(0xFFF79009);
-    _drawStar(canvas, Offset(cx + 60, cy - 60), 8, starPaint);
-    _drawStar(canvas, Offset(cx - 65, cy - 45), 6, starPaint);
-  }
-
-  // ── Slide 2 : Open Bible + rising sun ────────────────────────────────────
-
-  void _paintSlide2(Canvas canvas, Size size) {
-    final cx = size.width / 2;
-    final cy = size.height / 2;
-
-    // Sky circle.
-    canvas.drawCircle(
-      Offset(cx, cy),
-      size.width * 0.38,
-      Paint()..color = const Color(0xFFEAF1FC),
-    );
-
-    // Sun.
-    canvas.drawCircle(
-      Offset(cx, cy - 30),
-      26,
-      Paint()..color = const Color(0xFFF79009),
-    );
-
-    // Sun rays.
-    final rayPaint = Paint()
-      ..color = const Color(0xFFF79009).withAlpha(160)
-      ..strokeWidth = 2.5
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-
-    for (int i = 0; i < 8; i++) {
-      final angle = i * math.pi / 4;
-      canvas.drawLine(
-        Offset(cx + 32 * math.cos(angle), (cy - 30) + 32 * math.sin(angle)),
-        Offset(cx + 46 * math.cos(angle), (cy - 30) + 46 * math.sin(angle)),
-        rayPaint,
-      );
-    }
-
-    // Open Bible (two rectangles tilted).
-    final biblePaint = Paint()..color = const Color(0xFF184797);
-    canvas.save();
-    canvas.translate(cx, cy + 40);
-
-    // Left page.
-    canvas.save();
-    canvas.rotate(-0.15);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        const Rect.fromLTWH(-68, -32, 66, 46),
-        const Radius.circular(4),
-      ),
-      biblePaint,
-    );
-    // Lines on page.
-    final linePaint = Paint()
-      ..color = Colors.white.withAlpha(120)
-      ..strokeWidth = 1.5;
-    for (int l = 0; l < 4; l++) {
-      canvas.drawLine(
-        Offset(-60, -20 + l * 10.0),
-        Offset(-12, -20 + l * 10.0),
-        linePaint,
-      );
-    }
-    canvas.restore();
-
-    // Right page.
-    canvas.save();
-    canvas.rotate(0.15);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        const Rect.fromLTWH(2, -32, 66, 46),
-        const Radius.circular(4),
-      ),
-      biblePaint,
-    );
-    for (int l = 0; l < 4; l++) {
-      canvas.drawLine(
-        Offset(10, -20 + l * 10.0),
-        Offset(58, -20 + l * 10.0),
-        linePaint,
-      );
-    }
-    canvas.restore();
-
-    canvas.restore();
-  }
-
-  // ── Helpers ───────────────────────────────────────────────────────────────
-
-  void _drawHeart(Canvas canvas, Offset center, double size, Color color) {
-    final paint = Paint()..color = color;
-    final path = Path();
-    path.moveTo(center.dx, center.dy + size * 0.3);
-    path.cubicTo(
-      center.dx - size * 1.2, center.dy - size * 0.5,
-      center.dx - size * 2.0, center.dy + size * 0.5,
-      center.dx, center.dy + size * 1.4,
-    );
-    path.cubicTo(
-      center.dx + size * 2.0, center.dy + size * 0.5,
-      center.dx + size * 1.2, center.dy - size * 0.5,
-      center.dx, center.dy + size * 0.3,
-    );
-    canvas.drawPath(path, paint);
-  }
-
-  void _drawStar(Canvas canvas, Offset center, double r, Paint paint) {
-    final path = Path();
-    for (int i = 0; i < 5; i++) {
-      final outer = i * (2 * math.pi / 5) - math.pi / 2;
-      final inner = outer + math.pi / 5;
-      final p1 = Offset(
-        center.dx + r * math.cos(outer),
-        center.dy + r * math.sin(outer),
-      );
-      final p2 = Offset(
-        center.dx + r * 0.4 * math.cos(inner),
-        center.dy + r * 0.4 * math.sin(inner),
-      );
-      if (i == 0) {
-        path.moveTo(p1.dx, p1.dy);
-      } else {
-        path.lineTo(p1.dx, p1.dy);
-      }
-      path.lineTo(p2.dx, p2.dy);
-    }
-    path.close();
-    canvas.drawPath(path, paint..style = PaintingStyle.fill);
-  }
+  // Palette des personnages (tons de peau et cheveux : pas d'équivalent
+  // dans la charte, réservés aux illustrations).
+  static const _skinDark = Color(0xFF8A5A3C);
+  static const _skinLight = Color(0xFFB57C55);
+  static const _hair = Color(0xFF2B2A33);
 
   @override
   void paint(Canvas canvas, Size size) {
-    switch (index) {
-      case 0:
-        _paintSlide0(canvas, size);
-      case 1:
-        _paintSlide1(canvas, size);
-      case 2:
-        _paintSlide2(canvas, size);
+    final w = size.width;
+    final h = size.height;
+
+    // Fond : grand disque doux + sol arrondi.
+    canvas.drawCircle(
+      Offset(w * 0.5, h * 0.5),
+      math.min(w, h) * 0.46,
+      Paint()
+        ..color = kind == _Illustration.inspire
+            ? AppColors.sunSoft
+            : AppColors.primarySoft,
+    );
+
+    switch (kind) {
+      case _Illustration.welcome:
+        _sun(canvas, Offset(w * 0.72, h * 0.22), h * 0.1);
+        _stars(canvas, size, const [
+          Offset(0.16, 0.2),
+          Offset(0.3, 0.1),
+          Offset(0.9, 0.44),
+        ]);
+        // Homme qui lève la main (louange) et femme au téléphone.
+        _person(canvas, Offset(w * 0.36, h * 0.93), h * 0.62,
+            skin: _skinDark,
+            shirt: AppColors.primary,
+            armUp: true,
+            longHair: false);
+        _person(canvas, Offset(w * 0.66, h * 0.93), h * 0.56,
+            skin: _skinLight,
+            shirt: AppColors.sun,
+            armUp: false,
+            longHair: true,
+            phone: true);
+      case _Illustration.share:
+        _sun(canvas, Offset(w * 0.25, h * 0.24), h * 0.08);
+        _stars(canvas, size, const [Offset(0.82, 0.18), Offset(0.12, 0.52)]);
+        _person(canvas, Offset(w * 0.5, h * 0.95), h * 0.64,
+            skin: _skinLight,
+            shirt: AppColors.primary,
+            armUp: false,
+            longHair: true,
+            phone: true);
+        // Bulles de partage (cœur, lecture, message).
+        _bubble(canvas, Offset(w * 0.8, h * 0.36), h * 0.09,
+            AppColors.secondary, _heart);
+        _bubble(canvas, Offset(w * 0.2, h * 0.4), h * 0.08, AppColors.primary,
+            _play);
+        _bubble(canvas, Offset(w * 0.74, h * 0.62), h * 0.07, AppColors.sun,
+            _lines);
+      case _Illustration.inspire:
+        _sun(canvas, Offset(w * 0.5, h * 0.2), h * 0.1);
+        _stars(canvas, size, const [
+          Offset(0.18, 0.24),
+          Offset(0.84, 0.26),
+          Offset(0.9, 0.56),
+        ]);
+        // Trois croyants, bras levés.
+        _person(canvas, Offset(w * 0.24, h * 0.95), h * 0.5,
+            skin: _skinLight,
+            shirt: AppColors.secondary,
+            armUp: true,
+            longHair: true);
+        _person(canvas, Offset(w * 0.76, h * 0.95), h * 0.5,
+            skin: _skinDark,
+            shirt: AppColors.primaryLight,
+            armUp: true,
+            longHair: false);
+        _person(canvas, Offset(w * 0.5, h * 0.97), h * 0.6,
+            skin: _skinDark,
+            shirt: AppColors.primary,
+            armUp: true,
+            longHair: false);
+      case _Illustration.start:
+        // Colline + rayons discrets ; le logo est posé par-dessus.
+        final hill = Path()
+          ..moveTo(w * 0.08, h * 0.86)
+          ..quadraticBezierTo(w * 0.5, h * 0.62, w * 0.92, h * 0.86)
+          ..quadraticBezierTo(w * 0.5, h * 0.96, w * 0.08, h * 0.86)
+          ..close();
+        canvas.drawPath(hill, Paint()..color = AppColors.primary.withAlpha(40));
+        _stars(canvas, size, const [
+          Offset(0.18, 0.2),
+          Offset(0.82, 0.18),
+          Offset(0.12, 0.62),
+          Offset(0.88, 0.6),
+        ]);
     }
   }
 
+  // ── Éléments ─────────────────────────────────────────────────────────────
+
+  void _sun(Canvas canvas, Offset c, double r) {
+    final ray = Paint()
+      ..color = AppColors.sun
+      ..strokeWidth = r * 0.22
+      ..strokeCap = StrokeCap.round;
+    for (var i = 0; i < 10; i++) {
+      final a = i * math.pi / 5;
+      final d = Offset(math.cos(a), math.sin(a));
+      canvas.drawLine(c + d * (r * 1.3), c + d * (r * 1.75), ray);
+    }
+    canvas.drawCircle(c, r, Paint()..color = AppColors.sun);
+    canvas.drawCircle(c, r * 0.72, Paint()..color = AppColors.secondary);
+  }
+
+  void _stars(Canvas canvas, Size size, List<Offset> rel) {
+    final paint = Paint()..color = AppColors.sun;
+    for (var i = 0; i < rel.length; i++) {
+      final r = size.height * (i.isEven ? 0.035 : 0.025);
+      _star(canvas, Offset(rel[i].dx * size.width, rel[i].dy * size.height),
+          r, paint);
+    }
+  }
+
+  void _star(Canvas canvas, Offset c, double r, Paint paint) {
+    // Étoile à 4 branches arrondie (scintillement).
+    final path = Path()
+      ..moveTo(c.dx, c.dy - r)
+      ..quadraticBezierTo(c.dx, c.dy, c.dx + r, c.dy)
+      ..quadraticBezierTo(c.dx, c.dy, c.dx, c.dy + r)
+      ..quadraticBezierTo(c.dx, c.dy, c.dx - r, c.dy)
+      ..quadraticBezierTo(c.dx, c.dy, c.dx, c.dy - r)
+      ..close();
+    canvas.drawPath(path, paint);
+  }
+
+  /// Personnage plat : [feet] = milieu du bas, [height] = taille totale.
+  void _person(
+    Canvas canvas,
+    Offset feet,
+    double height, {
+    required Color skin,
+    required Color shirt,
+    required bool armUp,
+    required bool longHair,
+    bool phone = false,
+  }) {
+    final u = height / 10; // unité
+    final headC = Offset(feet.dx, feet.dy - height + u * 1.3);
+    final shoulderY = headC.dy + u * 2.0;
+    final skinPaint = Paint()..color = skin;
+    final hairPaint = Paint()..color = _hair;
+
+    // Cheveux longs derrière la tête.
+    if (longHair) {
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromCenter(
+              center: headC.translate(0, u * 0.6),
+              width: u * 2.7,
+              height: u * 3.0),
+          Radius.circular(u * 1.3),
+        ),
+        hairPaint,
+      );
+    }
+
+    // Buste (forme arrondie).
+    final body = RRect.fromRectAndCorners(
+      Rect.fromLTRB(feet.dx - u * 2.1, shoulderY, feet.dx + u * 2.1, feet.dy),
+      topLeft: Radius.circular(u * 1.6),
+      topRight: Radius.circular(u * 1.6),
+    );
+    canvas.drawRRect(body, Paint()..color = shirt);
+
+    // Cou + tête.
+    canvas.drawRect(
+        Rect.fromCenter(
+            center: Offset(headC.dx, shoulderY - u * 0.2),
+            width: u * 0.8,
+            height: u * 0.9),
+        skinPaint);
+    canvas.drawCircle(headC, u * 1.15, skinPaint);
+
+    // Cheveux courts / frange.
+    canvas.drawArc(
+      Rect.fromCircle(center: headC.translate(0, -u * 0.15), radius: u * 1.2),
+      math.pi,
+      math.pi,
+      true,
+      hairPaint,
+    );
+
+    // Sourire.
+    canvas.drawArc(
+      Rect.fromCenter(
+          center: headC.translate(0, u * 0.35), width: u * 0.9, height: u * 0.6),
+      0.2,
+      math.pi - 0.4,
+      false,
+      Paint()
+        ..color = _hair
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = u * 0.14
+        ..strokeCap = StrokeCap.round,
+    );
+
+    final arm = Paint()
+      ..color = shirt
+      ..strokeWidth = u * 0.95
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+    final hand = Paint()..color = skin;
+
+    if (armUp) {
+      // Bras droit levé vers le ciel.
+      final s = Offset(feet.dx + u * 1.6, shoulderY + u * 0.7);
+      final e = Offset(feet.dx + u * 2.6, shoulderY - u * 1.2);
+      final hnd = Offset(feet.dx + u * 2.9, shoulderY - u * 3.0);
+      canvas.drawPath(
+          Path()
+            ..moveTo(s.dx, s.dy)
+            ..lineTo(e.dx, e.dy)
+            ..lineTo(hnd.dx, hnd.dy + u * 0.4),
+          arm);
+      canvas.drawCircle(hnd, u * 0.5, hand);
+    }
+    if (phone) {
+      // Main tenant un téléphone devant la poitrine.
+      final p = Offset(feet.dx - u * 0.9, shoulderY + u * 1.9);
+      canvas.drawPath(
+          Path()
+            ..moveTo(feet.dx - u * 1.7, shoulderY + u * 0.8)
+            ..lineTo(feet.dx - u * 1.8, shoulderY + u * 2.4)
+            ..lineTo(p.dx, p.dy + u * 0.3),
+          arm);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromCenter(center: p, width: u * 1.0, height: u * 1.7),
+          Radius.circular(u * 0.2),
+        ),
+        Paint()..color = AppColors.primaryDark,
+      );
+      canvas.drawCircle(p.translate(-u * 0.35, u * 0.6), u * 0.42, hand);
+    }
+  }
+
+  void _bubble(Canvas canvas, Offset c, double r, Color color,
+      void Function(Canvas, Offset, double) icon) {
+    canvas.drawCircle(c, r, Paint()..color = AppColors.surface);
+    canvas.drawCircle(
+        c,
+        r,
+        Paint()
+          ..color = color.withAlpha(90)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = r * 0.08);
+    icon(canvas, c, r * 0.5);
+  }
+
+  static void _heart(Canvas canvas, Offset c, double r) {
+    final path = Path()
+      ..moveTo(c.dx, c.dy + r * 0.8)
+      ..cubicTo(c.dx - r * 1.4, c.dy - r * 0.1, c.dx - r * 0.7, c.dy - r * 1.1,
+          c.dx, c.dy - r * 0.35)
+      ..cubicTo(c.dx + r * 0.7, c.dy - r * 1.1, c.dx + r * 1.4, c.dy - r * 0.1,
+          c.dx, c.dy + r * 0.8)
+      ..close();
+    canvas.drawPath(path, Paint()..color = AppColors.secondary);
+  }
+
+  static void _play(Canvas canvas, Offset c, double r) {
+    final path = Path()
+      ..moveTo(c.dx - r * 0.5, c.dy - r * 0.8)
+      ..lineTo(c.dx + r * 0.85, c.dy)
+      ..lineTo(c.dx - r * 0.5, c.dy + r * 0.8)
+      ..close();
+    canvas.drawPath(
+        path,
+        Paint()
+          ..color = AppColors.primary
+          ..strokeJoin = StrokeJoin.round);
+  }
+
+  static void _lines(Canvas canvas, Offset c, double r) {
+    final p = Paint()
+      ..color = AppColors.sunText
+      ..strokeWidth = r * 0.28
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(c.translate(-r * 0.8, -r * 0.4), c.translate(r * 0.8, -r * 0.4), p);
+    canvas.drawLine(c.translate(-r * 0.8, r * 0.3), c.translate(r * 0.3, r * 0.3), p);
+  }
+
   @override
-  bool shouldRepaint(covariant _IllustrationPainter old) =>
-      old.index != index;
+  bool shouldRepaint(covariant _IllustrationPainter old) => old.kind != kind;
 }
 
-// ── Dot indicator ─────────────────────────────────────────────────────────────
+// ── Points de pagination ─────────────────────────────────────────────────────
 
 class _DotIndicator extends StatelessWidget {
   const _DotIndicator({required this.count, required this.current});
@@ -527,119 +566,43 @@ class _DotIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: List.generate(count, (i) {
-        final isActive = i == current;
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          width: isActive ? 24 : 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: isActive
-                ? const Color(0xFF184797)
-                : const Color(0xFFE4E7EC),
-            borderRadius: BorderRadius.circular(4),
-          ),
-        );
-      }),
+    return Semantics(
+      label: 'Page ${current + 1} sur $count',
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: List.generate(count, (i) {
+          final isActive = i == current;
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            width: isActive ? 22 : 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: isActive ? AppColors.primary : AppColors.border,
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+            ),
+          );
+        }),
+      ),
     );
   }
 }
 
-// ── Action buttons ────────────────────────────────────────────────────────────
-
-class _ActionButtons extends StatelessWidget {
-  const _ActionButtons({
-    required this.slide,
-    required this.isLastPage,
-    required this.onPrimary,
-    required this.onSecondary,
-  });
-
-  final _SlideData slide;
-  final bool isLastPage;
-  final VoidCallback onPrimary;
-  final VoidCallback onSecondary;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // Primary button — filled purple.
-        FilledButton(
-          onPressed: onPrimary,
-          style: FilledButton.styleFrom(
-            backgroundColor: const Color(0xFF184797),
-            minimumSize: const Size.fromHeight(52),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-          ),
-          child: Text(
-            slide.primaryLabel,
-            style: const TextStyle(
-              fontFamily: 'Plus Jakarta Sans',
-              fontWeight: FontWeight.w600,
-              fontSize: 16,
-              color: Colors.white,
-            ),
-          ),
-        ),
-
-        if (slide.secondaryLabel != null) ...[
-          const SizedBox(height: 12),
-
-          // Secondary button — outlined purple on last slide, ghost on others.
-          OutlinedButton(
-            onPressed: onSecondary,
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size.fromHeight(52),
-              side: BorderSide(
-                color: isLastPage
-                    ? const Color(0xFF184797)
-                    : const Color(0xFFE4E7EC),
-                width: 1.5,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-            child: Text(
-              slide.secondaryLabel!,
-              style: TextStyle(
-                fontFamily: 'Plus Jakarta Sans',
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
-                color: isLastPage
-                    ? const Color(0xFF184797)
-                    : const Color(0xFF667085),
-              ),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-// ── Data model ────────────────────────────────────────────────────────────────
+// ── Données ──────────────────────────────────────────────────────────────────
 
 class _SlideData {
   const _SlideData({
-    required this.illustrationIndex,
+    required this.illustration,
     required this.title,
     required this.body,
-    required this.primaryLabel,
-    required this.secondaryLabel,
+    this.highlightTitle = false,
   });
 
-  final int illustrationIndex;
+  final _Illustration illustration;
   final String title;
   final String body;
-  final String primaryLabel;
-  final String? secondaryLabel;
+
+  /// Ajoute « Témoignages de Gloire » (« Gloire » en orange) sous le titre.
+  final bool highlightTitle;
 }

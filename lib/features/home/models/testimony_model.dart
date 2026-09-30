@@ -86,6 +86,77 @@ class TestimonyStats {
   );
 }
 
+// ── Preuves (privées) ────────────────────────────────────────────────────────
+
+/// Pièce justificative jointe à un témoignage (image ou PDF). Jamais publiée :
+/// l'API ne la renvoie qu'à l'auteur et à l'équipe de modération.
+/// [url] est protégée : l'en-tête `Authorization: Bearer <jeton>` est requis.
+class TestimonyProof {
+  const TestimonyProof({
+    required this.id,
+    required this.position,
+    required this.name,
+    required this.url,
+    this.mimeType,
+    this.size = 0,
+    this.isPdf = false,
+  });
+
+  final String id;
+
+  /// Emplacement 1 ou 2.
+  final int position;
+  final String name;
+  final String url;
+  final String? mimeType;
+
+  /// Taille en octets.
+  final int size;
+  final bool isPdf;
+
+  /// Taille lisible (« 245 Ko », « 1,2 Mo »).
+  String get formattedSize {
+    if (size <= 0) return '';
+    if (size < 1024 * 1024) return '${(size / 1024).ceil()} Ko';
+    return '${(size / (1024 * 1024)).toStringAsFixed(1).replaceAll('.', ',')} Mo';
+  }
+
+  /// `null` si l'élément est inexploitable (ni identifiant ni adresse).
+  static TestimonyProof? fromJson(dynamic raw, {String? Function(String?)? absUrl}) {
+    if (raw is! Map) return null;
+    final id  = raw['id']?.toString() ?? '';
+    final url = raw['url']?.toString() ?? '';
+    if (id.isEmpty || url.isEmpty) return null;
+    final mime = (raw['mimeType'] ?? raw['mime_type'])?.toString();
+    final name = raw['name']?.toString() ?? '';
+    final pdf  = raw['isPdf'] ?? raw['is_pdf'];
+    final size = raw['size'];
+    final pos  = raw['position'];
+    return TestimonyProof(
+      id: id,
+      position: pos is num ? pos.toInt() : int.tryParse('$pos') ?? 1,
+      name: name.isEmpty ? 'Preuve' : name,
+      url: absUrl?.call(url) ?? url,
+      mimeType: mime,
+      size: size is num ? size.toInt() : int.tryParse('$size') ?? 0,
+      isPdf: pdf is bool
+          ? pdf
+          : (mime == 'application/pdf' || name.toLowerCase().endsWith('.pdf')),
+    );
+  }
+
+  /// Liste `proofs` du JSON (absente pour le public → liste vide), triée par position.
+  static List<TestimonyProof> parseList(dynamic raw,
+      {String? Function(String?)? absUrl}) {
+    if (raw is! List) return const [];
+    return raw
+        .map((e) => TestimonyProof.fromJson(e, absUrl: absUrl))
+        .whereType<TestimonyProof>()
+        .toList()
+      ..sort((a, b) => a.position.compareTo(b.position));
+  }
+}
+
 // ── Base testimony ───────────────────────────────────────────────────────────
 
 sealed class Testimony {
@@ -101,6 +172,7 @@ sealed class Testimony {
     this.isPrayed = false,
     this.isSaved = false,
     this.shareUrl,
+    this.proofs = const [],
   });
 
   final String id;
@@ -116,6 +188,9 @@ sealed class Testimony {
 
   /// Lien public renvoyé par l'API (`share_url`), intercepté par l'app.
   final String? shareUrl;
+
+  /// Preuves privées : présentes seulement pour l'auteur et la modération.
+  final List<TestimonyProof> proofs;
 
   /// Lien à partager : `share_url` du serveur, sinon même format que le
   /// backend (APP_URL/testimonies/{id}) pour les témoignages en cache local.
@@ -145,6 +220,7 @@ final class TextTestimony extends Testimony {
     super.isPrayed,
     super.isSaved,
     super.shareUrl,
+    super.proofs,
   });
 
   final String preview;
@@ -179,6 +255,7 @@ final class AudioTestimony extends Testimony {
     super.isPrayed,
     super.isSaved,
     super.shareUrl,
+    super.proofs,
   });
 
   final int     durationSeconds;
@@ -222,11 +299,13 @@ final class VideoTestimony extends Testimony {
     this.renditionsStatus,
     this.bibleVerse,
     this.bibleVerseRef,
+    this.youtubeId,
     super.isFeatured,
     super.isLiked,
     super.isPrayed,
     super.isSaved,
     super.shareUrl,
+    super.proofs,
   });
 
   final int     durationSeconds;
@@ -241,6 +320,12 @@ final class VideoTestimony extends Testimony {
   final String? renditionsStatus;
   final String? bibleVerse;
   final String? bibleVerseRef;
+
+  /// Identifiant YouTube (11 caractères) : la vidéo est lue depuis YouTube,
+  /// sans fichier sur le serveur (pas de versions, pas de sélection de qualité).
+  final String? youtubeId;
+
+  bool get isYouTube => youtubeId != null && youtubeId!.isNotEmpty;
 
   String get formattedDuration {
     final m = durationSeconds ~/ 60;

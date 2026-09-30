@@ -197,6 +197,9 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
 
   bool get _metered => ref.read(isMeteredConnectionProvider).value ?? true;
 
+  static bool _isNetwork(String source) =>
+      source.startsWith('http://') || source.startsWith('https://');
+
   ResolvedMedia? _resolveFor(AudioTestimony t, {AudioQuality? override}) =>
       resolveAudioTestimony(
         t,
@@ -244,12 +247,14 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
         clearError: true,
       );
 
-      final isNetwork =
-          source.startsWith('http://') || source.startsWith('https://');
-      if (isNetwork) {
-        await _player.setUrl(source);
+      // Fichier téléchargé correspondant à cette URL : lecture locale.
+      final local = _isNetwork(source) ? OfflineMedia.find(original: source) : null;
+      final target = local ?? source;
+      if (_isNetwork(target)) {
+        await _player.setUrl(target);
       } else {
-        await _player.setFilePath(source);
+        await _player.setFilePath(
+            target.startsWith('file://') ? Uri.parse(target).toFilePath() : target);
       }
       await _player.play();
     } catch (e) {
@@ -331,13 +336,28 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
     final start = testimonies.isEmpty
         ? null
         : testimonies[startIndex.clamp(0, testimonies.length - 1)];
+    // Mode hors ligne : seuls les témoignages téléchargés sont lisibles.
+    final offline = ref.read(playbackPreferencesProvider).offlineMode;
     final list = testimonies
-        .where((t) =>
-            (t.mediaPath?.isNotEmpty ?? false) || t.renditions.isNotEmpty)
+        .where((t) => offline
+            ? _resolveFor(t) != null
+            : (t.mediaPath?.isNotEmpty ?? false) ||
+                t.renditions.isNotEmpty ||
+                OfflineMedia.find(id: t.id) != null)
         .toList();
-    if (list.isEmpty) return;
+    if (list.isEmpty) {
+      if (offline) {
+        state = state.copyWith(
+          error: "Ce témoignage n'est pas téléchargé (mode hors ligne).",
+        );
+      }
+      return;
+    }
     _testimonies = list;
-    _queue = [for (final t in list) _resolveFor(t)?.url ?? t.mediaPath ?? ''];
+    _queue = [
+      for (final t in list)
+        _resolveFor(t)?.url ?? (offline ? '' : t.mediaPath ?? ''),
+    ];
     state = state.copyWith(
       queueLength: _queue.length,
       clearQualityOverride: true,
@@ -404,7 +424,11 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
     if (_queue.isNotEmpty) _queue[_queueIndex] = url;
     try {
       state = state.copyWith(url: url, isLoading: true, clearError: true);
-      await _player.setUrl(url, initialPosition: pos);
+      if (_isNetwork(url)) {
+        await _player.setUrl(url, initialPosition: pos);
+      } else {
+        await _player.setFilePath(url, initialPosition: pos);
+      }
       if (wasPlaying) await _player.play();
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());

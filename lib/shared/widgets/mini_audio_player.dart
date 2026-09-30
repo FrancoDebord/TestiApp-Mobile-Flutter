@@ -217,7 +217,7 @@ class _MiniPlayerContent extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withAlpha(18),
+            color: AppColors.primaryDark.withValues(alpha: 0.08),
             blurRadius: 12,
             offset: const Offset(0, -4),
           ),
@@ -326,10 +326,10 @@ class _SeekBarState extends State<_SeekBar> {
         trackHeight: 2.5,
         thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
         overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
-        activeTrackColor: AppColors.primary,
+        activeTrackColor: AppColors.secondary,
         inactiveTrackColor: AppColors.border,
-        thumbColor: AppColors.primary,
-        overlayColor: AppColors.primary.withAlpha(30),
+        thumbColor: AppColors.secondary,
+        overlayColor: AppColors.secondarySoft,
       ),
       child: SizedBox(
         height: 18,

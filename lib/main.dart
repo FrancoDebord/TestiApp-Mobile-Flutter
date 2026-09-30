@@ -13,6 +13,8 @@ import 'core/router/app_router.dart';
 import 'core/router/app_routes.dart';
 import 'features/auth/providers/auth_notifier.dart'
     show AuthStateAuthenticated, authStateProvider, currentUserProvider;
+import 'features/downloads/providers/downloads_provider.dart'
+    show downloadsProvider;
 import 'features/home/providers/home_providers.dart' show feedNotifierProvider;
 import 'firebase_options.dart';
 import 'core/theme/app_colors.dart';
@@ -141,6 +143,8 @@ class _TemoignagesAppState extends ConsumerState<TemoignagesApp>
   Widget build(BuildContext context) {
     final router = ref.watch(appRouterProvider);
     final locale = ref.watch(localeProvider);
+    // Charge l'index des téléchargements dès le démarrage (lecture hors ligne).
+    ref.watch(downloadsProvider);
 
     // Init FCM as soon as the user is authenticated.
     ref.listen(authStateProvider, (_, next) {

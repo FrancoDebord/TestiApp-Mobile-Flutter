@@ -5,6 +5,9 @@ import 'dart:io' show File;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../core/theme/app_tokens.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -17,6 +20,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../services/api_service.dart' show LaravelApiException;
 import '../../../shared/models/user_model.dart'
     show AccountType, OrganizationType;
+import '../../../shared/widgets/app_button.dart';
 import '../widgets/auth_widgets.dart';
 
 // =============================================================================
@@ -108,35 +112,35 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             const SizedBox(height: 8),
             Container(width: 36, height: 4,
                 decoration: BoxDecoration(
-                    color: const Color(0xFFE4E7EC),
+                    color: AppColors.border,
                     borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 16),
             ListTile(
               leading: const CircleAvatar(
-                  backgroundColor: Color(0xFFEAF1FC),
+                  backgroundColor: AppColors.primarySoft,
                   child: Icon(Icons.photo_library_rounded,
-                      color: Color(0xFF184797))),
+                      color: AppColors.primary)),
               title: Text(l10n.editGallery,
-                  style: const TextStyle(fontFamily: 'Plus Jakarta Sans')),
+                  style: const TextStyle(fontFamily: AppFonts.family)),
               onTap: () => Navigator.pop(sheetContext, ImageSource.gallery),
             ),
             ListTile(
               leading: const CircleAvatar(
-                  backgroundColor: Color(0xFFEAF1FC),
+                  backgroundColor: AppColors.primarySoft,
                   child: Icon(Icons.camera_alt_rounded,
-                      color: Color(0xFF184797))),
+                      color: AppColors.primary)),
               title: Text(l10n.editCamera,
-                  style: const TextStyle(fontFamily: 'Plus Jakarta Sans')),
+                  style: const TextStyle(fontFamily: AppFonts.family)),
               onTap: () => Navigator.pop(sheetContext, ImageSource.camera),
             ),
             if (_avatarPath != null)
               ListTile(
                 leading: const CircleAvatar(
-                    backgroundColor: Color(0xFFFEF3F2),
+                    backgroundColor: AppColors.dangerSoft,
                     child: Icon(Icons.delete_outline_rounded,
-                        color: Color(0xFFD92D20))),
+                        color: AppColors.danger)),
                 title: const Text('Retirer',
-                    style: TextStyle(fontFamily: 'Plus Jakarta Sans')),
+                    style: TextStyle(fontFamily: AppFonts.family)),
                 onTap: () {
                   Navigator.pop(sheetContext);
                   setState(() => _avatarPath = null);
@@ -351,74 +355,28 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     final errorMessage = _errorMessage;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF184797),
-      body: Column(
-        children: [
-          // ── Purple wave header ─────────────────────────────────────────────
-          AuthWaveHeader(
-            child: SafeArea(
-              bottom: false,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const SizedBox(height: 16),
-                  Container(
-                    width: 56,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withAlpha(26),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                          color: Colors.white.withAlpha(77), width: 1.5),
-                    ),
-                    child: const Center(
-                      child: Text(
-                        '✝',
-                        style: TextStyle(
-                            color: Colors.white, fontSize: 24, height: 1),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  const Text(
-                    'Créer un compte',
-                    style: TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
-                      fontWeight: FontWeight.w600,
-                      fontSize: 22,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Rejoignez la communauté Témoignages',
-                    style: TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
-                      fontSize: 13,
-                      color: Colors.white.withAlpha(204),
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-                ],
-              ),
-            ),
-          ),
-
-          // ── White scrollable body ──────────────────────────────────────────
-          Expanded(
-            child: Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFFF8FAFC),
-                borderRadius:
-                    BorderRadius.vertical(top: Radius.circular(28)),
-              ),
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 28, 24, 40),
+                padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.xxl, 0, AppSpacing.xxl, 40),
                 child: Form(
                   key: _formKey,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      AuthScreenHeader(
+                        title: 'Créer un compte',
+                        subtitle: 'Rejoignez une communauté qui partage la '
+                            'gloire de Dieu.',
+                        onBack: () => context.canPop()
+                            ? context.pop()
+                            : context.goNamed(AppRoutes.login),
+                      ),
+                      const SizedBox(height: AppSpacing.xxl),
                       // Choix du type de compte.
                       _AccountTypeSelector(
                         value: _accountType,
@@ -572,7 +530,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             _obscurePassword
                                 ? Icons.visibility_off_outlined
                                 : Icons.visibility_outlined,
-                            color: const Color(0xFF667085),
+                            color: AppColors.textSecondary,
                             size: 20,
                           ),
                           onPressed: () => setState(
@@ -604,7 +562,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             _obscureConfirm
                                 ? Icons.visibility_off_outlined
                                 : Icons.visibility_outlined,
-                            color: const Color(0xFF667085),
+                            color: AppColors.textSecondary,
                             size: 20,
                           ),
                           onPressed: () => setState(
@@ -639,45 +597,27 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       const SizedBox(height: 16),
 
                       // Google sign-in.
-                      OutlinedButton.icon(
+                      AppButton(
+                        label: 'Continuer avec Google',
+                        variant: AppButtonVariant.outline,
+                        leading: const GoogleGMark(size: 20),
+                        fullWidth: true,
                         onPressed: isLoading ? null : _signInWithGoogle,
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size.fromHeight(48),
-                          side: const BorderSide(
-                              color: Color(0xFFDB4437), width: 1.5),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                          backgroundColor:
-                              const Color(0xFFDB4437).withAlpha(12),
-                          foregroundColor: const Color(0xFFDB4437),
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 12),
-                        ),
-                        icon: const Icon(Icons.g_mobiledata_rounded,
-                            size: 22, color: Color(0xFFDB4437)),
-                        label: const Text(
-                          'Continuer avec Google',
-                          style: TextStyle(
-                            fontFamily: 'Plus Jakarta Sans',
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                            color: Color(0xFFDB4437),
-                          ),
-                        ),
                       ),
 
                       const SizedBox(height: 28),
 
                       // Login link.
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           const Text(
                             'Déjà inscrit ? ',
                             style: TextStyle(
-                              fontFamily: 'Plus Jakarta Sans',
+                              fontFamily: AppFonts.family,
                               fontSize: 14,
-                              color: Color(0xFF667085),
+                              color: AppColors.textSecondary,
                             ),
                           ),
                           GestureDetector(
@@ -685,10 +625,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             child: const Text(
                               'Se connecter',
                               style: TextStyle(
-                                fontFamily: 'Plus Jakarta Sans',
+                                fontFamily: AppFonts.family,
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
-                                color: Color(0xFF184797),
+                                color: AppColors.primary,
                               ),
                             ),
                           ),
@@ -698,9 +638,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                 ),
               ),
-            ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -741,10 +680,10 @@ class _AvatarPicker extends StatelessWidget {
           Text(
             isOrganization ? 'Logo' : 'Photo de profil',
             style: const TextStyle(
-              fontFamily: 'Plus Jakarta Sans',
+              fontFamily: AppFonts.family,
               fontSize: 12,
               fontWeight: FontWeight.w500,
-              color: Color(0xFF667085),
+              color: AppColors.textSecondary,
             ),
           ),
         ],
@@ -766,15 +705,15 @@ class _AvatarPicker extends StatelessWidget {
             height: 88,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: const Color(0xFFEAF1FC),
+              color: AppColors.primarySoft,
               border: Border.all(
-                  color: const Color(0xFF184797).withAlpha(60), width: 2),
+                  color: AppColors.primary.withAlpha(60), width: 2),
               image: image == null
                   ? null
                   : DecorationImage(image: image, fit: BoxFit.cover),
             ),
             child: image == null
-                ? Icon(icon, size: 48, color: const Color(0xFF184797))
+                ? Icon(icon, size: 48, color: AppColors.primary)
                 : null,
           ),
           Positioned(
@@ -784,7 +723,7 @@ class _AvatarPicker extends StatelessWidget {
               width: 30,
               height: 30,
               decoration: const BoxDecoration(
-                color: Color(0xFFF79009),
+                color: AppColors.secondary,
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -818,10 +757,10 @@ class _AccountTypeSelector extends StatelessWidget {
         const Text(
           'Type de compte',
           style: TextStyle(
-            fontFamily: 'Plus Jakarta Sans',
+            fontFamily: AppFonts.family,
             fontWeight: FontWeight.w600,
             fontSize: 14,
-            color: Color(0xFF263238),
+            color: AppColors.textPrimary,
           ),
         ),
         const SizedBox(height: 10),
@@ -860,7 +799,7 @@ class _AccountTypeCard extends StatelessWidget {
   final bool selected;
   final VoidCallback? onTap;
 
-  static const _purple = Color(0xFF184797);
+  static const _purple = AppColors.primary;
 
   @override
   Widget build(BuildContext context) {
@@ -868,7 +807,7 @@ class _AccountTypeCard extends StatelessWidget {
       button: true,
       selected: selected,
       child: Material(
-        color: selected ? const Color(0xFFF5F3FF) : Colors.white,
+        color: selected ? AppColors.primarySoft : Colors.white,
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           onTap: onTap,
@@ -879,7 +818,7 @@ class _AccountTypeCard extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: selected ? _purple : const Color(0xFFE4E7EC),
+                color: selected ? _purple : AppColors.border,
                 width: selected ? 2 : 1.2,
               ),
             ),
@@ -889,7 +828,7 @@ class _AccountTypeCard extends StatelessWidget {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: selected ? _purple : const Color(0xFFEAF1FC),
+                    color: selected ? _purple : AppColors.primarySoft,
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Icon(icon,
@@ -903,19 +842,19 @@ class _AccountTypeCard extends StatelessWidget {
                       Text(
                         title,
                         style: const TextStyle(
-                          fontFamily: 'Plus Jakarta Sans',
+                          fontFamily: AppFonts.family,
                           fontWeight: FontWeight.w600,
                           fontSize: 15,
-                          color: Color(0xFF263238),
+                          color: AppColors.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         subtitle,
                         style: const TextStyle(
-                          fontFamily: 'Plus Jakarta Sans',
+                          fontFamily: AppFonts.family,
                           fontSize: 12.5,
-                          color: Color(0xFF667085),
+                          color: AppColors.textSecondary,
                         ),
                       ),
                     ],
@@ -925,7 +864,7 @@ class _AccountTypeCard extends StatelessWidget {
                   selected
                       ? Icons.radio_button_checked_rounded
                       : Icons.radio_button_unchecked_rounded,
-                  color: selected ? _purple : const Color(0xFFD0D5DD),
+                  color: selected ? _purple : AppColors.inputBorder,
                 ),
               ],
             ),
@@ -946,24 +885,24 @@ class _VerificationNote extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFEAF1FC),
+        color: AppColors.primarySoft,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFBFDBFE)),
+        border: Border.all(color: AppColors.primarySoft),
       ),
       child: const Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.verified_rounded, color: Color(0xFF1D9BF0), size: 20),
+          Icon(Icons.verified_rounded, color: AppColors.primary, size: 20),
           SizedBox(width: 10),
           Expanded(
             child: Text(
               'Votre organisation sera vérifiée par notre équipe. Le badge '
               'vérifié apparaîtra ensuite sur votre profil et vos témoignages.',
               style: TextStyle(
-                fontFamily: 'Plus Jakarta Sans',
+                fontFamily: AppFonts.family,
                 fontSize: 13,
                 height: 1.4,
-                color: Color(0xFF103675),
+                color: AppColors.primaryDark,
               ),
             ),
           ),
@@ -994,10 +933,10 @@ class _OrganizationTypeDropdown extends StatelessWidget {
         const Text(
           "Type d'organisation",
           style: TextStyle(
-            fontFamily: 'Plus Jakarta Sans',
+            fontFamily: AppFonts.family,
             fontWeight: FontWeight.w500,
             fontSize: 13,
-            color: Color(0xFF263238),
+            color: AppColors.textPrimary,
           ),
         ),
         const SizedBox(height: 6),
@@ -1005,9 +944,10 @@ class _OrganizationTypeDropdown extends StatelessWidget {
           initialValue: value,
           hint: const Text(
             'Sélectionnez le type',
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontFamily: 'Plus Jakarta Sans',
-              color: Color(0xFFD0D5DD),
+              fontFamily: AppFonts.family,
+              color: AppColors.textSecondary,
               fontSize: 15,
             ),
           ),
@@ -1015,11 +955,11 @@ class _OrganizationTypeDropdown extends StatelessWidget {
           validator: (v) => v == null ? 'Veuillez choisir un type' : null,
           isExpanded: true,
           icon: const Icon(Icons.keyboard_arrow_down_rounded,
-              color: Color(0xFF98A2B3)),
+              color: AppColors.textSecondary),
           style: const TextStyle(
-            fontFamily: 'Plus Jakarta Sans',
+            fontFamily: AppFonts.family,
             fontSize: 15,
-            color: Color(0xFF263238),
+            color: AppColors.textPrimary,
           ),
           decoration: countryFieldDecoration(prefix: Icons.category_outlined),
           items: OrganizationType.values
@@ -1040,11 +980,11 @@ class _PasswordStrengthBar extends StatelessWidget {
     'Très faible', 'Faible', 'Moyen', 'Fort', 'Très fort'
   ];
   static const _colors = [
-    Color(0xFFD92D20),
-    Color(0xFFF18717),
-    Color(0xFFF79009),
-    Color(0xFF12B76A),
-    Color(0xFF12B76A),
+    AppColors.danger,
+    AppColors.secondary,
+    AppColors.secondary,
+    AppColors.success,
+    AppColors.success,
   ];
 
   @override
@@ -1063,7 +1003,7 @@ class _PasswordStrengthBar extends StatelessWidget {
                 margin: const EdgeInsets.only(right: 4),
                 height: 4,
                 decoration: BoxDecoration(
-                  color: i < strength ? color : const Color(0xFFE4E7EC),
+                  color: i < strength ? color : AppColors.border,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -1074,7 +1014,7 @@ class _PasswordStrengthBar extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            fontFamily: 'Plus Jakarta Sans',
+            fontFamily: AppFonts.family,
             fontSize: 11,
             color: color,
             fontWeight: FontWeight.w500,
@@ -1107,11 +1047,11 @@ class _TermsCheckbox extends StatelessWidget {
           child: Checkbox(
             value: checked,
             onChanged: onChanged,
-            activeColor: const Color(0xFF184797),
+            activeColor: AppColors.primary,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(4),
             ),
-            side: const BorderSide(color: Color(0xFFE4E7EC), width: 1.5),
+            side: const BorderSide(color: AppColors.border, width: 1.5),
           ),
         ),
         const SizedBox(width: 10),
@@ -1119,9 +1059,9 @@ class _TermsCheckbox extends StatelessWidget {
           child: RichText(
             text: const TextSpan(
               style: TextStyle(
-                fontFamily: 'Plus Jakarta Sans',
+                fontFamily: AppFonts.family,
                 fontSize: 13,
-                color: Color(0xFF667085),
+                color: AppColors.textSecondary,
                 height: 1.5,
               ),
               children: [
@@ -1129,7 +1069,7 @@ class _TermsCheckbox extends StatelessWidget {
                 TextSpan(
                   text: "Conditions Générales d'Utilisation",
                   style: TextStyle(
-                    color: Color(0xFF184797),
+                    color: AppColors.primary,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -1137,7 +1077,7 @@ class _TermsCheckbox extends StatelessWidget {
                 TextSpan(
                   text: 'Politique de confidentialité',
                   style: TextStyle(
-                    color: Color(0xFF184797),
+                    color: AppColors.primary,
                     fontWeight: FontWeight.w500,
                   ),
                 ),

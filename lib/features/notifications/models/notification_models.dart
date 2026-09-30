@@ -39,20 +39,20 @@ extension NotificationTypeLabel on NotificationType {
   }
 }
 
-/// Filter tabs on the notifications screen.
-enum NotificationFilterTab { all, comments, reactions, system }
+/// Onglets du filtre de l'écran Notifications (maquette : Toutes / Nouveaux /
+/// Populaires). « Nouveaux » = non lues ; « Populaires » = réactions (j'aime,
+/// prières).
+enum NotificationFilterTab { all, unread, popular }
 
 extension NotificationFilterLabel on NotificationFilterTab {
   String get label {
     switch (this) {
       case NotificationFilterTab.all:
-        return 'Tout';
-      case NotificationFilterTab.comments:
-        return 'Commentaires';
-      case NotificationFilterTab.reactions:
-        return 'Réactions';
-      case NotificationFilterTab.system:
-        return 'Système';
+        return 'Toutes';
+      case NotificationFilterTab.unread:
+        return 'Nouveaux';
+      case NotificationFilterTab.popular:
+        return 'Populaires';
     }
   }
 }
@@ -130,6 +130,30 @@ class AppNotification {
         return testimonyTitle.isNotEmpty
             ? '$actorName est en direct : $testimonyTitle'
             : '$actorName est en direct';
+    }
+  }
+
+  /// Titre court en gras de la notification (maquette écran 10).
+  String get title {
+    switch (type) {
+      case NotificationType.comment:
+        return 'Nouveau commentaire';
+      case NotificationType.like:
+        return 'Témoignage populaire';
+      case NotificationType.prayer:
+        return 'Prière pour vous';
+      case NotificationType.approved:
+        return 'Témoignage approuvé';
+      case NotificationType.newFollowedTestimony:
+        return 'Nouveau témoignage';
+      case NotificationType.pendingCorrection:
+        return 'Correction requise';
+      case NotificationType.organizationVerified:
+        return 'Organisation vérifiée';
+      case NotificationType.organizationRejected:
+        return 'Vérification refusée';
+      case NotificationType.liveStarted:
+        return 'En direct';
     }
   }
 

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_text_styles.dart';
 import '../../features/profile/providers/profile_provider.dart';
 import '../../services/api_service.dart' show LaravelApiException;
 
@@ -62,7 +63,7 @@ Future<bool> showProfileCoverSheet(
           const Padding(
             padding: EdgeInsets.fromLTRB(20, 16, 20, 4),
             child: Text('Photo de couverture',
-                style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w700, fontSize: 16)),
+                style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700, fontSize: 16)),
           ),
           const Padding(
             padding: EdgeInsets.fromLTRB(20, 0, 20, 8),
@@ -71,19 +72,19 @@ Future<bool> showProfileCoverSheet(
           ),
           ListTile(
             leading: const Icon(Icons.photo_library_rounded, color: AppColors.primary),
-            title: const Text('Choisir dans la galerie', style: TextStyle(fontFamily: 'Plus Jakarta Sans')),
+            title: const Text('Choisir dans la galerie', style: TextStyle(fontFamily: AppFonts.family)),
             onTap: () => Navigator.pop(sheet, _CoverAction.gallery),
           ),
           ListTile(
             leading: const Icon(Icons.camera_alt_rounded, color: AppColors.primary),
-            title: const Text('Prendre une photo', style: TextStyle(fontFamily: 'Plus Jakarta Sans')),
+            title: const Text('Prendre une photo', style: TextStyle(fontFamily: AppFonts.family)),
             onTap: () => Navigator.pop(sheet, _CoverAction.camera),
           ),
           if (hasCover)
             ListTile(
               leading: const Icon(Icons.delete_outline_rounded, color: AppColors.danger),
               title: const Text('Retirer la couverture',
-                  style: TextStyle(fontFamily: 'Plus Jakarta Sans', color: AppColors.danger)),
+                  style: TextStyle(fontFamily: AppFonts.family, color: AppColors.danger)),
               onTap: () => Navigator.pop(sheet, _CoverAction.remove),
             ),
           const SizedBox(height: 8),
@@ -95,7 +96,7 @@ Future<bool> showProfileCoverSheet(
 
   final messenger = ScaffoldMessenger.of(context);
   void snack(String msg, {bool error = false}) => messenger.showSnackBar(SnackBar(
-        content: Text(msg, style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13)),
+        content: Text(msg, style: const TextStyle(fontFamily: AppFonts.family, fontSize: 13)),
         backgroundColor: error ? AppColors.danger : AppColors.primary,
         behavior: SnackBarBehavior.floating,
       ));

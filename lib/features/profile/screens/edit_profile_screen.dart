@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
 import '../../../features/auth/providers/auth_notifier.dart'
     show currentUserProvider;
 import '../../../l10n/app_localizations.dart';
@@ -154,20 +155,20 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             const SizedBox(height: 16),
             ListTile(
               leading: const CircleAvatar(
-                  backgroundColor: Color(0xFFEAF1FC),
+                  backgroundColor: AppColors.primarySoft,
                   child: Icon(Icons.photo_library_rounded,
                       color: AppColors.primary)),
               title: Text(l10n.editGallery,
-                  style: const TextStyle(fontFamily: 'Plus Jakarta Sans')),
+                  style: const TextStyle(fontFamily: AppFonts.family)),
               onTap: () => Navigator.pop(context, ImageSource.gallery),
             ),
             ListTile(
               leading: const CircleAvatar(
-                  backgroundColor: Color(0xFFEAF1FC),
+                  backgroundColor: AppColors.primarySoft,
                   child: Icon(Icons.camera_alt_rounded,
                       color: AppColors.primary)),
               title: Text(l10n.editCamera,
-                  style: const TextStyle(fontFamily: 'Plus Jakarta Sans')),
+                  style: const TextStyle(fontFamily: AppFonts.family)),
               onTap: () => Navigator.pop(context, ImageSource.camera),
             ),
             const SizedBox(height: 8),
@@ -263,7 +264,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg,
-            style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13)),
+            style: const TextStyle(fontFamily: AppFonts.family, fontSize: 13)),
         backgroundColor:
             success ? AppColors.primary : AppColors.danger,
         behavior: SnackBarBehavior.floating,
@@ -298,7 +299,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       appBar: AppBar(
         title: Text(l10n.profileEdit,
             style: const TextStyle(
-              fontFamily: 'Plus Jakarta Sans',
+              fontFamily: AppFonts.family,
               fontWeight: FontWeight.w600,
               fontSize: 17,
               color: AppColors.textPrimary,
@@ -326,7 +327,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   onPressed: _save,
                   child: Text(l10n.detailSave,
                       style: const TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
+                        fontFamily: AppFonts.family,
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
                         color: AppColors.primary,
@@ -389,7 +390,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               child: Text(
                   _isOrg ? 'Logo · touchez pour modifier' : l10n.editTapToChange,
                   style: const TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
+                      fontFamily: AppFonts.family,
                       fontSize: 12,
                       color: AppColors.textSecondary)),
             ),
@@ -417,7 +418,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   return ChoiceChip(
                     label: Text(t.label,
                         style: TextStyle(
-                          fontFamily: 'Plus Jakarta Sans',
+                          fontFamily: AppFonts.family,
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
                           color: selected
@@ -512,7 +513,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     child: Text(
                       t,
                       style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
+                        fontFamily: AppFonts.family,
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
                         color: selected
@@ -619,7 +620,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     : Text(
                         l10n.editSaveProfile,
                         style: const TextStyle(
-                          fontFamily: 'Plus Jakarta Sans',
+                          fontFamily: AppFonts.family,
                           fontWeight: FontWeight.w600,
                           fontSize: 16,
                         ),
@@ -675,7 +676,7 @@ class _CoverPicker extends ConsumerWidget {
                         const SizedBox(width: 6),
                         Text(hasCover ? 'Modifier la couverture' : 'Ajouter une photo de couverture',
                             style: TextStyle(
-                                fontFamily: 'Plus Jakarta Sans',
+                                fontFamily: AppFonts.family,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
                                 color: hasCover ? Colors.white : AppColors.textPrimary)),
@@ -701,7 +702,7 @@ class _SectionTitle extends StatelessWidget {
     return Text(
       text,
       style: const TextStyle(
-        fontFamily: 'Plus Jakarta Sans',
+        fontFamily: AppFonts.family,
         fontWeight: FontWeight.w600,
         fontSize: 15,
         color: AppColors.textPrimary,
@@ -719,7 +720,7 @@ class _Label extends StatelessWidget {
     return Text(
       text,
       style: const TextStyle(
-        fontFamily: 'Plus Jakarta Sans',
+        fontFamily: AppFonts.family,
         fontWeight: FontWeight.w500,
         fontSize: 13,
         color: AppColors.textPrimary,
@@ -763,20 +764,20 @@ class _Field extends StatelessWidget {
           maxLength: maxLength,
           textCapitalization: textCapitalization,
           style: const TextStyle(
-              fontFamily: 'Plus Jakarta Sans', fontSize: 14,
+              fontFamily: AppFonts.family, fontSize: 14,
               color: AppColors.textPrimary),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: const TextStyle(
                 color: AppColors.textSecondary, fontSize: 14,
-                fontFamily: 'Plus Jakarta Sans'),
+                fontFamily: AppFonts.family),
             prefixIcon: prefixIcon != null
                 ? Icon(prefixIcon, size: 18, color: AppColors.textSecondary)
                 : null,
             filled: true,
             fillColor: AppColors.surface,
             counterStyle: const TextStyle(
-                fontFamily: 'Plus Jakarta Sans', fontSize: 11,
+                fontFamily: AppFonts.family, fontSize: 11,
                 color: AppColors.textSecondary),
             contentPadding: EdgeInsets.symmetric(
               horizontal: prefixIcon != null ? 0 : 14,
@@ -844,7 +845,7 @@ class _GenderSelector extends StatelessWidget {
                   label,
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontFamily: 'Plus Jakarta Sans',
+                    fontFamily: AppFonts.family,
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
                     color: isSelected
@@ -877,7 +878,7 @@ class _VerifiedPhone extends StatelessWidget {
           children: [
             const Icon(Icons.phone_outlined, size: 20, color: AppColors.textSecondary),
             const SizedBox(width: 8),
-            Text(phone, style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 15, color: AppColors.textPrimary)),
+            Text(phone, style: const TextStyle(fontFamily: AppFonts.family, fontSize: 15, color: AppColors.textPrimary)),
             const SizedBox(width: 8),
             const Icon(Icons.verified_rounded, size: 18, color: AppColors.success),
             const SizedBox(width: 4),

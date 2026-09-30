@@ -111,9 +111,15 @@ class LiveRepository {
     String? description,
     String? categorySlug,
     bool commentsEnabled = true,
+    LiveSource source = LiveSource.browser,
+    String? cameraUrl,
   }) =>
       _guard(() async {
         final res = await _api.post<dynamic>(AppConstants.lives, data: {
+          // Caméra IP / encodeur : docs/fonctionnalites/lives-camera-ip.md
+          'source': source.apiValue,
+          if (source == LiveSource.url && cameraUrl != null)
+            'camera_url': cameraUrl.trim(),
           'title': title,
           if (description != null && description.isNotEmpty)
             'description': description,

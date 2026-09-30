@@ -9,6 +9,7 @@ import '../../../core/local_db/daos/pending_ops_dao.dart';
 import '../../../core/providers/categories_provider.dart';
 import '../../../core/local_db/daos/testimony_dao.dart';
 import '../../../core/local_db/database_service.dart';
+import '../../../core/media/youtube.dart';
 import '../../../features/auth/providers/auth_notifier.dart'
     show currentUserProvider;
 import '../../../features/home/models/testimony_model.dart';
@@ -105,6 +106,23 @@ class PublishNotifier extends Notifier<PublishDraft> {
   void updateThumbnailIndex(int index) =>
       state = state.copyWith(videoThumbnailIndex: index);
 
+  // Vidéo YouTube (administrateurs) : le lien remplace le fichier vidéo.
+  void setUseYouTube(bool value) => state = state.copyWith(useYouTube: value);
+
+  void updateYouTubeUrl(String value) =>
+      state = state.copyWith(youtubeUrl: value.trim());
+
+  // ── Preuves (2 emplacements) ────────────────────────────────────────────────
+
+  void setProof(int position, ProofAttachment file) =>
+      state = state.copyWith(proofs: {...state.proofs, position: file});
+
+  void removeProof(int position) => state = state.copyWith(
+      proofs: {...state.proofs}..remove(position));
+
+  /// Publier aussi les preuves (docs serveur fonctionnalites/preuves.md).
+  void setProofsPublic(bool value) => state = state.copyWith(proofsPublic: value);
+
   // ── Step 3: Publication ─────────────────────────────────────────────────────
 
   void setVisibility(TestimonyVisibility v) =>
@@ -173,7 +191,13 @@ class PublishNotifier extends Notifier<PublishDraft> {
       }
     }
 
+    // Lien YouTube (administrateurs) : aucun fichier vidéo à envoyer.
+    final youtubeId = format == TestimonyFormat.video && state.useYouTube
+        ? extractYouTubeId(state.youtubeUrl)
+        : null;
+
     if (format == TestimonyFormat.video &&
+        youtubeId == null &&
         (state.videoPath ?? '').isNotEmpty &&
         state.videoRemoteUrl == null) {
       state = state.copyWith(isUploadingMedia: true);
@@ -204,6 +228,9 @@ class PublishNotifier extends Notifier<PublishDraft> {
         return;
       }
     }
+
+    // Titre facultatif dans le formulaire : repli sur la description.
+    final title    = state.effectiveTitle;
 
     final user     = ref.read(currentUserProvider);
     final userId   = user?.id ?? 'anon';
@@ -237,9 +264,12 @@ class PublishNotifier extends Notifier<PublishDraft> {
         durationSec = state.audioDurationSeconds;
       case TestimonyFormat.video:
         typeStr   = 'video';
-        bodyText  = null;
-        mediaUrl  = state.videoRemoteUrl;
-        durationSec = state.videoDurationSeconds > 0
+        // Description facultative saisie à l'étape 1.
+        bodyText  = state.bodyText.trim().isNotEmpty ? state.bodyText : null;
+        mediaUrl  = youtubeId != null ? null : state.videoRemoteUrl;
+        durationSec = youtubeId != null
+            ? 0
+            : state.videoDurationSeconds > 0
             ? state.videoDurationSeconds
             : (state.videoTrimEnd != Duration.zero
                 ? (state.videoTrimEnd - state.videoTrimStart).inSeconds
@@ -249,9 +279,10 @@ class PublishNotifier extends Notifier<PublishDraft> {
     // ── POST vers l'API ───────────────────────────────────────────────────
     String id = 'local_${DateTime.now().millisecondsSinceEpoch}';
     var savedOffline = false;
+    var created = false;
 
     final postBody = <String, dynamic>{
-      'title'       : state.title,
+      'title'       : title,
       'type'        : typeStr,
       // Facultative dans le carnet privé (le serveur met « autre »).
       'category'    : catSlug.isEmpty ? null : catSlug,
@@ -261,6 +292,11 @@ class PublishNotifier extends Notifier<PublishDraft> {
       'cover_url'   : state.coverImageRemoteUrl,
       'duration'    : durationSec,
       'bible_verse' : state.bibleVerse.isNotEmpty ? state.bibleVerse : null,
+      // Administrateurs seulement (403 sinon) : le serveur force le type vidéo,
+      // aucun fichier et la miniature YouTube en couverture.
+      if (youtubeId != null) 'youtube_url': state.youtubeUrl,
+      // Preuves montrées au public (une fois le témoignage publié) si l'auteur l'accepte.
+      if (state.proofs.isNotEmpty) 'proofs_public': state.proofsPublic,
       'visibility'  : switch (state.visibility) {
         TestimonyVisibility.private => 'private',
         TestimonyVisibility.friends => 'followers', // valeur attendue par l'API
@@ -280,6 +316,7 @@ class PublishNotifier extends Notifier<PublishDraft> {
       );
       debugPrint('═══ PUBLISH ✓ id=${result.data['id']}');
       id = result.data['id']?.toString() ?? id;
+      created = true;
     } on DioException catch (e) {
       debugPrint('═══ PUBLISH DioException type=${e.type} status=${e.response?.statusCode} body=${e.response?.data}');
       final isOffline = e.type == DioExceptionType.connectionError ||
@@ -317,6 +354,31 @@ class PublishNotifier extends Notifier<PublishDraft> {
       return;
     }
 
+    // ── Preuves : envoyées après la création du témoignage ────────────────
+    // Chemin en ligne uniquement : la file hors ligne (PendingOpsDao) ne
+    // rejoue que le POST /testimonies, sans fichiers joints ; les preuves
+    // choisies alors que le serveur est injoignable ne sont pas envoyées.
+    // Un échec n'annule pas la publication (message affiché par l'écran).
+    final failedProofs = <int>[];
+    if (created && !savedOffline) {
+      final api = ref.read(apiServiceProvider);
+      final positions = state.proofs.keys.toList()..sort();
+      for (final position in positions) {
+        try {
+          await api.upload<Map<String, dynamic>>(
+            AppConstants.testimonyProofs(id),
+            filePath: state.proofs[position]!.path,
+            fieldName: 'file',
+            extraFields: {'position': position},
+          );
+        } catch (e) {
+          debugPrint('═══ UPLOAD preuve $position ✗ $e');
+          failedProofs.add(position);
+        }
+      }
+    }
+    state = state.copyWith(failedProofPositions: failedProofs);
+
     // ── Construire l'objet Testimony pour le feed en mémoire ──────────────
     final Testimony testimony;
     final Map<String, dynamic> dbRow;
@@ -326,14 +388,14 @@ class PublishNotifier extends Notifier<PublishDraft> {
         final body = bodyText ?? '';
         final coverUrl = state.coverImageRemoteUrl;
         testimony = TextTestimony(
-          id: id, author: author, title: state.title,
+          id: id, author: author, title: title,
           category: category, createdAt: now, stats: TestimonyStats.zero,
           preview: body,
           coverImageUrl: coverUrl,
         );
         dbRow = _buildRow(
           id: id, userId: userId, authorName: userName,
-          title: state.title, type: 'text', category: category,
+          title: title, type: 'text', category: category,
           bodyText: body, mediaUrl: null, coverUrl: coverUrl,
           durationSec: 0, bibleVerse: state.bibleVerse, now: now,
         );
@@ -342,7 +404,7 @@ class PublishNotifier extends Notifier<PublishDraft> {
         final transcript = bodyText ?? '';
         final coverUrl = state.coverImageRemoteUrl;
         testimony = AudioTestimony(
-          id: id, author: author, title: state.title,
+          id: id, author: author, title: title,
           category: category, createdAt: now, stats: TestimonyStats.zero,
           durationSeconds: durationSec,
           transcriptPreview: transcript.isNotEmpty
@@ -353,7 +415,7 @@ class PublishNotifier extends Notifier<PublishDraft> {
         );
         dbRow = _buildRow(
           id: id, userId: userId, authorName: userName,
-          title: state.title, type: 'audio', category: category,
+          title: title, type: 'audio', category: category,
           bodyText: transcript, mediaUrl: mediaUrl,
           coverUrl: coverUrl, durationSec: durationSec,
           bibleVerse: state.bibleVerse, now: now,
@@ -362,17 +424,20 @@ class PublishNotifier extends Notifier<PublishDraft> {
       case TestimonyFormat.video:
         final coverUrl = state.coverImageRemoteUrl;
         testimony = VideoTestimony(
-          id: id, author: author, title: state.title,
+          id: id, author: author, title: title,
           category: category, createdAt: now, stats: TestimonyStats.zero,
           durationSeconds: durationSec,
-          thumbnailUrl: coverUrl ?? '',
+          thumbnailUrl: youtubeId != null
+              ? youTubeThumbnailUrl(youtubeId)
+              : coverUrl ?? '',
           // Prefer remote URL; fall back to local file if upload URL was not returned.
-          mediaPath: mediaUrl ?? state.videoPath,
+          mediaPath: youtubeId != null ? null : mediaUrl ?? state.videoPath,
+          youtubeId: youtubeId,
         );
         dbRow = _buildRow(
           id: id, userId: userId, authorName: userName,
-          title: state.title, type: 'video', category: category,
-          bodyText: null, mediaUrl: mediaUrl, coverUrl: coverUrl,
+          title: title, type: 'video', category: category,
+          bodyText: bodyText, mediaUrl: mediaUrl, coverUrl: coverUrl,
           durationSec: durationSec, bibleVerse: null, now: now,
         );
     }

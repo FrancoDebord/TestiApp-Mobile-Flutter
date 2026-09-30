@@ -1,9 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:testi_app/core/theme/app_colors.dart';
+import 'package:testi_app/core/theme/app_text_styles.dart';
 
 // ── Enums ──────────────────────────────────────────────────────────────────────
 
-enum AppButtonVariant { primary, secondary, ghost, danger }
+/// Variantes de la charte ARISE & SHINE Krea :
+/// - [primary]   : Krea Blue, texte blanc (action principale)
+/// - [orange]    : Krea Orange, texte blanc (action très importante : Publier…)
+/// - [accent]    : Krea Sun, texte bleu foncé (jamais de texte blanc sur jaune)
+/// - [secondary] : fond blanc, bordure et texte bleus
+/// - [outline]   : fond blanc, bordure grise, texte sombre (Google, e-mail…)
+/// - [ghost]     : sans fond
+/// - [danger]    : rouge (déconnexion, suppression)
+enum AppButtonVariant { primary, orange, accent, secondary, outline, ghost, danger }
 
 enum AppButtonSize { small, medium, large }
 
@@ -16,7 +25,6 @@ class _SizeConfig {
     required this.iconSize,
     required this.textStyle,
     required this.spinnerSize,
-    required this.borderRadius,
   });
 
   final double height;
@@ -24,7 +32,6 @@ class _SizeConfig {
   final double iconSize;
   final TextStyle textStyle;
   final double spinnerSize;
-  final double borderRadius;
 }
 
 const _sizeConfigs = <AppButtonSize, _SizeConfig>{
@@ -33,41 +40,41 @@ const _sizeConfigs = <AppButtonSize, _SizeConfig>{
     horizontalPadding: 14,
     iconSize: 16,
     textStyle: TextStyle(
-      fontFamily: 'Plus Jakarta Sans',
+      fontFamily: AppFonts.family,
       fontWeight: FontWeight.w600,
       fontSize: 13,
-      height: 1,
+      height: 1.1,
     ),
     spinnerSize: 16,
-    borderRadius: 8,
   ),
   AppButtonSize.medium: _SizeConfig(
     height: 48,
     horizontalPadding: 20,
     iconSize: 20,
     textStyle: TextStyle(
-      fontFamily: 'Plus Jakarta Sans',
+      fontFamily: AppFonts.family,
       fontWeight: FontWeight.w600,
       fontSize: 15,
-      height: 1,
+      height: 1.1,
     ),
     spinnerSize: 20,
-    borderRadius: 12,
   ),
   AppButtonSize.large: _SizeConfig(
-    height: 56,
-    horizontalPadding: 28,
+    height: 52,
+    horizontalPadding: 24,
     iconSize: 22,
     textStyle: TextStyle(
-      fontFamily: 'Plus Jakarta Sans',
+      fontFamily: AppFonts.family,
       fontWeight: FontWeight.w600,
       fontSize: 16,
-      height: 1,
+      height: 1.1,
     ),
     spinnerSize: 22,
-    borderRadius: 14,
   ),
 };
+
+/// Arrondi des boutons de la charte : 10 px.
+const double _radius = 10;
 
 // ── Variant configuration ──────────────────────────────────────────────────────
 
@@ -75,63 +82,65 @@ class _VariantConfig {
   const _VariantConfig({
     required this.background,
     required this.foreground,
-    required this.border,
-    required this.disabledBackground,
-    required this.disabledForeground,
-    this.gradient,
+    this.border,
+    this.splash,
   });
 
   final Color background;
   final Color foreground;
-  final Color border;
-  final Color disabledBackground;
-  final Color disabledForeground;
-  final List<Color>? gradient;
+  final Color? border;
+  final Color? splash;
 }
+
+const _disabledBackground = Color(0xFFE4E7EC);
+const _disabledForeground = Color(0xFF98A2B3);
 
 const _variantConfigs = <AppButtonVariant, _VariantConfig>{
   AppButtonVariant.primary: _VariantConfig(
     background: AppColors.primary,
     foreground: Colors.white,
-    border: Colors.transparent,
-    disabledBackground: Color(0xFFD1D5DB),
-    disabledForeground: Color(0xFF98A2B3),
-    gradient: [AppColors.primary, AppColors.primaryLight],
+  ),
+  AppButtonVariant.orange: _VariantConfig(
+    background: AppColors.secondary,
+    foreground: Colors.white,
+  ),
+  AppButtonVariant.accent: _VariantConfig(
+    background: AppColors.sun,
+    foreground: AppColors.primaryDark,
   ),
   AppButtonVariant.secondary: _VariantConfig(
-    background: Colors.transparent,
+    background: AppColors.surface,
     foreground: AppColors.primary,
     border: AppColors.primary,
-    disabledBackground: Colors.transparent,
-    disabledForeground: Color(0xFF98A2B3),
+    splash: AppColors.primarySoft,
+  ),
+  AppButtonVariant.outline: _VariantConfig(
+    background: AppColors.surface,
+    foreground: AppColors.textPrimary,
+    border: AppColors.inputBorder,
+    splash: AppColors.primarySoft,
   ),
   AppButtonVariant.ghost: _VariantConfig(
     background: Colors.transparent,
-    foreground: AppColors.textPrimary,
-    border: Colors.transparent,
-    disabledBackground: Colors.transparent,
-    disabledForeground: Color(0xFF98A2B3),
+    foreground: AppColors.primary,
+    splash: AppColors.primarySoft,
   ),
   AppButtonVariant.danger: _VariantConfig(
     background: AppColors.danger,
     foreground: Colors.white,
-    border: Colors.transparent,
-    disabledBackground: Color(0xFFD1D5DB),
-    disabledForeground: Color(0xFF98A2B3),
   ),
 };
 
 // ── Main widget ────────────────────────────────────────────────────────────────
 
-/// Production-grade button with 4 variants, 3 sizes, loading state, and
-/// disabled state.
+/// Bouton de la charte : 7 variantes, 3 tailles, état de chargement et état
+/// désactivé. Hauteur 48 px (medium), arrondi 10 px, texte 15 px / 600.
 ///
 /// Example:
 /// ```dart
 /// AppButton(
 ///   label: 'Se connecter',
 ///   variant: AppButtonVariant.primary,
-///   size: AppButtonSize.large,
 ///   isLoading: _isLoading,
 ///   onPressed: _handleLogin,
 ///   leadingIcon: Icons.login_rounded,
@@ -146,6 +155,7 @@ class AppButton extends StatelessWidget {
     this.size = AppButtonSize.medium,
     this.isLoading = false,
     this.leadingIcon,
+    this.leading,
     this.trailingIcon,
     this.fullWidth = false,
     super.key,
@@ -157,6 +167,10 @@ class AppButton extends StatelessWidget {
   final AppButtonSize size;
   final bool isLoading;
   final IconData? leadingIcon;
+
+  /// Élément de tête personnalisé (ex. logo Google) ; prioritaire sur
+  /// [leadingIcon].
+  final Widget? leading;
   final IconData? trailingIcon;
   final bool fullWidth;
 
@@ -167,114 +181,82 @@ class AppButton extends StatelessWidget {
     final sc = _sizeConfigs[size]!;
     final vc = _variantConfigs[variant]!;
 
-    final effectiveBackground =
-        _isDisabled ? vc.disabledBackground : vc.background;
-    final effectiveForeground =
-        _isDisabled ? vc.disabledForeground : vc.foreground;
-    final effectiveBorder =
-        _isDisabled ? vc.disabledBackground : vc.border;
+    final hasFill = vc.background != Colors.transparent &&
+        vc.background != AppColors.surface;
+    final background = _isDisabled && hasFill
+        ? _disabledBackground
+        : vc.background;
+    final foreground = _isDisabled ? _disabledForeground : vc.foreground;
+    final borderColor =
+        vc.border == null ? null : (_isDisabled ? _disabledBackground : vc.border);
 
-    Widget content = isLoading
+    final content = isLoading
         ? SizedBox(
             width: sc.spinnerSize,
             height: sc.spinnerSize,
             child: CircularProgressIndicator(
               strokeWidth: 2.5,
-              valueColor: AlwaysStoppedAnimation<Color>(effectiveForeground),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                  hasFill ? vc.foreground : AppColors.primary),
             ),
           )
         : Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (leadingIcon != null) ...[
-                Icon(leadingIcon, size: sc.iconSize, color: effectiveForeground),
+              if (leading != null) ...[
+                leading!,
+                const SizedBox(width: 10),
+              ] else if (leadingIcon != null) ...[
+                Icon(leadingIcon, size: sc.iconSize, color: foreground),
                 const SizedBox(width: 8),
               ],
-              Text(
-                label,
-                style: sc.textStyle.copyWith(color: effectiveForeground),
+              // Flexible : un libellé long se coupe au lieu de déborder.
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: sc.textStyle.copyWith(color: foreground),
+                ),
               ),
               if (trailingIcon != null) ...[
                 const SizedBox(width: 8),
-                Icon(trailingIcon,
-                    size: sc.iconSize, color: effectiveForeground),
+                Icon(trailingIcon, size: sc.iconSize, color: foreground),
               ],
             ],
           );
 
-    // Build the inner decoration
-    final hasGradient =
-        vc.gradient != null && !_isDisabled && variant == AppButtonVariant.primary;
-
-    Widget button = GestureDetector(
-      onTap: _isDisabled ? null : onPressed,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        height: sc.height,
-        width: fullWidth ? double.infinity : null,
-        padding: EdgeInsets.symmetric(horizontal: sc.horizontalPadding),
-        decoration: BoxDecoration(
-          color: hasGradient ? null : effectiveBackground,
-          gradient: hasGradient
-              ? LinearGradient(
-                  colors: vc.gradient!,
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                )
-              : null,
-          borderRadius: BorderRadius.circular(sc.borderRadius),
-          border: effectiveBorder != Colors.transparent
-              ? Border.all(color: effectiveBorder, width: 1.5)
-              : null,
-          boxShadow: hasGradient
-              ? [
-                  BoxShadow(
-                    color: AppColors.primary.withAlpha(70),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : null,
-        ),
-        child: Center(child: content),
-      ),
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(_radius),
+      side: borderColor == null
+          ? BorderSide.none
+          : BorderSide(color: borderColor, width: 1.2),
     );
 
-    // Ghost / secondary get a ripple via Material
-    if (variant == AppButtonVariant.ghost ||
-        variant == AppButtonVariant.secondary) {
-      button = Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: _isDisabled ? null : onPressed,
-          borderRadius: BorderRadius.circular(sc.borderRadius),
-          splashColor: (variant == AppButtonVariant.secondary
-                  ? AppColors.primary
-                  : AppColors.textPrimary)
-              .withAlpha(20),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            height: sc.height,
-            width: fullWidth ? double.infinity : null,
-            padding:
-                EdgeInsets.symmetric(horizontal: sc.horizontalPadding),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(sc.borderRadius),
-              border: variant == AppButtonVariant.secondary
-                  ? Border.all(
-                      color: _isDisabled
-                          ? vc.disabledForeground
-                          : vc.border,
-                      width: 1.5,
-                    )
-                  : null,
+    return Semantics(
+      button: true,
+      enabled: !_isDisabled,
+      child: SizedBox(
+        width: fullWidth ? double.infinity : null,
+        child: Material(
+          color: background,
+          shape: shape,
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: _isDisabled ? null : onPressed,
+            splashColor: (vc.splash ?? Colors.white).withAlpha(90),
+            highlightColor: (vc.splash ?? Colors.white).withAlpha(40),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: sc.height),
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                    horizontal: sc.horizontalPadding, vertical: 8),
+                child: Center(widthFactor: 1, child: content),
+              ),
             ),
-            child: Center(child: content),
           ),
         ),
-      );
-    }
-
-    return button;
+      ),
+    );
   }
 }

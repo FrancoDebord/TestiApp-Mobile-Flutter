@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../shared/widgets/testimony_proofs_card.dart';
 import '../models/moderation_models.dart';
 import '../providers/moderation_provider.dart';
 import '../widgets/review_bottom_sheet.dart';
@@ -85,6 +86,17 @@ class ModerationDetailScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 16),
                   _ContentSection(item: item),
+                  // Preuves jointes par l'auteur (jamais publiées)
+                  ...switch (ref.watch(moderationProofsProvider(item.id))) {
+                    AsyncData(:final value) when value.isNotEmpty => [
+                        const SizedBox(height: 20),
+                        TestimonyProofsCard(
+                          proofs: value,
+                          margin: EdgeInsets.zero,
+                        ),
+                      ],
+                    _ => const <Widget>[],
+                  },
                   const SizedBox(height: 28),
                   _ActionSection(item: item),
                   const SizedBox(height: 40),

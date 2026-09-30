@@ -4,6 +4,7 @@ import 'package:share_plus/share_plus.dart' show ShareParams, SharePlus;
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/theme/app_tokens.dart';
 import '../models/testimony_model.dart';
 import '../providers/home_providers.dart';
 
@@ -60,32 +61,38 @@ class _CollapsedBanner extends ConsumerWidget {
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF184797), Color(0xFF2B5DB0)],
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-          ),
-          borderRadius: BorderRadius.circular(12),
+          color: AppColors.primarySoft,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: AppColors.primary.withAlpha(30)),
         ),
         child: Row(
           children: [
             const Icon(Icons.auto_stories_rounded,
-                color: Colors.white70, size: 18),
+                color: AppColors.secondary, size: 18),
             const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                'Verset du jour · ',
+                style: AppTextStyles.labelSmall
+                    .copyWith(color: AppColors.primary),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
             Expanded(
+              flex: 2,
               child: Text(
                 verse.reference,
-                style: AppTextStyles.labelSmall.copyWith(
-                  color: Colors.white,
-                  fontFamily: 'Playfair Display',
-                  fontStyle: FontStyle.italic,
+                style: AppTextStyles.verseReference.copyWith(
+                  color: AppColors.primaryDark,
+                  fontSize: 13,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
             const Icon(Icons.keyboard_arrow_down_rounded,
-                color: Colors.white70, size: 20),
+                color: AppColors.primary, size: 20),
           ],
         ),
       ),
@@ -111,19 +118,14 @@ class _ExpandedBanner extends ConsumerWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
+        // Dégradé autorisé par la charte : bleu → bleu foncé.
         gradient: const LinearGradient(
-          colors: [Color(0xFF103675), Color(0xFF184797), Color(0xFF2B5DB0)],
+          colors: AppColors.blueGradient,
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withAlpha(60),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        borderRadius: AppRadius.cardRadius,
+        boxShadow: AppShadows.card,
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
@@ -136,14 +138,17 @@ class _ExpandedBanner extends ConsumerWidget {
                 const Icon(Icons.auto_stories_rounded,
                     color: Colors.white70, size: 18),
                 const SizedBox(width: 8),
-                Text(
-                  'Verset du jour',
-                  style: AppTextStyles.labelSmall.copyWith(
-                    color: Colors.white70,
-                    letterSpacing: 0.5,
+                Expanded(
+                  child: Text(
+                    'Verset du jour',
+                    style: AppTextStyles.labelSmall.copyWith(
+                      color: Colors.white70,
+                      letterSpacing: 0.5,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const Spacer(),
                 GestureDetector(
                   onTap: () => ref
                       .read(verseBannerExpandedProvider.notifier)
@@ -174,7 +179,7 @@ class _ExpandedBanner extends ConsumerWidget {
               child: Text(
                 '— ${verse.reference}',
                 style: AppTextStyles.verseReference.copyWith(
-                  color: AppColors.secondary,
+                  color: AppColors.sun,
                 ),
               ),
             ),
@@ -184,7 +189,7 @@ class _ExpandedBanner extends ConsumerWidget {
             // ── Interactions ─────────────────────────────────────────────────
             Row(
               children: [
-                _InteractionButton(
+                Flexible(child: _InteractionButton(
                   icon:    verse.isLiked
                       ? Icons.favorite_rounded
                       : Icons.favorite_border_rounded,
@@ -193,9 +198,9 @@ class _ExpandedBanner extends ConsumerWidget {
                       : 'J\'aime',
                   active:  verse.isLiked,
                   onTap:   notifier.toggleLike,
-                ),
+                )),
                 const SizedBox(width: 16),
-                _InteractionButton(
+                Flexible(child: _InteractionButton(
                   icon:    verse.isPrayed
                       ? Icons.volunteer_activism
                       : Icons.volunteer_activism_outlined,
@@ -204,17 +209,17 @@ class _ExpandedBanner extends ConsumerWidget {
                       : 'Prier',
                   active:  verse.isPrayed,
                   onTap:   notifier.togglePray,
-                ),
+                )),
                 const Spacer(),
-                _InteractionButton(
-                  icon:    Icons.share_rounded,
+                Flexible(child: _InteractionButton(
+                  icon:    Icons.share_outlined,
                   label:   'Partager',
                   active:  false,
                   onTap:   () async {
                     await _share(verse);
                     await notifier.recordShare();
                   },
-                ),
+                )),
               ],
             ),
           ],
@@ -249,16 +254,20 @@ class _InteractionButton extends StatelessWidget {
           Icon(
             icon,
             size: 18,
-            color: active ? AppColors.secondary : Colors.white70,
+            color: active ? AppColors.sun : Colors.white70,
           ),
           const SizedBox(width: 5),
-          Text(
-            label,
-            style: TextStyle(
-              fontFamily: 'Plus Jakarta Sans',
-              fontSize: 12,
-              fontWeight: active ? FontWeight.w600 : FontWeight.w400,
-              color: active ? AppColors.secondary : Colors.white70,
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: AppFonts.family,
+                fontSize: 12,
+                fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+                color: active ? AppColors.sun : Colors.white70,
+              ),
             ),
           ),
         ],

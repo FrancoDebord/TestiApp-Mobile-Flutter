@@ -8,10 +8,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/router/app_routes.dart';
+import '../../../shared/widgets/app_logo.dart';
 import '../providers/auth_notifier.dart'
     show
         AuthState,
         AuthStateAuthenticated,
+        AuthStateGuest,
         AuthStateLoading,
         AuthStateNeedsProfile,
         AuthStateOtpSent,
@@ -114,6 +116,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     if (current != AppPaths.splash) return;
     switch (authState) {
       case AuthStateAuthenticated():
+      case AuthStateGuest():
         context.goNamed(AppRoutes.home);
       case AuthStateUnauthenticated():
         context.goNamed(AppRoutes.onboarding);
@@ -201,11 +204,7 @@ class _LogoBlock extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          SizedBox(
-            width: logoSize * 1.25,
-            height: logoSize,
-            child: const CustomPaint(painter: _LogoPainter()),
-          ),
+          AppLogoMark(size: logoSize),
           const SizedBox(height: 14),
           // FittedBox : le titre se réduit plutôt que de déborder (petits
           // écrans, grande taille de police système).
@@ -310,95 +309,6 @@ class _LoadingBar extends StatelessWidget {
       ],
     );
   }
-}
-
-// ── Logo painter : rayons, soleil, croix, colline ────────────────────────────
-
-class _LogoPainter extends CustomPainter {
-  const _LogoPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-    final center = Offset(w / 2, h * 0.62);
-    final sunR = h * 0.34;
-
-    // Rayons en éventail au-dessus du soleil.
-    final rayPaint = Paint()
-      ..strokeCap = StrokeCap.round
-      ..strokeWidth = h * 0.055;
-    const rays = 9;
-    for (var i = 0; i < rays; i++) {
-      final a = math.pi + math.pi * (i + 0.5) / rays; // de gauche à droite
-      final dir = Offset(math.cos(a), math.sin(a));
-      final long = i.isEven;
-      rayPaint.color = long ? AppColors.sun : AppColors.secondary;
-      canvas.drawLine(
-        center + dir * (sunR * 1.25),
-        center + dir * (sunR * (long ? 1.78 : 1.6)),
-        rayPaint,
-      );
-    }
-
-    // Soleil (demi-disque dégradé orange → jaune).
-    final sunRect = Rect.fromCircle(center: center, radius: sunR);
-    canvas.drawArc(
-      sunRect,
-      math.pi,
-      math.pi,
-      true,
-      Paint()
-        ..shader = const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [AppColors.sun, AppColors.secondary],
-        ).createShader(sunRect),
-    );
-
-    // Colline bleue (arc large sous le soleil).
-    final hill = Path()
-      ..moveTo(w * 0.02, h * 0.98)
-      ..quadraticBezierTo(w * 0.5, h * 0.42, w * 0.98, h * 0.98)
-      ..close();
-    canvas.drawPath(
-      hill,
-      Paint()
-        ..shader = const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [AppColors.primaryLight, AppColors.primary],
-        ).createShader(Rect.fromLTWH(0, h * 0.5, w, h * 0.5)),
-    );
-
-    // Croix blanche bordée de bleu, posée sur la colline.
-    final cw = h * 0.105; // épaisseur
-    final crossTop = h * 0.16;
-    final crossBottom = h * 0.80;
-    final armY = h * 0.33;
-    final armHalf = h * 0.17;
-    final cross = Path()
-      ..addRRect(RRect.fromRectAndRadius(
-        Rect.fromLTRB(w / 2 - cw / 2, crossTop, w / 2 + cw / 2, crossBottom),
-        Radius.circular(cw * 0.2),
-      ))
-      ..addRRect(RRect.fromRectAndRadius(
-        Rect.fromLTRB(w / 2 - armHalf, armY, w / 2 + armHalf, armY + cw),
-        Radius.circular(cw * 0.2),
-      ));
-    canvas.drawPath(
-      cross,
-      Paint()
-        ..color = AppColors.primary
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = cw * 0.45
-        ..strokeJoin = StrokeJoin.round,
-    );
-    canvas.drawPath(cross, Paint()..color = Colors.white);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 // ── Background painter : ciel, soleil levant, montagnes, silhouette ──────────

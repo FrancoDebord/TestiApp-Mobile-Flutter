@@ -127,7 +127,18 @@ abstract final class AppConstants {
   static const String testimoniesFeatured = '/testimonies/featured';
   static const String testimoniesSaved    = '/testimonies/saved/list';
 
+  // Fil « Pour vous » (paginé) : GET /testimonies?sort=for_you&limit=20&page=N
+  //   → data = témoignages, meta = { currentPage, lastPage, total, perPage }
+  static Map<String, dynamic> forYouFeedQuery({required int page, int limit = defaultPageSize}) =>
+      {'sort': 'for_you', 'limit': limit, 'page': page};
+
   static String testimonyById(String id)          => '/testimonies/$id';
+  // Suggestions liées à un témoignage (intérêts, comptes suivis, déjà vus en fin).
+  static String testimonyRecommendations(String id) => '/testimonies/$id/recommendations'; // GET ?limit=
+  // Preuves privées (auteur + modération) : POST multipart « file » (+ position 1|2),
+  // GET {proofId} = fichier (Bearer requis), DELETE {proofId}.
+  static String testimonyProofs(String id) => '/testimonies/$id/proofs';
+  static String testimonyProof(String id, String proofId) => '/testimonies/$id/proofs/$proofId';
   static String testimonyReactions(String id)     => '/testimonies/$id/reactions';
   static String testimonyReactionById(String testimonyId, String reactionId)
       => '/testimonies/$testimonyId/reactions/$reactionId';

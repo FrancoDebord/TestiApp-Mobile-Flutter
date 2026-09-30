@@ -11,15 +11,48 @@ extension ExploreTypeFilterLabel on ExploreTypeFilter {
         ExploreTypeFilter.audio => 'Audio',
         ExploreTypeFilter.video => 'Vidéo',
       };
+
+  /// Libellé des onglets en pilule (maquette « Recherche & filtres »).
+  String get tabLabel => switch (this) {
+        ExploreTypeFilter.all => 'Tous',
+        ExploreTypeFilter.text => 'Textes',
+        ExploreTypeFilter.audio => 'Audios',
+        ExploreTypeFilter.video => 'Vidéos',
+      };
+
+  /// Libellé de la liste déroulante « Type ».
+  String get dropdownLabel => switch (this) {
+        ExploreTypeFilter.all => 'Tous les types',
+        ExploreTypeFilter.text => 'Textes',
+        ExploreTypeFilter.audio => 'Audios',
+        ExploreTypeFilter.video => 'Vidéos',
+      };
 }
 
-enum ExploreSortOrder { recent, popular, recommended }
+/// Ordre des onglets de type (maquette : Tous, Vidéos, Audios, Textes).
+const List<ExploreTypeFilter> kExploreTypeTabs = [
+  ExploreTypeFilter.all,
+  ExploreTypeFilter.video,
+  ExploreTypeFilter.audio,
+  ExploreTypeFilter.text,
+];
+
+enum ExploreSortOrder { recent, popular, liked, recommended }
 
 extension ExploreSortOrderLabel on ExploreSortOrder {
   String get label => switch (this) {
         ExploreSortOrder.recent => 'Récent',
         ExploreSortOrder.popular => 'Populaire',
+        ExploreSortOrder.liked => 'Plus aimés',
         ExploreSortOrder.recommended => 'Recommandé',
+      };
+
+  /// Libellé de la liste déroulante « Popularité ».
+  String get popularityLabel => switch (this) {
+        ExploreSortOrder.recent => 'Plus récents',
+        ExploreSortOrder.popular => 'Plus vus',
+        ExploreSortOrder.liked => 'Plus aimés',
+        ExploreSortOrder.recommended => 'Plus priés',
       };
 }
 

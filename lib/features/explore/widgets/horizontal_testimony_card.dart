@@ -7,7 +7,12 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../core/theme/app_tokens.dart';
+import '../../../shared/widgets/app_badge.dart';
 import '../../home/models/testimony_model.dart';
+import '../../home/widgets/testimony_card_header.dart'
+    show AuthorAvatar, categoryBadgeTone;
 
 // Hauteurs fixes — garantissent l'absence d'overflow dans le ListView
 const double _kCardWidth  = 172;
@@ -34,20 +39,9 @@ class HorizontalTestimonyCard extends StatelessWidget {
         width: _kCardWidth,
         height: _kCardHeight,
         child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.border),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withAlpha(6),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
+          decoration: AppShadows.cardDecoration,
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: AppRadius.cardRadius,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -65,16 +59,20 @@ class HorizontalTestimonyCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _CategoryBadge(category: testimony.category),
+                        AppBadge(
+                          label: testimony.category.label,
+                          tone: categoryBadgeTone(testimony.category),
+                          dense: true,
+                        ),
                         const SizedBox(height: 5),
 
                         // Titre : 2 lignes max, ellipsis si déborde
                         Expanded(
                           child: Text(
                             testimony.title,
-                            style: const TextStyle(
-                              fontFamily: 'Plus Jakarta Sans',
-                              fontWeight: FontWeight.w600,
+                            style: TextStyle(
+                              fontFamily: AppFonts.family,
+                              fontWeight: FontWeight.w700,
                               fontSize: 12.5,
                               color: AppColors.textPrimary,
                               height: 1.3,
@@ -88,27 +86,13 @@ class HorizontalTestimonyCard extends StatelessWidget {
                         // Auteur
                         Row(
                           children: [
-                            CircleAvatar(
-                              radius: 9,
-                              backgroundColor: AppColors.primary.withAlpha(30),
-                              child: Text(
-                                testimony.author.displayName.isNotEmpty
-                                    ? testimony.author.displayName[0]
-                                        .toUpperCase()
-                                    : '?',
-                                style: const TextStyle(
-                                  fontSize: 8,
-                                  color: AppColors.primary,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
+                            AuthorAvatar(author: testimony.author, radius: 9),
                             const SizedBox(width: 5),
                             Expanded(
                               child: Text(
                                 testimony.author.displayName,
-                                style: const TextStyle(
-                                  fontFamily: 'Plus Jakarta Sans',
+                                style: TextStyle(
+                                  fontFamily: AppFonts.family,
                                   fontSize: 10.5,
                                   color: AppColors.textSecondary,
                                 ),
@@ -127,16 +111,20 @@ class HorizontalTestimonyCard extends StatelessWidget {
                               Icon(
                                 _statIcon(statLabel),
                                 size: 12,
-                                color: AppColors.primary.withAlpha(190),
+                                color: AppColors.primary,
                               ),
                               const SizedBox(width: 3),
-                              Text(
-                                '${_fmt(statValue!)} ${statLabel ?? ''}',
-                                style: const TextStyle(
-                                  fontFamily: 'Plus Jakarta Sans',
-                                  fontSize: 10.5,
-                                  color: AppColors.textSecondary,
-                                  fontWeight: FontWeight.w500,
+                              Flexible(
+                                child: Text(
+                                  '${_fmt(statValue!)} ${statLabel ?? ''}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontFamily: AppFonts.family,
+                                    fontSize: 10.5,
+                                    color: AppColors.textSecondary,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ),
                             ],
@@ -188,9 +176,17 @@ class _CardHeader extends StatelessWidget {
             ),
             Container(
               color: Colors.black.withAlpha(38),
-              child: const Center(
-                child: Icon(Icons.play_circle_fill_rounded,
-                    color: Colors.white, size: 28),
+              child: Center(
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.play_arrow_rounded,
+                      color: AppColors.primary, size: 24),
+                ),
               ),
             ),
           ],
@@ -226,17 +222,18 @@ class _GradientHeader extends StatelessWidget {
     );
   }
 
+  // Dégradés de la charte (app_colors.dart).
   List<Color> _gradientForCategory(TestimonyCategory cat) => switch (cat) {
-        TestimonyCategory.guerison    => [const Color(0xFF184797), const Color(0xFF4B7ACB)],
-        TestimonyCategory.delivrance  => [const Color(0xFF103675), const Color(0xFF2B5DB0)],
-        TestimonyCategory.conversion  => [const Color(0xFFD96F0B), const Color(0xFF12B76A)],
-        TestimonyCategory.mariage     => [const Color(0xFFF18717), const Color(0xFFFCC11D)],
-        TestimonyCategory.famille     => [const Color(0xFFC48A06), const Color(0xFFF79009)],
-        TestimonyCategory.finances    => [const Color(0xFF184797), const Color(0xFF12B76A)],
-        TestimonyCategory.miracles    => [const Color(0xFFD96F0B), const Color(0xFFF18717)],
-        TestimonyCategory.protection  => [const Color(0xFF103675), const Color(0xFF4B7ACB)],
-        TestimonyCategory.ministere   => [const Color(0xFF103675), const Color(0xFF4B7ACB)],
-        TestimonyCategory.salut       => [const Color(0xFFD96F0B), const Color(0xFFD92D20)],
+        TestimonyCategory.guerison    => AppColors.guerisonGradient,
+        TestimonyCategory.delivrance  => AppColors.delivranceGradient,
+        TestimonyCategory.conversion  => AppColors.conversionGradient,
+        TestimonyCategory.mariage     => AppColors.mariageGradient,
+        TestimonyCategory.famille     => AppColors.familleGradient,
+        TestimonyCategory.finances    => AppColors.financesGradient,
+        TestimonyCategory.miracles    => AppColors.miraclesGradient,
+        TestimonyCategory.protection  => AppColors.protectionGradient,
+        TestimonyCategory.ministere   => AppColors.ministereGradient,
+        TestimonyCategory.salut       => AppColors.salutGradient,
       };
 
   IconData _iconForType(TestimonyType type) => switch (type) {
@@ -244,48 +241,4 @@ class _GradientHeader extends StatelessWidget {
         TestimonyType.video => Icons.videocam_rounded,
         _                   => Icons.edit_note_rounded,
       };
-}
-
-// ── Badge catégorie ────────────────────────────────────────────────────────────
-
-class _CategoryBadge extends StatelessWidget {
-  const _CategoryBadge({required this.category});
-  final TestimonyCategory category;
-
-  static const _colors = <TestimonyCategory, Color>{
-    TestimonyCategory.guerison:   Color(0xFF184797),
-    TestimonyCategory.delivrance: Color(0xFF103675),
-    TestimonyCategory.conversion: Color(0xFFD96F0B),
-    TestimonyCategory.mariage:    Color(0xFFF18717),
-    TestimonyCategory.famille:    Color(0xFFC48A06),
-    TestimonyCategory.finances:   Color(0xFF184797),
-    TestimonyCategory.miracles:   Color(0xFFD96F0B),
-    TestimonyCategory.protection: Color(0xFF103675),
-    TestimonyCategory.ministere:  Color(0xFF103675),
-    TestimonyCategory.salut:      Color(0xFFD96F0B),
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    final color = _colors[category] ?? AppColors.primary;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withAlpha(18),
-        borderRadius: BorderRadius.circular(5),
-        border: Border.all(color: color.withAlpha(50)),
-      ),
-      child: Text(
-        category.label,
-        style: TextStyle(
-          fontFamily: 'Plus Jakarta Sans',
-          fontSize: 9.5,
-          fontWeight: FontWeight.w600,
-          color: color,
-        ),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-    );
-  }
 }
