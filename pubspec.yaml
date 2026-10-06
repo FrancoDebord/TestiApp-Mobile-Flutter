@@ -41,6 +41,8 @@ dependencies:
 
   # ── Push notifications locales ────────────────────────────────────────────
   flutter_local_notifications: ^18.0.1
+  # Rappels de prière programmés (zonedSchedule)
+  timezone: ^0.10.1
 
   # ── UI helpers ─────────────────────────────────────────────────────────────
   google_fonts: ^8.1.0
@@ -64,6 +66,11 @@ dependencies:
 
   # ── Text-to-speech (lecture audio Bible) ──────────────────────────────────
   flutter_tts: ^4.0.0
+
+  # ── Cartes OpenStreetMap et position (lieu des événements) ─────────────────
+  flutter_map: ^8.2.1
+  latlong2: ^0.9.1
+  geolocator: ^14.0.2
 
   # ── Utils ──────────────────────────────────────────────────────────────────
   intl: ^0.20.2
