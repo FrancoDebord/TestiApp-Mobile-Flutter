@@ -515,8 +515,25 @@ final selectedFeedTypeProvider =
 // Featured
 // ============================================================================
 
+/// « À la une » du serveur (GET /testimonies/featured), du plus récemment publié au plus
+/// ancien (Testimony::latestPublished). Vide hors ligne ou en cas d'erreur.
+final featuredFromApiProvider = FutureProvider.autoDispose<List<Testimony>>((ref) async {
+  try {
+    final res = await ref.read(apiServiceProvider).get<dynamic>(AppConstants.testimoniesFeatured);
+    final list = res.data is List ? res.data as List : const [];
+    return [for (final raw in list) ?testimonyFromApiJson(raw)];
+  } catch (_) {
+    return const [];
+  }
+});
+
+/// « À la une », du plus récent au plus ancien : la liste du serveur (déjà triée), sinon
+/// les témoignages à la une du fil chargé, triés par date décroissante.
 final featuredProvider = Provider<List<Testimony>>((ref) {
-  return ref.watch(feedNotifierProvider).where((t) => t.isFeatured).toList();
+  final fromApi = ref.watch(featuredFromApiProvider).value ?? const <Testimony>[];
+  if (fromApi.isNotEmpty) return fromApi;
+  return ref.watch(feedNotifierProvider).where((t) => t.isFeatured).toList()
+    ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 });
 
 // ============================================================================
