@@ -252,6 +252,9 @@ class _JournalScreenState extends ConsumerState<JournalScreen> {
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
             SliverToBoxAdapter(child: _Header(total: _total)),
+            // Paroles prophétiques : une partie du carnet (docs serveur
+            // fonctionnalites/paroles-prophetiques.md).
+            const SliverToBoxAdapter(child: _PropheciesEntry()),
             if (_showingOffline)
               SliverToBoxAdapter(
                 child: _OfflineBanner(onRetry: _reload),
@@ -554,6 +557,51 @@ class _Empty extends StatelessWidget {
               style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary)),
           if (action != null) ...[const SizedBox(height: 16), action!],
         ],
+      ),
+    );
+  }
+}
+
+/// Accès aux paroles prophétiques depuis le carnet.
+class _PropheciesEntry extends StatelessWidget {
+  const _PropheciesEntry();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      child: Material(
+        color: AppColors.sunSoft,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () => context.push('/prophecies'),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.sunBorder),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.record_voice_over_rounded, color: AppColors.sunText),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Paroles prophétiques',
+                          style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w800)),
+                      Text('Gardez-les, priez, témoignez de leur accomplissement.',
+                          style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right_rounded, color: AppColors.sunText),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
