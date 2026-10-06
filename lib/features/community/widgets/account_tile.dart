@@ -42,8 +42,11 @@ class AccountAvatar extends StatelessWidget {
 
 /// Ligne d'un compte (Communauté) : avatar, nom, coche, type / ville, compteurs, bouton Suivre.
 class AccountTile extends StatefulWidget {
-  const AccountTile({required this.account, super.key});
+  const AccountTile({required this.account, this.followIdleLabel = 'Suivre', super.key});
   final CommunityAccount account;
+
+  /// Texte du bouton tant qu'on ne suit pas le compte.
+  final String followIdleLabel;
 
   @override
   State<AccountTile> createState() => _AccountTileState();
@@ -102,6 +105,7 @@ class _AccountTileState extends State<AccountTile> {
               userId: a.id,
               displayName: a.displayName,
               compact: true,
+              idleLabel: widget.followIdleLabel,
               onCountChanged: (n) => setState(() => _followers = n),
             ),
           ],

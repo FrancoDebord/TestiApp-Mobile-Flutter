@@ -1,5 +1,6 @@
 // lib/shared/models/comment_model.dart — Dart pur, sans génération de code.
 
+import 'mention.dart';
 import 'user_model.dart';
 
 class CommentModel {
@@ -15,6 +16,7 @@ class CommentModel {
     this.parentId,
     this.createdAt,
     this.updatedAt,
+    this.mentions = const [],
   });
 
   final String     id;
@@ -28,6 +30,9 @@ class CommentModel {
   final String?    parentId;
   final String?    createdAt;
   final String?    updatedAt;
+
+  /// Comptes mentionnés (« @Nom » cliquable) — docs serveur fonctionnalites/mentions.md
+  final List<MentionRef> mentions;
 
   bool get isReply => parentId != null;
 
@@ -45,6 +50,7 @@ class CommentModel {
     parentId:     (j['parentId']     ?? j['parent_id'])      as String?,
     createdAt:    (j['createdAt']    ?? j['created_at'])     as String?,
     updatedAt:    (j['updatedAt']    ?? j['updated_at'])     as String?,
+    mentions:     MentionRef.listFrom(j['mentions']),
   );
 
   Map<String, dynamic> toJson() => {

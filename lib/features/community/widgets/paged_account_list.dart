@@ -28,7 +28,7 @@ String accountListErrorMessage(Object error) {
 }
 
 /// Liste de comptes paginée avec recherche, tirer pour actualiser et bouton Suivre.
-/// Utilisée par « Communauté » et « Mes abonnements ».
+/// Utilisée par « Communauté », « Mes abonnés » et « Mes abonnements ».
 class PagedAccountList extends ConsumerStatefulWidget {
   const PagedAccountList({
     super.key,
@@ -37,6 +37,7 @@ class PagedAccountList extends ConsumerStatefulWidget {
     required this.emptyText,
     this.emptyAction,
     this.header,
+    this.followIdleLabel = 'Suivre',
   });
 
   final AccountPageLoader loader;
@@ -48,6 +49,9 @@ class PagedAccountList extends ConsumerStatefulWidget {
 
   /// Ligne au-dessus des comptes (par ex. « Vous suivez 12 comptes »), avec le total.
   final Widget Function(int total)? header;
+
+  /// Texte du bouton Suivre tant qu'on ne suit pas (« Suivre en retour » dans Mes abonnés).
+  final String followIdleLabel;
 
   @override
   ConsumerState<PagedAccountList> createState() => _PagedAccountListState();
@@ -155,7 +159,7 @@ class _PagedAccountListState extends ConsumerState<PagedAccountList> with Automa
               return Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 8), child: widget.header!(_total));
             }
             if (i == _items.length + lead) return _footer();
-            return AccountTile(account: _items[i - lead]);
+            return AccountTile(account: _items[i - lead], followIdleLabel: widget.followIdleLabel);
           },
         ),
       ),

@@ -15,6 +15,7 @@ class FollowButton extends ConsumerWidget {
     this.displayName,
     this.compact = false,
     this.onCountChanged,
+    this.idleLabel = 'Suivre',
     super.key,
   });
 
@@ -22,6 +23,9 @@ class FollowButton extends ConsumerWidget {
   final String? displayName;
   final bool compact;
   final ValueChanged<int>? onCountChanged;
+
+  /// Texte tant qu'on ne suit pas le compte (« Suivre en retour » dans Mes abonnés).
+  final String idleLabel;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -31,7 +35,7 @@ class FollowButton extends ConsumerWidget {
     final state = ref.watch(followProvider);
     final following = state.isFollowing(userId);
     final busy = state.pending.contains(userId);
-    final label = following ? 'Abonné' : 'Suivre';
+    final label = following ? 'Abonné' : idleLabel;
     final name = displayName == null ? '' : ' $displayName';
 
     Future<void> onTap() async {

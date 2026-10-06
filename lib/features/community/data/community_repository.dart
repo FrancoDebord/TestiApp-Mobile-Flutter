@@ -5,6 +5,7 @@ import '../../../services/api_service.dart';
 import '../../home/models/testimony_model.dart';
 import '../../home/providers/home_providers.dart' show testimonyFromApiJson;
 import '../models/community_account.dart';
+import '../models/suggested_account.dart';
 
 /// Une page de la liste « Communauté ».
 class CommunityPage {
@@ -38,6 +39,11 @@ class CommunityRepository {
   Future<CommunityPage> following({String? query, int page = 1}) =>
       _page(AppConstants.myFollowing, const {}, query, page);
 
+  /// « Mes abonnés » : comptes qui me suivent, les plus récents d'abord ;
+  /// `isFollowing` = je le suis en retour.
+  Future<CommunityPage> followers({String? query, int page = 1}) =>
+      _page(AppConstants.myFollowers, const {}, query, page);
+
   Future<CommunityPage> _page(String path, Map<String, dynamic> params, String? query, int page) async {
     final res = await _api.get<dynamic>(path, query: {
       ...params,
@@ -55,6 +61,20 @@ class CommunityRepository {
       lastPage: (meta['last_page'] as num?)?.toInt() ?? page,
       total: (meta['total'] as num?)?.toInt(),
     );
+  }
+
+  /// « Comptes à suivre » : comptes non suivis, classés (vérifiés, actifs, abonnés en commun…).
+  /// [type] : `all`, `organizations` ou `people`. Personne non connectée acceptée.
+  Future<List<SuggestedAccount>> suggestions({int limit = 10, String type = 'all'}) async {
+    final res = await _api.get<dynamic>(AppConstants.userSuggestions, query: {'limit': limit, 'type': type});
+    final data = res.data;
+    return data is List
+        ? data
+            .whereType<Map>()
+            .map((e) => SuggestedAccount.fromJson(Map<String, dynamic>.from(e)))
+            .where((s) => s.id.isNotEmpty)
+            .toList()
+        : const [];
   }
 
   Future<CommunityAccount> account(String id) async {
