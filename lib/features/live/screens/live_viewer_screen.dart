@@ -118,9 +118,15 @@ class _LiveViewerScreenState extends ConsumerState<LiveViewerScreen> {
     if (ctrl.ended || live.status == LiveStatus.ended) {
       return LiveEndedView(
         title: live.title,
+        host: live.host,
         reason: liveEndReasonLabel(ctrl.endReason ?? live.endReason),
         peakViewers: ctrl.peakViewers > 0 ? ctrl.peakViewers : live.peakViewers,
         duration: live.duration,
+        commentCount: live.commentCount > ctrl.comments.length
+            ? live.commentCount
+            : ctrl.comments.length,
+        reactions:
+            ctrl.reactions.total >= live.reactions.total ? ctrl.reactions : live.reactions,
         onClose: _close,
       );
     }
@@ -156,7 +162,9 @@ class _LiveViewerScreenState extends ConsumerState<LiveViewerScreen> {
                 live: live,
                 viewers: ctrl.viewers,
                 onClose: _close,
-                onEnd: live.canModerate ? () => _cutLive(ctrl) : null,
+                // Modération : « Quitter » (le direct continue) et « Couper le
+                // direct » sont deux actions distinctes, dans un menu à part.
+                onModerate: live.canModerate ? () => _moderatorMenu(ctrl) : null,
               ),
               if (ctrl.pinnedComment != null)
                 LivePinnedBanner(
@@ -200,29 +208,25 @@ class _LiveViewerScreenState extends ConsumerState<LiveViewerScreen> {
                             ),
                             ),
                           const SizedBox(height: 8),
+                          // Intervenir (spectateur) / file (modération) + commentaires.
                           Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Expanded(
-                                child: LiveCommentInput(
-                                  enabled: commentsOpen,
-                                  showPinOption: ctrl.canChangePin,
-                                  disabledHint: ctrl.banned
-                                      ? 'Vous ne pouvez plus commenter ce direct'
-                                      : 'Commentaires désactivés',
-                                  onSend: ctrl.sendComment,
-                                ),
-                              ),
-                              // Témoigner (spectateur) ou gérer la file (modération).
                               if (live.isOnAir && (canInteract || live.canModerate))
-                                LiveStageButton(
-                                  ctrl: ctrl,
-                                  onPressed: () => showLiveStageSheet(
-                                    context,
+                                Flexible(
+                                  child: LiveStageButton(
                                     ctrl: ctrl,
-                                    loggedIn: ref.read(currentUserProvider) != null,
-                                    onLogin: () => context.push('/login'),
+                                    labeled: true,
+                                    onPressed: () => showLiveStageSheet(
+                                      context,
+                                      ctrl: ctrl,
+                                      loggedIn: ref.read(currentUserProvider) != null,
+                                      onLogin: () => context.push('/login'),
+                                    ),
                                   ),
-                                ),
+                                )
+                              else
+                                const SizedBox.shrink(),
                               IconButton(
                                 tooltip: _showComments
                                     ? 'Masquer les commentaires'
@@ -237,6 +241,15 @@ class _LiveViewerScreenState extends ConsumerState<LiveViewerScreen> {
                                 ),
                               ),
                             ],
+                          ),
+                          const SizedBox(height: 6),
+                          LiveCommentInput(
+                            enabled: commentsOpen,
+                            showPinOption: ctrl.canChangePin,
+                            disabledHint: ctrl.banned
+                                ? 'Vous ne pouvez plus commenter ce direct'
+                                : 'Commentaires désactivés',
+                            onSend: ctrl.sendComment,
                           ),
                         ],
                       ),
@@ -265,6 +278,47 @@ class _LiveViewerScreenState extends ConsumerState<LiveViewerScreen> {
         ),
       ],
     );
+  }
+
+  /// Menu de modération : quitter simplement (le direct continue) ou couper
+  /// le direct pour tout le monde (avec confirmation).
+  Future<void> _moderatorMenu(LiveRoomController ctrl) async {
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const ListTile(
+              title: Text('Modération du direct',
+                  style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: Text('Vous regardez ce direct en tant que modérateur.'),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.logout_rounded),
+              title: const Text('Quitter le direct'),
+              subtitle: const Text('Le direct continue pour les autres.'),
+              onTap: () => Navigator.pop(context, 'leave'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.stop_circle_outlined, color: AppColors.danger),
+              title: const Text('Couper le direct pour tous',
+                  style: TextStyle(color: AppColors.danger)),
+              subtitle: const Text('Arrête définitivement la diffusion.'),
+              onTap: () => Navigator.pop(context, 'cut'),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (!mounted) return;
+    if (choice == 'leave') _close();
+    if (choice == 'cut') await _cutLive(ctrl);
   }
 
   Future<void> _cutLive(LiveRoomController ctrl) async {
@@ -387,15 +441,15 @@ class _TopBar extends StatelessWidget {
     required this.live,
     required this.viewers,
     required this.onClose,
-    this.onEnd,
+    this.onModerate,
   });
 
   final LiveSession live;
   final int viewers;
   final VoidCallback onClose;
 
-  /// Modérateurs : couper le direct.
-  final VoidCallback? onEnd;
+  /// Modérateurs : menu (quitter / couper le direct).
+  final VoidCallback? onModerate;
 
   @override
   Widget build(BuildContext context) {
@@ -450,15 +504,14 @@ class _TopBar extends StatelessWidget {
               ),
             ),
           ),
-          if (onEnd != null)
+          if (onModerate != null)
             IconButton(
-              tooltip: 'Couper le direct',
-              onPressed: onEnd,
-              icon: const Icon(Icons.stop_circle_outlined,
-                  color: AppColors.danger),
+              tooltip: 'Modération',
+              onPressed: onModerate,
+              icon: const Icon(Icons.shield_outlined, color: Colors.white),
             ),
           IconButton(
-            tooltip: 'Fermer',
+            tooltip: 'Quitter le direct',
             onPressed: onClose,
             icon: const Icon(Icons.close_rounded, color: Colors.white),
           ),

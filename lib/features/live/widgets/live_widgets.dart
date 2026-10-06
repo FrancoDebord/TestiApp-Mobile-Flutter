@@ -2,6 +2,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../shared/widgets/mention_text.dart';
+import '../../../shared/widgets/mention_text_field.dart';
 import '../controllers/live_room_controller.dart';
 import '../models/live_models.dart';
 
@@ -370,11 +372,19 @@ class _LiveCommentsListState extends State<LiveCommentsList> {
                             ],
                           ),
                           const SizedBox(height: 2),
-                          Text(
+                          MentionText(
                             c.body,
+                            mentions: c.mentions,
                             style: const TextStyle(
                               color: Colors.white,
                               fontFamily: 'Plus Jakarta Sans',
+                              fontSize: 13.5,
+                              height: 1.35,
+                            ),
+                            mentionStyle: const TextStyle(
+                              color: AppColors.secondary,
+                              fontFamily: 'Plus Jakarta Sans',
+                              fontWeight: FontWeight.w700,
                               fontSize: 13.5,
                               height: 1.35,
                             ),
@@ -419,21 +429,31 @@ class LiveCommentInput extends StatefulWidget {
 }
 
 class _LiveCommentInputState extends State<LiveCommentInput> {
-  final _ctrl = TextEditingController();
+  // Mentions « @ » (docs serveur fonctionnalites/mentions.md) : envoyées sous forme de jetons.
+  final _ctrl = MentionEditingController();
+  final _focus = FocusNode();
   bool _sending = false;
   bool _pin = false;
 
   @override
+  void initState() {
+    super.initState();
+    _ctrl.addListener(() => setState(() {})); // compteur et bouton d'envoi
+    _focus.addListener(() => setState(() {})); // liseré au focus
+  }
+
+  @override
   void dispose() {
     _ctrl.dispose();
+    _focus.dispose();
     super.dispose();
   }
 
   Future<void> _send() async {
-    final text = _ctrl.text.trim();
-    if (text.isEmpty || _sending) return;
+    if (_ctrl.text.trim().isEmpty || _sending) return;
+    final text = _ctrl.encodedText;
     setState(() => _sending = true);
-    final error = await widget.onSend(text, pin: _pin);
+    final error = await widget.onSend(text, pin: _pin && widget.showPinOption);
     if (!mounted) return;
     setState(() => _sending = false);
     if (error == null) {
@@ -447,65 +467,77 @@ class _LiveCommentInputState extends State<LiveCommentInput> {
   }
 
   @override
-  void initState() {
-    super.initState();
-    _ctrl.addListener(() => setState(() {})); // compteur et bouton d'envoi
-  }
-
-  @override
   Widget build(BuildContext context) {
     final enabled = widget.enabled && !_sending;
     final length = _ctrl.text.characters.length;
     final canSend = enabled && _ctrl.text.trim().isNotEmpty;
-    return Container(
+    final pin = _pin && widget.showPinOption;
+    final focused = _focus.hasFocus;
+
+    // Le thème global remplit les champs en blanc (InputDecorationTheme) :
+    // tout est neutralisé ici pour garder un texte blanc lisible sur fond sombre.
+    const none = InputBorder.none;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 160),
       constraints: const BoxConstraints(minHeight: 48),
       padding: const EdgeInsets.fromLTRB(16, 4, 5, 4),
       decoration: BoxDecoration(
-        color: Colors.black.withAlpha(130),
+        color: const Color(0xE6161022),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: _pin
-              ? AppColors.secondary.withAlpha(200)
-              : Colors.white.withAlpha(60),
+          width: focused || pin ? 1.5 : 1,
+          color: pin
+              ? AppColors.secondary
+              : focused
+              ? Colors.white.withAlpha(170)
+              : Colors.white.withAlpha(55),
         ),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: TextField(
-                controller: _ctrl,
-                enabled: enabled,
-                maxLength: 500,
-                minLines: 1,
-                maxLines: 4,
-                keyboardType: TextInputType.multiline,
-                textInputAction: TextInputAction.send,
-                onSubmitted: (_) => _send(),
-                style: const TextStyle(
-                  color: Colors.white,
+            child: MentionTextField(
+              controller: _ctrl,
+              focusNode: _focus,
+              enabled: enabled,
+              maxLength: 500,
+              minLines: 1,
+              maxLines: 4,
+              maxSuggestionsHeight: 180,
+              keyboardType: TextInputType.multiline,
+              textInputAction: TextInputAction.send,
+              onSubmitted: (_) => _send(),
+              style: const TextStyle(
+                color: Colors.white,
+                fontFamily: 'Plus Jakarta Sans',
+                fontSize: 14.5,
+                height: 1.35,
+              ),
+              cursorColor: AppColors.secondary,
+              decoration: InputDecoration(
+                filled: false,
+                fillColor: Colors.transparent,
+                counterText: '',
+                border: none,
+                enabledBorder: none,
+                focusedBorder: none,
+                disabledBorder: none,
+                errorBorder: none,
+                focusedErrorBorder: none,
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                hintText: !widget.enabled
+                    ? (widget.disabledHint ?? 'Commentaires désactivés')
+                    : pin
+                    ? 'Message à épingler…'
+                    : widget.hint,
+                hintMaxLines: 1,
+                hintStyle: TextStyle(
+                  color: Colors.white.withAlpha(140),
                   fontFamily: 'Plus Jakarta Sans',
                   fontSize: 14.5,
-                  height: 1.3,
-                ),
-                cursorColor: Colors.white,
-                decoration: InputDecoration(
-                  counterText: '',
-                  border: InputBorder.none,
-                  isDense: true,
-                  contentPadding: EdgeInsets.zero,
-                  hintText: !widget.enabled
-                      ? (widget.disabledHint ?? 'Commentaires désactivés')
-                      : _pin
-                      ? 'Message à épingler…'
-                      : widget.hint,
-                  hintStyle: TextStyle(
-                    color: Colors.white.withAlpha(150),
-                    fontFamily: 'Plus Jakarta Sans',
-                    fontSize: 14.5,
-                  ),
                 ),
               ),
             ),
@@ -513,7 +545,7 @@ class _LiveCommentInputState extends State<LiveCommentInput> {
           // Compteur : seulement à l'approche de la limite.
           if (length > 400)
             Padding(
-              padding: const EdgeInsets.only(left: 6, bottom: 14),
+              padding: const EdgeInsets.only(left: 6),
               child: Text(
                 '$length/500',
                 style: TextStyle(
@@ -525,46 +557,45 @@ class _LiveCommentInputState extends State<LiveCommentInput> {
             ),
           if (widget.showPinOption)
             IconButton(
-              tooltip: _pin
+              tooltip: pin
                   ? 'Ne pas épingler ce message'
                   : 'Épingler ce message en haut du direct',
+              visualDensity: VisualDensity.compact,
               onPressed: enabled ? () => setState(() => _pin = !_pin) : null,
               icon: Icon(
-                _pin ? Icons.push_pin_rounded : Icons.push_pin_outlined,
-                color: _pin ? AppColors.secondary : Colors.white70,
+                pin ? Icons.push_pin_rounded : Icons.push_pin_outlined,
+                color: pin ? AppColors.secondary : Colors.white70,
                 size: 20,
               ),
             ),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 2),
-            child: Material(
-              color: canSend ? kLiveRed : Colors.white.withAlpha(40),
-              shape: const CircleBorder(),
-              child: InkWell(
-                customBorder: const CircleBorder(),
-                onTap: canSend ? _send : null,
-                child: SizedBox(
-                  width: 38,
-                  height: 38,
-                  child: Center(
-                    child: _sending
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : Semantics(
-                            label: 'Envoyer',
-                            child: const Icon(
-                              Icons.send_rounded,
-                              color: Colors.white,
-                              size: 18,
-                            ),
+          const SizedBox(width: 4),
+          Material(
+            color: canSend ? kLiveRed : Colors.white.withAlpha(30),
+            shape: const CircleBorder(),
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: canSend ? _send : null,
+              child: SizedBox(
+                width: 38,
+                height: 38,
+                child: Center(
+                  child: _sending
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
                           ),
-                  ),
+                        )
+                      : Semantics(
+                          label: 'Envoyer',
+                          child: Icon(
+                            Icons.send_rounded,
+                            color: canSend ? Colors.white : Colors.white54,
+                            size: 18,
+                          ),
+                        ),
                 ),
               ),
             ),
@@ -837,100 +868,413 @@ class _FloatingEmojiState extends State<_FloatingEmoji>
 
 // ── Fin du direct ───────────────────────────────────────────────────────────
 
+/// Fin du direct : bilan (durée, audience, commentaires, réactions).
 class LiveEndedView extends StatelessWidget {
   const LiveEndedView({
     required this.title,
     required this.reason,
     required this.onClose,
+    this.host,
     this.peakViewers,
     this.duration,
+    this.commentCount,
+    this.reactions,
+    this.asHost = false,
     super.key,
   });
 
   final String title;
   final String reason;
   final VoidCallback onClose;
+  final LivePerson? host;
   final int? peakViewers;
   final Duration? duration;
+  final int? commentCount;
+  final LiveReactionCounts? reactions;
+
+  /// Bilan vu par le diffuseur (formulation « votre direct »).
+  final bool asHost;
+
+  static const _ink = Color(0xFF120A1F);
+  static const _card = Color(0xFF1E1530);
+
+  @override
+  Widget build(BuildContext context) {
+    final r = reactions;
+    final totalReactions = r?.total ?? 0;
+    final tiles = <(IconData, String, String)>[
+      if (duration != null)
+        (Icons.timer_outlined, formatLiveDuration(duration!), 'Durée'),
+      if (peakViewers != null)
+        (
+          Icons.visibility_outlined,
+          _compact(peakViewers!),
+          'Spectateurs au plus fort',
+        ),
+      if (commentCount != null)
+        (
+          Icons.chat_bubble_outline_rounded,
+          _compact(commentCount!),
+          'Commentaires',
+        ),
+      if (r != null)
+        (Icons.favorite_border_rounded, _compact(totalReactions), 'Réactions'),
+    ];
+    final sorted = [...LiveReactionType.values]
+      ..sort((a, b) => (r?[b] ?? 0).compareTo(r?[a] ?? 0));
+
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF241640), _ink],
+        ),
+      ),
+      child: SafeArea(
+        child: Column(
+          children: [
+            Align(
+              alignment: Alignment.topRight,
+              child: IconButton(
+                tooltip: 'Fermer',
+                onPressed: onClose,
+                icon: const Icon(Icons.close_rounded, color: Colors.white70),
+              ),
+            ),
+            Expanded(
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 480),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // ── En-tête ─────────────────────────────────────────
+                        Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(3),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white.withAlpha(60),
+                                  width: 2,
+                                ),
+                              ),
+                              child: host != null
+                                  ? LiveAvatar(person: host!, size: 76)
+                                  : const CircleAvatar(
+                                      radius: 38,
+                                      backgroundColor: _card,
+                                      child: Icon(
+                                        Icons.live_tv_rounded,
+                                        color: Colors.white70,
+                                        size: 34,
+                                      ),
+                                    ),
+                            ),
+                            Positioned(
+                              left: 0,
+                              right: 0,
+                              bottom: -8,
+                              child: Center(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 7,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF475467),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(color: _ink, width: 2),
+                                  ),
+                                  child: const Text(
+                                    'TERMINÉ',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontFamily: 'Plus Jakarta Sans',
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 9.5,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 22),
+                        Text(
+                          asHost
+                              ? 'Votre direct est terminé'
+                              : 'Direct terminé',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontFamily: 'Plus Jakarta Sans',
+                            fontWeight: FontWeight.w800,
+                            fontSize: 22,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          title,
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white.withAlpha(220),
+                            fontFamily: 'Plus Jakarta Sans',
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          host == null || asHost
+                              ? reason
+                              : '${host!.displayName} · $reason',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white60,
+                            fontFamily: 'Plus Jakarta Sans',
+                            fontSize: 13,
+                          ),
+                        ),
+
+                        // ── Chiffres clés ───────────────────────────────────
+                        if (tiles.isNotEmpty) ...[
+                          const SizedBox(height: 26),
+                          _SectionLabel(
+                            asHost ? 'Bilan de votre direct' : 'En chiffres',
+                          ),
+                          const SizedBox(height: 10),
+                          LayoutBuilder(
+                            builder: (context, c) {
+                              final w = (c.maxWidth - 10) / 2;
+                              return Wrap(
+                                spacing: 10,
+                                runSpacing: 10,
+                                children: [
+                                  for (final (icon, value, label) in tiles)
+                                    SizedBox(
+                                      width: w,
+                                      child: _StatTile(
+                                        icon: icon,
+                                        value: value,
+                                        label: label,
+                                      ),
+                                    ),
+                                ],
+                              );
+                            },
+                          ),
+                        ],
+
+                        // ── Détail des réactions ────────────────────────────
+                        if (r != null && totalReactions > 0) ...[
+                          const SizedBox(height: 22),
+                          const _SectionLabel('Réactions'),
+                          const SizedBox(height: 10),
+                          Container(
+                            padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+                            decoration: BoxDecoration(
+                              color: _card,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: Colors.white.withAlpha(18),
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                for (final t in sorted)
+                                  if (r[t] > 0)
+                                    _ReactionBar(
+                                      emoji: t.emoji,
+                                      label: t.label,
+                                      count: r[t],
+                                      share: r[t] / totalReactions,
+                                    ),
+                              ],
+                            ),
+                          ),
+                        ],
+
+                        const SizedBox(height: 28),
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton(
+                            onPressed: onClose,
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              minimumSize: const Size.fromHeight(50),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            child: const Text('Fermer'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Text(
+        text.toUpperCase(),
+        style: const TextStyle(
+          color: Colors.white54,
+          fontFamily: 'Plus Jakarta Sans',
+          fontWeight: FontWeight.w700,
+          fontSize: 11,
+          letterSpacing: 0.8,
+        ),
+      ),
+    );
+  }
+}
+
+class _StatTile extends StatelessWidget {
+  const _StatTile({
+    required this.icon,
+    required this.value,
+    required this.label,
+  });
+  final IconData icon;
+  final String value;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: const Color(0xF0120A1F),
-      padding: const EdgeInsets.all(28),
-      child: SafeArea(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.videocam_off_rounded,
-              color: Colors.white70,
-              size: 56,
+      padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+      decoration: BoxDecoration(
+        color: LiveEndedView._card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withAlpha(18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: AppColors.secondary.withAlpha(38),
+              borderRadius: BorderRadius.circular(8),
             ),
-            const SizedBox(height: 16),
-            const Text(
-              'Direct terminé',
-              style: TextStyle(
+            child: Icon(icon, size: 17, color: AppColors.secondary),
+          ),
+          const SizedBox(height: 10),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: const TextStyle(
                 color: Colors.white,
                 fontFamily: 'Plus Jakarta Sans',
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w800,
                 fontSize: 22,
               ),
             ),
-            const SizedBox(height: 6),
-            Text(
-              reason,
-              textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white60,
+              fontFamily: 'Plus Jakarta Sans',
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReactionBar extends StatelessWidget {
+  const _ReactionBar({
+    required this.emoji,
+    required this.label,
+    required this.count,
+    required this.share,
+  });
+  final String emoji;
+  final String label;
+  final int count;
+  final double share;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 28,
+            child: Text(emoji, style: const TextStyle(fontSize: 18)),
+          ),
+          SizedBox(
+            width: 70,
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 color: Colors.white70,
                 fontFamily: 'Plus Jakarta Sans',
-                fontSize: 14,
+                fontSize: 12.5,
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              textAlign: TextAlign.center,
+          ),
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: share.clamp(0.02, 1.0),
+                minHeight: 8,
+                backgroundColor: Colors.white.withAlpha(20),
+                valueColor: const AlwaysStoppedAnimation(AppColors.secondary),
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 48,
+            child: Text(
+              _compact(count),
+              textAlign: TextAlign.right,
               style: const TextStyle(
-                color: Colors.white54,
+                color: Colors.white,
                 fontFamily: 'Plus Jakarta Sans',
-                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                fontSize: 12.5,
               ),
             ),
-            if (peakViewers != null || duration != null) ...[
-              const SizedBox(height: 20),
-              Wrap(
-                spacing: 10,
-                runSpacing: 8,
-                alignment: WrapAlignment.center,
-                children: [
-                  if (duration != null)
-                    LiveChip(
-                      icon: Icons.timer_outlined,
-                      label: formatLiveDuration(duration!),
-                    ),
-                  if (peakViewers != null)
-                    LiveChip(
-                      icon: Icons.visibility_outlined,
-                      label: '$peakViewers au plus fort',
-                    ),
-                ],
-              ),
-            ],
-            const SizedBox(height: 28),
-            FilledButton(
-              onPressed: onClose,
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 14,
-                ),
-              ),
-              child: const Text('Fermer'),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

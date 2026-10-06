@@ -113,6 +113,7 @@ class LiveRepository {
     bool commentsEnabled = true,
     LiveSource source = LiveSource.browser,
     String? cameraUrl,
+    String? eventId,
   }) =>
       _guard(() async {
         final res = await _api.post<dynamic>(AppConstants.lives, data: {
@@ -126,6 +127,8 @@ class LiveRepository {
           if (categorySlug != null && categorySlug.isNotEmpty)
             'category_slug': categorySlug,
           'comments_enabled': commentsEnabled,
+          // Direct d'un événement (docs/fonctionnalites/evenements.md).
+          'event_id': ?eventId,
         });
         final data = _asMap(res.data);
         return (

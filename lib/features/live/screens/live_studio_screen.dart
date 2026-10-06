@@ -212,9 +212,17 @@ class _LiveStudioScreenState extends ConsumerState<LiveStudioScreen> {
     if (ctrl.ended) {
       return LiveEndedView(
         title: live.title,
+        host: live.host,
+        asHost: true,
         reason: liveEndReasonLabel(ctrl.endReason ?? live.endReason ?? 'host'),
-        peakViewers: ctrl.peakViewers,
+        peakViewers:
+            ctrl.peakViewers > live.peakViewers ? ctrl.peakViewers : live.peakViewers,
         duration: live.duration,
+        commentCount: live.commentCount > ctrl.comments.length
+            ? live.commentCount
+            : ctrl.comments.length,
+        reactions:
+            ctrl.reactions.total >= live.reactions.total ? ctrl.reactions : live.reactions,
         onClose: _close,
       );
     }

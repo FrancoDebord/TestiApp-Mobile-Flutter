@@ -129,9 +129,11 @@ class LiveRoomController extends ChangeNotifier {
 
   /// Peut épingler, désépingler ou remplacer le message épinglé : le message écrit par le
   /// diffuseur ne se retire que par lui (un modérateur qui regarde est un spectateur).
-  /// Même règle côté serveur (403).
+  /// Même règle côté serveur (403). Un intervenant à l'antenne n'épingle jamais.
   bool get canChangePin =>
-      canModerate && (isHostMode || _pinned == null || _pinned!.user.id != _live.host.id);
+      canModerate &&
+      !_onStage &&
+      (isHostMode || _pinned == null || _pinned!.user.id != _live.host.id);
 
   final List<FloatingReaction> _floating = [];
   List<FloatingReaction> get floatingReactions => List.unmodifiable(_floating);
@@ -672,8 +674,9 @@ class LiveRoomController extends ChangeNotifier {
       _stageAction(() => _repo.withdrawStage(_live.id));
 
   /// Accepter l'invitation : le serveur ouvre micro (et caméra) sur la connexion
-  /// en cours, puis on publie. Renvoie un message d'erreur, ou null.
-  Future<String?> acceptInvitation({required bool camera}) async {
+  /// en cours, puis on publie. [mic] false : arrivée micro coupé (bruit ambiant).
+  /// Renvoie un message d'erreur, ou null.
+  Future<String?> acceptInvitation({required bool camera, bool mic = true}) async {
     final local = _room?.localParticipant;
     if (local == null) return 'Vous n\'êtes pas connecté au direct.';
     final err = await _stageAction(() =>
@@ -689,9 +692,9 @@ class LiveRoomController extends ChangeNotifier {
     }
     try {
       _onStage = true;
-      _stageMic = true;
+      _stageMic = mic;
       _stageCamera = camera;
-      await local.setMicrophoneEnabled(true);
+      await local.setMicrophoneEnabled(mic);
       if (camera) {
         await local.setCameraEnabled(true,
             cameraCaptureOptions:

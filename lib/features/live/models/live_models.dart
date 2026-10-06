@@ -3,6 +3,7 @@
 // Doc backend : docs/fonctionnalites/lives.md
 
 import 'package:flutter/widgets.dart' show StringCharacters;
+import '../../../shared/models/mention.dart';
 
 enum LiveStatus {
   preparing,
@@ -350,6 +351,7 @@ class LiveComment {
     required this.body,
     required this.user,
     this.createdAt,
+    this.mentions = const [],
   });
 
   factory LiveComment.fromJson(Map<String, dynamic> m) => LiveComment(
@@ -357,10 +359,14 @@ class LiveComment {
         body: (m['body'] as String?) ?? '',
         createdAt: _date(m['createdAt']),
         user: LivePerson.fromJson(_map(m['user'])),
+        mentions: MentionRef.listFrom(m['mentions']),
       );
 
   final String id;
   final String body;
+
+  /// Comptes mentionnés (« @Nom » cliquable) — docs serveur fonctionnalites/mentions.md
+  final List<MentionRef> mentions;
   final DateTime? createdAt;
   final LivePerson user;
 }
