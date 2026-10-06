@@ -5,11 +5,14 @@ import 'package:share_plus/share_plus.dart' show ShareParams, SharePlus;
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
+import '../../daily_verse/screens/daily_verse_screen.dart' show openDailyVerse;
 import '../models/testimony_model.dart';
 import '../providers/home_providers.dart';
 
 /// Collapsible card that shows the daily Bible verse with a gradient
-/// background and Playfair Display Italic text.
+/// background and Playfair Display Italic text. Un tap sur le verset ouvre la
+/// page plein écran (versions, prière, commentaires, témoignages) :
+/// [openDailyVerse] — docs serveur fonctionnalites/verset-du-jour.md
 ///
 /// Widget tree:
 /// AnimatedCrossFade
@@ -55,11 +58,10 @@ class _CollapsedBanner extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return GestureDetector(
-      onTap: () =>
-          ref.read(verseBannerExpandedProvider.notifier).update(true),
+      onTap: () => openDailyVerse(context),
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
         decoration: BoxDecoration(
           color: AppColors.primarySoft,
           borderRadius: BorderRadius.circular(AppRadius.md),
@@ -91,8 +93,18 @@ class _CollapsedBanner extends ConsumerWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            const Icon(Icons.keyboard_arrow_down_rounded,
-                color: AppColors.primary, size: 20),
+            // Le chevron déplie la bannière ; le reste ouvre le plein écran.
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () =>
+                  ref.read(verseBannerExpandedProvider.notifier).update(true),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 6),
+                child: Icon(Icons.keyboard_arrow_down_rounded,
+                    color: AppColors.primary, size: 20,
+                    semanticLabel: 'Déplier le verset'),
+              ),
+            ),
           ],
         ),
       ),
@@ -150,6 +162,15 @@ class _ExpandedBanner extends ConsumerWidget {
                   ),
                 ),
                 GestureDetector(
+                  onTap: () => openDailyVerse(context),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 6),
+                    child: Icon(Icons.open_in_full_rounded,
+                        color: Colors.white70, size: 18,
+                        semanticLabel: 'Ouvrir en plein écran'),
+                  ),
+                ),
+                GestureDetector(
                   onTap: () => ref
                       .read(verseBannerExpandedProvider.notifier)
                       .update(false),
@@ -161,26 +182,33 @@ class _ExpandedBanner extends ConsumerWidget {
 
             const SizedBox(height: 12),
 
-            // ── Quote ────────────────────────────────────────────────────────
-            Text(
-              verse.text,
-              style: AppTextStyles.verseQuote.copyWith(
-                color: Colors.white,
-                fontSize: 15,
-                height: 1.9,
-              ),
-            ),
-
-            const SizedBox(height: 10),
-
-            // ── Reference ────────────────────────────────────────────────────
-            Align(
-              alignment: Alignment.centerRight,
-              child: Text(
-                '— ${verse.reference}',
-                style: AppTextStyles.verseReference.copyWith(
-                  color: AppColors.sun,
-                ),
+            // ── Quote + reference : ouvrent le plein écran ──────────────────
+            GestureDetector(
+              key: const ValueKey('daily-verse-open'),
+              behavior: HitTestBehavior.opaque,
+              onTap: () => openDailyVerse(context),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    verse.text,
+                    style: AppTextStyles.verseQuote.copyWith(
+                      color: Colors.white,
+                      fontSize: 15,
+                      height: 1.9,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      '— ${verse.reference}',
+                      style: AppTextStyles.verseReference.copyWith(
+                        color: AppColors.sun,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
 

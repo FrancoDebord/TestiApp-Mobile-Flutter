@@ -366,6 +366,10 @@ class DailyVerse {
       }
       return '';
     }
+    final counts = j['counts'] is Map ? j['counts'] as Map : null;
+    final reactions = j['myReactions'] is List
+        ? (j['myReactions'] as List).map((e) => '$e').toSet()
+        : const <String>{};
 
     return DailyVerse(
       id: (j['id'] as num?)?.toInt() ?? 0,
@@ -374,12 +378,18 @@ class DailyVerse {
       reference: str(['reference', 'verse', 'citation', 'ref',
                        'verse_reference', 'verseReference', 'address',
                        'book_chapter_verse', 'location']),
+      // L'API renvoie { counts: { likes, prayers }, myReactions: [like, pray] } ;
+      // le cache local garde like_count / is_liked.
       likeCount:   (j['like_count']   as num?)?.toInt() ??
-                   (j['likes_count']  as num?)?.toInt() ?? 0,
+                   (j['likes_count']  as num?)?.toInt() ??
+                   (counts?['likes']  as num?)?.toInt() ?? 0,
       prayerCount: (j['prayer_count'] as num?)?.toInt() ??
-                   (j['prayers_count'] as num?)?.toInt() ?? 0,
-      isLiked:  j['is_liked']  as bool? ?? j['isLiked']  as bool? ?? false,
-      isPrayed: j['is_prayed'] as bool? ?? j['isPrayed'] as bool? ?? false,
+                   (j['prayers_count'] as num?)?.toInt() ??
+                   (counts?['prayers'] as num?)?.toInt() ?? 0,
+      isLiked:  j['is_liked']  as bool? ?? j['isLiked']  as bool? ??
+                reactions.contains('like'),
+      isPrayed: j['is_prayed'] as bool? ?? j['isPrayed'] as bool? ??
+                reactions.contains('pray'),
     );
   }
 
