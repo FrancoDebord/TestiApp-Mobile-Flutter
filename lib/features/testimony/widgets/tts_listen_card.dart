@@ -12,6 +12,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../services/audio_player_service.dart' show audioPlayerProvider;
+import '../../../services/tts_service.dart' show detectTextLanguage;
 import '../../../shared/utils/rich_text_utils.dart';
 import '../../home/models/testimony_model.dart';
 import '../providers/tts_provider.dart';
@@ -47,10 +48,12 @@ Future<void> startTestimonyReading(
       ref.read(audioPlayerProvider).isPlaying) {
     ref.read(audioPlayerProvider.notifier).pause();
   }
+  final text = ttsTextFor(t);
+  // Voix selon la langue du témoignage ; langue de l'application si elle est incertaine.
   final ok = await ref.read(ttsControllerProvider.notifier).play(
         testimonyId: t.id,
-        text: ttsTextFor(t),
-        languageCode: l10n.isFr ? 'fr' : 'en',
+        text: text,
+        languageCode: detectTextLanguage(text, fallback: l10n.isFr ? 'fr' : 'en'),
       );
   if (!ok) {
     messenger?.showSnackBar(

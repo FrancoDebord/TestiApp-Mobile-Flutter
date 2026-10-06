@@ -189,6 +189,8 @@ class _NotificationTile extends ConsumerWidget {
           (Icons.gpp_bad_rounded, AppColors.danger, AppColors.dangerSoft),
         NotificationType.liveStarted =>
           (Icons.sensors_rounded, AppColors.danger, AppColors.dangerSoft),
+        NotificationType.event =>
+          (Icons.event_rounded, AppColors.primary, AppColors.primarySoft),
       };
 
   static String _timeAgo(AppLocalizations l10n, DateTime dt) {
@@ -267,6 +269,13 @@ class _NotificationTile extends ConsumerWidget {
             if (liveId != null && liveId.isNotEmpty) {
               context.push('/lives/$liveId');
             }
+          } else if (notification.eventId != null) {
+            // Événement reporté / annulé / sondage, mention dans un commentaire d'événement.
+            context.push('/events/${notification.eventId}');
+          } else if (notification.prayerSessionId != null) {
+            context.push('/prayer-sessions/${notification.prayerSessionId}');
+          } else if (notification.prayerRequestId != null) {
+            context.push('/prayer-requests/${notification.prayerRequestId}');
           } else if (testimonyId != null && testimonyId.isNotEmpty) {
             context.push('/testimony/$testimonyId');
           }

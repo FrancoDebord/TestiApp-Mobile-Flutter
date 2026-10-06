@@ -73,6 +73,7 @@ class AppLocalizations {
   String get navNotifications => _t('Alertes',      'Alerts');
   String get navProfile       => _t('Profil',       'Profile');
   String get navDownloads     => _t('Téléchargements', 'Downloads');
+  String get navEvents        => _t('Événements', 'Events');
 
   // ── Home ─────────────────────────────────────────────────────────────────
   String get homeTitle        => _t('Témoignages',  'Testimonies');
@@ -165,7 +166,6 @@ class AppLocalizations {
   String get settingsFrench     => _t('Français',      'French');
   String get settingsEnglish    => _t('Anglais',       'English');
   String get settingsNotifs     => _t('Notifications', 'Notifications');
-  String get settingsTheme      => _t('Thème',         'Theme');
   String get settingsPrivacy    => _t('Confidentialité', 'Privacy');
   String get settingsLogout     => _t('Se déconnecter', 'Sign out');
   String get settingsDelete     => _t('Supprimer le compte', 'Delete account');
@@ -333,10 +333,9 @@ class AppLocalizations {
   String get editCustomTitle    => _t('Titre personnalisé (optionnel)', 'Custom title (optional)');
 
   // ── Gender ────────────────────────────────────────────────────────────────
-  String get genderMale         => _t('Homme', 'Male');
-  String get genderFemale       => _t('Femme', 'Female');
-  String get genderOther        => _t('Autre', 'Other');
-
+  String get genderMale         => _t('Masculin', 'Male');
+  String get genderFemale       => _t('Féminin',  'Female');
+  
   // ── Submit prayer request ──────────────────────────────────────────────────
   String get submitPrayerTitle      => _t('Partager une requête', 'Share a request');
   String get submitPrayerIntro      => _t('La communauté priera avec vous. Partagez votre besoin avec foi.', 'The community will pray with you. Share your need with faith.');

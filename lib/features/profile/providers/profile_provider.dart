@@ -456,7 +456,6 @@ class UserSettingsNotifier extends Notifier<UserSettings> {
       state = state.copyWith(pushPrayers:   !state.pushPrayers);
   void togglePushApproval()  =>
       state = state.copyWith(pushApproval:  !state.pushApproval);
-  void setTheme(AppTheme t)  => state = state.copyWith(appTheme: t);
 }
 
 final userSettingsProvider =

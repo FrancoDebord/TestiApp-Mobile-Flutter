@@ -10,7 +10,7 @@ class ProfileExtras {
   const ProfileExtras({
     this.firstName  = '',
     this.lastName   = '',
-    this.gender     = '',   // 'Homme' | 'Femme' | 'Autre'
+    this.gender     = '',   // 'Homme' | 'Femme'
     this.phone      = '',   // numéro national (sans indicatif)
     this.phoneCountry = '', // code ISO de l'indicatif (« bj »)
     this.email      = '',
@@ -149,15 +149,8 @@ class ProfileTestimonyCard {
 // Paramètres
 // ---------------------------------------------------------------------------
 
-enum AppTheme { light, dark, system }
-
-extension AppThemeLabel on AppTheme {
-  String get label => switch (this) {
-    AppTheme.light  => 'Clair',
-    AppTheme.dark   => 'Sombre',
-    AppTheme.system => 'Système',
-  };
-}
+// Pas de réglage Clair / Sombre / Système : l'application n'a pas de palette
+// sombre (couleurs fixes AppColors). À réintroduire avec un vrai mode sombre.
 
 enum CommentPermission { everyone, nobody }
 
@@ -175,7 +168,6 @@ class UserSettings {
     this.pushPrayers     = true,
     this.pushApproval    = true,
     this.commentPermission = CommentPermission.everyone,
-    this.appTheme        = AppTheme.system,
   });
 
   final bool               pushComments;
@@ -183,7 +175,6 @@ class UserSettings {
   final bool               pushPrayers;
   final bool               pushApproval;
   final CommentPermission  commentPermission;
-  final AppTheme           appTheme;
 
   UserSettings copyWith({
     bool? pushComments,
@@ -191,13 +182,11 @@ class UserSettings {
     bool? pushPrayers,
     bool? pushApproval,
     CommentPermission? commentPermission,
-    AppTheme? appTheme,
   }) => UserSettings(
     pushComments:      pushComments      ?? this.pushComments,
     pushLikes:         pushLikes         ?? this.pushLikes,
     pushPrayers:       pushPrayers       ?? this.pushPrayers,
     pushApproval:      pushApproval      ?? this.pushApproval,
     commentPermission: commentPermission ?? this.commentPermission,
-    appTheme:          appTheme          ?? this.appTheme,
   );
 }

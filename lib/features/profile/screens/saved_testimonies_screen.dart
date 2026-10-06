@@ -127,7 +127,7 @@ class _OfflineTab extends ConsumerWidget {
   const _OfflineTab();
 
   void _openDownloads(BuildContext context) =>
-      GoRouter.maybeOf(context)?.go(AppPaths.downloadsPath);
+      GoRouter.maybeOf(context)?.push(AppPaths.downloadsPath);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

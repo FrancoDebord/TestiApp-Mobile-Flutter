@@ -328,8 +328,14 @@ class ApiService {
     final statusCode = e.response?.statusCode ?? 0;
     final rawBody    = e.response?.data;
     final body       = rawBody is Map<String, dynamic> ? rawBody : const <String, dynamic>{};
-    final message    = body['message'] as String?;
+    var message      = body['message'] as String?;
     final errors     = body['errors'];
+    // Route absente (« The route api/v1/feed could not be found. ») : le serveur
+    // n'a pas encore la version de l'API attendue par l'application.
+    if (statusCode == 404 && message != null && message.contains('could not be found')) {
+      message = "Cette fonctionnalité n'est pas encore disponible sur le serveur. "
+          'Réessayez après sa mise à jour.';
+    }
     throw LaravelApiException(
       message:    message ?? 'Erreur serveur ($statusCode).',
       errors:     errors is Map<String, dynamic> ? errors : null,

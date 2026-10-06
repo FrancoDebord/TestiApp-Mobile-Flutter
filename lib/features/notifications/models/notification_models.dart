@@ -12,6 +12,8 @@ enum NotificationType {
   organizationVerified,
   organizationRejected,
   liveStarted,
+  // Événement : reporté, annulé, sondage d'après l'événement (types event_*).
+  event,
 }
 
 extension NotificationTypeLabel on NotificationType {
@@ -35,6 +37,8 @@ extension NotificationTypeLabel on NotificationType {
         return 'Vérification refusée';
       case NotificationType.liveStarted:
         return 'En direct';
+      case NotificationType.event:
+        return 'Événement';
     }
   }
 }
@@ -70,6 +74,9 @@ class AppNotification {
     this.testimonyId,
     this.liveId,
     this.message,
+    this.prayerRequestId,
+    this.prayerSessionId,
+    this.eventId,
   });
 
   final String id;
@@ -90,6 +97,14 @@ class AppNotification {
   /// Message pré-rédigé par le serveur (peut être null / vide).
   final String? message;
 
+  /// Requête / session de prière concernée (types prayer_*, docs serveur
+  /// fonctionnalites/requetes-de-priere.md, sessions-de-priere.md).
+  final String? prayerRequestId;
+  final String? prayerSessionId;
+
+  /// Événement concerné (types event_*, mention dans un commentaire d'événement).
+  final String? eventId;
+
   AppNotification copyWith({bool? isRead}) {
     return AppNotification(
       id: id,
@@ -103,6 +118,9 @@ class AppNotification {
       testimonyId: testimonyId,
       liveId: liveId,
       message: message,
+      prayerRequestId: prayerRequestId,
+      prayerSessionId: prayerSessionId,
+      eventId: eventId,
     );
   }
 
@@ -113,6 +131,11 @@ class AppNotification {
       case NotificationType.like:
         return '$actorName a aimé votre témoignage « $testimonyTitle »';
       case NotificationType.prayer:
+        // Requêtes et sessions de prière : texte rédigé par le serveur.
+        final prayerMsg = message?.trim() ?? '';
+        if ((prayerRequestId != null || prayerSessionId != null) && prayerMsg.isNotEmpty) {
+          return actorName.isNotEmpty ? '$actorName $prayerMsg' : prayerMsg;
+        }
         return '$actorName prie pour vous suite à « $testimonyTitle »';
       case NotificationType.approved:
         return 'Votre témoignage « $testimonyTitle » a été approuvé';
@@ -130,6 +153,8 @@ class AppNotification {
         return testimonyTitle.isNotEmpty
             ? '$actorName est en direct : $testimonyTitle'
             : '$actorName est en direct';
+      case NotificationType.event:
+        return message?.trim() ?? '';
     }
   }
 
@@ -141,7 +166,7 @@ class AppNotification {
       case NotificationType.like:
         return 'Témoignage populaire';
       case NotificationType.prayer:
-        return 'Prière pour vous';
+        return prayerSessionId != null ? 'Session de prière' : 'Prière pour vous';
       case NotificationType.approved:
         return 'Témoignage approuvé';
       case NotificationType.newFollowedTestimony:
@@ -154,6 +179,8 @@ class AppNotification {
         return 'Vérification refusée';
       case NotificationType.liveStarted:
         return 'En direct';
+      case NotificationType.event:
+        return 'Événement';
     }
   }
 

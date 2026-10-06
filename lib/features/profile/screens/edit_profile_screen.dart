@@ -20,7 +20,7 @@ import '../providers/profile_provider.dart';
 // Pays : liste partagée avec le site (lib/core/data/countries.dart).
 
 // Canonical stored gender values (language-neutral keys)
-const _kGenderValues = ['Homme', 'Femme', 'Autre'];
+const _kGenderValues = ['Homme', 'Femme'];
 
 const _kSuggestedTitles = [
   'Pasteur', 'Évangéliste', 'Ancien', 'Diacre', 'Missionnaire',
@@ -92,7 +92,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _bioCtrl         = TextEditingController(text: e.bio);
     _customTitleCtrl = TextEditingController(
         text: _kSuggestedTitles.contains(e.title) ? '' : e.title);
-    _gender        = e.gender.isNotEmpty ? e.gender : null;
+    _gender        = _kGenderValues.contains(e.gender) ? e.gender : null;
     _country       = e.country.isNotEmpty ? e.country : null;
     _avatarPath    = e.avatarPath;
     _selectedTitle = _kSuggestedTitles.contains(e.title) ? e.title : null;
@@ -813,7 +813,7 @@ class _GenderSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final labels = [l10n.genderMale, l10n.genderFemale, l10n.genderOther];
+    final labels = [l10n.genderMale, l10n.genderFemale];
 
     return Row(
       children: List.generate(_kGenderValues.length, (i) {

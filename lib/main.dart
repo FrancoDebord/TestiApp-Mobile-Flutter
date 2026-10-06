@@ -16,6 +16,7 @@ import 'features/auth/providers/auth_notifier.dart'
 import 'features/downloads/providers/downloads_provider.dart'
     show downloadsProvider;
 import 'features/home/providers/home_providers.dart' show feedNotifierProvider;
+import 'features/prophecies/data/prophecy_reminders.dart';
 import 'firebase_options.dart';
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_text_styles.dart' show AppFonts;
@@ -29,9 +30,12 @@ import 'services/sync_service.dart';
 // Must be a top-level function. Called when a data message arrives while the
 // app is killed or in background. No Riverpod/Navigator available here.
 // The next foreground open triggers a full deltaSync.
+// Parole prophétique modifiée ailleurs : le rappel local est reprogrammé ici,
+// depuis le réglage contenu dans le message (aucun appel réseau).
 @pragma('vm:entry-point')
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage _) async {
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await ProphecyReminders.handlePush(message.data, background: true);
 }
 
 // ── Entry point ───────────────────────────────────────────────────────────────
@@ -180,6 +184,20 @@ class _TemoignagesAppState extends ConsumerState<TemoignagesApp>
   void _handleFcmNavigation(GoRouter router, FcmNavIntent intent) {
     final testimonyId = intent.testimonyId;
     switch (intent.type) {
+      // Mention hors témoignage (fonctionnalites/mentions.md) : message de prière ou direct.
+      case 'mention' when testimonyId == null && intent.prayerRequestId != null:
+        router.push('/prayer-requests/${intent.prayerRequestId}');
+      case 'mention' when testimonyId == null && intent.liveId != null:
+        router.push('/lives/${intent.liveId}');
+      // Événements (docs serveur fonctionnalites/evenements.md) : reporté, annulé,
+      // sondage d'après l'événement, mention dans un commentaire d'événement.
+      case 'mention' when testimonyId == null && intent.eventId != null:
+        router.push('/events/${intent.eventId}');
+      case 'event_postponed':
+      case 'event_cancelled':
+      case 'event_survey':
+        final eventId = intent.eventId;
+        router.push(eventId != null ? '/events/$eventId' : '/events');
       case 'comment':
       case 'reply':
       case 'mention':
@@ -200,6 +218,18 @@ class _TemoignagesAppState extends ConsumerState<TemoignagesApp>
         } else {
           router.pushNamed(AppRoutes.notifications);
         }
+      // Rappel de prière (notification locale) : la parole prophétique.
+      case 'prophecy_reminder':
+        final prophecyId = intent.prophecyId;
+        router.push(prophecyId != null ? '/prophecies/$prophecyId' : '/prophecies');
+      // Requêtes et sessions de prière (docs serveur fonctionnalites/sessions-de-priere.md).
+      case 'prayer_encouragement':
+        final requestId = intent.prayerRequestId;
+        router.push(requestId != null ? '/prayer-requests/$requestId' : '/prayer-requests');
+      case 'prayer_session_started':
+      case 'prayer_session_reminder':
+        final sessionId = intent.prayerSessionId;
+        router.push(sessionId != null ? '/prayer-sessions/$sessionId' : '/prayer-sessions');
       case 'testimony_approved':
       case 'testimony_rejected':
       case 'pending_correction':

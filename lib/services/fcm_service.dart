@@ -26,6 +26,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/app_constants.dart';
 import '../features/home/providers/home_providers.dart';
 import '../features/notifications/providers/notifications_provider.dart';
+import '../features/prophecies/data/prophecy_reminders.dart';
+import '../features/prophecies/providers/prophecies_providers.dart';
 import '../features/auth/providers/auth_notifier.dart' show currentUserProvider;
 import '../features/profile/providers/profile_provider.dart'
     show userSettingsProvider;
@@ -46,10 +48,28 @@ final FlutterLocalNotificationsPlugin localNotificationsPlugin =
 // ── FCM navigation intent ─────────────────────────────────────────────────────
 
 class FcmNavIntent {
-  const FcmNavIntent({required this.type, this.testimonyId, this.liveId});
+  const FcmNavIntent({
+    required this.type,
+    this.testimonyId,
+    this.liveId,
+    this.prophecyId,
+    this.prayerRequestId,
+    this.prayerSessionId,
+    this.eventId,
+  });
   final String  type;
   final String? testimonyId;
   final String? liveId;
+
+  /// Rappel de prière d'une parole prophétique (notification locale).
+  final String? prophecyId;
+
+  /// Requête / session de prière (types prayer_*).
+  final String? prayerRequestId;
+  final String? prayerSessionId;
+
+  /// Événement (types event_*, mention dans un commentaire d'événement).
+  final String? eventId;
 
   /// Construit l'intention depuis les données d'un push FCM
   /// (null si `type` est absent).
@@ -64,6 +84,10 @@ class FcmNavIntent {
       type:        type,
       testimonyId: str('testimony_id'),
       liveId:      str('live_id'),
+      prophecyId:  str('prophecy_id'),
+      prayerRequestId: str('prayer_request_id'),
+      prayerSessionId: str('prayer_session_id'),
+      eventId:     str('event_id'),
     );
   }
 }
@@ -182,6 +206,14 @@ class FcmService {
   }
 
   Future<void> _onForeground(RemoteMessage message) async {
+    // Parole prophétique modifiée ailleurs (site, autre téléphone) : message
+    // silencieux, rappel reprogrammé et liste rechargée ; rien à afficher.
+    if (await ProphecyReminders.handlePush(message.data)) {
+      _ref.invalidate(propheciesListProvider);
+      _ref.invalidate(prophecyProvider);
+      return;
+    }
+
     // 1. Refresh local data immediately.
     await _deltaSync();
 
@@ -198,7 +230,7 @@ class FcmService {
     return switch (message.data['type'] as String? ?? '') {
       'comment' || 'reply' || 'mention' => settings.pushComments,
       'like'                            => settings.pushLikes,
-      'prayer'                          => settings.pushPrayers,
+      'prayer' || 'prayer_encouragement' => settings.pushPrayers,
       // Pas de préférence dédiée « abonnements » dans UserSettings :
       // toujours affichées.
       'live_started'

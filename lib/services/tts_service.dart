@@ -97,6 +97,41 @@ List<String> _splitWords(String s, int maxLength) {
 String ttsLanguageFor(String languageCode) =>
     languageCode.toLowerCase().startsWith('en') ? 'en-US' : 'fr-FR';
 
+// ── Langue du texte ─────────────────────────────────────────────────────────
+// Les témoignages n'ont pas de champ « langue » : la langue est déduite des
+// mots les plus fréquents (même règle que le site, resources/js/tts.js).
+
+const _frWords = {
+  'le', 'la', 'les', 'des', 'du', 'au', 'aux', 'et', 'est', 'une', 'un', 'que',
+  'qui', 'dans', 'pour', 'pas', 'je', 'tu', 'il', 'elle', 'nous', 'vous',
+  'ils', 'elles', 'ce', 'cette', 'mon', 'ma', 'mes', 'ton', 'ta', 'tes', 'son',
+  'sa', 'ses', 'avec', 'sur', 'mais', 'ont', 'été', 'être', 'avait', 'était',
+  'suis', 'dieu', 'seigneur', 'jésus',
+};
+const _enWords = {
+  'the', 'and', 'is', 'are', 'was', 'were', 'of', 'to', 'in', 'that', 'it',
+  'for', 'you', 'with', 'my', 'i', 'he', 'she', 'we', 'they', 'this', 'not',
+  'have', 'has', 'had', 'be', 'been', 'his', 'her', 'but', 'at', 'our',
+  'your', 'from', 'what', 'god', 'lord', 'jesus',
+};
+final _letters = RegExp(r'\p{L}+', unicode: true);
+final _frAccents = RegExp(r'[éèêàùçœâîôû]', caseSensitive: false);
+
+/// Langue probable de [text] : `'en'` si les mots anglais dominent nettement,
+/// `'fr'` s'ils sont français, [fallback] si le texte ne permet pas de décider.
+String detectTextLanguage(String text, {String fallback = 'fr'}) {
+  var fr = _frAccents.allMatches(text).length / 2;
+  var en = 0;
+  for (final m in _letters.allMatches(text.toLowerCase())) {
+    final w = m.group(0)!;
+    if (_frWords.contains(w)) fr += 1;
+    if (_enWords.contains(w)) en += 1;
+  }
+  if (en >= 3 && en > fr * 1.5) return 'en';
+  if (fr >= 3 && fr > en * 1.5) return 'fr';
+  return fallback.toLowerCase().startsWith('en') ? 'en' : 'fr';
+}
+
 // ── Moteur ───────────────────────────────────────────────────────────────────
 
 /// Moteur de synthèse vocale minimal.

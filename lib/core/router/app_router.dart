@@ -54,6 +54,20 @@ import '../../shared/models/user_model.dart';
 import '../../features/community/screens/community_screen.dart';
 import '../../features/community/screens/following_screen.dart';
 import '../../features/community/screens/user_profile_screen.dart';
+import '../../features/events/screens/event_detail_screen.dart';
+import '../../features/events/screens/event_form_screen.dart';
+import '../../features/events/screens/events_screen.dart';
+import '../../features/events/screens/organization_managers_screen.dart';
+import '../../features/feed/personal_feed_screen.dart';
+import '../../features/prophecies/screens/prophecies_screen.dart';
+import '../../features/prophecies/screens/prophecy_detail_screen.dart';
+import '../../features/prophecies/screens/prophecy_form_screen.dart';
+import '../../features/prayer/screens/create_prayer_session_screen.dart';
+import '../../features/prayer/screens/group_prayer_sessions_screen.dart';
+import '../../features/prayer/screens/prayer_request_detail_screen.dart';
+import '../../features/prayer/screens/prayer_requests_screen.dart';
+import '../../features/prayer/screens/prayer_session_detail_screen.dart';
+import '../../features/prayer/screens/submit_prayer_request_screen.dart';
 import 'app_routes.dart';
 import 'app_transitions.dart';
 import '../../shared/widgets/scaffold_with_bottom_nav.dart';
@@ -72,7 +86,10 @@ String? _pendingDeepLink;
 bool _isContentDeepLink(String location) =>
     location.startsWith('/testimony/') ||
     location.startsWith('/testimonies/') ||
-    (location.startsWith('/lives/') && location != '/lives/new');
+    (location.startsWith('/lives/') && location != '/lives/new') ||
+    (location.startsWith('/events/') &&
+        location != '/events/new' &&
+        !location.endsWith('/edit'));
 
 /// Devient vrai dès que la session a été résolue une première fois : un
 /// rechargement ultérieur de l'état (ex. envoi d'un code SMS) ne renvoie
@@ -216,9 +233,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // Diffusion en direct : modérateurs et administrateurs uniquement.
       final isBroadcastRoute = location == '/lives/new' ||
           (location.startsWith('/lives/') && location.endsWith('/studio'));
+      // Exception : le direct d'un événement (/lives/new?event=…, puis le
+      // studio) est ouvert à ses gestionnaires — organisation, ses gestionnaires,
+      // co-gestionnaires ; le serveur vérifie les droits (docs serveur :
+      // fonctionnalites/evenements.md). L'écran de préparation les affiche.
       if (isBroadcastRoute && isAuthed && !authState.user.canModerate) {
-        return '/lives';
+        final forEvent = location != '/lives/new' ||
+            state.uri.queryParameters['event'] != null;
+        if (!forEvent) return '/lives';
       }
+      // Création / modification d'événements : droits vérifiés par le serveur
+      // (organisation vérifiée, ses gestionnaires, co-gestionnaires, admin).
 
       final isAdminRoute = location.startsWith('/admin');
       if (isAdminRoute && isAuthed) {
@@ -386,7 +411,11 @@ List<RouteBase> _buildRoutes() {
     ),
     GoRoute(
       path: '/following',
-      builder: (context, state) => const FollowingScreen(),
+      builder: (context, state) => const FollowsScreen(),
+    ),
+    GoRoute(
+      path: '/followers', // « Mes abonnés » : même écran, onglet Abonnés
+      builder: (context, state) => const FollowsScreen(initialTab: FollowsTab.followers),
     ),
     GoRoute(
       path: '/users/:id',
@@ -402,7 +431,9 @@ List<RouteBase> _buildRoutes() {
         // Avant ':id' : sinon « new » serait lu comme un identifiant.
         GoRoute(
           path: 'new',
-          builder: (context, state) => const LiveSetupScreen(),
+          // ?event=… : direct d'un événement (docs serveur fonctionnalites/evenements.md).
+          builder: (context, state) =>
+              LiveSetupScreen(eventId: state.uri.queryParameters['event']),
         ),
         GoRoute(
           path: ':id',
@@ -420,6 +451,85 @@ List<RouteBase> _buildRoutes() {
           ],
         ),
       ],
+    ),
+
+    // Paroles prophétiques du carnet privé (docs serveur fonctionnalites/paroles-prophetiques.md).
+    GoRoute(
+      path: '/prophecies',
+      builder: (context, state) => const PropheciesScreen(),
+      routes: [
+        GoRoute(path: 'new', builder: (context, state) => const ProphecyFormScreen()),
+        GoRoute(
+          path: ':id',
+          builder: (context, state) => ProphecyDetailScreen(prophecyId: state.pathParameters['id']!),
+          routes: [
+            GoRoute(
+              path: 'edit',
+              builder: (context, state) => ProphecyFormScreen(prophecyId: state.pathParameters['id']),
+            ),
+          ],
+        ),
+      ],
+    ),
+
+    // Requêtes et sessions de prière (docs serveur fonctionnalites/requetes-de-priere.md,
+    // sessions-de-priere.md). La salle d'une session est un direct : /lives/{id} (et son studio).
+    GoRoute(
+      path: '/prayer-requests',
+      builder: (context, state) => const PrayerRequestsScreen(),
+      routes: [
+        // Avant ':id' : sinon « new » serait lu comme un identifiant. ?event= : requête d'un événement.
+        GoRoute(
+          path: 'new',
+          builder: (context, state) => SubmitPrayerRequestScreen(eventId: state.uri.queryParameters['event']),
+        ),
+        GoRoute(
+          path: ':id',
+          builder: (context, state) => PrayerRequestDetailScreen(requestId: state.pathParameters['id']!),
+        ),
+      ],
+    ),
+    GoRoute(
+      path: '/prayer-sessions',
+      builder: (context, state) => const GroupPrayerSessionsScreen(),
+      routes: [
+        GoRoute(
+          path: 'new',
+          builder: (context, state) => CreatePrayerSessionScreen(eventId: state.uri.queryParameters['event']),
+        ),
+        GoRoute(
+          path: ':id',
+          builder: (context, state) => PrayerSessionDetailScreen(sessionId: state.pathParameters['id']!),
+          routes: [
+            GoRoute(
+              path: 'edit',
+              builder: (context, state) => CreatePrayerSessionScreen(sessionId: state.pathParameters['id']),
+            ),
+          ],
+        ),
+      ],
+    ),
+
+    // Mon fil : comptes suivis + suggestions.
+    GoRoute(
+      path: '/my-feed',
+      builder: (context, state) => const PersonalFeedScreen(),
+    ),
+
+    // Gestionnaires d'une organisation / organisations que je gère.
+    GoRoute(
+      path: '/managers',
+      builder: (context, state) => const OrganizationManagersScreen(),
+    ),
+
+    // ── Téléchargements (hors barre du bas : menu latéral, profil) ─────────
+    GoRoute(
+      path: '/downloads',
+      name: AppRoutes.downloads,
+      pageBuilder: (context, state) => AppTransitions.slideRight(
+        state: state,
+        child: const DownloadsScreen(),
+      ),
     ),
 
     // â”€â”€ Admin dashboard (Administrateur only â€” guarded by redirect above) â”€â”€â”€
@@ -595,15 +705,35 @@ List<RouteBase> _buildRoutes() {
         ),
 
         // â”€â”€ Branch 3: Notifications â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Onglet « Événements » (a remplacé Téléchargements, désormais dans le
+        // menu latéral et le profil). docs serveur fonctionnalites/evenements.md
         StatefulShellBranch(
           routes: [
             GoRoute(
-              path: '/downloads',
-              name: AppRoutes.downloads,
+              path: '/events',
               pageBuilder: (context, state) => AppTransitions.none(
                 state: state,
-                child: const DownloadsScreen(),
+                child: const EventsScreen(),
               ),
+              routes: [
+                // Avant ':id' : sinon « new » serait lu comme un identifiant.
+                GoRoute(
+                  path: 'new',
+                  builder: (context, state) => const EventFormScreen(),
+                ),
+                GoRoute(
+                  path: ':id',
+                  builder: (context, state) =>
+                      EventDetailScreen(eventId: state.pathParameters['id']!),
+                  routes: [
+                    GoRoute(
+                      path: 'edit',
+                      builder: (context, state) =>
+                          EventFormScreen(eventId: state.pathParameters['id']),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ],
         ),

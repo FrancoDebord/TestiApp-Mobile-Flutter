@@ -17,6 +17,7 @@ import '../../../features/home/providers/home_providers.dart';
 import '../../../services/api_service.dart';
 import '../../journal/data/journal_repository.dart' show journalRefreshProvider;
 import '../models/publish_models.dart';
+import '../../prophecies/providers/prophecies_providers.dart' show propheciesListProvider;
 
 // Converts a relative server URL (e.g. "/storage/videos/x.mp4") to absolute.
 String? _absoluteUrl(String? raw) {
@@ -38,6 +39,46 @@ String _uploadErrorMessage(Object e, String fallback) {
   }
   return fallback;
 }
+
+// =============================================================================
+// Événement de rattachement (témoignage officiel publié par un gestionnaire)
+// Backend : docs/fonctionnalites/evenements.md
+// =============================================================================
+
+/// Événement auquel le prochain témoignage publié sera rattaché (`event_id`),
+/// choisi depuis la page de l'événement. null : témoignage ordinaire.
+class PublishEventNotifier extends Notifier<({String id, String title})?> {
+  @override
+  ({String id, String title})? build() => null;
+
+  void attach(String id, String title) => state = (id: id, title: title);
+  void clear() => state = null;
+}
+
+final publishEventProvider =
+    NotifierProvider<PublishEventNotifier, ({String id, String title})?>(
+        PublishEventNotifier.new);
+
+/// Parole prophétique dont le prochain témoignage raconte l'accomplissement
+/// (`prophecy_id`) ; [makePublic] : la parole est montrée avec le témoignage.
+/// Doc serveur : docs/fonctionnalites/paroles-prophetiques.md
+typedef PublishProphecy = ({String id, String title, bool makePublic});
+
+class PublishProphecyNotifier extends Notifier<PublishProphecy?> {
+  @override
+  PublishProphecy? build() => null;
+
+  void attach(String id, String title) => state = (id: id, title: title, makePublic: true);
+  void setPublic(bool value) {
+    final s = state;
+    if (s != null) state = (id: s.id, title: s.title, makePublic: value);
+  }
+
+  void clear() => state = null;
+}
+
+final publishProphecyProvider =
+    NotifierProvider<PublishProphecyNotifier, PublishProphecy?>(PublishProphecyNotifier.new);
 
 // =============================================================================
 // Publish flow state — drives the multi-step stepper
@@ -297,6 +338,15 @@ class PublishNotifier extends Notifier<PublishDraft> {
       if (youtubeId != null) 'youtube_url': state.youtubeUrl,
       // Preuves montrées au public (une fois le témoignage publié) si l'auteur l'accepte.
       if (state.proofs.isNotEmpty) 'proofs_public': state.proofsPublic,
+      // Témoignage officiel d'un événement (gestionnaires ; jamais pour le carnet privé).
+      if (ref.read(publishEventProvider) case final ev?
+          when state.visibility != TestimonyVisibility.private)
+        'event_id': ev.id,
+      // Accomplissement d'une parole prophétique (et parole rendue publique ou non).
+      if (ref.read(publishProphecyProvider) case final p?) ...{
+        'prophecy_id': p.id,
+        'prophecy_public': p.makePublic && state.visibility != TestimonyVisibility.private,
+      },
       'visibility'  : switch (state.visibility) {
         TestimonyVisibility.private => 'private',
         TestimonyVisibility.friends => 'followers', // valeur attendue par l'API
@@ -317,6 +367,11 @@ class PublishNotifier extends Notifier<PublishDraft> {
       debugPrint('═══ PUBLISH ✓ id=${result.data['id']}');
       id = result.data['id']?.toString() ?? id;
       created = true;
+      ref.read(publishEventProvider.notifier).clear();
+      if (ref.read(publishProphecyProvider) != null) {
+        ref.read(publishProphecyProvider.notifier).clear();
+        ref.invalidate(propheciesListProvider);
+      }
     } on DioException catch (e) {
       debugPrint('═══ PUBLISH DioException type=${e.type} status=${e.response?.statusCode} body=${e.response?.data}');
       final isOffline = e.type == DioExceptionType.connectionError ||

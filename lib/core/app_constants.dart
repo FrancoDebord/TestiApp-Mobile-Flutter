@@ -174,6 +174,11 @@ abstract final class AppConstants {
   static const String community    = '/community';
   static const String followingIds = '/users/me/following-ids';
   static const String myFollowing  = '/users/me/following';     // GET ?q=&page= → « Mes abonnements »
+  static const String myFollowers  = '/users/me/followers';     // GET ?q=&page= → « Mes abonnés » (+ is_following = je le suis en retour)
+  // Comptes à suivre : GET ?limit=10&type=all|organizations|people → [{…profil public, reason, isVerified…}] (invité accepté)
+  static const String userSuggestions = '/users/suggestions';
+  // Mentions « @ » : GET ?q=&limit=8&testimony_id= → [{id, displayName, avatarUrl, initials, isVerified, isFollowing}] (connecté)
+  static const String mentionSearch   = '/users/mention-search';
 
   // Self management
   static const String updateProfile    = '/users/me';          // PUT
@@ -217,6 +222,19 @@ abstract final class AppConstants {
   static const String verseToday  = '/daily-verse';
   static const String verseReact  = '/daily-verse/react';  // POST + DELETE
   static const String verseShare  = '/daily-verse/share';  // POST
+
+  // Page plein écran (docs serveur fonctionnalites/verset-du-jour.md)
+  // GET  /daily-verse/{id}/versions          → { reference, parsed, original, versions: [{code, name, language, available, text, verses}] }
+  // POST /daily-verse/{id}/react  { type, active? }
+  // GET · POST /daily-verse/{id}/comments { body } · DELETE …/comments/{cid} · POST …/comments/{cid}/report { reason }
+  // GET  /daily-verse/{id}/prayer-requests   (création : POST /prayer/requests { …, daily_verse_id })
+  // GET  /daily-verse/{id}/testimonies
+  static String verseVersions(int id) => '/daily-verse/$id/versions';
+  static String verseReactTo(int id) => '/daily-verse/$id/react';
+  static String verseComments(int id) => '/daily-verse/$id/comments';
+  static String verseComment(int id, String commentId) => '/daily-verse/$id/comments/$commentId';
+  static String versePrayerRequests(int id) => '/daily-verse/$id/prayer-requests';
+  static String verseTestimonies(int id) => '/daily-verse/$id/testimonies';
 
   // ── Media upload (multipart/form-data) ────────────────────────────────────
 
@@ -299,18 +317,97 @@ abstract final class AppConstants {
   static String liveStageSpeaker(String id, String speakerId, String action) =>
       '/lives/$id/stage/$speakerId/$action';
 
-  // ── Prayer ────────────────────────────────────────────────────────────────
-  // GET    /prayer/requests              → [{id, author, body, prayer_count, message_count, ...}]
-  // POST   /prayer/requests             { body, visibility }
-  // POST   /prayer/requests/{id}/pray   → toggle pray
-  // GET    /prayer/sessions             → [{id, host, title, scheduled_at, status, participant_count}]
-  // POST   /prayer/sessions             { title, description, scheduled_at, visibility }
+  // ── Événements chrétiens ─────────────────────────────────────────────────
+  // Backend : docs/fonctionnalites/evenements.md
+  //   GET    /events?scope=upcoming|past|mine|going&type=&q=  → liste paginée (meta.canCreate, meta.types)
+  //   GET    /events/{id}  · /events/{id}/comments · /events/{id}/testimonies
+  //   POST   /events  · PUT/DELETE /events/{id}            (organisation vérifiée / admin, gestionnaires)
+  //   POST   /events/{id}/images (multipart « image ») · DELETE …/images/{imageId} · POST …/images/{imageId}/cover
+  //   POST   /events/{id}/participation { status: going|not_going } · DELETE /events/{id}/participation
+  //   GET    /events/{id}/participants                      (gestionnaires)
+  //   POST   /events/{id}/comments { body } · DELETE …/comments/{commentId}
+  //   POST   /events/{id}/comments/{commentId}/promote { title?, category? } → témoignage officiel
+  // Paroles prophétiques du carnet privé (docs/fonctionnalites/paroles-prophetiques.md)
+  //   GET/POST /prophecies · GET/PUT/DELETE /prophecies/{id}
+  //   GET/POST /prophecies/{id}/prayers { note? } · DELETE …/prayers/{prayerId}
+  //   POST /testimonies { …, prophecy_id, prophecy_public } → parole accomplie
+  static const String prophecies = '/prophecies';
+  static String prophecyById(String id) => '/prophecies/$id';
+  static String prophecyPrayers(String id) => '/prophecies/$id/prayers';
+  static String prophecyPrayer(String id, int prayerId) => '/prophecies/$id/prayers/$prayerId';
+
+  // Mon fil (tous les témoignages, comptes suivis d'abord) : GET /feed → feedReason
+  // following|suggested|repost (+ repostedBy, repostComment, repostedAt pour un partage).
+  static const String personalFeed = '/feed';
+  // Insérés dans Mon fil : GET /feed/inserts → { following|others: { events, prayerSessions,
+  // prayerRequests, prophecies } } (comptes suivis d'abord).
+  static const String personalFeedInserts = '/feed/inserts';
+  // Partage interne « X a partagé » : POST { comment? } · DELETE ; partages d'un compte.
+  static String testimonyRepost(String id) => '/testimonies/$id/repost';
+  static String userReposts(String id) => '/users/$id/reposts';
+
+  static const String events = '/events';
+  static String eventById(String id)          => '/events/$id';
+  static String eventImages(String id)        => '/events/$id/images';
+  static String eventImage(String id, String imageId) => '/events/$id/images/$imageId';
+  static String eventImageCover(String id, String imageId) =>
+      '/events/$id/images/$imageId/cover';
+  static String eventParticipation(String id) => '/events/$id/participation';
+  static String eventParticipants(String id)  => '/events/$id/participants';
+  static String eventComments(String id)      => '/events/$id/comments';
+  static String eventComment(String id, String commentId) =>
+      '/events/$id/comments/$commentId';
+  static String eventCommentPromote(String id, String commentId) =>
+      '/events/$id/comments/$commentId/promote';
+  static String eventTestimonies(String id)   => '/events/$id/testimonies';
+  //   POST   /events/{id}/managers { user_id } · DELETE …/managers/{userId}  (2 co-gestionnaires au plus)
+  //   GET/POST /users/me/managers { user_id } · DELETE …/{userId}          (organisation : 2 gestionnaires)
+  //   GET    /users/me/managed-organizations · DELETE …/{organizationId}  (organisations que je gère)
+  static String eventManagers(String id)      => '/events/$id/managers';
+  static String eventManager(String id, String userId) => '/events/$id/managers/$userId';
+  //   POST   /events/{id}/postpone { date_tbd } | { starts_at, ends_at } + reason? · POST …/cancel { reason? }
+  //   POST   /events/{id}/report { reason, comment? } (une fois) · POST …/review { attended, rating?, body? }
+  //   GET    /events/{id}/reviews · modérateurs : GET /events/moderation?filter= · POST …/hide|restore|dismiss
+  static String eventPostpone(String id)      => '/events/$id/postpone';
+  static String eventCancel(String id)        => '/events/$id/cancel';
+  static String eventReport(String id)        => '/events/$id/report';
+  static String eventReview(String id)        => '/events/$id/review';
+  static String eventReviews(String id)       => '/events/$id/reviews';
+  static String eventModeration(String id, String action) => '/events/$id/$action';
+  static const String myManagers              = '/users/me/managers';
+  static String myManager(String userId)      => '/users/me/managers/$userId';
+  static const String myManagedOrganizations  = '/users/me/managed-organizations';
+  static String myManagedOrganization(String id) => '/users/me/managed-organizations/$id';
+
+  // ── Requêtes et sessions de prière ────────────────────────────────────────
+  // Docs serveur : fonctionnalites/requetes-de-priere.md, fonctionnalites/sessions-de-priere.md
+  // GET    /prayer/requests?scope=all|feed|following|mine|event&event_id=&status=open|answered&page=
+  //        → [PrayerRequestResource] + meta { currentPage, lastPage, total, canCreate }
+  // POST   /prayer/requests { body, visibility: public|followers|private, is_anonymous, event_id? }
+  // GET · PUT · DELETE /prayer/requests/{id}   (PUT : body, visibility, is_anonymous, testimony_id)
+  // POST   /prayer/requests/{id}/pray { prayed? }    « Je prie » (bascule)
+  // POST · DELETE /prayer/requests/{id}/answered { note? }   exaucée / de nouveau en attente
+  // GET · POST /prayer/requests/{id}/messages { message, bible_reference? } · DELETE …/messages/{messageId}
+  // POST   /prayer/requests/{id}/report { reason, comment? }
+  // GET    /prayer/sessions?scope=upcoming|past|mine|joined|event&event_id=  → [PrayerSessionResource]
+  // POST   /prayer/sessions { title, description?, topics[], starts_at, duration_minutes, visibility, event_id? }
+  // GET · PUT · DELETE /prayer/sessions/{id} · POST …/cancel
+  // POST · DELETE /prayer/sessions/{id}/join          « Je serai là »
+  // POST   /prayer/sessions/{id}/start  (hôte) → { session, live, video } : la salle est un direct (/lives/{id})
 
   static const String prayerRequests = '/prayer/requests';
   static String prayerRequestById(String id)  => '/prayer/requests/$id';
   static String prayerRequestPray(String id)  => '/prayer/requests/$id/pray';
+  static String prayerRequestAnswered(String id) => '/prayer/requests/$id/answered';
+  static String prayerRequestMessages(String id) => '/prayer/requests/$id/messages';
+  static String prayerRequestMessage(String id, String messageId) =>
+      '/prayer/requests/$id/messages/$messageId';
+  static String prayerRequestReport(String id) => '/prayer/requests/$id/report';
   static const String prayerSessions = '/prayer/sessions';
   static String prayerSessionById(String id)  => '/prayer/sessions/$id';
+  static String prayerSessionJoin(String id)  => '/prayer/sessions/$id/join';
+  static String prayerSessionStart(String id) => '/prayer/sessions/$id/start';
+  static String prayerSessionCancel(String id) => '/prayer/sessions/$id/cancel';
 
   // ── FCM device token ─────────────────────────────────────────────────────
   // POST   /devices/token  { token, platform: 'android'|'ios' }

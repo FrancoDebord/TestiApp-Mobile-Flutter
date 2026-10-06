@@ -120,7 +120,7 @@ class _GuestProfile extends StatelessWidget {
                 ProfileMenuTile(
                   icon: Icons.download_rounded,
                   title: l10n.profileDownloads,
-                  onTap: () => context.go(AppPaths.downloadsPath),
+                  onTap: () => context.push(AppPaths.downloadsPath),
                 ),
                 ProfileMenuTile(
                   icon: Icons.language_rounded,
@@ -393,7 +393,8 @@ class _StatsRow extends StatelessWidget {
             _StatTile(_fmt(profile.testimonyCount), l10n.profileTestimonies,
                 onTap: () => context.pushNamed(AppRoutes.myTestimonies)),
             _StatTile(_fmt(profile.likeCount), l10n.profileLikes),
-            _StatTile(_fmt(profile.followersCount), l10n.profileFollowers),
+            _StatTile(_fmt(profile.followersCount), l10n.profileFollowers,
+                onTap: () => context.push('/followers')),
           ],
         ),
         const SizedBox(height: AppSpacing.sm),
@@ -508,7 +509,7 @@ class _MainMenu extends StatelessWidget {
         ProfileMenuTile(
           icon: Icons.download_rounded,
           title: l10n.profileDownloads,
-          onTap: () => context.go(AppPaths.downloadsPath),
+          onTap: () => context.push(AppPaths.downloadsPath),
         ),
         ProfileMenuTile(
           icon: Icons.notifications_none_rounded,
@@ -584,6 +585,12 @@ class _SpaceMenu extends ConsumerWidget {
               title: l10n.profileFollowing,
               subtitle: 'Les comptes que vous suivez',
               onTap: () => context.push('/following'),
+            ),
+            ProfileMenuTile(
+              icon: Icons.people_alt_outlined,
+              title: 'Mes abonnés',
+              subtitle: 'Les comptes qui vous suivent',
+              onTap: () => context.push('/followers'),
             ),
             ProfileMenuTile(
               icon: Icons.diversity_3_outlined,
@@ -680,7 +687,11 @@ class _PersonalInfoCard extends StatelessWidget {
               ),
             )
           else ...[
-            if (e.gender.isNotEmpty) _InfoRow(Icons.wc_rounded, 'Sexe', e.gender),
+            if (e.gender == 'Homme' || e.gender == 'Femme')
+              _InfoRow(Icons.wc_rounded, 'Sexe',
+                  e.gender == 'Homme'
+                      ? AppLocalizations.of(context).genderMale
+                      : AppLocalizations.of(context).genderFemale),
             if (e.phone.isNotEmpty) _InfoRow(Icons.phone_outlined, 'Téléphone', e.phone),
             if (e.email.isNotEmpty) _InfoRow(Icons.email_outlined, 'Email', e.email),
             if (e.country.isNotEmpty) _InfoRow(Icons.public_rounded, 'Pays', e.country, isLast: true),

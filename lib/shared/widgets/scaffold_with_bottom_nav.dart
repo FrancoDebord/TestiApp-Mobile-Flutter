@@ -11,7 +11,7 @@ import 'package:testi_app/shared/widgets/guest_gate.dart';
 /// Persistent shell for the 6 bottom-nav branches.
 ///
 /// Barre blanche (bordure fine en haut) : Accueil · Explorer · [+ Publier]
-/// · Téléchargements · Profil. Publier (index 3) est un bouton rond bleu au
+/// · Événements · Profil (Téléchargements : menu latéral et profil). Publier (index 3) est un bouton rond bleu au
 /// centre, libellé dessous. Onglet actif : icône + libellé bleus sur pastille
 /// bleu clair (radius 12) ; inactif : gris.
 /// Bible (branch 2) remains reachable via the horizontal swipe gesture
@@ -65,7 +65,7 @@ class ScaffoldWithBottomNav extends ConsumerWidget {
         child: navigationShell,
       ),
 
-      // ── Barre du bas : Accueil · Explorer · [+ Publier] · Téléchargements · Profil
+      // ── Barre du bas : Accueil · Explorer · [+ Publier] · Événements · Profil
       bottomNavigationBar: DecoratedBox(
         decoration: const BoxDecoration(
           color: AppColors.surface,
@@ -106,9 +106,9 @@ class ScaffoldWithBottomNav extends ConsumerWidget {
                 ),
                 Expanded(
                   child: _NavIcon(
-                    activeIcon:   Icons.download_for_offline_rounded,
-                    inactiveIcon: Icons.download_for_offline_outlined,
-                    label: l10n.navDownloads,
+                    activeIcon:   Icons.event_rounded,
+                    inactiveIcon: Icons.event_outlined,
+                    label: l10n.navEvents,
                     selected: cur == 4,
                     onTap: () => _onTabTap(context, 4),
                   ),

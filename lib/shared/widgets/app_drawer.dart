@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../features/auth/providers/auth_notifier.dart' show currentUserProvider;
+import '../../features/events/providers/events_providers.dart' show managedOrganizationsProvider;
 import 'organization_badge.dart';
 
 /// Menu latéral (ouvert depuis l'accueil) : accès aux écrans qui n'ont pas d'onglet
@@ -77,11 +78,31 @@ class AppDrawer extends ConsumerWidget {
             const Divider(height: 1),
             item(Icons.groups_rounded, 'Communauté', '/community', subtitle: 'Organisations et personnes à suivre'),
             item(Icons.sensors_rounded, 'Directs', '/lives'),
+            item(Icons.event_rounded, 'Événements', '/events',
+                subtitle: 'Croisades, conférences, camps…', tab: true),
+            // Prière (docs serveur fonctionnalites/requetes-de-priere.md, sessions-de-priere.md)
+            item(Icons.volunteer_activism_outlined, 'Requêtes de prière', '/prayer-requests',
+                subtitle: 'Confiez un besoin, priez pour les autres'),
+            item(Icons.groups_2_outlined, 'Sessions de prière', '/prayer-sessions',
+                subtitle: 'Priez ensemble, en direct'),
+            if (user != null)
+              item(Icons.dynamic_feed_rounded, 'Mon fil', '/my-feed',
+                  subtitle: 'Vos abonnements et des témoignages pour vous'),
+            item(Icons.download_for_offline_outlined, 'Téléchargements', '/downloads'),
             if (user != null) ...[
               item(Icons.how_to_reg_outlined, 'Mes abonnements', '/following'),
+              item(Icons.people_alt_outlined, 'Mes abonnés', '/followers'),
               item(Icons.menu_book_rounded, 'Mon carnet privé', '/journal'),
+              item(Icons.record_voice_over_outlined, 'Paroles prophétiques', '/prophecies',
+                  subtitle: 'Gardez-les, priez, témoignez de leur accomplissement'),
               item(Icons.video_library_outlined, 'Mes témoignages', '/profile/my-testimonies', tab: true),
               item(Icons.bookmark_outline_rounded, 'Sauvegardés', '/profile/saved', tab: true),
+              // Événements : gestionnaires d'une organisation (docs serveur fonctionnalites/evenements.md).
+              if (user.isOrganization)
+                item(Icons.manage_accounts_outlined, "Gestionnaires de l'organisation", '/managers',
+                    subtitle: 'Deux personnes au plus gèrent vos événements')
+              else if ((ref.watch(managedOrganizationsProvider).value ?? const []).isNotEmpty)
+                item(Icons.manage_accounts_outlined, 'Organisations que je gère', '/managers'),
             ],
             if (user?.canModerate ?? false) ...[
               const Divider(height: 1),

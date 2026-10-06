@@ -23,6 +23,9 @@ AppNotification? notificationFromJson(dynamic raw) {
       testimonyId:          m['testimonyId']?.toString(),
       liveId:               m['liveId']?.toString(),
       message:              m['message']        as String?,
+      prayerRequestId:      m['prayerRequestId']?.toString(),
+      prayerSessionId:      m['prayerSessionId']?.toString(),
+      eventId:              m['eventId']?.toString(),
     );
   } catch (_) {
     return null;
@@ -39,9 +42,15 @@ NotificationType _parseType(String v) => switch (v) {
       'pending_correction'    => NotificationType.pendingCorrection,
       'new_followed_testimony'=> NotificationType.newFollowedTestimony,
       'prayer'                => NotificationType.prayer,
+      // Requêtes et sessions de prière
+      'prayer_encouragement'    => NotificationType.prayer,
+      'prayer_session_started'  => NotificationType.prayer,
+      'prayer_session_reminder' => NotificationType.prayer,
       'organization_verified' => NotificationType.organizationVerified,
       'organization_rejected' => NotificationType.organizationRejected,
       'live_started'          => NotificationType.liveStarted,
+      // Événements : reporté, annulé, sondage d'après l'événement
+      'event_postponed' || 'event_cancelled' || 'event_survey' => NotificationType.event,
       _                       => NotificationType.like,
     };
 

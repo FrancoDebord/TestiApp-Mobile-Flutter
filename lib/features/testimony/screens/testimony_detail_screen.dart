@@ -1,6 +1,8 @@
+import '../../prophecies/widgets/public_prophecy_card.dart';
 import '../../home/widgets/compact_testimony_tile.dart';
 import '../../home/widgets/testimony_card_header.dart' show openAuthorProfile;
 import '../../community/widgets/follow_button.dart';
+import '../../repost/repost_widgets.dart' show showRepostSheet;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -24,7 +26,10 @@ import '../../../features/home/providers/home_providers.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/utils/rich_text_utils.dart';
 import '../../../shared/widgets/guest_gate.dart';
+import '../../../shared/widgets/mention_text.dart';
+import '../../../shared/widgets/mention_text_field.dart';
 import '../../../shared/widgets/testimony_proofs_card.dart';
+import '../../../shared/widgets/why_testify_card.dart';
 import '../../../shared/widgets/youtube_video_player.dart';
 import '../../../services/audio_player_service.dart' show audioPlayerProvider;
 import '../providers/recommendations_provider.dart';
@@ -42,10 +47,14 @@ class _LocalComment {
     required this.authorName,
     required this.body,
     required this.createdAt,
+    this.authorId = '',
   });
 
   final String id;
   final String authorName;
+  final String authorId;
+
+  /// Texte avec mentions sous forme de jetons `@[Nom](user:id)` (affiché par MentionText).
   final String body;
   final DateTime createdAt;
   final int likes = 0;
@@ -69,7 +78,8 @@ class _LocalComment {
   factory _LocalComment.fromModel(CommentModel m) => _LocalComment(
     id: m.id,
     authorName: m.user?.displayName ?? 'Anonyme',
-    body: m.text,
+    authorId: m.userId,
+    body: MentionCodec.encode(m.text, m.mentions),
     createdAt: DateTime.tryParse(m.createdAt ?? '') ?? DateTime.now(),
   );
 }
@@ -220,6 +230,7 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
                 (r) => _LocalComment(
                   id: r['id'] as String,
                   authorName: r['author_name'] as String? ?? 'Anonyme',
+                  authorId: r['user_id'] as String? ?? '',
                   body: r['body'] as String? ?? '',
                   createdAt:
                       DateTime.tryParse(r['created_at'] as String? ?? '') ??
@@ -265,7 +276,7 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
           'user_id': c.userId,
           'author_name': c.user?.displayName ?? '',
           'parent_id': c.parentId,
-          'body': c.text,
+          'body': MentionCodec.encode(c.text, c.mentions), // mentions conservées hors connexion
           'likes': c.likesCount,
           'reply_count': c.repliesCount,
           'created_at': c.createdAt ?? DateTime.now().toIso8601String(),
@@ -292,6 +303,7 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
         _LocalComment(
           id: tempId,
           authorName: authorName,
+          authorId: user?.id ?? '',
           body: text,
           createdAt: now,
         ),
@@ -327,7 +339,7 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
         'user_id': saved.userId,
         'author_name': saved.user?.displayName ?? authorName,
         'parent_id': saved.parentId,
-        'body': saved.text,
+        'body': MentionCodec.encode(saved.text, saved.mentions),
         'likes': 0,
         'reply_count': 0,
         'created_at': saved.createdAt ?? now.toIso8601String(),
@@ -466,6 +478,9 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
                     // Corps du témoignage
                     if (isText || isAudio) _ContentBody(text: bodyText),
 
+                    // Parole prophétique accomplie (rendue publique par l'auteur)
+                    PublicProphecyCard(testimonyId: testimony.id),
+
                     // ❤ · partage · commentaires · télécharger
                     Padding(
                       padding: const EdgeInsets.fromLTRB(10, 0, 8, 12),
@@ -501,6 +516,12 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
                     TestimonyProofsCard(
                       proofs: _proofs ?? testimony.proofs,
                       forStaffOrAuthor: _canSeePrivateProofs(testimony),
+                    ),
+
+                    // Pourquoi témoigner ? (replié), avant les commentaires
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(16, 8, 16, 16),
+                      child: WhyTestifyCard(collapsible: true),
                     ),
 
                     // Commentaires (preview + saisie)
@@ -608,8 +629,16 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (_) =>
-          _ShareSheet(title: testimony.title, link: testimony.shareLink),
+      builder: (_) => _ShareSheet(
+        title: testimony.title,
+        link: testimony.shareLink,
+        // Partage interne « X a partagé » (pas son propre témoignage) : doc serveur partage-interne.md
+        onRepost: testimony.author.uid == (ref.read(currentUserProvider)?.id ?? '') ||
+                testimony.id.startsWith('local_')
+            ? null
+            : () => showRepostSheet(context, ref,
+                testimonyId: testimony.id, authorName: testimony.author.displayName),
+      ),
     );
   }
 
@@ -1357,7 +1386,8 @@ class _CommentItem extends StatelessWidget {
                     children: [
                       Text(name, style: AppTextStyles.labelMedium),
                       const SizedBox(height: 4),
-                      _buildMentionText(text, AppTextStyles.bodyMedium),
+                      // Mentions « @ » cliquables (profil)
+                      MentionText(text, style: AppTextStyles.bodyMedium),
                     ],
                   ),
                 ),
@@ -1620,7 +1650,8 @@ class _CommentsBottomSheet extends StatefulWidget {
 }
 
 class _CommentsBottomSheetState extends State<_CommentsBottomSheet> {
-  final _ctrl = TextEditingController();
+  // Saisie avec mentions « @ » sur les vrais comptes (GET /users/mention-search).
+  final _ctrl = MentionEditingController();
   final _focusNode = FocusNode();
   bool _sending = false;
 
@@ -1631,27 +1662,10 @@ class _CommentsBottomSheetState extends State<_CommentsBottomSheet> {
   final Set<String> _likedIds = {};
   String? _replyingToName; // nom de l'auteur auquel on répond
 
-  // ── @mention ──────────────────────────────────────────────────────────────
-  String? _mentionQuery;
-  List<String> _filteredUsers = const [];
-  static const _mockUsers = [
-    'Paul Mbeki',
-    'Sarah Diallo',
-    'John Osei',
-    'Grace Nwosu',
-    'David Kamau',
-    'Marie Dupont',
-    'Samuel Tchibozo',
-    'Ruth Mensah',
-    'Esther Yao',
-    'Elie Ndoumbe',
-  ];
-
   @override
   void initState() {
     super.initState();
     _local = List.from(widget.comments);
-    _ctrl.addListener(_onTextChanged);
     // Auto-focus the input so keyboard appears immediately
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _focusNode.requestFocus();
@@ -1660,59 +1674,9 @@ class _CommentsBottomSheetState extends State<_CommentsBottomSheet> {
 
   @override
   void dispose() {
-    _ctrl.removeListener(_onTextChanged);
     _ctrl.dispose();
     _focusNode.dispose();
     super.dispose();
-  }
-
-  void _onTextChanged() {
-    final text = _ctrl.text;
-    final cursor = _ctrl.selection.baseOffset;
-    if (cursor <= 0 || cursor > text.length) {
-      if (_mentionQuery != null) setState(() => _mentionQuery = null);
-      return;
-    }
-    final before = text.substring(0, cursor);
-    final match = RegExp(r'@(\w*)$').firstMatch(before);
-    if (match != null) {
-      final query = match.group(1) ?? '';
-      final filtered = _mockUsers
-          .where(
-            (u) =>
-                query.isEmpty ||
-                u.toLowerCase().startsWith(query.toLowerCase()),
-          )
-          .take(5)
-          .toList();
-      setState(() {
-        _mentionQuery = query;
-        _filteredUsers = filtered;
-      });
-    } else {
-      if (_mentionQuery != null) setState(() => _mentionQuery = null);
-    }
-  }
-
-  void _insertMention(String username) {
-    final handle = '@${username.replaceAll(' ', '_')}';
-    final text = _ctrl.text;
-    final cursor = _ctrl.selection.baseOffset.clamp(0, text.length);
-    final before = text.substring(0, cursor);
-    final after = text.substring(cursor);
-    final newBefore = before.replaceFirstMapped(
-      RegExp(r'@\w*$'),
-      (_) => '$handle ',
-    );
-    _ctrl.value = TextEditingValue(
-      text: newBefore + after,
-      selection: TextSelection.collapsed(offset: newBefore.length),
-    );
-    setState(() {
-      _mentionQuery = null;
-      _filteredUsers = [];
-    });
-    _focusNode.requestFocus();
   }
 
   void _toggleLike(String commentId) {
@@ -1725,13 +1689,17 @@ class _CommentsBottomSheetState extends State<_CommentsBottomSheet> {
     });
   }
 
-  void _startReply(String authorName) {
-    final handle = '@${authorName.replaceAll(' ', '_')} ';
-    _ctrl.value = TextEditingValue(
-      text: handle,
-      selection: TextSelection.collapsed(offset: handle.length),
-    );
-    setState(() => _replyingToName = authorName);
+  void _startReply(_LocalComment c) {
+    if (c.authorId.isNotEmpty) {
+      _ctrl.startWithMention(MentionRef(id: c.authorId, displayName: c.authorName));
+    } else {
+      final handle = '@${c.authorName} ';
+      _ctrl.value = TextEditingValue(
+        text: handle,
+        selection: TextSelection.collapsed(offset: handle.length),
+      );
+    }
+    setState(() => _replyingToName = c.authorName);
     _focusNode.requestFocus();
   }
 
@@ -1741,8 +1709,8 @@ class _CommentsBottomSheetState extends State<_CommentsBottomSheet> {
   }
 
   Future<void> _send() async {
-    final text = _ctrl.text.trim();
-    if (text.isEmpty || _sending) return;
+    if (_ctrl.text.trim().isEmpty || _sending) return;
+    final text = _ctrl.encodedText; // « @Nom » choisis → jetons @[Nom](user:id)
 
     setState(() => _sending = true);
     _ctrl.clear();
@@ -1832,7 +1800,7 @@ class _CommentsBottomSheetState extends State<_CommentsBottomSheet> {
                             likeCount: c.likes + (isLiked ? 1 : 0),
                             isLiked: isLiked,
                             onLike: () => _toggleLike(c.id),
-                            onReply: () => _startReply(c.authorName),
+                            onReply: () => _startReply(c),
                           );
                         },
                       ),
@@ -1858,7 +1826,7 @@ class _CommentsBottomSheetState extends State<_CommentsBottomSheet> {
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          '${AppLocalizations.of(context).detailReplyingTo} @${_replyingToName!.replaceAll(' ', '_')}',
+                          '${AppLocalizations.of(context).detailReplyingTo} @$_replyingToName',
                           style: const TextStyle(
                             fontFamily: AppFonts.family,
                             fontSize: 12,
@@ -1879,17 +1847,11 @@ class _CommentsBottomSheetState extends State<_CommentsBottomSheet> {
                   ),
                 ),
 
-              // ── Suggestions @mention ──────────────────────────────────
-              if (_mentionQuery != null && _filteredUsers.isNotEmpty)
-                _MentionSuggestions(
-                  users: _filteredUsers,
-                  onTap: _insertMention,
-                ),
-
               // ── Saisie ─────────────────────────────────────────────────
               _CommentInputBar(
                 controller: _ctrl,
                 focusNode: _focusNode,
+                testimonyId: widget.testimonyId,
                 onSend: _send,
               ),
               SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
@@ -1949,11 +1911,13 @@ class _CommentInputBar extends StatelessWidget {
   const _CommentInputBar({
     required this.controller,
     required this.focusNode,
+    required this.testimonyId,
     required this.onSend,
   });
 
-  final TextEditingController controller;
+  final MentionEditingController controller;
   final FocusNode focusNode;
+  final String testimonyId;
   final VoidCallback onSend;
 
   @override
@@ -1961,6 +1925,7 @@ class _CommentInputBar extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Container(
             width: 36,
@@ -1983,10 +1948,14 @@ class _CommentInputBar extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: TextField(
+            // Suggestions « @ » au-dessus du champ (anti-rebond, chargement, aucun résultat).
+            child: MentionTextField(
               controller: controller,
               focusNode: focusNode,
+              testimonyId: testimonyId,
               style: AppTextStyles.bodyMedium,
+              minLines: 1,
+              maxLines: 4,
               decoration: InputDecoration(
                 hintText: AppLocalizations.of(context).detailCommentHint,
                 hintStyle: const TextStyle(
@@ -2042,129 +2011,17 @@ class _CommentInputBar extends StatelessWidget {
 }
 
 // ============================================================================
-// @mention helpers
-// ============================================================================
-
-Widget _buildMentionText(String text, TextStyle base) {
-  final spans = <InlineSpan>[];
-  final pattern = RegExp(r'@\w+');
-  int last = 0;
-  for (final m in pattern.allMatches(text)) {
-    if (m.start > last) {
-      spans.add(TextSpan(text: text.substring(last, m.start), style: base));
-    }
-    spans.add(
-      TextSpan(
-        text: m.group(0),
-        style: base.copyWith(
-          color: AppColors.primary,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-    last = m.end;
-  }
-  if (last < text.length) {
-    spans.add(TextSpan(text: text.substring(last), style: base));
-  }
-  if (spans.isEmpty) return Text(text, style: base);
-  return RichText(text: TextSpan(children: spans));
-}
-
-// ── Mention suggestions panel ────────────────────────────────────────────────
-
-class _MentionSuggestions extends StatelessWidget {
-  const _MentionSuggestions({required this.users, required this.onTap});
-
-  final List<String> users;
-  final void Function(String) onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: AppColors.surface,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Divider(height: 1, color: AppColors.border),
-          ...users.map((u) => _MentionTile(username: u, onTap: () => onTap(u))),
-        ],
-      ),
-    );
-  }
-}
-
-class _MentionTile extends StatelessWidget {
-  const _MentionTile({required this.username, required this.onTap});
-
-  final String username;
-  final VoidCallback onTap;
-
-  String get _initials {
-    final parts = username.trim().split(' ');
-    if (parts.length >= 2) {
-      return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
-    }
-    return username.isNotEmpty ? username[0].toUpperCase() : '?';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: AppColors.primary.withAlpha(30),
-              child: Text(
-                _initials,
-                style: const TextStyle(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
-                  fontFamily: AppFonts.family,
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                '@${username.replaceAll(' ', '_')}',
-                style: const TextStyle(
-                  fontFamily: AppFonts.family,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                  color: AppColors.primary,
-                ),
-              ),
-            ),
-            Text(
-              username,
-              style: const TextStyle(
-                fontFamily: AppFonts.family,
-                fontSize: 13,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ============================================================================
 // Share sheet (copier lien + partager)
 // ============================================================================
 
 class _ShareSheet extends StatelessWidget {
-  const _ShareSheet({required this.title, required this.link});
+  const _ShareSheet({required this.title, required this.link, this.onRepost});
 
   final String title;
   final String link;
+
+  /// « Partager sur TestiApp » (partage interne) ; null pour le masquer.
+  final VoidCallback? onRepost;
 
   @override
   Widget build(BuildContext context) {
@@ -2248,6 +2105,21 @@ class _ShareSheet extends StatelessWidget {
               ),
             ],
           ),
+          if (onRepost != null) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                key: const ValueKey('repost-on-testiapp'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  onRepost!();
+                },
+                icon: const Icon(Icons.repeat_rounded),
+                label: const Text('Partager sur TestiApp'),
+              ),
+            ),
+          ],
         ],
       ),
     );

@@ -87,7 +87,7 @@ class SettingsScreen extends ConsumerWidget {
                 icon: Icons.sd_storage_outlined,
                 title: l10n.settingsStorage,
                 subtitle: l10n.profileDownloads,
-                onTap: () => context.go(AppPaths.downloadsPath),
+                onTap: () => context.push(AppPaths.downloadsPath),
               ),
               ProfileMenuTile(
                 icon: Icons.help_outline_rounded,
@@ -198,15 +198,6 @@ class SettingsScreen extends ConsumerWidget {
                 items: CommentPermission.values,
                 labelOf: (v) => v.label,
                 onChanged: notifier.setCommentPermission,
-              ),
-              _select<AppTheme>(
-                context,
-                icon: Icons.palette_outlined,
-                title: l10n.settingsTheme,
-                value: settings.appTheme,
-                items: AppTheme.values,
-                labelOf: (v) => v.label,
-                onChanged: notifier.setTheme,
               ),
               ProfileMenuTile(
                 icon: Icons.group_add_outlined,

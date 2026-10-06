@@ -1,3 +1,6 @@
+import '../../../shared/content/encouragements.dart';
+import '../../../shared/widgets/encouragement_card.dart';
+import '../../../shared/widgets/why_testify_card.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -175,6 +178,12 @@ class PublishScreen extends ConsumerWidget {
     final user = ref.watch(currentUserProvider);
     final canLive = user?.canModerate ?? false;
     final isAdmin = user?.isAdmin ?? false;
+    // Événements : organisations vérifiées et administrateurs (docs serveur
+    // fonctionnalites/evenements.md).
+    final canCreateEvents =
+        isAdmin || ((user?.isOrganization ?? false) && (user?.isVerified ?? false));
+    final forEvent = ref.watch(publishEventProvider);
+    final forProphecy = ref.watch(publishProphecyProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -224,6 +233,33 @@ class PublishScreen extends ConsumerWidget {
                 24,
               ),
               children: [
+                // Témoignage officiel d'un événement (choisi depuis sa page).
+                if (forEvent != null) ...[
+                  _EventAttachBanner(
+                    title: forEvent.title,
+                    onClear: () => ref.read(publishEventProvider.notifier).clear(),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                ],
+                // Témoignage de l'accomplissement d'une parole prophétique.
+                if (forProphecy != null) ...[
+                  _ProphecyAttachBanner(
+                    prophecy: forProphecy,
+                    onPublicChanged: (v) => ref.read(publishProphecyProvider.notifier).setPublic(v),
+                    onClear: () => ref.read(publishProphecyProvider.notifier).clear(),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                ],
+                if (forEvent == null && forProphecy == null) ...[
+                  EncouragementCard(
+                    message: encouragementVerses[2], // Psaume 66:16
+                    compact: true,
+                    showAction: false,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  const WhyTestifyCard(collapsible: true, showAction: false),
+                  const SizedBox(height: AppSpacing.lg),
+                ],
                 Text(
                   'Quelle forme prend votre témoignage ?',
                   style: AppTextStyles.bodyMedium.copyWith(
@@ -285,6 +321,14 @@ class PublishScreen extends ConsumerWidget {
                   description: 'Garder un témoignage pour moi, sans le publier',
                   onTap: () => context.push('/journal'),
                 ),
+                // Événement chrétien : organisations vérifiées / administrateurs.
+                if (canCreateEvents)
+                  _OptionTile(
+                    icon: Icons.event_rounded,
+                    title: 'Créer un événement',
+                    description: 'Croisade, conférence, camp… avec participation et direct',
+                    onTap: () => context.push('/events/new'),
+                  ),
                 // Live : modérateurs / administrateurs.
                 if (canLive)
                   _OptionTile(
@@ -607,6 +651,115 @@ class _StatusChip extends StatelessWidget {
               ? AppColors.primary
               : AppColors.textSecondary,
         ),
+      ),
+    );
+  }
+}
+
+/// « Témoignage pour l'événement … » : le témoignage publié y sera rattaché.
+class _EventAttachBanner extends StatelessWidget {
+  const _EventAttachBanner({required this.title, required this.onClear});
+
+  final String title;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 10, 4, 10),
+      decoration: BoxDecoration(
+        color: AppColors.primarySoft,
+        borderRadius: AppRadius.cardRadius,
+        border: Border.all(color: AppColors.primary.withAlpha(60)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.event_rounded, color: AppColors.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text.rich(
+              TextSpan(children: [
+                const TextSpan(text: "Témoignage de l'événement\n"),
+                TextSpan(
+                  text: title,
+                  style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary),
+                ),
+              ]),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.bodyMedium,
+            ),
+          ),
+          IconButton(
+            tooltip: "Ne pas rattacher à l'événement",
+            onPressed: onClear,
+            icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// « Accomplissement de la parole … » : le témoignage y sera rattaché ;
+/// interrupteur pour montrer la parole avec le témoignage.
+class _ProphecyAttachBanner extends StatelessWidget {
+  const _ProphecyAttachBanner({
+    required this.prophecy,
+    required this.onPublicChanged,
+    required this.onClear,
+  });
+
+  final PublishProphecy prophecy;
+  final ValueChanged<bool> onPublicChanged;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 10, 4, 6),
+      decoration: BoxDecoration(
+        color: AppColors.sunSoft,
+        borderRadius: AppRadius.cardRadius,
+        border: Border.all(color: AppColors.sunBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.record_voice_over_rounded, color: AppColors.sunText),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text.rich(
+                  TextSpan(children: [
+                    const TextSpan(text: "Accomplissement de la parole\n"),
+                    TextSpan(
+                      text: prophecy.title,
+                      style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primaryDark),
+                    ),
+                  ]),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodyMedium,
+                ),
+              ),
+              IconButton(
+                tooltip: 'Ne pas rattacher à la parole',
+                onPressed: onClear,
+                icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary),
+              ),
+            ],
+          ),
+          SwitchListTile(
+            contentPadding: const EdgeInsets.only(right: 10),
+            dense: true,
+            value: prophecy.makePublic,
+            onChanged: onPublicChanged,
+            title: const Text('Publier aussi la parole prophétique'),
+            subtitle: const Text('Elle sera montrée avec votre témoignage, une fois celui-ci publié.'),
+          ),
+        ],
       ),
     );
   }
