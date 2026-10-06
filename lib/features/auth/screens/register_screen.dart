@@ -21,6 +21,7 @@ import '../../../services/api_service.dart' show LaravelApiException;
 import '../../../shared/models/user_model.dart'
     show AccountType, OrganizationType;
 import '../../../shared/widgets/app_button.dart';
+import '../../../shared/widgets/why_testify_card.dart';
 import '../widgets/auth_widgets.dart';
 
 // =============================================================================
@@ -634,6 +635,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           ),
                         ],
                       ),
+
+                      // Pourquoi témoigner ? (replié, sans bouton)
+                      const SizedBox(height: 28),
+                      const WhyTestifyCard(collapsible: true, showAction: false),
                     ],
                   ),
                 ),
