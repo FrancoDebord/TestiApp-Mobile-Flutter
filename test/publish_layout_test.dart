@@ -13,6 +13,7 @@ import 'package:testi_app/features/publish/providers/publish_provider.dart';
 import 'package:testi_app/features/publish/screens/publish_preview_screen.dart';
 import 'package:testi_app/features/publish/screens/publish_screen.dart';
 import 'package:testi_app/shared/models/user_model.dart';
+import 'package:testi_app/shared/widgets/app_button.dart';
 
 const _admin = UserModel(
   id: 'u1',
@@ -165,6 +166,37 @@ void main() {
     ));
     await tester.pump();
     expect(find.text('Publier'), findsOneWidget);
+  });
+
+  // Arrivée depuis le verset du jour ou la Bible : aucun format choisi. L'écran
+  // affiche l'étape « texte » ; « Suivant » doit s'activer dès que le texte est
+  // saisi (il attendait une vidéo et restait désactivé).
+  testWidgets('sans format choisi (verset du jour) : « Suivant » s’active à l’étape 2',
+      (tester) async {
+    await _setPhone(tester, 390);
+    AppButton suivant() => tester.widget<AppButton>(
+        find.widgetWithText(AppButton, 'Suivant'));
+
+    await tester.pumpWidget(_app(
+      const PublishPreviewScreen(),
+      draft: PublishDraft(category: 'protection', bibleVerse: 'Psaume 66:16'),
+      step: 2,
+    ));
+    await tester.pump();
+    expect(suivant().onPressed, isNull, reason: 'texte vide');
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pumpWidget(_app(
+      const PublishPreviewScreen(),
+      draft: PublishDraft(
+        category: 'protection',
+        bibleVerse: 'Psaume 66:16',
+        bodyText: 'Dieu a fait de grandes choses pour moi.',
+      ),
+      step: 2,
+    ));
+    await tester.pump();
+    expect(suivant().onPressed, isNotNull);
   });
 
   test('titre facultatif : repli sur la description', () {

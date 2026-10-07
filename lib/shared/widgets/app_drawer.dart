@@ -8,7 +8,7 @@ import '../../features/events/providers/events_providers.dart' show managedOrgan
 import 'organization_badge.dart';
 
 /// Menu latéral (ouvert depuis l'accueil) : accès aux écrans qui n'ont pas d'onglet
-/// — Communauté, Directs, Mes abonnements, Carnet, Mes témoignages, Sauvegardes, Paramètres, et
+/// — Communauté, Bible, Directs, Mes abonnements, Carnet, Mes témoignages, Sauvegardes, Paramètres, et
 /// Modération / Administration selon le rôle.
 class AppDrawer extends ConsumerWidget {
   const AppDrawer({super.key});
@@ -77,6 +77,9 @@ class AppDrawer extends ConsumerWidget {
             ),
             const Divider(height: 1),
             item(Icons.groups_rounded, 'Communauté', '/community', subtitle: 'Organisations et personnes à suivre'),
+            // Bible : branche du shell (pas d'onglet dans la barre du bas) → go.
+            item(Icons.auto_stories_rounded, 'Bible', '/bible',
+                subtitle: 'Lire, rechercher, comparer les versions', tab: true),
             item(Icons.sensors_rounded, 'Directs', '/lives'),
             item(Icons.event_rounded, 'Événements', '/events',
                 subtitle: 'Croisades, conférences, camps…', tab: true),

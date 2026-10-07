@@ -328,10 +328,18 @@ class _TemoignagesAppState extends ConsumerState<TemoignagesApp>
         hintStyle: const TextStyle(fontFamily: AppFonts.family, color: AppColors.textSecondary),
       ),
       // Étiquettes : pilule, fond bleu clair une fois choisies.
+      // Puces (filtres : Événements, catégories…) : texte en bleu de la charte. Sans couleur
+      // explicite, le libellé héritait d'un blanc illisible sur fond clair.
       chipTheme: const ChipThemeData(
         shape: StadiumBorder(side: BorderSide(color: AppColors.border)),
+        backgroundColor: AppColors.surface,
         selectedColor: AppColors.primarySoft,
-        labelStyle: TextStyle(fontFamily: AppFonts.family, fontSize: 13, fontWeight: FontWeight.w600),
+        checkmarkColor: AppColors.primary,
+        iconTheme: IconThemeData(color: AppColors.primary, size: 16),
+        labelStyle: TextStyle(
+            fontFamily: AppFonts.family, fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary),
+        secondaryLabelStyle: TextStyle(
+            fontFamily: AppFonts.family, fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary),
       ),
       tabBarTheme: const TabBarThemeData(
         labelColor: AppColors.primary,

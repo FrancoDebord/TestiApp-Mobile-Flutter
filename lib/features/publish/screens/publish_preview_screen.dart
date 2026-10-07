@@ -1154,20 +1154,25 @@ class _BottomNavButtonsState extends ConsumerState<_BottomNavButtons> {
   bool _isPublishing = false;
 
   bool _canProceed(PublishDraft draft, AudioRecordingStatus recordingStatus) {
+    // Même repli que l'affichage (PublishPreviewScreen) et la publication
+    // (PublishNotifier) : sans format choisi — arrivée depuis le verset du jour
+    // ou la Bible —, c'est un témoignage écrit. Sans ce repli, l'étape 2
+    // attendait une vidéo et « Suivant » restait désactivé.
+    final format = draft.format ?? TestimonyFormat.text;
     switch (widget.step) {
       case 1:
         // Titre facultatif (repli sur la description) ; carnet privé :
         // catégorie facultative. Texte : la description est le témoignage.
         final categoryOk = draft.category != null ||
             draft.visibility == TestimonyVisibility.private;
-        final bodyOk = draft.format != TestimonyFormat.text ||
+        final bodyOk = format != TestimonyFormat.text ||
             draft.bodyText.trim().isNotEmpty;
         return categoryOk && bodyOk;
       case 2:
-        if (draft.format == TestimonyFormat.text) {
+        if (format == TestimonyFormat.text) {
           return draft.bodyText.trim().isNotEmpty;
         }
-        if (draft.format == TestimonyFormat.audio) {
+        if (format == TestimonyFormat.audio) {
           return recordingStatus == AudioRecordingStatus.finished ||
               draft.audioPath != null;
         }
