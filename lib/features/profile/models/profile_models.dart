@@ -152,12 +152,27 @@ class ProfileTestimonyCard {
 // Pas de réglage Clair / Sombre / Système : l'application n'a pas de palette
 // sombre (couleurs fixes AppColors). À réintroduire avec un vrai mode sombre.
 
-enum CommentPermission { everyone, nobody }
+/// « Qui peut commenter mes témoignages » (`user_settings.comment_permission`,
+/// appliqué par le serveur : 403 pour les autres).
+enum CommentPermission {
+  everyone,
+  followers,
+  nobody;
+
+  static CommentPermission fromJson(String? v) => switch (v) {
+    'followers' => CommentPermission.followers,
+    'nobody'    => CommentPermission.nobody,
+    _           => CommentPermission.everyone,
+  };
+
+  String toJson() => name;
+}
 
 extension CommentPermissionLabel on CommentPermission {
   String get label => switch (this) {
-    CommentPermission.everyone => 'Tout le monde',
-    CommentPermission.nobody   => 'Personne',
+    CommentPermission.everyone  => 'Tout le monde',
+    CommentPermission.followers => 'Mes abonnés',
+    CommentPermission.nobody    => 'Personne',
   };
 }
 
@@ -175,6 +190,34 @@ class UserSettings {
   final bool               pushPrayers;
   final bool               pushApproval;
   final CommentPermission  commentPermission;
+
+  /// GET / PUT /users/me/settings (clés snake_case du serveur).
+  factory UserSettings.fromJson(Map<String, dynamic> j) {
+    bool b(String k) {
+      final v = j[k];
+      if (v is bool) return v;
+      if (v is num) return v != 0;
+      if (v is String) return v == '1' || v.toLowerCase() == 'true';
+      return true; // non enregistré : envoyé par défaut (comme le serveur)
+    }
+
+    return UserSettings(
+      pushComments: b('push_comments'),
+      pushLikes: b('push_likes'),
+      pushPrayers: b('push_prayers'),
+      pushApproval: b('push_approval'),
+      commentPermission:
+          CommentPermission.fromJson(j['comment_permission'] as String?),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'push_comments': pushComments,
+    'push_likes': pushLikes,
+    'push_prayers': pushPrayers,
+    'push_approval': pushApproval,
+    'comment_permission': commentPermission.toJson(),
+  };
 
   UserSettings copyWith({
     bool? pushComments,

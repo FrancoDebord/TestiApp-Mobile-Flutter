@@ -2,6 +2,8 @@
 // Docs serveur : fonctionnalites/requetes-de-priere.md, fonctionnalites/sessions-de-priere.md
 
 import '../../../shared/models/mention.dart';
+import '../../repost/content_interactions.dart' show ContentReactions;
+import '../../repost/repost.dart' show RepostInfo, repostInfoFromContent;
 
 /// Qui peut voir une requête (ou une session : pas de « privé »).
 enum PrayerVisibility {
@@ -75,12 +77,14 @@ class PrayerPerson {
     required this.displayName,
     this.avatarUrl,
     this.isVerified = false,
+    this.isOrganization = false,
   });
 
   final String id;
   final String displayName;
   final String? avatarUrl;
   final bool isVerified;
+  final bool isOrganization;
 
   String get initials => prayerInitials(displayName);
 
@@ -89,6 +93,7 @@ class PrayerPerson {
         displayName: _str(j['displayName']) ?? _str(j['name']) ?? 'Utilisateur',
         avatarUrl: _str(j['avatarUrl']) ?? _str(j['avatar']),
         isVerified: j['isVerified'] == true,
+        isOrganization: j['isOrganization'] == true,
       );
 }
 
@@ -134,10 +139,16 @@ class PrayerRequest {
     this.canModerate = false,
     this.canMessage = false,
     this.webUrl,
+    this.mentions = const [],
+    this.reactions = const ContentReactions(),
+    this.repost,
   });
 
   final String id;
   final String body;
+
+  /// Comptes mentionnés dans [body] (« @Nom » cliquable) — docs serveur fonctionnalites/mentions.md
+  final List<MentionRef> mentions;
   final DateTime? createdAt;
   final PrayerPerson? author;
   final PrayerVisibility visibility;
@@ -159,6 +170,12 @@ class PrayerRequest {
   final bool canModerate;
   final bool canMessage;
   final String? webUrl;
+
+  /// J'aime et partages (« Je prie » : [prayerCount], [hasPrayed]).
+  final ContentReactions reactions;
+
+  /// « X a partagé » (compte suivi d'abord).
+  final RepostInfo? repost;
 
   /// Nom affiché : « Anonyme » si l'auteur est masqué.
   String get authorName => author?.displayName ?? 'Anonyme';
@@ -189,6 +206,9 @@ class PrayerRequest {
       canModerate: j['canModerate'] == true,
       canMessage: j['canMessage'] == true,
       webUrl: _str(j['webUrl']),
+      mentions: MentionRef.listFrom(j['mentions']),
+      reactions: ContentReactions.fromJson(j['reactions']),
+      repost: repostInfoFromContent(j['repost']),
     );
   }
 
@@ -219,6 +239,9 @@ class PrayerRequest {
           canModerate: canModerate,
           canMessage: canMessage,
           webUrl: webUrl,
+          mentions: mentions,
+          reactions: reactions,
+          repost: repost,
         );
 }
 
@@ -330,6 +353,8 @@ class PrayerSession {
     this.liveId,
     this.liveStatus,
     this.webUrl,
+    this.reactions = const ContentReactions(),
+    this.repost,
   });
 
   final String id;
@@ -355,6 +380,12 @@ class PrayerSession {
   /// `preparing` (studio de l'hôte) ou `live` (à l'antenne).
   final String? liveStatus;
   final String? webUrl;
+
+  /// J'aime, je prie, partages (docs serveur fonctionnalites/reactions.md).
+  final ContentReactions reactions;
+
+  /// « X a partagé » (compte suivi d'abord).
+  final RepostInfo? repost;
 
   bool get isLive => phase == PrayerSessionPhase.live;
   bool get isOver => phase == PrayerSessionPhase.ended || phase == PrayerSessionPhase.cancelled;
@@ -388,6 +419,8 @@ class PrayerSession {
       liveId: _str(live['id']),
       liveStatus: _str(live['status']),
       webUrl: _str(j['webUrl']),
+      reactions: ContentReactions.fromJson(j['reactions']),
+      repost: repostInfoFromContent(j['repost']),
     );
   }
 }

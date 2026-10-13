@@ -7,6 +7,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../services/api_service.dart';
 import 'prophecy_widgets.dart';
+import '../models/prophecy.dart' show parseClockTime;
 
 /// Parole prophétique accomplie d'un témoignage (champ `prophecy` de l'API),
 /// présente si l'auteur l'a rendue publique (ou pour l'auteur lui-même).
@@ -67,7 +68,7 @@ class PublicProphecyCard extends ConsumerWidget {
             const SizedBox(height: 6),
             Text(
               [
-                if (received != null) 'Reçue le ${prophecyDay(received)}',
+                if (received != null) 'Reçue le ${prophecyReceived(received, parseClockTime(p['receivedTime']))}',
                 if (p['givenBy'] is String) 'donnée par ${p['givenBy']}',
               ].join(', '),
               style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),

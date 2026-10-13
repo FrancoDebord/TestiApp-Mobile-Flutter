@@ -9,6 +9,8 @@ import '../data/community_repository.dart';
 import '../models/community_account.dart';
 import '../providers/follow_provider.dart';
 import 'account_tile.dart';
+import '../../../shared/search/search_suggestions.dart';
+import '../../../shared/widgets/search_autocomplete_field.dart';
 
 /// Charge une page de comptes (recherche, numéro de page à partir de 1).
 typedef AccountPageLoader = Future<CommunityPage> Function(String query, int page);
@@ -38,6 +40,7 @@ class PagedAccountList extends ConsumerStatefulWidget {
     this.emptyAction,
     this.header,
     this.followIdleLabel = 'Suivre',
+    this.searchRecentKey = 'accounts',
   });
 
   final AccountPageLoader loader;
@@ -53,6 +56,9 @@ class PagedAccountList extends ConsumerStatefulWidget {
   /// Texte du bouton Suivre tant qu'on ne suit pas (« Suivre en retour » dans Mes abonnés).
   final String followIdleLabel;
 
+  /// Liste de recherches récentes de la barre (autocomplétion).
+  final String searchRecentKey;
+
   @override
   ConsumerState<PagedAccountList> createState() => _PagedAccountListState();
 }
@@ -60,6 +66,7 @@ class PagedAccountList extends ConsumerStatefulWidget {
 class _PagedAccountListState extends ConsumerState<PagedAccountList> with AutomaticKeepAliveClientMixin {
   final _items = <CommunityAccount>[];
   final _search = TextEditingController();
+  final _searchFocus = FocusNode();
   Timer? _debounce;
   int _page = 0;
   int _total = 0;
@@ -77,10 +84,15 @@ class _PagedAccountListState extends ConsumerState<PagedAccountList> with Automa
     unawaited(_load(reset: true));
   }
 
+  /// Défilement de la liste : sert à enchaîner les pages tant que l'écran n'est pas rempli.
+  final _scroll = ScrollController();
+
   @override
   void dispose() {
+    _scroll.dispose();
     _debounce?.cancel();
     _search.dispose();
+    _searchFocus.dispose();
     super.dispose();
   }
 
@@ -105,6 +117,10 @@ class _PagedAccountListState extends ConsumerState<PagedAccountList> with Automa
         _page = page.currentPage;
         _total = page.total ?? _items.length;
         _hasMore = page.hasMore;
+      });
+      // Une page qui ne remplit pas l'écran ne déclenche aucun défilement : on charge la suivante.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _hasMore && _scroll.hasClients && _scroll.position.extentAfter < 400) unawaited(_load());
       });
     } catch (e) {
       debugPrint('comptes ✗ $e');
@@ -132,6 +148,7 @@ class _PagedAccountListState extends ConsumerState<PagedAccountList> with Automa
           return false;
         },
         child: ListView.separated(
+          controller: _scroll,
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.only(bottom: 24),
           itemCount: _items.length + lead + 1,
@@ -140,17 +157,30 @@ class _PagedAccountListState extends ConsumerState<PagedAccountList> with Automa
             if (i == 0) {
               return Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                child: TextField(
+                // Autocomplétion des noms de comptes (docs/fonctionnalites/recherche.md).
+                child: SearchAutocomplete(
                   controller: _search,
-                  onChanged: _onSearch,
-                  textInputAction: TextInputAction.search,
-                  decoration: InputDecoration(
-                    hintText: widget.searchHint,
-                    prefixIcon: const Icon(Icons.search_rounded),
-                    filled: true,
-                    fillColor: AppColors.surface,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                  focusNode: _searchFocus,
+                  scope: SearchScope.users,
+                  recentKey: widget.searchRecentKey,
+                  onSubmitted: (_) {
+                    _debounce?.cancel();
+                    unawaited(_load(reset: true));
+                  },
+                  fieldBuilder: (context, submit) => TextField(
+                    controller: _search,
+                    focusNode: _searchFocus,
+                    onChanged: _onSearch,
+                    onSubmitted: submit,
+                    textInputAction: TextInputAction.search,
+                    decoration: InputDecoration(
+                      hintText: widget.searchHint,
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      filled: true,
+                      fillColor: AppColors.surface,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                    ),
                   ),
                 ),
               );

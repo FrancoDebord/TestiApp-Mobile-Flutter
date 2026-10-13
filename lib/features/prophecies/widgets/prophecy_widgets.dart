@@ -16,6 +16,10 @@ const _months = [
 /// « 5 octobre 2026 ».
 String prophecyDay(DateTime d) => '${d.day} ${_months[d.month - 1]} ${d.year}';
 
+/// « 5 oct. 2026 à 14:30 » (sans l'heure si elle n'a pas été notée).
+String prophecyReceived(DateTime d, String? time) =>
+    time == null || time.isEmpty ? prophecyDay(d) : '${prophecyDay(d)} à $time';
+
 String _two(int n) => n.toString().padLeft(2, '0');
 
 String formatClock(Duration d) => '${_two(d.inMinutes)}:${_two(d.inSeconds % 60)}';
@@ -119,7 +123,7 @@ class ProphecyCard extends StatelessWidget {
                 spacing: 12,
                 runSpacing: 4,
                 children: [
-                  _Meta(Icons.event_note_rounded, prophecyDay(p.receivedOn)),
+                  _Meta(Icons.event_note_rounded, prophecyReceived(p.receivedOn, p.receivedTime)),
                   if (p.givenBy != null) _Meta(Icons.person_outline_rounded, p.givenBy!),
                   if (p.dueOn != null && !p.fulfilled) _Meta(Icons.flag_outlined, 'Échéance : ${prophecyDay(p.dueOn!)}'),
                   if (p.fulfilledOn != null) _Meta(Icons.verified_outlined, 'Accomplie le ${prophecyDay(p.fulfilledOn!)}'),

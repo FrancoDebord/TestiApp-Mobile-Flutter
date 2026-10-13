@@ -83,6 +83,7 @@ class _FakeRepo implements PrayerRepository {
     bool answeredOnly = false,
     int page = 1,
     int limit = 20,
+    bool near = false,
   }) async =>
       PrayerPage(items: [req], total: 1);
 

@@ -7,6 +7,9 @@ import 'package:video_player/video_player.dart' show VideoPlayerController;
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
+import '../../../core/media/playback_preferences.dart'
+    show isMeteredConnectionProvider;
+import '../../../shared/widgets/video_poster.dart' show VideoThumbnailImage;
 import '../../../shared/widgets/youtube_video_player.dart' show YouTubeBadge;
 import '../models/testimony_model.dart';
 import 'compact_testimony_tile.dart' show openVideoTestimony;
@@ -55,11 +58,10 @@ class _VideoThumbnail extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Image.network(
-              // Miniature YouTube (coverUrl) ou couverture du serveur.
-              testimony.thumbnailUrl,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => Container(
+            // Miniature Bunny (thumbnail_url), YouTube ou couverture, en cache.
+            VideoThumbnailImage(
+              url: testimony.thumbnailUrl,
+              fallback: Container(
                 color: AppColors.primarySoft,
                 child: const Icon(
                   Icons.video_library_outlined,
@@ -113,22 +115,26 @@ class _VideoThumbnail extends StatelessWidget {
   }
 }
 
-class _SmartDurationBadge extends StatefulWidget {
+class _SmartDurationBadge extends ConsumerStatefulWidget {
   const _SmartDurationBadge({required this.testimony});
   final VideoTestimony testimony;
 
   @override
-  State<_SmartDurationBadge> createState() => _SmartDurationBadgeState();
+  ConsumerState<_SmartDurationBadge> createState() => _SmartDurationBadgeState();
 }
 
-class _SmartDurationBadgeState extends State<_SmartDurationBadge> {
+class _SmartDurationBadgeState extends ConsumerState<_SmartDurationBadge> {
   late int _secs;
 
   @override
   void initState() {
     super.initState();
     _secs = widget.testimony.durationSeconds;
-    if (_secs == 0) _loadDuration();
+    // Durée inconnue d'une ancienne vidéo : sondée en Wi-Fi seulement.
+    final metered = ref.read(isMeteredConnectionProvider).value ?? true;
+    if (_secs == 0 && !metered && widget.testimony.hlsUrl == null) {
+      _loadDuration();
+    }
   }
 
   Future<void> _loadDuration() async {
@@ -152,6 +158,7 @@ class _SmartDurationBadgeState extends State<_SmartDurationBadge> {
 
   @override
   Widget build(BuildContext context) {
+    if (_secs <= 0) return const SizedBox.shrink();
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(

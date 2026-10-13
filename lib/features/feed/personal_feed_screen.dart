@@ -15,6 +15,9 @@ import '../community/widgets/suggested_accounts_strip.dart';
 import '../live/widgets/live_now_strip.dart';
 import '../repost/repost.dart';
 import '../repost/repost_widgets.dart';
+import '../location/location_providers.dart' show locationChangeProvider, nearbyLabelsProvider;
+import '../location/nearby_widgets.dart' show NearbyCardLabel, NearbyFeedBanner;
+import '../location/user_location.dart' show FeedPlace, parseNearbyLabels;
 import 'feed_insert_card.dart';
 import 'feed_inserts.dart';
 import '../home/models/testimony_model.dart';
@@ -44,6 +47,7 @@ class PersonalFeedState {
     this.hasMore = false,
     this.followingCount = 0,
     this.loadingMore = false,
+    this.place,
   });
 
   final List<PersonalFeedEntry> items;
@@ -52,6 +56,9 @@ class PersonalFeedState {
   final int followingCount;
   final bool loadingMore;
 
+  /// Zone utilisée pour le classement (meta.place) : « Près de chez vous · Cotonou ».
+  final FeedPlace? place;
+
   PersonalFeedState copyWith({List<PersonalFeedEntry>? items, int? page, bool? hasMore, bool? loadingMore}) =>
       PersonalFeedState(
         items: items ?? this.items,
@@ -59,12 +66,17 @@ class PersonalFeedState {
         hasMore: hasMore ?? this.hasMore,
         followingCount: followingCount,
         loadingMore: loadingMore ?? this.loadingMore,
+        place: place,
       );
 }
 
 class PersonalFeedNotifier extends AsyncNotifier<PersonalFeedState> {
   @override
-  Future<PersonalFeedState> build() => _fetch(1);
+  Future<PersonalFeedState> build() {
+    // Zone modifiée (réglage de localisation) : le fil est reclassé.
+    ref.watch(locationChangeProvider);
+    return _fetch(1);
+  }
 
   Future<PersonalFeedState> _fetch(int page) async {
     final res = await ref.read(apiServiceProvider).get<dynamic>(AppConstants.personalFeed, query: {'page': page});
@@ -80,11 +92,13 @@ class PersonalFeedNotifier extends AsyncNotifier<PersonalFeedState> {
     ];
     final meta = res.meta is Map ? Map<String, dynamic>.from(res.meta as Map) : const <String, dynamic>{};
     int n(Object? v) => v is num ? v.toInt() : 0;
+    ref.read(nearbyLabelsProvider.notifier).merge(parseNearbyLabels(meta));
     return PersonalFeedState(
       items: items,
       page: n(meta['currentPage']) == 0 ? page : n(meta['currentPage']),
       hasMore: n(meta['currentPage']) < n(meta['lastPage']),
       followingCount: n(meta['followingCount']),
+      place: FeedPlace.fromMeta(meta),
     );
   }
 
@@ -182,7 +196,16 @@ class PersonalFeedScreen extends ConsumerWidget {
         itemBuilder: (context, i) {
           // Directs en cours (masqué s'il n'y en a pas) : pleine largeur, sans marge latérale.
           if (i == 1) return const LiveNowStrip();
-          if (i == 0) return _padded(_Header(followingCount: s.followingCount, empty: s.items.isEmpty));
+          if (i == 0) {
+            return _padded(Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _Header(followingCount: s.followingCount, empty: s.items.isEmpty),
+                // « Près de chez vous · Cotonou » et invitation à activer la position.
+                NearbyFeedBanner(place: s.place, padding: const EdgeInsets.only(top: 10)),
+              ],
+            ));
+          }
           final p = i - 2;
           if (p == suggestionsAt) return const _SuggestedAccounts();
           final position = p > suggestionsAt ? p - 1 : p;
@@ -209,24 +232,36 @@ class PersonalFeedScreen extends ConsumerWidget {
       case TestimonySlot(:final index):
         final e = s.items[index];
         if (e.repost case final r?) {
-          // « X a partagé » : la carte garde l'auteur d'origine.
+          // « X a partagé » : la carte garde l'auteur d'origine. Le partage précis de Mon fil
+          // remplace celui choisi par défaut.
           return Column(
             key: ValueKey('r-${e.testimony.id}'),
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               RepostHeader(repost: r),
               const SizedBox(height: 8),
+              NearbyCardLabel(testimonyId: e.testimony.id),
+              TestimonyFeedItem(testimony: e.testimony, showRepost: false),
+            ],
+          );
+        }
+        if (!e.suggested) {
+          return Column(
+            key: ValueKey(e.testimony.id),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              NearbyCardLabel(testimonyId: e.testimony.id),
               TestimonyFeedItem(testimony: e.testimony),
             ],
           );
         }
-        if (!e.suggested) return TestimonyFeedItem(key: ValueKey(e.testimony.id), testimony: e.testimony);
         return Column(
           key: ValueKey('s-${e.testimony.id}'),
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const _SuggestionLabel(),
             const SizedBox(height: 6),
+            NearbyCardLabel(testimonyId: e.testimony.id),
             TestimonyFeedItem(testimony: e.testimony),
           ],
         );

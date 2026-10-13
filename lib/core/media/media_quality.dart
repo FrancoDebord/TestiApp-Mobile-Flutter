@@ -131,8 +131,19 @@ ResolvedMedia? _resolve({
 
 // ── Vidéo ────────────────────────────────────────────────────────────────────
 
+/// Libellé de la version lue quand c'est le flux HLS adaptatif (mode Auto).
+const String kAdaptiveLabel = 'Auto';
+
 /// Choisit la version vidéo à lire. [override] = choix manuel ponctuel
-/// (menu « Qualité » du lecteur), prioritaire sur la préférence.
+/// (menu « Qualité » du lecteur), prioritaire sur la préférence du réseau en
+/// cours (Paramètres › Qualité vidéo).
+///
+/// Vidéos Bunny Stream ([hlsUrl] renseigné) :
+///   • Auto → flux HLS (qualité adaptative) ;
+///   • qualité forcée → version MP4 de cette hauteur (`mp4_urls`), sinon la plus
+///     haute en dessous, sinon le flux HLS.
+/// Anciennes vidéos (fichier original + versions) : Auto plafonne la hauteur
+/// selon le réseau (autoVideoHeight).
 /// [testimonyId] permet de retrouver un fichier téléchargé (à défaut, la
 /// recherche se fait par adresse d'origine).
 ResolvedMedia? resolveVideo({
@@ -140,10 +151,32 @@ ResolvedMedia? resolveVideo({
   required List<MediaRendition> renditions,
   required PlaybackPreferences prefs,
   required bool metered,
+  String? hlsUrl,
   VideoQuality? override,
   String? testimonyId,
 }) {
-  final q = override ?? prefs.videoQuality;
+  final q = override ?? prefs.videoQualityFor(metered: metered);
+  final hls = (hlsUrl == null || hlsUrl.isEmpty) ? null : hlsUrl;
+
+  if (hls != null) {
+    final local = OfflineMedia.find(
+      id: testimonyId,
+      original: original,
+      renditions: renditions,
+    );
+    if (local != null) {
+      return ResolvedMedia(url: local, label: OfflineMedia.label);
+    }
+    if (prefs.offlineMode) return null;
+    if (q != VideoQuality.auto) {
+      final exact = renditions.where((r) => r.height == q.height).firstOrNull;
+      final r = exact ??
+          renditions.lastWhereOrNull((r) => r.height > 0 && r.height <= q.height);
+      if (r != null) return ResolvedMedia(url: r.url, label: r.label, rendition: r);
+    }
+    return ResolvedMedia(url: hls, label: kAdaptiveLabel);
+  }
+
   final cap = q == VideoQuality.auto
       ? autoVideoHeight(metered: metered, dataSaver: prefs.dataSaver)
       : q.height;
@@ -165,14 +198,15 @@ ResolvedMedia? resolveVideoTestimony(
     resolveVideo(
       original: t.mediaPath,
       renditions: t.renditions,
+      hlsUrl: t.hlsUrl,
       prefs: prefs,
       metered: metered,
       override: override,
       testimonyId: t.id,
     );
 
-/// Qualités proposables dans le menu du lecteur pour ces versions :
-/// Auto + chaque hauteur réellement disponible (ordre décroissant).
+/// Qualités proposables dans le menu du lecteur : Auto + chaque qualité dont
+/// la version MP4 existe réellement (les absentes sont masquées).
 List<VideoQuality> availableVideoQualities(List<MediaRendition> renditions) {
   final heights = renditions.map((r) => r.height).toSet();
   return [
@@ -180,6 +214,15 @@ List<VideoQuality> availableVideoQualities(List<MediaRendition> renditions) {
     ...VideoQuality.values
         .where((q) => q != VideoQuality.auto && heights.contains(q.height)),
   ];
+}
+
+extension<T> on List<T> {
+  T? lastWhereOrNull(bool Function(T) test) {
+    for (var i = length - 1; i >= 0; i--) {
+      if (test(this[i])) return this[i];
+    }
+    return null;
+  }
 }
 
 // ── Audio ────────────────────────────────────────────────────────────────────

@@ -60,3 +60,32 @@ abstract final class AppColors {
   static const List<Color> ministereGradient = [primary, secondary];
   static const List<Color> salutGradient = [secondary, secondaryDark];
 }
+
+/// ColorScheme de l'application (thème clair, charte Krea). [brightness] sombre :
+/// variante dérivée des mêmes couleurs de marque, utilisée par les designs du
+/// verset du jour (l'application n'a pas de thème sombre global).
+ColorScheme appColorScheme({Brightness brightness = Brightness.light}) {
+  if (brightness == Brightness.dark) {
+    return ColorScheme.fromSeed(
+      seedColor: AppColors.primary,
+      brightness: Brightness.dark,
+      secondary: AppColors.secondary,
+      tertiary: AppColors.sun,
+    );
+  }
+  return ColorScheme.fromSeed(
+    seedColor: AppColors.primary,
+    primary: AppColors.primary,
+    onPrimary: Colors.white,
+    secondary: AppColors.secondary,
+    onSecondary: Colors.white,
+    tertiary: AppColors.sun,
+    onTertiary: AppColors.primaryDark,
+    error: AppColors.danger,
+    surface: AppColors.surface,
+    onSurface: AppColors.textPrimary,
+    onSurfaceVariant: AppColors.textSecondary,
+    outline: AppColors.inputBorder,
+    outlineVariant: AppColors.border,
+  );
+}

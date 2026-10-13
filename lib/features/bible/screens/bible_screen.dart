@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../models/bible_models.dart';
@@ -21,7 +22,14 @@ class BibleScreen extends ConsumerWidget {
         elevation: 0,
         scrolledUnderElevation: 1,
         shadowColor: AppColors.border,
-        leading: const BackButton(color: AppColors.textPrimary),
+        // Racine de la branche Bible du shell (ouverte depuis le menu) : rien à
+        // dépiler, on revient alors à l'accueil.
+        leading: BackButton(
+          color: AppColors.textPrimary,
+          onPressed: () => context.canPop()
+              ? context.pop()
+              : context.go(AppPaths.homePath),
+        ),
         title: Row(
           children: [
             Container(

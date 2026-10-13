@@ -3,6 +3,8 @@
 // Doc backend : docs/fonctionnalites/evenements.md
 
 import '../../../shared/models/mention.dart';
+import '../../repost/content_interactions.dart' show ContentReactions;
+import '../../repost/repost.dart' show RepostInfo, repostInfoFromContent;
 
 export '../../../shared/models/mention.dart' show MentionRef;
 
@@ -356,6 +358,9 @@ class ChristianEvent {
     this.acceptsParticipation = false,
     this.canManage = false,
     this.canAdministrate = false,
+    this.canDelete = false,
+    this.reactions = const ContentReactions(),
+    this.repost,
     this.managers = const [],
     this.live,
     this.webUrl,
@@ -415,6 +420,9 @@ class ChristianEvent {
       acceptsParticipation: m['acceptsParticipation'] == true,
       canManage: m['canManage'] == true,
       canAdministrate: m['canAdministrate'] == true,
+      canDelete: m['canDelete'] == true || m['canAdministrate'] == true,
+      reactions: ContentReactions.fromJson(m['reactions']),
+      repost: repostInfoFromContent(m['repost']),
       managers: (m['managers'] is List ? m['managers'] as List : const [])
           .whereType<Map>()
           .map((p) => EventPerson.fromJson(Map<String, dynamic>.from(p)))
@@ -480,6 +488,15 @@ class ChristianEvent {
 
   /// Responsable : supprimer, désigner les co-gestionnaires (pas les co-gestionnaires).
   final bool canAdministrate;
+
+  /// Supprimer : le responsable ou un administrateur (jamais un modérateur).
+  final bool canDelete;
+
+  /// J'aime, je prie, partages (docs serveur fonctionnalites/reactions.md).
+  final ContentReactions reactions;
+
+  /// « X a partagé » (compte suivi d'abord).
+  final RepostInfo? repost;
 
   /// Co-gestionnaires (2 au plus), fournis aux seuls gestionnaires.
   final List<EventPerson> managers;
@@ -566,6 +583,7 @@ class EventComment {
     required this.user,
     this.testimonyId,
     this.isMine = false,
+    this.canDelete = false,
     this.createdAt,
     this.mentions = const [],
   });
@@ -576,6 +594,7 @@ class EventComment {
         user: EventPerson.fromJson(_map(m['user'])),
         testimonyId: _str(m['testimonyId']),
         isMine: m['isMine'] == true,
+        canDelete: m['canDelete'] == true,
         createdAt: _date(m['createdAt']),
         mentions: MentionRef.listFrom(m['mentions']),
       );
@@ -592,6 +611,9 @@ class EventComment {
   /// Enregistré comme témoignage officiel par un gestionnaire.
   final String? testimonyId;
   final bool isMine;
+
+  /// Auteur ou administrateur (`canDelete` de l'API) ; les gestionnaires aussi (`canManage`).
+  final bool canDelete;
   final DateTime? createdAt;
 
   EventComment copyWith({String? testimonyId}) => EventComment(
@@ -600,6 +622,7 @@ class EventComment {
         user: user,
         testimonyId: testimonyId ?? this.testimonyId,
         isMine: isMine,
+        canDelete: canDelete,
         createdAt: createdAt,
         mentions: mentions,
       );

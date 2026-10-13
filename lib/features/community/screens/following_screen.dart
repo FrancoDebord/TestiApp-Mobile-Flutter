@@ -51,6 +51,7 @@ class FollowsScreen extends ConsumerWidget {
               key: const PageStorageKey('followers'),
               loader: (q, page) => repo.followers(query: q, page: page),
               searchHint: 'Rechercher dans mes abonnés',
+              searchRecentKey: 'followers',
               followIdleLabel: 'Suivre en retour',
               emptyText: 'Personne ne vous suit encore.\nPubliez des témoignages et participez à la Communauté : '
                   'ceux qui vous suivront apparaîtront ici.',
@@ -64,6 +65,7 @@ class FollowsScreen extends ConsumerWidget {
               key: const PageStorageKey('following'),
               loader: (q, page) => repo.following(query: q, page: page),
               searchHint: 'Rechercher dans mes abonnements',
+              searchRecentKey: 'following',
               emptyText: 'Vous ne suivez encore personne.\nSuivez des églises, des ministères et des personnes '
                   'pour être prévenu de leurs témoignages et de leurs directs.',
               emptyAction: discover,

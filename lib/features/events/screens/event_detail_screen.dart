@@ -1,10 +1,10 @@
 import 'dart:async';
 
+import '../../repost/content_interactions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../../../core/providers/categories_provider.dart' show categoriesListProvider;
 import '../../../core/theme/app_colors.dart';
@@ -62,12 +62,19 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
     if (err == null) unawaited(HapticFeedback.selectionClick());
   }
 
+  /// Partager : sur TestiApp (avec ses abonnés), copier le lien, autres applications.
   void _share(ChristianEvent e) {
     final when = formatEventRange(e.startsAt, e.endsAt);
-    SharePlus.instance.share(ShareParams(
-      text: '${e.title}\n$when${e.place != null ? '\n${e.place}' : ''}'
-          '${e.webUrl != null ? '\n\n${e.webUrl}' : ''}',
-    ));
+    final reactions = ref.read(contentInteractionsProvider.notifier).of(ContentKind.event, e.id, e.reactions);
+    showContentShareSheet(
+      context,
+      ref,
+      kind: ContentKind.event,
+      id: e.id,
+      title: '${e.title}\n$when${e.place != null ? '\n${e.place}' : ''}',
+      webUrl: e.webUrl,
+      reactions: reactions,
+    );
   }
 
   // ── Gestion ────────────────────────────────────────────────────────────────
@@ -199,6 +206,17 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                     busy: _answering,
                     onAnswer: _answer,
                   ),
+                  // J'aime, je prie, partager (docs serveur fonctionnalites/reactions.md).
+                  if (!e.isDraft) ...[
+                    const SizedBox(height: 6),
+                    ContentReactionBar(
+                      kind: ContentKind.event,
+                      id: e.id,
+                      initial: e.reactions,
+                      title: e.title,
+                      webUrl: e.webUrl,
+                    ),
+                  ],
                   // Sondage d'après l'événement : « Votre avis ».
                   if (e.survey.open || e.survey.total > 0) ...[
                     const SizedBox(height: 14),
@@ -489,8 +507,8 @@ class _LiveBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final live = event.live!;
     final onAir = live.isOnAir;
-    // Diffuseur : reprise du studio ; public : regarder.
-    final path = onAir && !event.canManage ? '/lives/${live.id}' : '/lives/${live.id}/studio';
+    // Gestionnaires de l'événement : le studio ; le public regarde toujours (même en préparation).
+    final path = event.canManage ? '/lives/${live.id}/studio' : '/lives/${live.id}';
     return Material(
       color: onAir ? const Color(0xFFE11D48) : const Color(0xFF475467),
       borderRadius: AppRadius.cardRadius,
@@ -653,8 +671,8 @@ class _ManagerPanel extends StatelessWidget {
         (Icons.event_repeat_rounded, 'Reporter', 'postpone', null),
         (Icons.event_busy_rounded, "Annuler l'événement", 'cancel', AppColors.danger),
       ],
-      // Supprimer : organisateur, gestionnaires de l'organisation, admin (pas les co-gestionnaires).
-      if (e.canAdministrate) (Icons.delete_outline_rounded, 'Supprimer', 'delete', AppColors.danger),
+      // Supprimer : organisateur, gestionnaires de l'organisation, admin (ni les co-gestionnaires ni les modérateurs).
+      if (e.canDelete) (Icons.delete_outline_rounded, 'Supprimer', 'delete', AppColors.danger),
     ];
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
@@ -1181,7 +1199,8 @@ class _CommentCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final c = comment;
     final promoted = c.testimonyId != null;
-    final canDelete = c.isMine || event.canManage;
+    // Auteur, gestionnaires de l'événement ou administrateur (`canDelete` de l'API).
+    final canDelete = c.isMine || c.canDelete || event.canManage;
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 12, 4, 12),
       decoration: BoxDecoration(

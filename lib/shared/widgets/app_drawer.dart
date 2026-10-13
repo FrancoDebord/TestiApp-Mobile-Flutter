@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../features/accounts/providers/acting_account_provider.dart'
+    show actingAccountProvider, myAccountsProvider;
+import '../../features/accounts/widgets/account_widgets.dart' show showAccountSwitcher;
 import '../../features/auth/providers/auth_notifier.dart' show currentUserProvider;
-import '../../features/events/providers/events_providers.dart' show managedOrganizationsProvider;
 import 'organization_badge.dart';
 
 /// Menu latéral (ouvert depuis l'accueil) : accès aux écrans qui n'ont pas d'onglet
@@ -16,6 +18,10 @@ class AppDrawer extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
+    // Bascule : seulement si la personne administre au moins un autre compte.
+    final acting = ref.watch(actingAccountProvider);
+    final canSwitch = user != null &&
+        (acting != null || (ref.watch(myAccountsProvider).value?.managed.isNotEmpty ?? false));
 
     // Ferme le menu puis ouvre l'écran : [tab] = chemin d'un onglet (go), sinon écran empilé (push).
     void open(String path, {bool tab = false}) {
@@ -66,7 +72,12 @@ class AppDrawer extends ConsumerWidget {
                             if (user != null)
                               OrganizationBadge(isOrganization: user.isOrganization, isVerified: user.isVerified, size: 15),
                           ]),
-                          Text(user == null ? 'Pour suivre des comptes et témoigner' : 'Voir mon profil',
+                          Text(
+                              user == null
+                                  ? 'Pour suivre des comptes et témoigner'
+                                  : acting != null
+                                      ? 'Compte administré · voir le profil'
+                                      : 'Voir mon profil',
                               style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                         ],
                       ),
@@ -75,6 +86,17 @@ class AppDrawer extends ConsumerWidget {
                 ),
               ),
             ),
+            if (canSwitch)
+              ListTile(
+                leading: const Icon(Icons.swap_horiz_rounded, color: AppColors.primary),
+                title: const Text('Changer de compte',
+                    style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600)),
+                subtitle: const Text("Agir au nom d'un compte que vous administrez", style: TextStyle(fontSize: 12)),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  showAccountSwitcher(context);
+                },
+              ),
             const Divider(height: 1),
             item(Icons.groups_rounded, 'Communauté', '/community', subtitle: 'Organisations et personnes à suivre'),
             // Bible : branche du shell (pas d'onglet dans la barre du bas) → go.
@@ -100,12 +122,9 @@ class AppDrawer extends ConsumerWidget {
                   subtitle: 'Gardez-les, priez, témoignez de leur accomplissement'),
               item(Icons.video_library_outlined, 'Mes témoignages', '/profile/my-testimonies', tab: true),
               item(Icons.bookmark_outline_rounded, 'Sauvegardés', '/profile/saved', tab: true),
-              // Événements : gestionnaires d'une organisation (docs serveur fonctionnalites/evenements.md).
-              if (user.isOrganization)
-                item(Icons.manage_accounts_outlined, "Gestionnaires de l'organisation", '/managers',
-                    subtitle: 'Deux personnes au plus gèrent vos événements')
-              else if ((ref.watch(managedOrganizationsProvider).value ?? const []).isNotEmpty)
-                item(Icons.manage_accounts_outlined, 'Organisations que je gère', '/managers'),
+              // Administrateurs du compte (tous les comptes) et comptes que j'administre.
+              item(Icons.manage_accounts_outlined, 'Administrateurs du compte', '/managers',
+                  subtitle: 'Deux personnes au plus agissent en votre nom'),
             ],
             if (user?.canModerate ?? false) ...[
               const Divider(height: 1),

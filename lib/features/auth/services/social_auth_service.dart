@@ -1,8 +1,13 @@
-import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, debugPrint, defaultTargetPlatform, kDebugMode, kIsWeb;
 
-import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
+// Connexion Facebook désactivée (retirée de l'application) :
+// import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+
+import '../../../core/app_constants.dart';
+import '../../../services/api_service.dart' show LaravelApiException;
 
 /// Result of a social authentication attempt.
 sealed class SocialAuthResult {
@@ -31,7 +36,38 @@ final class SocialAuthCancelled extends SocialAuthResult {
 
 final class SocialAuthError extends SocialAuthResult {
   const SocialAuthError(this.message);
+
+  /// Message clair pour l'utilisateur (le détail technique est journalisé en debug).
   final String message;
+}
+
+/// Échec de la connexion Google côté appareil (le message s'affiche tel quel).
+class GoogleSignInFailure implements Exception {
+  const GoogleSignInFailure(this.message);
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
+/// Message à afficher (SnackBar) après l'échec d'une connexion Google : erreur du SDK
+/// ([GoogleSignInFailure]) ou réponse de l'API (401 jeton refusé, 403 compte banni, 5xx…).
+/// Le détail technique est journalisé en mode debug.
+String googleSignInErrorMessage(Object error, [StackTrace? stack]) {
+  if (kDebugMode) debugPrint('Connexion Google ✗ $error${stack != null ? '\n$stack' : ''}');
+  return switch (error) {
+    GoogleSignInFailure(:final message) => message,
+    LaravelApiException(statusCode: 401) =>
+      'Google n’a pas pu confirmer votre identité. Réessayez.',
+    LaravelApiException(statusCode: 403, :final message) =>
+      message.isNotEmpty ? message : 'Ce compte ne peut pas se connecter.',
+    LaravelApiException(:final statusCode) when statusCode >= 500 =>
+      'Le serveur est indisponible pour le moment. Réessayez plus tard.',
+    LaravelApiException(statusCode: 0) =>
+      'Pas de connexion Internet. Vérifiez votre réseau et réessayez.',
+    LaravelApiException(:final message) when message.isNotEmpty => message,
+    _ => 'La connexion avec Google a échoué. Réessayez.',
+  };
 }
 
 // ── Service ───────────────────────────────────────────────────────────────────
@@ -40,104 +76,139 @@ class SocialAuthService {
   SocialAuthService._();
   static final SocialAuthService instance = SocialAuthService._();
 
-  static const _iosClientId =
-      '78564751626-tfc6p4rvivn2pt2hfanpvar336a8nud6.apps.googleusercontent.com';
+  // ── Google (google_sign_in 7.x) ──────────────────────────────────────────
 
-  // Web Client ID (auto-créé par Firebase quand Google Sign-In est activé).
-  // Retrouvez-le dans google-services.json → oauth_client → client_type: 3
-  // ou dans Google Cloud Console → APIs & Services → Credentials.
-  static const _webClientId =
-      ''; // ← collez ici votre Web Client ID
+  /// `initialize()` ne doit être appelé qu'une fois : la même opération est réutilisée,
+  /// et relancée seulement si elle a échoué.
+  Future<void>? _googleInit;
 
-  final _googleSignIn = GoogleSignIn(
-    // dart:io Platform lève une exception sur le web → defaultTargetPlatform.
-    clientId: !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS
-        ? _iosClientId
-        : null,
-    serverClientId: _webClientId.isEmpty ? null : _webClientId,
-    scopes: ['email', 'profile'],
-  );
+  Future<void> _ensureGoogleInitialized() {
+    return _googleInit ??= GoogleSignIn.instance
+        .initialize(
+          // dart:io Platform lève une exception sur le web → defaultTargetPlatform.
+          clientId: !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS
+              ? AppConstants.googleIosClientId
+              : null,
+          // Identifiant client Web : l'idToken est émis pour lui (vérifié par l'API).
+          serverClientId: AppConstants.googleServerClientId,
+        )
+        .catchError((Object e) {
+      _googleInit = null;
+      throw e;
+    });
+  }
 
-  // ── Google ─────────────────────────────────────────────────────────────────
-
+  /// Choix du compte Google puis jeton d'identité (idToken) à envoyer à POST /auth/google.
   Future<SocialAuthResult> signInWithGoogle() async {
     try {
-      // Sign out first to force account picker on every call.
-      await _googleSignIn.signOut();
-
-      final account = await _googleSignIn.signIn();
-      if (account == null) return const SocialAuthCancelled();
-
-      final auth    = await account.authentication;
-      final token   = auth.idToken ?? auth.accessToken;
-      if (token == null) {
+      await _ensureGoogleInitialized();
+      if (!GoogleSignIn.instance.supportsAuthenticate()) {
         return const SocialAuthError(
-            'Impossible de récupérer le token Google. '
-            'Vérifiez que Google Sign-In est activé dans Firebase Console '
-            'et que le Web Client ID est configuré.');
+            'La connexion avec Google n’est pas disponible sur cet appareil.');
+      }
+
+      final account = await GoogleSignIn.instance
+          .authenticate(scopeHint: const ['email', 'profile']);
+      final idToken = account.authentication.idToken;
+      if (idToken == null || idToken.isEmpty) {
+        if (kDebugMode) {
+          debugPrint('Connexion Google ✗ idToken absent : vérifiez serverClientId '
+              '(${AppConstants.googleServerClientId}) et l’empreinte SHA-1 dans Firebase.');
+        }
+        return const SocialAuthError('La connexion avec Google a échoué. Réessayez.');
       }
 
       return SocialAuthSuccess(
         provider: 'google',
-        token: token,
+        token: idToken,
         email: account.email,
         displayName: account.displayName,
         avatarUrl: account.photoUrl,
       );
-    } catch (e) {
-      return SocialAuthError(e.toString());
+    } on GoogleSignInException catch (e, stack) {
+      // Fenêtre fermée par l'utilisateur : rien à afficher.
+      if (e.code == GoogleSignInExceptionCode.canceled) return const SocialAuthCancelled();
+      if (kDebugMode) {
+        debugPrint('Connexion Google ✗ ${e.code.name} : ${e.description} ${e.details ?? ''}\n$stack');
+      }
+      return SocialAuthError(switch (e.code) {
+        GoogleSignInExceptionCode.interrupted =>
+          'La connexion avec Google a été interrompue. Réessayez.',
+        GoogleSignInExceptionCode.clientConfigurationError ||
+        GoogleSignInExceptionCode.providerConfigurationError =>
+          'La connexion avec Google est mal configurée. Contactez le support.',
+        GoogleSignInExceptionCode.uiUnavailable =>
+          'Impossible d’ouvrir la fenêtre de connexion Google. Réessayez.',
+        _ => 'La connexion avec Google a échoué. Réessayez.',
+      });
+    } catch (e, stack) {
+      if (kDebugMode) debugPrint('Connexion Google ✗ $e\n$stack');
+      return const SocialAuthError('La connexion avec Google a échoué. Réessayez.');
     }
   }
 
+  /// Déconnexion Google (le prochain « Continuer avec Google » repropose le choix du compte).
   Future<void> signOutGoogle() async {
-    await _googleSignIn.signOut();
-  }
-
-  // ── Facebook ───────────────────────────────────────────────────────────────
-
-  Future<SocialAuthResult> signInWithFacebook() async {
     try {
-      final result = await FacebookAuth.instance.login(
-        permissions: ['email', 'public_profile'],
-      );
-
-      if (result.status == LoginStatus.cancelled) {
-        return const SocialAuthCancelled();
-      }
-
-      if (result.status != LoginStatus.success || result.accessToken == null) {
-        return SocialAuthError(
-            result.message ?? 'Connexion Facebook échouée.');
-      }
-
-      final token = result.accessToken!.tokenString;
-
-      // Fetch user data from Facebook Graph API.
-      final userData = await FacebookAuth.instance.getUserData(
-        fields: 'email,name,picture.width(200)',
-      );
-
-      return SocialAuthSuccess(
-        provider: 'facebook',
-        token: token,
-        email: userData['email'] as String?,
-        displayName: userData['name'] as String?,
-        avatarUrl: (userData['picture']?['data']?['url']) as String?,
-      );
+      await _ensureGoogleInitialized();
+      await GoogleSignIn.instance.signOut();
     } catch (e) {
-      return SocialAuthError(e.toString());
+      if (kDebugMode) debugPrint('Déconnexion Google ✗ $e');
     }
   }
 
-  Future<void> signOutFacebook() async {
-    await FacebookAuth.instance.logOut();
-  }
+  // Connexion Facebook désactivée (retirée de l'application) : à réactiver si besoin.
+  // // ── Facebook ───────────────────────────────────────────────────────────────
+
+  // Future<SocialAuthResult> signInWithFacebook() async {
+  //   try {
+  //     final result = await FacebookAuth.instance.login(
+  //       permissions: ['email', 'public_profile'],
+  //     );
+
+  //     if (result.status == LoginStatus.cancelled) {
+  //       return const SocialAuthCancelled();
+  //     }
+
+  //     if (result.status != LoginStatus.success || result.accessToken == null) {
+  //       return SocialAuthError(
+  //           result.message ?? 'Connexion Facebook échouée.');
+  //     }
+
+  //     final token = result.accessToken!.tokenString;
+
+  //     // Fetch user data from Facebook Graph API.
+  //     final userData = await FacebookAuth.instance.getUserData(
+  //       fields: 'email,name,picture.width(200)',
+  //     );
+
+  //     return SocialAuthSuccess(
+  //       provider: 'facebook',
+  //       token: token,
+  //       email: userData['email'] as String?,
+  //       displayName: userData['name'] as String?,
+  //       avatarUrl: (userData['picture']?['data']?['url']) as String?,
+  //     );
+  //   } catch (e) {
+  //     return SocialAuthError(e.toString());
+  //   }
+  // }
+
+  // Future<void> signOutFacebook() async {
+  //   await FacebookAuth.instance.logOut();
+  // }
 
   // ── Sign out all ───────────────────────────────────────────────────────────
 
+  /// Jamais bloquant : un échec côté Google n'empêche pas la déconnexion.
   Future<void> signOutAll() async {
     await signOutGoogle();
-    await signOutFacebook();
+    // Connexion Facebook désactivée (retirée de l'application) :
+    // try {
+    //   await signOutFacebook();
+    // } catch (e) {
+    //   if (kDebugMode) debugPrint('Déconnexion Facebook ✗ $e');
+    // }
   }
 }
 

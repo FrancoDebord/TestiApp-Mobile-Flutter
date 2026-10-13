@@ -17,6 +17,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/media/youtube.dart';
 import '../../../../core/providers/categories_provider.dart';
+import '../../../../core/router/app_routes.dart' show AppPaths;
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../auth/providers/auth_notifier.dart' show currentUserProvider;
@@ -28,6 +29,8 @@ import '../../bible/providers/bible_providers.dart'
 import '../models/publish_models.dart';
 import '../../../../core/theme/app_tokens.dart';
 import '../../../../shared/widgets/app_button.dart';
+import '../../../../shared/widgets/mention_text.dart' show MentionText;
+import '../../../../shared/widgets/mention_text_field.dart';
 import '../providers/publish_provider.dart';
 import 'video_camera_screen.dart';
 
@@ -203,22 +206,45 @@ class _Step1Details extends ConsumerStatefulWidget {
 
 class _Step1DetailsState extends ConsumerState<_Step1Details> {
   late final TextEditingController _titleCtrl;
-  late final TextEditingController _descCtrl;
+
+  /// Description / transcription avec mentions « @ » (prévenues à la publication).
+  late final MentionEditingController _descCtrl;
 
   @override
   void initState() {
     super.initState();
     final draft = ref.read(publishProvider);
     _titleCtrl = TextEditingController(text: draft.title);
-    _descCtrl = TextEditingController(
+    _descCtrl = MentionEditingController(
       text: draft.format == TestimonyFormat.audio
           ? draft.audioTranscript
           : draft.bodyText,
     );
+    draft.mentions.forEach(_descCtrl.remember);
+    // Saisie, mention choisie ou barre de mise en forme : le brouillon suit le champ.
+    _descCtrl.addListener(_syncDescription);
+  }
+
+  void _syncDescription() {
+    final draft = ref.read(publishProvider);
+    final notifier = ref.read(publishProvider.notifier);
+    final text = _descCtrl.text;
+    if (draft.format == TestimonyFormat.audio) {
+      if (draft.audioTranscript != text) notifier.updateAudioTranscript(text);
+    } else if (draft.bodyText != text) {
+      notifier.updateBodyText(text);
+    }
+    final mentions = _descCtrl.mentions;
+    final current = draft.mentions;
+    if (mentions.length != current.length ||
+        mentions.any((m) => !current.contains(m))) {
+      notifier.updateMentions(mentions);
+    }
   }
 
   @override
   void dispose() {
+    _descCtrl.removeListener(_syncDescription);
     _titleCtrl.dispose();
     _descCtrl.dispose();
     super.dispose();
@@ -277,17 +303,15 @@ class _Step1DetailsState extends ConsumerState<_Step1Details> {
                 _TextFormatToolbar(controller: _descCtrl),
                 const SizedBox(height: 8),
               ],
-              TextField(
+              // « @ » : mentionner quelqu'un (prévenu quand le témoignage sera publié).
+              MentionTextField(
                 controller: _descCtrl,
                 maxLength: 5000,
                 minLines: isText ? 6 : 4,
                 maxLines: isText ? 14 : 8,
                 keyboardType: TextInputType.multiline,
-                onChanged: isAudio
-                    ? notifier.updateAudioTranscript
-                    : notifier.updateBodyText,
                 decoration: _inputDecoration(
-                  hint: 'Racontez votre témoignage…',
+                  hint: 'Racontez votre témoignage… (@ pour mentionner)',
                   counterText: '$descLength/5000',
                   contentPadding: const EdgeInsets.all(14),
                 ),
@@ -426,8 +450,9 @@ class _Step2TextState extends ConsumerState<_Step2Text> {
                 ],
               ),
               const SizedBox(height: 4),
-              Text(
+              MentionText(
                 body.isEmpty ? 'Aucune description.' : body,
+                mentions: draft.mentions,
                 maxLines: 6,
                 overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.bodyMedium.copyWith(
@@ -1239,6 +1264,14 @@ class _BottomNavButtonsState extends ConsumerState<_BottomNavButtons> {
             duration: const Duration(seconds: 6),
           ),
         );
+      } else if (result.status == PublishStatus.videoUploading) {
+        // Vidéo : compression et envoi suivis sur l'écran dédié (Annuler,
+        // Réessayer, message « en cours de traitement » à la fin).
+        ref.read(publishProvider.notifier).reset();
+        ref.read(publishStepProvider.notifier).goTo(1);
+        final router = GoRouter.of(context);
+        router.go(AppPaths.homePath);
+        router.push(AppPaths.videoUploadPath);
       } else if (result.status == PublishStatus.pendingSync) {
         // Hors ligne — enregistré localement, sera synchronisé plus tard
         ref.read(publishProvider.notifier).reset();

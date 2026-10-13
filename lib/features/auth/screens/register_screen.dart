@@ -1,4 +1,5 @@
 import '../../../core/data/countries.dart';
+import '../services/social_auth_service.dart' show googleSignInErrorMessage;
 import '../../../shared/widgets/country_picker.dart';
 import 'dart:async' show unawaited;
 import 'dart:io' show File;
@@ -28,7 +29,7 @@ import '../widgets/auth_widgets.dart';
 // REGISTER SCREEN
 // =============================================================================
 // Layout (top → bottom, scrollable):
-//   1. Purple wave header  — logo + "Créer un compte" title
+//   1. Wave header (Krea Blue) — logo + "Créer un compte" title
 //   2. White card body     — rounded top corners (28 px)
 //      0. Choix du type de compte — « Je suis une personne » /
 //         « Je représente une organisation » (grandes cartes).
@@ -91,6 +92,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool _acceptedTerms = false;
   int _passwordStrength = 0;
   bool _isLoading = false;
+
+  /// Connexion Google en cours (indicateur sur le bouton Google).
+  bool _googleLoading = false;
   String? _errorMessage;
 
   /// Photo de profil / logo choisi (envoyé après la création du compte).
@@ -180,14 +184,22 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
   }
 
+  /// Connexion Google : bouton désactivé avec indicateur pendant l'opération ; annulation
+  /// silencieuse ; erreur Google ou API (401, 5xx…) → SnackBar. La redirection après
+  /// connexion est faite par le routeur (changement de l'état d'authentification).
   Future<void> _signInWithGoogle() async {
-    setState(() { _isLoading = true; _errorMessage = null; });
+    setState(() { _isLoading = true; _googleLoading = true; _errorMessage = null; });
     try {
       await ref.read(authStateProvider.notifier).signInWithGoogle();
-    } catch (e) {
-      if (mounted) setState(() => _errorMessage = e.toString());
+    } catch (e, stack) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(googleSignInErrorMessage(e, stack)),
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() { _isLoading = false; _googleLoading = false; });
     }
   }
 
@@ -586,14 +598,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       // S'inscrire.
                       AuthPrimaryButton(
                         label: "S'inscrire",
-                        isLoading: isLoading,
+                        isLoading: isLoading && !_googleLoading,
                         onPressed: isLoading ? null : _submit,
                       ),
 
                       const SizedBox(height: 20),
 
-                      // Divider "ou".
-                      const AuthOrDivider(),
+                      // Séparateur « ou ».
+                      const AuthOrDivider(label: 'ou'),
 
                       const SizedBox(height: 16),
 
@@ -603,6 +615,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         variant: AppButtonVariant.outline,
                         leading: const GoogleGMark(size: 20),
                         fullWidth: true,
+                        isLoading: _googleLoading,
                         onPressed: isLoading ? null : _signInWithGoogle,
                       ),
 
@@ -804,7 +817,7 @@ class _AccountTypeCard extends StatelessWidget {
   final bool selected;
   final VoidCallback? onTap;
 
-  static const _purple = AppColors.primary;
+  static const _primary = AppColors.primary;
 
   @override
   Widget build(BuildContext context) {
@@ -823,7 +836,7 @@ class _AccountTypeCard extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: selected ? _purple : AppColors.border,
+                color: selected ? _primary : AppColors.border,
                 width: selected ? 2 : 1.2,
               ),
             ),
@@ -833,11 +846,11 @@ class _AccountTypeCard extends StatelessWidget {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: selected ? _purple : AppColors.primarySoft,
+                    color: selected ? _primary : AppColors.primarySoft,
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Icon(icon,
-                      size: 26, color: selected ? Colors.white : _purple),
+                      size: 26, color: selected ? Colors.white : _primary),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -869,7 +882,7 @@ class _AccountTypeCard extends StatelessWidget {
                   selected
                       ? Icons.radio_button_checked_rounded
                       : Icons.radio_button_unchecked_rounded,
-                  color: selected ? _purple : AppColors.inputBorder,
+                  color: selected ? _primary : AppColors.inputBorder,
                 ),
               ],
             ),

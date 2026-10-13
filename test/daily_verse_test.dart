@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:testi_app/features/daily_verse/data/daily_verse_repository.dart';
 import 'package:testi_app/features/daily_verse/models/daily_verse_models.dart';
 import 'package:testi_app/features/daily_verse/models/verse_reference.dart';
@@ -154,12 +155,24 @@ Future<void> _settle(WidgetTester tester) async {
 Future<void> _tapIn(WidgetTester tester, Finder f) async {
   await tester.scrollUntilVisible(f, 150, scrollable: find.byType(Scrollable).first);
   await tester.pump();
+  // Sous la barre compacte (affichée une fois le premier écran quitté) : on dégage.
+  final top = tester.getTopLeft(f).dy;
+  if (top < 140) {
+    await tester.drag(find.byType(Scrollable).first, Offset(0, 150 - top));
+    await tester.pumpAndSettle();
+  }
   await tester.tap(f);
   await _settle(tester);
 }
 
 Future<void> _see(WidgetTester tester, Finder f) =>
     tester.scrollUntilVisible(f, 150, scrollable: find.byType(Scrollable).first);
+
+/// Remonte au premier écran (le verset).
+Future<void> _backToVerse(WidgetTester tester) async {
+  await tester.drag(find.byType(Scrollable).first, const Offset(0, 5000));
+  await tester.pumpAndSettle();
+}
 
 Future<void> _scrollAll(WidgetTester tester) async {
   final scrollable = find.byType(Scrollable).first;
@@ -174,6 +187,7 @@ void main() {
   setUpAll(() => GoogleFonts.config.allowRuntimeFetching = false);
 
   setUp(() {
+    SharedPreferences.setMockInitialValues({});
     final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
     messenger.setMockMethodCallHandler(
         const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'), (call) async => null);
@@ -253,10 +267,14 @@ void main() {
 
       expect(find.text('Jean 3:16-17'), findsOneWidget);
       expect(find.text('Texte du jour'), findsWidgets);
+      // Versions : sous le premier écran (cartes blanches), en faisant défiler.
+      await _see(tester, find.text('LSG'));
       expect(find.text('LSG'), findsOneWidget);
       expect(find.text('KJV'), findsOneWidget);
 
       await _tapIn(tester, find.text('KJV'));
+      // Le verset (premier écran) affiche la version choisie.
+      await _backToVerse(tester);
       expect(find.textContaining('For God so loved the world', findRichText: true), findsOneWidget);
       expect(find.text('King James Version'), findsOneWidget);
 
@@ -264,6 +282,7 @@ void main() {
       await tester.scrollUntilVisible(find.text('BBE'), 150, scrollable: find.byType(Scrollable).first);
       await tester.tap(find.text('BBE'), warnIfMissed: false);
       await _settle(tester);
+      await _backToVerse(tester);
       expect(find.text('King James Version'), findsOneWidget);
 
       await _tapIn(tester, find.text('Comparer'));
@@ -294,8 +313,9 @@ void main() {
       await tester.pumpWidget(_app(offline: true));
       await _settle(tester);
 
-      expect(find.textContaining('Hors connexion'), findsOneWidget);
       expect(find.textContaining('« $_longText »'), findsOneWidget);
+      await _see(tester, find.textContaining('Hors connexion'));
+      expect(find.textContaining('Hors connexion'), findsOneWidget);
       await tester.scrollUntilVisible(find.text('Réessayer'), 200, scrollable: find.byType(Scrollable).first);
       expect(find.textContaining('Pas de connexion'), findsOneWidget);
     });
@@ -319,6 +339,7 @@ void main() {
       expect(find.text('Jean 3:16-17'), findsOneWidget);
       await tester.tap(find.byTooltip('Quitter le mode lecture'));
       await _settle(tester);
+      await _see(tester, find.text('Comparer'));
       expect(find.text('Comparer'), findsOneWidget);
     });
 
@@ -338,6 +359,9 @@ void main() {
             await _scrollAll(tester);
           }
 
+          // Barre compacte : « Revenir au verset », puis mode lecture.
+          await tester.tap(find.byTooltip('Revenir au verset'));
+          await tester.pumpAndSettle();
           await tester.tap(find.byTooltip('Mode lecture'));
           await _settle(tester);
           expect(tester.takeException(), isNull);

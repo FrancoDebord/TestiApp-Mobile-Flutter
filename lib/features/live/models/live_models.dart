@@ -77,7 +77,7 @@ enum LiveReactionType {
   like('like', '❤️', "J'aime"),
   pray('pray', '🙏', 'Prière'),
   amen('amen', '🙌', 'Amen'),
-  worship('worship', '🛐', 'Adorer'),
+  worship('worship', '🛐', 'Adorer Dieu'),
   fire('fire', '🔥', 'Feu');
 
   const LiveReactionType(this.apiValue, this.emoji, this.label);
@@ -197,6 +197,7 @@ class LiveSession {
     required this.reactions,
     required this.isHost,
     required this.canModerate,
+    this.canEnd = false,
     this.description,
     this.category,
     this.statusLabel,
@@ -228,6 +229,8 @@ class LiveSession {
       reactions: LiveReactionCounts.fromJson(stats['reactions']),
       isHost: m['isHost'] as bool? ?? false,
       canModerate: m['canModerate'] as bool? ?? false,
+      // Ancien serveur sans `canEnd` : le diffuseur seulement.
+      canEnd: m['canEnd'] as bool? ?? (m['isHost'] as bool? ?? false),
       webUrl: m['webUrl'] as String?,
       startedAt: _date(m['startedAt']),
       endedAt: _date(m['endedAt']),
@@ -255,6 +258,9 @@ class LiveSession {
   final LiveReactionCounts reactions;
   final bool isHost;
   final bool canModerate;
+
+  /// Peut couper le direct pour tous : le diffuseur ou un administrateur (jamais un modérateur).
+  final bool canEnd;
   final String? webUrl;
   final DateTime? startedAt;
   final DateTime? endedAt;

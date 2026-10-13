@@ -81,7 +81,8 @@ class SyncService {
 
       if (items.isNotEmpty) {
         await _testimonyDao.upsertAll(
-          items.map(_flattenTestimony).toList(),
+          // Vidéo Bunny pas encore prête : jamais dans le cache du fil.
+          items.where(_isListable).map(_flattenTestimony).toList(),
         );
       }
 
@@ -290,8 +291,17 @@ class SyncService {
 
   // ── Row mappers ───────────────────────────────────────────────────────────────
 
+  /// Faux pour un témoignage dont la vidéo n'est pas « ready » (envoi,
+  /// traitement ou échec) : visible seulement dans « Mes publications ».
+  static bool _isListable(Map<String, dynamic> t) {
+    final video = t['video'];
+    final status = video is Map ? video['status'] : t['video_status'];
+    return status == null || status == 'ready';
+  }
+
   static Map<String, dynamic> _flattenTestimony(Map<String, dynamic> t) {
     final author = t['author'] as Map<String, dynamic>? ?? {};
+    final video  = t['video'] is Map ? t['video'] as Map : const {};
     final stats  = t['stats']  as Map<String, dynamic>? ?? {};
     return {
       'id':              t['id'] as String,
@@ -304,8 +314,8 @@ class SyncService {
       'category':        t['category'] as String? ?? '',
       'body_text':       t['body_text'] as String?,
       'media_url':       t['media_url'] as String?,
-      'cover_url':       t['cover_url'] as String?,
-      'duration_sec':    t['duration_sec'] as int?,
+      'cover_url':       t['cover_url'] as String? ?? video['thumbnail_url'] as String?,
+      'duration_sec':    t['duration_sec'] as int? ?? (video['duration'] as num?)?.toInt(),
       'bible_verse':     t['bible_verse'] as String?,
       'bible_ref':       t['bible_ref'] as String?,
       'visibility':      t['visibility'] as String? ?? 'public',

@@ -3,10 +3,10 @@
 <plist version="1.0">
 <dict>
 	<!-- Universal Links : liens de partage (share_url) ouverts dans l'app.
-	     Vérifiés via https://testi.airid-africa.com/.well-known/apple-app-site-association -->
+	     Vérifiés via https://temoignage.as-krea.com/.well-known/apple-app-site-association -->
 	<key>com.apple.developer.associated-domains</key>
 	<array>
-		<string>applinks:testi.airid-africa.com</string>
+		<string>applinks:temoignage.as-krea.com</string>
 	</array>
 </dict>
 </plist>

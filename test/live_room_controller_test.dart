@@ -136,9 +136,10 @@ void main() {
     expect(c.pinnedComment, isNull);
   });
 
-  test('réaction « Adorer » (worship) reconnue', () {
+  test('réaction « Adorer Dieu » (worship) reconnue', () {
     final counts = LiveReactionCounts.fromJson({'worship': 3});
     expect(counts[LiveReactionType.worship], 3);
+    expect(LiveReactionType.worship.label, 'Adorer Dieu');
   });
 
   test('fin du direct', () {

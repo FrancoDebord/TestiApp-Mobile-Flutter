@@ -83,6 +83,8 @@ Future<void> showRepostSheet(
   if (!context.mounted) return;
   await showModalBottomSheet<void>(
     context: context,
+    useRootNavigator: true,
+    useSafeArea: true,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     builder: (_) => RepostSheet(testimonyId: testimonyId, authorName: authorName),
@@ -239,7 +241,7 @@ class UserRepostsSection extends ConsumerWidget {
               children: [
                 RepostHeader(repost: e.repost),
                 const SizedBox(height: 8),
-                TestimonyFeedItem(testimony: e.testimony),
+                TestimonyFeedItem(testimony: e.testimony, showRepost: false),
               ],
             ),
           ),

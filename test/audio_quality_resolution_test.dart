@@ -102,22 +102,27 @@ void main() {
           override: override,
         )?.url;
 
-    test('Auto : 360p sur données mobiles, 720p en Wi-Fi', () {
+    test('Défauts : Standard 360p sur données mobiles, Auto (720p) en Wi-Fi', () {
       expect(url(_prefs, true), 'v360');
       expect(url(_prefs, false), 'v720');
     });
 
-    test('Économiseur : 144p mobile, 480p Wi-Fi', () {
-      expect(url(_saver, true), 'v144');
+    test('Économiseur : plafonne le mode Auto (480p en Wi-Fi)', () {
       expect(url(_saver, false), 'v480');
+      // Données mobiles : la qualité choisie (Standard) s'applique.
+      expect(url(_saver, true), 'v360');
     });
 
     test('Choix explicite', () {
-      const p = PlaybackPreferences(videoQuality: VideoQuality.p1080);
-      expect(url(p, true), 'v1080');
-      expect(url(_prefs, false, override: VideoQuality.p480), 'v480');
+      const p = PlaybackPreferences(
+        videoQualityMobile: VideoQuality.p240,
+        videoQualityWifi: VideoQuality.p720,
+      );
+      expect(url(p, false), 'v720');
       // 240p absent → meilleure version ≤ 240 = 144p.
-      expect(url(_prefs, false, override: VideoQuality.p240), 'v144');
+      expect(url(p, true), 'v144');
+      // L'override prime sur la préférence du réseau.
+      expect(url(_prefs, true, override: VideoQuality.p720), 'v720');
     });
 
     test('Toutes les versions au-dessus du plafond → la plus basse', () {

@@ -195,18 +195,21 @@ class TestimonyStatAction extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(icon, size: 22, color: color),
-              const SizedBox(width: 5),
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.labelMedium.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: labelColor ?? AppColors.textPrimary,
+              // Libellé vide : icône seule (partage).
+              if (label.isNotEmpty) ...[
+                const SizedBox(width: 5),
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.labelMedium.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: labelColor ?? AppColors.textPrimary,
+                    ),
                   ),
                 ),
-              ),
+              ],
             ],
           ),
         ),
@@ -274,8 +277,9 @@ class TestimonyStatsRow extends StatelessWidget {
                 ),
               TestimonyStatAction(
                 icon: Icons.share_rounded,
-                label: fr ? 'Partager' : 'Share',
+                label: '',
                 onTap: onShare,
+                semanticLabel: fr ? 'Partager' : 'Share',
               ),
               TestimonyStatAction(
                 icon: Icons.chat_bubble_outline_rounded,
@@ -286,8 +290,7 @@ class TestimonyStatsRow extends StatelessWidget {
             ],
           ),
         ),
-        // Largeur bornée : le libellé du bouton se tronque au besoin.
-        Flexible(child: DownloadButton(testimony: testimony, label: true)),
+        DownloadButton(testimony: testimony),
       ],
     );
   }

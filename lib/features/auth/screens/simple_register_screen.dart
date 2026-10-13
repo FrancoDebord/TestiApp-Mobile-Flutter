@@ -10,7 +10,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../providers/auth_notifier.dart';
 
-const _kPurple = AppColors.primary;
+const _kPrimary = AppColors.primary;
 const _kGold   = AppColors.secondary;
 
 class SimpleRegisterScreen extends ConsumerStatefulWidget {
@@ -73,7 +73,7 @@ class _SimpleRegisterScreenState
       backgroundColor: AppColors.surface,
       body: Column(
         children: [
-          // ── Header violet ───────────────────────────────────────────────
+          // ── Header (bleu Krea) ─────────────────────────────────────────────
           Expanded(
             flex: 2,
             child: SafeArea(
@@ -211,7 +211,7 @@ class _SimpleRegisterScreenState
                     FilledButton(
                       onPressed: _isLoading ? null : _submit,
                       style: FilledButton.styleFrom(
-                        backgroundColor: _kPurple,
+                        backgroundColor: _kPrimary,
                         minimumSize: const Size.fromHeight(52),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14)),
@@ -305,7 +305,7 @@ class _SimpleRegisterScreenState
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide:
-                  const BorderSide(color: _kPurple, width: 1.5),
+                  const BorderSide(color: _kPrimary, width: 1.5),
             ),
             contentPadding: const EdgeInsets.symmetric(
                 horizontal: 14, vertical: 14),

@@ -26,7 +26,10 @@ import '../../features/moderation/screens/moderation_detail_screen.dart';
 import '../../features/moderation/screens/moderation_screen.dart';
 import '../../features/notifications/screens/notifications_screen.dart';
 import '../../features/downloads/screens/downloads_screen.dart';
+import '../../features/location/location_settings_screen.dart';
+import '../../features/location/nearby_widgets.dart' show locationSettingsPath;
 import '../../features/profile/screens/about_screen.dart';
+import '../../features/profile/screens/account_verification_screen.dart';
 import '../../features/profile/screens/change_password_screen.dart';
 import '../../features/profile/screens/help_screen.dart';
 import '../../features/profile/screens/language_screen.dart';
@@ -36,6 +39,8 @@ import '../../features/profile/screens/my_testimonies_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
 import '../../features/profile/screens/saved_testimonies_screen.dart';
 import '../../features/profile/screens/settings_screen.dart';
+import '../../features/profile/screens/video_quality_settings_screen.dart';
+import '../../features/publish/screens/video_upload_screen.dart';
 import '../../features/publish/screens/publish_preview_screen.dart';
 import '../../features/publish/screens/publish_screen.dart';
 import '../../features/testimony/screens/featured_testimony_screen.dart';
@@ -57,7 +62,8 @@ import '../../features/community/screens/user_profile_screen.dart';
 import '../../features/events/screens/event_detail_screen.dart';
 import '../../features/events/screens/event_form_screen.dart';
 import '../../features/events/screens/events_screen.dart';
-import '../../features/events/screens/organization_managers_screen.dart';
+import '../../features/accounts/screens/account_managers_screen.dart';
+import '../../features/accounts/widgets/account_widgets.dart' show OwnerOnlyGate;
 import '../../features/feed/personal_feed_screen.dart';
 import '../../features/prophecies/screens/prophecies_screen.dart';
 import '../../features/prophecies/screens/prophecy_detail_screen.dart';
@@ -516,10 +522,18 @@ List<RouteBase> _buildRoutes() {
       builder: (context, state) => const PersonalFeedScreen(),
     ),
 
-    // Gestionnaires d'une organisation / organisations que je gère.
+    // Localisation privée (fils classés par zone) : réglage ouvert depuis les fils et les paramètres.
+    GoRoute(
+      path: locationSettingsPath,
+      // Réservé au titulaire : masqué quand on agit pour un compte administré.
+      builder: (context, state) =>
+          const OwnerOnlyGate(title: 'Localisation', child: LocationSettingsScreen()),
+    ),
+
+    // Administrateurs du compte (tous les comptes) / comptes que j'administre.
     GoRoute(
       path: '/managers',
-      builder: (context, state) => const OrganizationManagersScreen(),
+      builder: (context, state) => const AccountManagersScreen(),
     ),
 
     // ── Téléchargements (hors barre du bas : menu latéral, profil) ─────────
@@ -573,6 +587,16 @@ List<RouteBase> _buildRoutes() {
       pageBuilder: (context, state) => AppTransitions.slideRight(
         state: state,
         child: const NotificationsScreen(),
+      ),
+    ),
+
+    // ── Envoi d'une vidéo : progression, Annuler, Réessayer ──
+    GoRoute(
+      path: AppPaths.videoUploadPath,
+      name: AppRoutes.videoUpload,
+      pageBuilder: (context, state) => AppTransitions.slideRight(
+        state: state,
+        child: const VideoUploadScreen(),
       ),
     ),
 
@@ -773,6 +797,16 @@ List<RouteBase> _buildRoutes() {
                     child: const SavedTestimoniesScreen(),
                   ),
                 ),
+                // Vérification d'un compte personnel : /profile/verification
+                GoRoute(
+                  path: 'verification',
+                  name: AppRoutes.accountVerification,
+                  pageBuilder: (context, state) => AppTransitions.slideRight(
+                    state: state,
+                    child: const OwnerOnlyGate(
+                        title: 'Vérification du compte', child: AccountVerificationScreen()),
+                  ),
+                ),
                 GoRoute(
                   path: 'settings',
                   name: AppRoutes.settings,
@@ -788,6 +822,15 @@ List<RouteBase> _buildRoutes() {
                           AppTransitions.slideRight(
                         state: state,
                         child: const LanguageScreen(),
+                      ),
+                    ),
+                    GoRoute(
+                      path: 'video-quality',
+                      name: AppRoutes.videoQuality,
+                      pageBuilder: (context, state) =>
+                          AppTransitions.slideRight(
+                        state: state,
+                        child: const VideoQualitySettingsScreen(),
                       ),
                     ),
                     GoRoute(
@@ -814,7 +857,8 @@ List<RouteBase> _buildRoutes() {
                       pageBuilder: (context, state) =>
                           AppTransitions.slideRight(
                         state: state,
-                        child: const ChangePasswordScreen(),
+                        child: const OwnerOnlyGate(
+                            title: 'Sécurité et mot de passe', child: ChangePasswordScreen()),
                       ),
                     ),
                     GoRoute(
@@ -822,7 +866,8 @@ List<RouteBase> _buildRoutes() {
                       name: AppRoutes.deleteAccount,
                       pageBuilder: (context, state) => AppTransitions.slideUp(
                         state: state,
-                        child: const DeleteAccountScreen(),
+                        child: const OwnerOnlyGate(
+                            title: 'Supprimer le compte', child: DeleteAccountScreen()),
                       ),
                     ),
                   ],

@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../../core/app_constants.dart';
+import '../../../features/accounts/providers/acting_account_provider.dart'
+    show actingAccountProvider;
 import '../../../features/auth/providers/auth_notifier.dart'
     show currentUserProvider, authStateProvider;
 import '../../../features/home/models/testimony_model.dart';
@@ -54,12 +56,28 @@ class OrganizationProfileUpdate {
 // ═══════════════════════════════════════════════════════════════════════════
 
 class ProfileExtrasNotifier extends AsyncNotifier<ProfileExtras> {
-  late final FlutterSecureStorage _storage;
+  late FlutterSecureStorage _storage;
+
+  /// Agit pour un compte administré : ses champs viennent du serveur et ne
+  /// sont pas mémorisés sur l'appareil (réservé au profil de la personne).
+  bool get _actingForOther => ref.read(actingAccountProvider) != null;
 
   @override
   Future<ProfileExtras> build() async {
     _storage = ref.read(secureStorageProvider);
+    final acting = ref.watch(actingAccountProvider);
+    if (acting != null) return _fromUser(acting.asUser);
     return _load();
+  }
+
+  static ProfileExtras _fromUser(UserModel u) {
+    final parts = u.displayName.trim().split(RegExp(r'\s+'));
+    return ProfileExtras(
+      firstName: parts.isNotEmpty ? parts.first : '',
+      lastName: parts.length > 1 ? parts.sublist(1).join(' ') : '',
+      country: u.country,
+      bio: u.bio,
+    );
   }
 
   Future<ProfileExtras> _load() async {
@@ -69,8 +87,14 @@ class ProfileExtrasNotifier extends AsyncNotifier<ProfileExtras> {
     final ph     = await _storage.read(key: _kPhone)      ?? '';
     final pc     = await _storage.read(key: _kPhoneCountry) ?? '';
     final em     = await _storage.read(key: _kEmail)      ?? '';
-    final co     = await _storage.read(key: _kCountry)    ?? '';
-    final bio    = await _storage.read(key: _kBio)        ?? '';
+    // Pays et présentation : valeurs du serveur si l'appareil n'en a pas (nouvelle
+    // installation, second appareil, profil modifié sur le site). Sinon l'enregistrement
+    // du profil enverrait null et effacerait les valeurs du serveur.
+    final me     = ref.read(currentUserProvider);
+    final coLoc  = await _storage.read(key: _kCountry)    ?? '';
+    final bioLoc = await _storage.read(key: _kBio)        ?? '';
+    final co     = coLoc.isNotEmpty  ? coLoc  : (me?.country ?? '');
+    final bio    = bioLoc.isNotEmpty ? bioLoc : (me?.bio ?? '');
     final title  = await _storage.read(key: _kTitle)      ?? '';
     final avatar = await _storage.read(key: _kAvatarPath);
 
@@ -105,7 +129,7 @@ class ProfileExtrasNotifier extends AsyncNotifier<ProfileExtras> {
     final current = state.value ?? const ProfileExtras();
     final updated = current.copyWith(avatarPath: filePath);
     state = AsyncValue.data(updated);
-    await _storage.write(key: _kAvatarPath, value: filePath);
+    if (!_actingForOther) await _storage.write(key: _kAvatarPath, value: filePath);
     _uploadAvatarToServer(filePath);
   }
 
@@ -131,7 +155,7 @@ class ProfileExtrasNotifier extends AsyncNotifier<ProfileExtras> {
     final url = data is Map ? data['avatar_url'] as String? : null;
 
     try {
-      await _storage.write(key: _kAvatarPath, value: filePath);
+      if (!_actingForOther) await _storage.write(key: _kAvatarPath, value: filePath);
     } catch (_) {}
     final current = state.value;
     if (current != null) {
@@ -189,21 +213,23 @@ class ProfileExtrasNotifier extends AsyncNotifier<ProfileExtras> {
     ProfileExtras extras, {
     OrganizationProfileUpdate? organization,
   }) async {
-    // Persistance locale immédiate
-    await Future.wait([
-      _storage.write(key: _kFirstName,  value: extras.firstName),
-      _storage.write(key: _kLastName,   value: extras.lastName),
-      _storage.write(key: _kGender,     value: extras.gender),
-      _storage.write(key: _kPhone,      value: extras.phone),
-      _storage.write(key: _kPhoneCountry, value: extras.phoneCountry),
-      _storage.write(key: _kEmail,      value: extras.email),
-      _storage.write(key: _kCountry,    value: extras.country),
-      _storage.write(key: _kBio,        value: extras.bio),
-      _storage.write(key: _kTitle,      value: extras.title),
-      if (extras.avatarPath != null)
-        _storage.write(key: _kAvatarPath, value: extras.avatarPath!),
-      _storage.write(key: 'local_display_name', value: extras.displayName),
-    ]);
+    // Persistance locale immédiate (profil de la personne seulement).
+    if (!_actingForOther) {
+      await Future.wait([
+        _storage.write(key: _kFirstName,  value: extras.firstName),
+        _storage.write(key: _kLastName,   value: extras.lastName),
+        _storage.write(key: _kGender,     value: extras.gender),
+        _storage.write(key: _kPhone,      value: extras.phone),
+        _storage.write(key: _kPhoneCountry, value: extras.phoneCountry),
+        _storage.write(key: _kEmail,      value: extras.email),
+        _storage.write(key: _kCountry,    value: extras.country),
+        _storage.write(key: _kBio,        value: extras.bio),
+        _storage.write(key: _kTitle,      value: extras.title),
+        if (extras.avatarPath != null)
+          _storage.write(key: _kAvatarPath, value: extras.avatarPath!),
+        _storage.write(key: 'local_display_name', value: extras.displayName),
+      ]);
+    }
 
     // Mettre à jour le displayName en mémoire dans l'état d'auth
     await ref
@@ -392,6 +418,7 @@ class MyTestimoniesNotifier extends AsyncNotifier<List<UserTestimony>> {
                 durationSeconds: t.durationSeconds, thumbnailUrl: t.thumbnailUrl,
                 mediaPath: t.mediaPath, bodyPreview: t.bodyPreview,
                 rejectionReason: t.rejectionReason, views: t.views,
+                videoStatus: t.videoStatus,
               )
             : t;
       }).toList() ?? []);
@@ -442,20 +469,58 @@ final savedTestimoniesProvider =
 // UserSettingsNotifier
 // ═══════════════════════════════════════════════════════════════════════════
 
+/// Réglages du compte, lus et enregistrés sur le serveur (GET / PUT
+/// /users/me/settings) : le serveur s'en sert pour filtrer les push et
+/// appliquer « Qui peut commenter ». Sans compte : valeurs par défaut, locales.
 class UserSettingsNotifier extends Notifier<UserSettings> {
   @override
-  UserSettings build() => const UserSettings();
+  UserSettings build() {
+    final userId = ref.watch(currentUserProvider.select((u) => u?.id));
+    if (userId != null) Future.microtask(_fetch);
+    return const UserSettings();
+  }
 
-  void setCommentPermission(CommentPermission p) =>
-      state = state.copyWith(commentPermission: p);
-  void togglePushComments()  =>
-      state = state.copyWith(pushComments:  !state.pushComments);
-  void togglePushLikes()     =>
-      state = state.copyWith(pushLikes:     !state.pushLikes);
-  void togglePushPrayers()   =>
-      state = state.copyWith(pushPrayers:   !state.pushPrayers);
-  void togglePushApproval()  =>
-      state = state.copyWith(pushApproval:  !state.pushApproval);
+  Future<void> _fetch() async {
+    try {
+      final res =
+          await ref.read(apiServiceProvider).get<dynamic>(AppConstants.updateSettings);
+      if (res.data is Map) {
+        state = UserSettings.fromJson(Map<String, dynamic>.from(res.data as Map));
+      }
+    } catch (e) {
+      debugPrint('settings load ✗ $e');
+    }
+  }
+
+  /// Mise à jour immédiate de l'écran, puis envoi ; rétablit l'état précédent
+  /// si le serveur refuse ou n'est pas joignable.
+  Future<void> _save(UserSettings next, Map<String, dynamic> changes) async {
+    final previous = state;
+    state = next;
+    if (ref.read(currentUserProvider) == null) return;
+    try {
+      await ref.read(apiServiceProvider).put<dynamic>(
+            AppConstants.updateSettings, data: changes);
+    } catch (e) {
+      debugPrint('settings save ✗ $e');
+      state = previous;
+    }
+  }
+
+  Future<void> setCommentPermission(CommentPermission p) => _save(
+      state.copyWith(commentPermission: p), {'comment_permission': p.toJson()});
+  Future<void> togglePushComments() => _save(
+      state.copyWith(pushComments: !state.pushComments),
+      {'push_comments': !state.pushComments});
+  Future<void> togglePushLikes() => _save(
+      state.copyWith(pushLikes: !state.pushLikes),
+      {'push_likes': !state.pushLikes});
+  Future<void> togglePushPrayers() => _save(
+      state.copyWith(pushPrayers: !state.pushPrayers),
+      {'push_prayers': !state.pushPrayers});
+  Future<void> togglePushApproval() => _save(
+      state.copyWith(pushApproval: !state.pushApproval),
+      {'push_approval': !state.pushApproval});
 }
 
 final userSettingsProvider =

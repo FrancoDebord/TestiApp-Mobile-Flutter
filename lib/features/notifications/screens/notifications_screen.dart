@@ -6,6 +6,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../daily_verse/screens/daily_verse_screen.dart' show openDailyVerse;
 import '../models/notification_models.dart';
 import '../providers/notifications_provider.dart';
 
@@ -187,10 +188,26 @@ class _NotificationTile extends ConsumerWidget {
           (Icons.verified_rounded, AppColors.success, AppColors.successSoft),
         NotificationType.organizationRejected =>
           (Icons.gpp_bad_rounded, AppColors.danger, AppColors.dangerSoft),
+        NotificationType.accountVerified =>
+          (Icons.verified_rounded, AppColors.success, AppColors.successSoft),
+        NotificationType.accountVerificationRejected =>
+          (Icons.gpp_bad_rounded, AppColors.danger, AppColors.dangerSoft),
         NotificationType.liveStarted =>
           (Icons.sensors_rounded, AppColors.danger, AppColors.dangerSoft),
         NotificationType.event =>
           (Icons.event_rounded, AppColors.primary, AppColors.primarySoft),
+        NotificationType.follow =>
+          (Icons.person_add_alt_1_rounded, AppColors.primary, AppColors.primarySoft),
+        NotificationType.share =>
+          (Icons.repeat_rounded, AppColors.success, AppColors.successSoft),
+        NotificationType.mention =>
+          (Icons.alternate_email_rounded, AppColors.primary, AppColors.primarySoft),
+        NotificationType.rejected =>
+          (Icons.cancel_rounded, AppColors.danger, AppColors.dangerSoft),
+        NotificationType.accountManagerAdded =>
+          (Icons.manage_accounts_rounded, AppColors.primary, AppColors.primarySoft),
+        NotificationType.accountManagerRemoved =>
+          (Icons.person_remove_alt_1_rounded, AppColors.secondaryDark, AppColors.secondarySoft),
       };
 
   static String _timeAgo(AppLocalizations l10n, DateTime dt) {
@@ -265,10 +282,24 @@ class _NotificationTile extends ConsumerWidget {
           markRead(notification.id);
           final liveId = notification.liveId;
           final testimonyId = notification.testimonyId;
-          if (notification.type == NotificationType.liveStarted) {
-            if (liveId != null && liveId.isNotEmpty) {
-              context.push('/lives/$liveId');
+          final actorId = notification.actorId;
+          if (notification.type == NotificationType.follow) {
+            if (actorId != null && actorId.isNotEmpty) {
+              context.push('/users/$actorId');
             }
+          } else if (notification.opensAccountManagers) {
+            // Nommé / retiré administrateur d'un compte : comptes que j'administre.
+            context.push('/managers');
+          } else if (notification.type == NotificationType.accountVerified ||
+              notification.type == NotificationType.accountVerificationRejected) {
+            // Vérification du compte personnel : état et motif.
+            context.push('/profile/verification');
+          } else if (liveId != null && liveId.isNotEmpty) {
+            // Direct lancé, ou mention dans les commentaires d'un direct.
+            context.push('/lives/$liveId');
+          } else if (notification.dailyVerseId != null) {
+            // Mention sous le verset du jour : onglet Commentaires.
+            openDailyVerse(context, initialTab: 1);
           } else if (notification.eventId != null) {
             // Événement reporté / annulé / sondage, mention dans un commentaire d'événement.
             context.push('/events/${notification.eventId}');

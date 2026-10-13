@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../repost/content_interactions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -255,7 +256,7 @@ class _RequestBody extends StatelessWidget {
                       child: Text(r.authorName, style: AppTextStyles.labelMedium.copyWith(color: AppColors.textPrimary)),
                     ),
                   ),
-                  if (r.author?.isVerified ?? false) const OrganizationBadge(isOrganization: true, isVerified: true, size: 14),
+                  if (r.author?.isVerified ?? false) OrganizationBadge(isOrganization: r.author!.isOrganization, isVerified: true, size: 14),
                 ]),
                 Text(
                   [prayerTimeAgo(r.createdAt), r.visibility.label, if (r.isAnonymous) 'anonyme'].join(' · '),
@@ -276,7 +277,11 @@ class _RequestBody extends StatelessWidget {
             ),
           ],
           const SizedBox(height: AppSpacing.lg),
-          SelectableText(r.body, style: AppTextStyles.bodyLarge.copyWith(color: AppColors.textPrimary, height: 1.5)),
+          // Mentions « @Nom » cliquables (profil).
+          SelectionArea(
+            child: MentionText(r.body,
+                mentions: r.mentions, style: AppTextStyles.bodyLarge.copyWith(color: AppColors.textPrimary, height: 1.5)),
+          ),
           if (r.event != null) ...[
             const SizedBox(height: AppSpacing.md),
             InkWell(
@@ -325,6 +330,18 @@ class _RequestBody extends StatelessWidget {
               ),
             ],
           ),
+          // J'aime et partager (« Je prie » : bouton ci-dessus) — docs serveur fonctionnalites/reactions.md.
+          if (!r.isHidden) ...[
+            const SizedBox(height: AppSpacing.sm),
+            ContentReactionBar(
+              kind: ContentKind.prayerRequest,
+              id: r.id,
+              initial: r.reactions,
+              title: 'Requête de prière de ${r.authorName}',
+              webUrl: r.webUrl,
+              showPray: false,
+            ),
+          ],
         ],
       ),
     );

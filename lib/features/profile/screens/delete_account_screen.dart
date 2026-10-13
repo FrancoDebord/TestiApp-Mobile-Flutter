@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../services/api_service.dart';
 import '../../../shared/widgets/app_button.dart';
+import '../../../shared/widgets/app_text_field.dart';
 import '../../../features/auth/providers/auth_notifier.dart'
-    show authStateProvider;
+    show authStateProvider, currentUserProvider;
 
 class DeleteAccountScreen extends ConsumerStatefulWidget {
   const DeleteAccountScreen({super.key});
@@ -18,8 +21,10 @@ class DeleteAccountScreen extends ConsumerStatefulWidget {
 class _DeleteAccountScreenState
     extends ConsumerState<DeleteAccountScreen> {
   final _ctrl        = TextEditingController();
+  final _passwordCtrl = TextEditingController();
   bool  _isDeleting  = false;
   bool  _confirmed   = false;
+  String? _error;
 
   static const _kWord = 'SUPPRIMER';
 
@@ -35,13 +40,49 @@ class _DeleteAccountScreenState
   @override
   void dispose() {
     _ctrl.dispose();
+    _passwordCtrl.dispose();
     super.dispose();
   }
 
+  bool get _hasPassword => ref.read(currentUserProvider)?.hasPassword ?? true;
+
+  /// DELETE /users/me : `{ password }` pour un compte e-mail, `{ confirm: true }`
+  /// pour un compte téléphone / Google / Facebook (sans mot de passe).
   Future<void> _delete() async {
-    setState(() => _isDeleting = true);
+    if (_hasPassword && _passwordCtrl.text.isEmpty) {
+      setState(() => _error = 'Saisissez votre mot de passe.');
+      return;
+    }
+    setState(() {
+      _isDeleting = true;
+      _error = null;
+    });
+    try {
+      await ref.read(apiServiceProvider).delete<dynamic>(
+            AppConstants.deleteAccount,
+            data: _hasPassword
+                ? {'password': _passwordCtrl.text}
+                : {'confirm': true},
+          );
+    } on LaravelApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isDeleting = false;
+        _error = e.statusCode == 403
+            ? 'Mot de passe incorrect.'
+            : e.displayMessage;
+      });
+      return;
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isDeleting = false;
+        _error = 'Impossible de joindre le serveur. Réessayez.';
+      });
+      return;
+    }
+    // Compte supprimé : déconnexion locale ; GoRouter redirige vers l'accueil invité.
     await ref.read(authStateProvider.notifier).logout();
-    // GoRouter redirige automatiquement vers /register après la déconnexion
   }
 
   @override
@@ -191,6 +232,30 @@ class _DeleteAccountScreenState
                 ],
               ),
             ),
+
+            if (_hasPassword) ...[
+              const SizedBox(height: 16),
+              AppTextField(
+                label: 'Mot de passe',
+                hint: 'Votre mot de passe actuel',
+                controller: _passwordCtrl,
+                isPassword: true,
+                textInputAction: TextInputAction.done,
+              ),
+            ],
+
+            if (_error != null) ...[
+              const SizedBox(height: 16),
+              Text(
+                _error!,
+                style: const TextStyle(
+                  fontFamily: AppFonts.family,
+                  fontSize: 13,
+                  color: AppColors.danger,
+                  height: 1.4,
+                ),
+              ),
+            ],
 
             const SizedBox(height: 28),
 

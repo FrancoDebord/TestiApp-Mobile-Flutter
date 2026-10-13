@@ -17,6 +17,7 @@ class UserTestimony {
     this.bodyPreview,
     this.rejectionReason,
     this.views = 0,
+    this.videoStatus,
   });
 
   final String  id;
@@ -31,6 +32,16 @@ class UserTestimony {
   final String? bodyPreview;
   final String? rejectionReason;
   final int     views;
+
+  /// Vidéo Bunny Stream : uploading | processing | ready | failed (`null` sinon).
+  final String? videoStatus;
+
+  /// Vidéo en cours d'envoi ou de traitement (badge « En traitement »).
+  bool get isVideoProcessing =>
+      videoStatus == 'uploading' || videoStatus == 'processing';
+
+  /// Traitement de la vidéo échoué (badge « Échec »).
+  bool get isVideoFailed => videoStatus == 'failed';
 
   String get statusLabel => switch (status) {
         'pending'   => 'En attente',
@@ -64,12 +75,17 @@ class UserTestimony {
         ? ((catRaw['slug'] ?? catRaw['name'] ?? '') as String)
         : ((catRaw ?? '') as String);
 
-    final durRaw          = m['duration'] ?? m['duration_seconds'];
+    // Vidéo Bunny Stream : objet « video » (ancien format à plat en secours).
+    final video        = m['video'] is Map ? m['video'] as Map : null;
+    final durRaw          = video?['duration'] ?? m['duration'] ?? m['duration_seconds'];
     final durationSeconds = durRaw is int
         ? durRaw
         : int.tryParse(durRaw?.toString() ?? '') ?? 0;
 
-    final thumbnailUrl = (m['coverUrl'] ?? m['cover_url']) as String?;
+    final videoStatus  = (video?['status'] ?? m['video_status'] ?? m['videoStatus'])
+        ?.toString();
+    final videoThumb   = (video?['thumbnail_url'] ?? m['thumbnail_url']) as String?;
+    final thumbnailUrl = videoThumb ?? (m['coverUrl'] ?? m['cover_url']) as String?;
     final mediaPath    = (m['mediaUrl'] ?? m['media_url']) as String?;
 
     final body        = (m['bodyText'] ?? m['body_text'] ?? '') as String;
@@ -90,7 +106,7 @@ class UserTestimony {
       durationSeconds: durationSeconds,
       thumbnailUrl: thumbnailUrl, mediaPath: mediaPath,
       bodyPreview: bodyPreview, rejectionReason: rejection,
-      views: views,
+      views: views, videoStatus: videoStatus,
     );
   }
 }

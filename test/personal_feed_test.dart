@@ -239,7 +239,7 @@ void main() {
             'Session de prière · $_longName',
             'Parole prophétique accomplie · $_longName',
             'Requête de prière',
-            'Événement · $_longName',
+            'Événement à venir · $_longName',
             'Comptes à suivre',
           ]) {
             if (find.text(label).evaluate().isNotEmpty) seen.add(label);
@@ -253,7 +253,7 @@ void main() {
           'Session de prière · $_longName',
           'Parole prophétique accomplie · $_longName',
           'Requête de prière',
-          'Événement · $_longName',
+          'Événement à venir · $_longName',
           'Comptes à suivre',
         ]));
       });

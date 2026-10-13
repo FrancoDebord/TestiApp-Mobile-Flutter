@@ -10,7 +10,9 @@ import '../models/prayer_models.dart';
 /// la page d'un événement (cartes [PrayerRequestFeedCard]).
 final prayerRequestsPageProvider = FutureProvider.autoDispose
     .family<PrayerPage<PrayerRequest>, (PrayerRequestScope, String?)>(
-  (ref, key) => ref.watch(prayerRepositoryProvider).requests(scope: key.$1, eventId: key.$2),
+  // Fil « Pour vous » (scope feed) : les plus proches de la personne d'abord.
+  (ref, key) => ref.watch(prayerRepositoryProvider)
+      .requests(scope: key.$1, eventId: key.$2, near: key.$1 == PrayerRequestScope.feed),
 );
 
 // ── Requêtes : liste paginée (écran « Requêtes de prière ») ──────────────────

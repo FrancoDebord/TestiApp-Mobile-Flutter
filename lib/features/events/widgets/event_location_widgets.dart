@@ -18,7 +18,7 @@ import '../models/event_models.dart';
 
 /// Identifiant de l'application, exigé par la politique des tuiles OpenStreetMap
 /// (https://operations.osmfoundation.org/policies/tiles/).
-const String osmUserAgentPackage = 'com.airid.testi_app';
+const String osmUserAgentPackage = 'com.askrea.temoignage';
 
 /// Tests : désactive le chargement des tuiles (pas de réseau).
 @visibleForTesting

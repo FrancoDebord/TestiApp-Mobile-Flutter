@@ -1,10 +1,24 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:testi_app/features/notifications/models/notification_models.dart';
 import 'package:testi_app/features/notifications/providers/notifications_provider.dart';
-import 'package:testi_app/services/fcm_service.dart';
+import 'package:testi_app/services/push_service.dart';
 
 void main() {
   group('notificationFromJson', () {
+    test('prayer_request_prayed : requête à ouvrir, nom non répété', () {
+      final n = notificationFromJson({
+        'id': 'n-prayed',
+        'type': 'prayer_request_prayed',
+        'actorName': 'Awa',
+        'message': 'Awa prie pour votre requête de prière',
+        'prayerRequestId': 'req-1',
+        'createdAt': '2026-10-09T10:00:00+00:00',
+      })!;
+      expect(n.type, NotificationType.prayer);
+      expect(n.prayerRequestId, 'req-1');
+      expect(n.body, 'Awa prie pour votre requête de prière');
+    });
+
     test('parse live_started avec liveId et message serveur', () {
       final n = notificationFromJson({
         'id': 'n1',
@@ -103,5 +117,14 @@ void main() {
       final i = FcmNavIntent.fromData({'type': 'live_started', 'live_id': ''})!;
       expect(i.liveId, isNull);
     });
+  });
+
+  test('push type prayer_request + id : ouvre la requête de prière', () {
+    final intent = FcmNavIntent.fromData({'type': 'prayer_request', 'id': 'req-9'})!;
+    expect(intent.type, 'prayer_request');
+    expect(intent.prayerRequestId, 'req-9');
+    // Les autres types ne lisent pas `id`.
+    expect(FcmNavIntent.fromData({'type': 'like', 'id': 'x'})!.prayerRequestId, isNull);
+    expect(FcmNavIntent.fromData({'id': 'x'}), isNull);
   });
 }

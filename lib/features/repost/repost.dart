@@ -27,9 +27,10 @@ class RepostInfo {
   final String? comment;
   final DateTime? at;
 
-  /// Null si l'élément n'est pas un partage.
+  /// Null si l'élément n'est pas un partage : `feedReason = repost` (Mon fil) ou
+  /// `repostedBy` présent (tous les fils et listes de témoignages).
   static RepostInfo? fromFeedItem(Object? raw) {
-    if (raw is! Map || raw['feedReason'] != 'repost') return null;
+    if (raw is! Map || (raw['feedReason'] != 'repost' && raw['repostedBy'] is! Map)) return null;
     final by = raw['repostedBy'] is Map ? Map<String, dynamic>.from(raw['repostedBy'] as Map) : const <String, dynamic>{};
     final comment = raw['repostComment'];
     return RepostInfo(
@@ -41,6 +42,22 @@ class RepostInfo {
       at: raw['repostedAt'] is String ? DateTime.tryParse(raw['repostedAt'] as String) : null,
     );
   }
+}
+
+/// « X a partagé » d'un événement, d'une requête ou d'une session de prière
+/// (champ `repost` : { id, comment, createdAt, user { id, displayName, avatarUrl } }).
+RepostInfo? repostInfoFromContent(Object? raw) {
+  if (raw is! Map || raw['user'] is! Map) return null;
+  final by = Map<String, dynamic>.from(raw['user'] as Map);
+  final comment = raw['comment'];
+  return RepostInfo(
+    id: raw['id']?.toString(),
+    byId: by['id']?.toString() ?? '',
+    byName: (by['displayName'] ?? by['display_name'])?.toString() ?? 'Quelqu’un',
+    byAvatarUrl: (by['avatarUrl'] ?? by['avatar_url'])?.toString(),
+    comment: comment is String && comment.trim().isNotEmpty ? comment.trim() : null,
+    at: raw['createdAt'] is String ? DateTime.tryParse(raw['createdAt'] as String) : null,
+  );
 }
 
 /// Résultat d'un partage : message à afficher et nombre de partages du témoignage.

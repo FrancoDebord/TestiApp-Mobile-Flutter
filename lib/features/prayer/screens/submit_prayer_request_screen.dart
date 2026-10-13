@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
+import '../../../shared/widgets/mention_text_field.dart';
 import '../data/prayer_repository.dart';
 import '../models/prayer_models.dart';
 import '../providers/prayer_providers.dart';
@@ -22,7 +23,8 @@ class SubmitPrayerRequestScreen extends ConsumerStatefulWidget {
 
 class _SubmitPrayerRequestScreenState extends ConsumerState<SubmitPrayerRequestScreen> {
   final _form = GlobalKey<FormState>();
-  final _body = TextEditingController();
+  /// Texte avec mentions « @ » (les personnes qui peuvent voir la requête sont prévenues).
+  final _body = MentionEditingController();
   late final _draft = PrayerRequestDraft(eventId: widget.eventId);
   bool _sending = false;
 
@@ -41,7 +43,7 @@ class _SubmitPrayerRequestScreenState extends ConsumerState<SubmitPrayerRequestS
   Future<void> _submit() async {
     if (_sending || !(_form.currentState?.validate() ?? false)) return;
     setState(() => _sending = true);
-    _draft.body = _body.text;
+    _draft.body = _body.encodedText;
     try {
       final created = await ref.read(prayerRepositoryProvider).create(_draft);
       ref.invalidate(prayerRequestListProvider);
@@ -91,23 +93,33 @@ class _SubmitPrayerRequestScreenState extends ConsumerState<SubmitPrayerRequestS
               ),
             Text('Votre requête', style: AppTextStyles.labelMedium),
             const SizedBox(height: AppSpacing.sm),
-            TextFormField(
-              controller: _body,
-              minLines: 5,
-              maxLines: 10,
-              maxLength: 2000,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
-                hintText: "Pour quoi souhaitez-vous que l'on prie ?",
-                helperText: "Évitez les informations trop personnelles (adresse, téléphone…).",
-                helperMaxLines: 2,
-              ),
-              validator: (v) {
-                final t = v?.trim() ?? '';
+            // « @ » : mentionner quelqu'un (prévenu s'il peut voir la requête ; jamais pour « Moi seul »).
+            FormField<String>(
+              validator: (_) {
+                final t = _body.text.trim();
                 if (t.isEmpty) return 'Écrivez votre requête de prière.';
                 if (t.length < 10) return 'Votre requête est trop courte (10 caractères au moins).';
                 return null;
               },
+              builder: (field) => MentionTextField(
+                controller: _body,
+                minLines: 5,
+                maxLines: 10,
+                maxLength: 2000,
+                keyboardType: TextInputType.multiline,
+                onChanged: (_) {
+                  if (field.hasError) field.validate();
+                },
+                decoration: InputDecoration(
+                  hintText: "Pour quoi souhaitez-vous que l'on prie ? (@ pour mentionner)",
+                  helperText: _draft.visibility == PrayerVisibility.private
+                      ? "Évitez les informations trop personnelles. Requête privée : personne n'est prévenu des mentions."
+                      : "Évitez les informations trop personnelles (adresse, téléphone…). "
+                          'Les personnes mentionnées qui peuvent voir la requête sont prévenues.',
+                  helperMaxLines: 3,
+                  errorText: field.errorText,
+                ),
+              ),
             ),
             const SizedBox(height: AppSpacing.lg),
             Text('Qui peut la voir ?', style: AppTextStyles.labelMedium),

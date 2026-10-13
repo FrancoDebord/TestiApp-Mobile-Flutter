@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/social_auth_service.dart' show googleSignInErrorMessage;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -23,7 +24,7 @@ import 'phone_auth_screen.dart';
 //   3. « Se connecter avec Google »  — contour, logo G
 //   4. « Se connecter avec Email »   — contour, icône enveloppe → sous-vue
 //      e-mail / mot de passe (+ mot de passe oublié)
-//   5. Lien discret « Continuer avec Facebook »
+//   5. (Lien « Continuer avec Facebook » désactivé)
 //   6. « Ou continuer sans compte » puis « Mode invité » (jaune, texte bleu)
 //   7. « Pas encore de compte ? S'inscrire »
 //
@@ -45,6 +46,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _isLoading = false;
+
+  /// Connexion Google en cours (indicateur sur le bouton Google).
+  bool _googleLoading = false;
   bool _showEmailForm = false;
   String? _errorMessage;
 
@@ -105,27 +109,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  /// Connexion Google : bouton désactivé avec indicateur pendant l'opération ; annulation
+  /// silencieuse ; erreur Google ou API (401, 5xx…) → SnackBar. La redirection après
+  /// connexion est faite par le routeur (changement de l'état d'authentification).
   Future<void> _signInWithGoogle() async {
-    setState(() { _isLoading = true; _errorMessage = null; });
+    setState(() { _isLoading = true; _googleLoading = true; _errorMessage = null; });
     try {
       await ref.read(authStateProvider.notifier).signInWithGoogle();
-    } catch (e) {
-      if (mounted) setState(() => _errorMessage = e.toString());
+    } catch (e, stack) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(googleSignInErrorMessage(e, stack)),
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() { _isLoading = false; _googleLoading = false; });
     }
   }
 
-  Future<void> _signInWithFacebook() async {
-    setState(() { _isLoading = true; _errorMessage = null; });
-    try {
-      await ref.read(authStateProvider.notifier).signInWithFacebook();
-    } catch (e) {
-      if (mounted) setState(() => _errorMessage = e.toString());
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
+  // Connexion Facebook désactivée (retirée de l'application) : à réactiver si besoin.
+  // Future<void> _signInWithFacebook() async {
+  //   setState(() { _isLoading = true; _errorMessage = null; });
+  //   try {
+  //     await ref.read(authStateProvider.notifier).signInWithFacebook();
+  //   } catch (e) {
+  //     if (mounted) setState(() => _errorMessage = e.toString());
+  //   } finally {
+  //     if (mounted) setState(() => _isLoading = false);
+  //   }
+  // }
 
   /// Connexion par numéro : flux OTP SMS (PhoneAuthScreen).
   void _openPhoneAuth() {
@@ -231,6 +244,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           variant: AppButtonVariant.outline,
           leading: const GoogleGMark(size: 20),
           fullWidth: true,
+          isLoading: _googleLoading,
           onPressed: isLoading ? null : _signInWithGoogle,
         ),
         const SizedBox(height: AppSpacing.md),
@@ -246,19 +260,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     _errorMessage = null;
                   }),
         ),
-        const SizedBox(height: AppSpacing.xs),
-        Center(
-          child: TextButton.icon(
-            onPressed: isLoading ? null : _signInWithFacebook,
-            icon: const Icon(Icons.facebook_rounded,
-                size: 18, color: AppColors.primary),
-            label: Text(
-              'Continuer avec Facebook',
-              style: AppTextStyles.labelSmall.copyWith(
-                  color: AppColors.primary, fontWeight: FontWeight.w600),
-            ),
-          ),
-        ),
+        // Connexion Facebook désactivée (retirée de l'application) : à réactiver si besoin.
+        // const SizedBox(height: AppSpacing.xs),
+        // Center(
+        //   child: TextButton.icon(
+        //     onPressed: isLoading ? null : _signInWithFacebook,
+        //     icon: const Icon(Icons.facebook_rounded,
+        //         size: 18, color: AppColors.primary),
+        //     label: Text(
+        //       'Continuer avec Facebook',
+        //       style: AppTextStyles.labelSmall.copyWith(
+        //           color: AppColors.primary, fontWeight: FontWeight.w600),
+        //     ),
+        //   ),
+        // ),
         const SizedBox(height: AppSpacing.md),
         const AuthOrDivider(label: 'Ou continuer sans compte'),
         const SizedBox(height: AppSpacing.lg),
@@ -350,8 +365,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           AppButton(
             label: 'Se connecter',
             fullWidth: true,
-            isLoading: isLoading,
+            isLoading: isLoading && !_googleLoading,
             onPressed: isLoading ? null : _submit,
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          const AuthOrDivider(label: 'ou'),
+          const SizedBox(height: AppSpacing.lg),
+          AppButton(
+            label: 'Continuer avec Google',
+            variant: AppButtonVariant.outline,
+            leading: const GoogleGMark(size: 20),
+            fullWidth: true,
+            isLoading: _googleLoading,
+            onPressed: isLoading ? null : _signInWithGoogle,
           ),
           const SizedBox(height: AppSpacing.xl),
           _RegisterLink(

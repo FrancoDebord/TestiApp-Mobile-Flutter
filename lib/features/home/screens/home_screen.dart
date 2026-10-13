@@ -37,6 +37,8 @@ import '../widgets/featured_carousel.dart';
 import '../widgets/pill_tabs.dart';
 import '../widgets/skeleton_card.dart';
 import '../widgets/testimony_feed_item.dart';
+import '../../location/location_providers.dart' show homeFeedPlaceProvider;
+import '../../location/nearby_widgets.dart' show NearbyCardLabel, NearbyFeedBanner;
 
 /// Accueil (Home) screen.
 ///
@@ -367,7 +369,7 @@ class _FeedHeader extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final layout = ref.watch(feedLayoutProvider);
-    return Row(
+    final header = Row(
       children: [
         Expanded(
           child: Text(
@@ -383,6 +385,14 @@ class _FeedHeader extends ConsumerWidget {
               .read(playbackPreferencesProvider.notifier)
               .setFeedLayout(l),
         ),
+      ],
+    );
+    // « Près de chez vous · Cotonou » et invitation à activer la position (localisation.md).
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        header,
+        NearbyFeedBanner(place: ref.watch(homeFeedPlaceProvider), padding: const EdgeInsets.only(top: 8)),
       ],
     );
   }
@@ -503,9 +513,14 @@ class _FeedBody extends ConsumerWidget {
           EncouragementSlot(:final number) =>
             EncouragementCard(message: encouragementOfTheDay(number)),
           InsertSlot(:final index) => FeedInsertCard(item: prayers[index]),
-          TestimonySlot(:final index) => TestimonyFeedItem(
+          // Étiquette discrète des cartes proches (« À Cotonou ») : localisation.md
+          TestimonySlot(:final index) => Column(
               key: ValueKey(feed[index].id),
-              testimony: feed[index],
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                NearbyCardLabel(testimonyId: feed[index].id),
+                TestimonyFeedItem(testimony: feed[index]),
+              ],
             ),
         },
       ),

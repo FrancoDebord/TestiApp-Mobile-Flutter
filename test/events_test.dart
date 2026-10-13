@@ -102,6 +102,8 @@ class _FakeRepo implements EventsRepository {
     EventType? type,
     String? query,
     int page = 1,
+    String? organizerId,
+    int? limit,
   }) async =>
       EventPage(items: [event, event], canCreate: true);
 

@@ -8,8 +8,8 @@ import '../providers/suggestions_provider.dart';
 import '../widgets/account_tile.dart';
 import '../widgets/paged_account_list.dart';
 
-/// « Communauté » : suggestions personnalisées, organisations (vérifiées d'abord) et personnes
-/// qui témoignent, à suivre.
+/// « Communauté » : tous les comptes (onglet ouvert par défaut, chargé au défilement sans
+/// attendre de recherche), suggestions personnalisées, organisations (vérifiées d'abord) et personnes.
 /// Backend : GET /users/suggestions, GET /community — docs/fonctionnalites/abonnements.md
 class CommunityScreen extends StatelessWidget {
   const CommunityScreen({super.key});
@@ -17,7 +17,7 @@ class CommunityScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: CommunityTab.values.length + 1,
+      length: 4,
       child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
@@ -28,15 +28,19 @@ class CommunityScreen extends StatelessWidget {
             labelColor: AppColors.primary,
             indicatorColor: AppColors.primary,
             unselectedLabelColor: AppColors.textSecondary,
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
             tabs: [
+              const Tab(text: 'Tous', icon: Icon(Icons.groups_rounded, size: 18)),
               const Tab(text: 'Suggestions', icon: Icon(Icons.auto_awesome_rounded, size: 18)),
-              for (final t in CommunityTab.values)
-                Tab(text: t.label, icon: Icon(t == CommunityTab.people ? Icons.person_rounded : Icons.church_rounded, size: 18)),
+              const Tab(text: 'Organisations', icon: Icon(Icons.church_rounded, size: 18)),
+              const Tab(text: 'Personnes', icon: Icon(Icons.person_rounded, size: 18)),
             ],
           ),
         ),
         body: const TabBarView(
           children: [
+            _AccountList(tab: CommunityTab.all),
             _SuggestionsList(),
             _AccountList(tab: CommunityTab.organizations),
             _AccountList(tab: CommunityTab.people),
@@ -73,7 +77,7 @@ class _SuggestionsList extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => message('Impossible de charger les suggestions. Vérifiez votre connexion.', retry: true),
         data: (items) => items.isEmpty
-            ? message('Aucune suggestion pour le moment. Parcourez les organisations et les personnes qui témoignent.')
+            ? message("Aucune suggestion pour le moment. Parcourez l'onglet « Tous » pour découvrir la communauté.")
             : ListView.separated(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 itemCount: items.length,
@@ -114,13 +118,20 @@ class _AccountList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final repo = ref.watch(communityRepositoryProvider);
-    final isPeople = tab == CommunityTab.people;
     return PagedAccountList(
+      key: PageStorageKey('community-${tab.apiValue}'),
       loader: (q, page) => repo.community(tab, query: q, page: page),
-      searchHint: isPeople ? 'Rechercher une personne' : 'Rechercher une organisation, une ville…',
-      emptyText: isPeople
-          ? 'Les personnes qui publient des témoignages apparaîtront ici.'
-          : 'Les églises, ministères et associations inscrits apparaîtront ici.',
+      searchHint: switch (tab) {
+        CommunityTab.people => 'Rechercher une personne',
+        CommunityTab.organizations => 'Rechercher une organisation, une ville…',
+        CommunityTab.all => 'Rechercher un compte, une ville…',
+      },
+      searchRecentKey: 'community',
+      emptyText: switch (tab) {
+        CommunityTab.people => 'Les personnes inscrites apparaîtront ici.',
+        CommunityTab.organizations => 'Les églises, ministères et associations inscrits apparaîtront ici.',
+        CommunityTab.all => 'Les personnes et organisations inscrites apparaîtront ici.',
+      },
     );
   }
 }

@@ -17,6 +17,7 @@ class CommentModel {
     this.createdAt,
     this.updatedAt,
     this.mentions = const [],
+    this.canDelete = false,
   });
 
   final String     id;
@@ -33,6 +34,9 @@ class CommentModel {
 
   /// Comptes mentionnés (« @Nom » cliquable) — docs serveur fonctionnalites/mentions.md
   final List<MentionRef> mentions;
+
+  /// L'auteur ou un administrateur peut le supprimer (`canDelete` de l'API).
+  final bool canDelete;
 
   bool get isReply => parentId != null;
 
@@ -51,6 +55,7 @@ class CommentModel {
     createdAt:    (j['createdAt']    ?? j['created_at'])     as String?,
     updatedAt:    (j['updatedAt']    ?? j['updated_at'])     as String?,
     mentions:     MentionRef.listFrom(j['mentions']),
+    canDelete:    j['canDelete'] as bool? ?? false,
   );
 
   Map<String, dynamic> toJson() => {

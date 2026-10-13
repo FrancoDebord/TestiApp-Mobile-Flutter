@@ -7,6 +7,7 @@ import 'package:testi_app/features/prophecies/models/prophecy.dart';
 import 'package:testi_app/features/prophecies/screens/prophecies_screen.dart';
 import 'package:testi_app/features/prophecies/screens/prophecy_detail_screen.dart';
 import 'package:testi_app/features/prophecies/screens/prophecy_form_screen.dart';
+import 'package:testi_app/features/prophecies/widgets/prophecy_widgets.dart' show prophecyReceived;
 import 'package:testi_app/shared/content/encouragements.dart';
 
 /// Réponse de l'API (ProphecyResource) — docs serveur fonctionnalites/paroles-prophetiques.md
@@ -202,5 +203,16 @@ void main() {
         });
       }
     }
+  });
+
+  test('heure de réception : lue, envoyée, affichée', () {
+    final p = Prophecy.fromJson({'id': 'p9', 'receivedOn': '2026-10-05', 'receivedTime': '14:30:00', 'status': 'waiting'});
+    expect(p.receivedTime, '14:30');
+    expect(prophecyReceived(p.receivedOn, p.receivedTime), endsWith('à 14:30'));
+    expect(prophecyReceived(p.receivedOn, null), isNot(contains(' à ')));
+    expect(ProphecyDraft.fromProphecy(p).toJson()['received_time'], '14:30');
+    // Nouvelle parole : l'heure actuelle par défaut.
+    expect(ProphecyDraft().receivedTime, matches(RegExp(r'^\d\d:\d\d$')));
+    expect(parseClockTime('25:00'), isNull);
   });
 }

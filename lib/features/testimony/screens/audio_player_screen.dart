@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
 
 import '../../../core/app_constants.dart';
 import '../../../core/media/media_quality.dart' show OfflineMedia;
@@ -21,6 +20,7 @@ import '../providers/tts_provider.dart';
 import '../widgets/testimony_info.dart';
 import 'testimony_comments_screen.dart';
 import 'video_player_screen.dart' show singleQualityReason;
+import '../../repost/testimony_share_sheet.dart';
 
 // ============================================================================
 // Audio Player Screen — lecteur plein écran (charte : fond blanc, bleu, orange)
@@ -65,8 +65,6 @@ class AudioPlayerScreen extends ConsumerStatefulWidget {
 class _AudioPlayerScreenState extends ConsumerState<AudioPlayerScreen>
     with SingleTickerProviderStateMixin {
   bool _transcriptOpen = false;
-  bool _isLiked = false;
-  bool _isPraying = false;
   bool _isBookmarked = false;
 
   /// Témoignage demandé (affiché tant que le lecteur n'a pas démarré).
@@ -97,8 +95,6 @@ class _AudioPlayerScreenState extends ConsumerState<AudioPlayerScreen>
   /// Témoignage affiché + état initial des réactions de l'utilisateur.
   void _setTestimony(AudioTestimony t) {
     _testimony = t;
-    _isLiked = t.isLiked;
-    _isPraying = t.isPrayed;
     _isBookmarked = t.isSaved;
   }
 
@@ -215,22 +211,13 @@ class _AudioPlayerScreenState extends ConsumerState<AudioPlayerScreen>
       requireAccount(context, ref, reason: reason);
 
   Future<void> _toggleLike(AudioTestimony? t) async {
-    if (!await _member('réagir aux témoignages') || !mounted) return;
-    final wasLiked = _isLiked;
-    setState(() => _isLiked = !_isLiked);
-    if (t == null) return;
-    final interactions = ref.read(interactionProvider.notifier);
-    if (!wasLiked) {
-      interactions.setReaction(t.id, ReactionType.like);
-    } else {
-      interactions.removeReaction(t.id);
-    }
+    if (!await _member('réagir aux témoignages') || !mounted || t == null) return;
+    ref.read(interactionProvider.notifier).toggleLike(t);
   }
 
   Future<void> _togglePray(AudioTestimony? t) async {
-    if (!await _member('réagir aux témoignages') || !mounted) return;
-    setState(() => _isPraying = !_isPraying);
-    if (t != null) ref.read(interactionProvider.notifier).togglePray(t.id);
+    if (!await _member('réagir aux témoignages') || !mounted || t == null) return;
+    ref.read(interactionProvider.notifier).togglePray(t);
   }
 
   Future<void> _toggleBookmark(AudioTestimony? t) async {
@@ -241,8 +228,7 @@ class _AudioPlayerScreenState extends ConsumerState<AudioPlayerScreen>
 
   void _share(AudioTestimony? t) {
     if (t == null) return;
-    SharePlus.instance.share(ShareParams(text: '${t.title}\n\n${t.shareLink}'));
-    ref.read(interactionProvider.notifier).recordShare(t.id);
+    showTestimonyShareSheet(context, ref, t);
   }
 
   Future<void> _openComments(AudioTestimony? t) async {
@@ -271,9 +257,8 @@ class _AudioPlayerScreenState extends ConsumerState<AudioPlayerScreen>
     final canNext = player.hasNext ||
         (player.queueLength > 1 && prefs.repeatMode == RepeatMode.all);
 
-    // Compteurs : ceux du serveur, ajustés par les réactions de la session.
-    int adjust(int base, bool now, bool before) =>
-        (base + (now == before ? 0 : (now ? 1 : -1))).clamp(0, 1 << 31);
+    // Réactions : état et compteurs du serveur (une « j'aime » et une « je prie » au plus).
+    final rx = ref.watch(interactionProvider);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark,
@@ -370,12 +355,10 @@ class _AudioPlayerScreenState extends ConsumerState<AudioPlayerScreen>
                         const SizedBox(height: 6),
                         TestimonyStatsRow(
                           testimony: current,
-                          likes: adjust(
-                              current.stats.likes, _isLiked, current.isLiked),
-                          isLiked: _isLiked,
-                          prayers: adjust(current.stats.prayers, _isPraying,
-                              current.isPrayed),
-                          isPraying: _isPraying,
+                          likes: rx.likesOf(current),
+                          isLiked: rx.likedOf(current),
+                          prayers: rx.prayersOf(current),
+                          isPraying: rx.prayedOf(current),
                           comments: current.stats.comments,
                           onLike: () => _toggleLike(current),
                           onPray: () => _togglePray(current),

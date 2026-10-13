@@ -136,6 +136,22 @@ class _ProphecyFormScreenState extends ConsumerState<ProphecyFormScreen> {
     if (d != null) setState(() => _draft.receivedOn = d);
   }
 
+  /// Heure à laquelle la parole a été reçue (facultative).
+  Future<void> _pickReceivedTime() async {
+    final current = parseClockTime(_draft.receivedTime);
+    final t = await showTimePicker(
+      context: context,
+      initialTime: current == null
+          ? TimeOfDay.now()
+          : TimeOfDay(hour: int.parse(current.substring(0, 2)), minute: int.parse(current.substring(3))),
+      helpText: 'Heure de la parole',
+    );
+    if (t != null) {
+      setState(() => _draft.receivedTime =
+          '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}');
+    }
+  }
+
   Future<void> _pickDue() async {
     final now = DateTime.now();
     final d = await showDatePicker(
@@ -265,6 +281,14 @@ class _ProphecyFormScreenState extends ConsumerState<ProphecyFormScreen> {
                   label: 'Date de la parole',
                   value: prophecyDay(d.receivedOn),
                   onTap: _pickReceived,
+                ),
+                const SizedBox(height: 10),
+                _DateTile(
+                  icon: Icons.schedule_rounded,
+                  label: 'Heure de la parole (facultatif)',
+                  value: d.receivedTime ?? 'Non précisée',
+                  onTap: _pickReceivedTime,
+                  onClear: d.receivedTime == null ? null : () => setState(() => d.receivedTime = null),
                 ),
                 const SizedBox(height: 10),
                 TextFormField(

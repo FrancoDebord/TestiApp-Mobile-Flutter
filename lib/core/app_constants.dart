@@ -2,7 +2,7 @@
 //
 // Central constants for the Témoignages application.
 //
-// API base: https://testi.airid-africa.com/api/v1
+// API base: https://temoignage.as-krea.com/api/v1
 // Auth: Bearer JWT via Laravel Sanctum (token returned by /auth/login)
 // Envelope: { "success": bool, "data": any, "message": string, "errors"?: map }
 //
@@ -78,7 +78,7 @@ abstract final class AppConstants {
   /// Override at build time: --dart-define=API_BASE_URL=https://your-laravel.app/api/v1
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://testi.airid-africa.com/api/v1',
+    defaultValue: 'https://temoignage.as-krea.com/api/v1',
     // defaultValue: 'http://192.168.1.74:8000/api/v1',
     // Dev: http://192.168.0.4:8000/api/v1  (LAN server)
     // Android emulator localhost alias: http://10.0.2.2:8000/api/v1
@@ -92,6 +92,18 @@ abstract final class AppConstants {
   /// Lien public d'un témoignage — même format que `share_url` côté Laravel
   /// (route web `testimonies.show`). Ouvert par l'app via les App Links.
   static String testimonyWebUrl(String id) => '$webBaseUrl/testimonies/$id';
+
+  // ── Connexion Google (google_sign_in 7.x) ─────────────────────────────────
+
+  /// Identifiant client **Web** du projet Firebase (google-services.json → oauth_client,
+  /// client_type 3) : `serverClientId` de GoogleSignIn, audience du jeton vérifiée par l'API
+  /// (GOOGLE_CLIENT_ID côté serveur).
+  static const String googleServerClientId =
+      '566166419345-b78faa624rdlcqeigmublhhbseqvhofr.apps.googleusercontent.com';
+
+  /// Identifiant client iOS (GoogleService-Info.plist → CLIENT_ID), utilisé sur iOS seulement.
+  static const String googleIosClientId =
+      '78564751626-tfc6p4rvivn2pt2hfanpvar336a8nud6.apps.googleusercontent.com';
 
   static const int connectTimeoutMs = 8000;
   static const int receiveTimeoutMs = 20000;
@@ -115,10 +127,14 @@ abstract final class AppConstants {
   static const String authRegister       = '/auth/register';
   static const String authPhone          = '/auth/phone';
   static const String authSocial         = '/auth/social';
+  /// Connexion Google : { id_token } → même réponse que [authLogin] (token Sanctum + utilisateur).
+  static const String authGoogle         = '/auth/google';
   static const String authForgotPassword = '/auth/forgot-password';
   static const String authRefresh        = '/auth/refresh';
   static const String authLogout         = '/auth/logout';
   static const String authMe             = '/auth/me';   // GET only — current user
+  // { current_password, new_password, new_password_confirmation } (comptes e-mail)
+  static const String authChangePassword = '/auth/change-password';
 
   // ── Testimonies ───────────────────────────────────────────────────────────
   // Query params for GET /testimonies: featured, category, status, after, limit
@@ -179,13 +195,23 @@ abstract final class AppConstants {
   static const String userSuggestions = '/users/suggestions';
   // Mentions « @ » : GET ?q=&limit=8&testimony_id= → [{id, displayName, avatarUrl, initials, isVerified, isFollowing}] (connecté)
   static const String mentionSearch   = '/users/mention-search';
+  // Autocomplétion des recherches (public) : GET ?q=&scope=all|testimonies|users|events|prayer|bible&limit=
+  // → {query, scope, suggestions:[{text, source, highlight}], results:[{type, id, label, sublabel, route, url, avatar…}]}
+  static const String searchSuggest = '/search/suggest';
+  static const String searchLog     = '/search/log'; // POST { q } : recherche validée, anonyme (recherches populaires)
 
   // Self management
   static const String updateProfile    = '/users/me';          // PUT
   static const String uploadAvatar     = '/users/me/avatar';   // POST multipart
   static const String profileCover     = '/users/me/cover';    // POST multipart « cover » / DELETE
-  static const String updateSettings   = '/users/me/settings'; // PUT
+  static const String updateSettings   = '/users/me/settings'; // GET · PUT (clés snake_case)
+  // Localisation privée (fils classés par zone) : GET · PUT { use_gps, latitude, longitude, home_city } · DELETE
+  static const String myLocation       = '/users/me/location';
   static const String deleteAccount    = '/users/me';          // DELETE
+  // Vérification d'un compte personnel (docs/fonctionnalites/verification-des-comptes.md) :
+  // GET → {status: none|pending|verified|rejected|revoked, canRequest, blockReason, retryAt, reason, request, roles, limits}
+  // POST multipart { full_name, role, role_other?, church, links[]?, message?, documents[] (1 à 3 : jpg/png/webp/pdf, 8 Mo) } → 201 même forme
+  static const String myVerification   = '/users/me/verification';
 
   // ── Notifications ─────────────────────────────────────────────────────────
 
@@ -236,10 +262,31 @@ abstract final class AppConstants {
   static String versePrayerRequests(int id) => '/daily-verse/$id/prayer-requests';
   static String verseTestimonies(int id) => '/daily-verse/$id/testimonies';
 
+  // Designs du verset (docs serveur fonctionnalites/designs-du-verset.md) :
+  // GET /verse-designs (public, 24 h) → { designs: [{id, name, mood, order, tone}], fonts,
+  //   text_sizes, text_aligns, defaults } ; la ressource du verset ajoute design_of_the_day,
+  //   user_style (connecté, sinon null) et effective_design_id.
+  // GET · PUT /me/verse-style { design_id, design_chosen_on, design_always, font, text_size,
+  //   text_align } (noms d'enum de l'app ; valeur inconnue → 422).
+  static const String verseDesigns = '/verse-designs';
+  static const String myVerseStyle = '/me/verse-style';
+
   // ── Media upload (multipart/form-data) ────────────────────────────────────
 
   static const String uploadMedia  = '/media/upload';
   static const String presignedUrl = '/media/presigned-url';
+
+  // ── Vidéos Bunny Stream (envoi reprenable TUS) ────────────────────────────
+  // POST /videos/upload-init { mêmes champs que POST /testimonies, sans media_url }
+  //   → crée le témoignage (video_status = uploading, invisible publiquement) et la vidéo Bunny :
+  //   { video_id, testimony_id, library_id, bunny_video_id, signature, expiration, tus_endpoint }
+  // POST /videos/{id}/upload-signature → { signature, expiration } (même bunny_video_id)
+  // POST /videos/{id}/upload-complete  → fin de l'envoi, traitement par Bunny
+  // Témoignage vidéo : video { status: uploading|processing|ready|failed, hls_url,
+  //   thumbnail_url, mp4_urls { "240": url, "360": url, … }, duration } ; push « video_ready ».
+  static const String videoUploadInit = '/videos/upload-init';
+  static String videoUploadSignature(String id) => '/videos/$id/upload-signature';
+  static String videoUploadComplete(String id)  => '/videos/$id/upload-complete';
 
   // ── Moderation (role: moderateur | administrateur) ────────────────────────
 
@@ -264,6 +311,14 @@ abstract final class AppConstants {
   static String adminSuspendUser(String id) => '/admin/users/$id/suspend'; // POST
   static String adminActivateUser(String id)=> '/admin/users/$id/activate';// POST
   static String adminUserRole(String id)    => '/admin/users/$id/role';    // PUT
+  // Vérification des comptes personnels : GET ?status=pending|approved|rejected|revoked|all
+  // → {items, pendingCount, currentPage, lastPage, total} ; détail {…, links, message, documents[{index, name, mime, isImage, url}]}
+  static const String adminVerificationRequests = '/admin/verification-requests';
+  static String adminVerificationRequest(String id) => '/admin/verification-requests/$id';
+  static String adminVerificationDocument(String id, int index) => '/admin/verification-requests/$id/documents/$index'; // GET (jeton admin)
+  static String adminVerificationApprove(String id) => '/admin/verification-requests/$id/approve'; // POST
+  static String adminVerificationReject(String id)  => '/admin/verification-requests/$id/reject';  // POST { reason }
+  static String adminRevokeVerification(String userId) => '/admin/users/$userId/revoke-verification'; // POST { reason }
 
   // ── Témoignages en direct (LiveKit) ──────────────────────────────────────
   // Doc backend : docs/fonctionnalites/lives.md
@@ -375,6 +430,15 @@ abstract final class AppConstants {
   static String eventReviews(String id)       => '/events/$id/reviews';
   static String eventModeration(String id, String action) => '/events/$id/$action';
   static const String myManagers              = '/users/me/managers';
+  // Administrateurs de compte (tous les comptes, 2 au plus) : agir au nom d'un compte
+  // avec l'en-tête X-Act-As (lib/services/acting_as_interceptor.dart).
+  //   GET /users/me/accounts → {accounts: [{id, displayName, username, initials, avatarUrl,
+  //       isOrganization, isVerified, role: owner|manager, since}], actingAs}
+  //   GET /users/me → comme /auth/me, mais suit X-Act-As (acting_as, acting_actor)
+  //   GET /users/me/managers/activity → [{id, actorId, actorName, action, createdAt}]
+  static const String myAccounts              = '/users/me/accounts';
+  static const String me                      = '/users/me';
+  static const String myManagersActivity      = '/users/me/managers/activity';
   static String myManager(String userId)      => '/users/me/managers/$userId';
   static const String myManagedOrganizations  = '/users/me/managed-organizations';
   static String myManagedOrganization(String id) => '/users/me/managed-organizations/$id';

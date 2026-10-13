@@ -10,7 +10,11 @@ import '../../../core/local_db/daos/testimony_dao.dart';
 import '../../../core/media/youtube.dart';
 import '../../../core/local_db/database_service.dart';
 import '../../../services/api_service.dart';
+import '../../location/location_providers.dart' show homeFeedPlaceProvider, nearbyLabelsProvider;
+import '../../location/user_location.dart' show FeedPlace, parseNearbyLabels;
 import '../models/testimony_model.dart';
+import '../../../shared/models/mention.dart' show MentionRef;
+import '../../repost/repost.dart' show RepostInfo;
 
 // ============================================================================
 // ReactionType enum + extension
@@ -45,9 +49,9 @@ extension ReactionTypeInfo on ReactionType {
       case ReactionType.pray:
         return 'Je prie';
       case ReactionType.love:
-        return "J'adore";
+        return "J'adore Dieu";
       case ReactionType.glory:
-        return 'Gloire !';
+        return 'Gloire à Dieu !';
       case ReactionType.strong:
         return 'Inspirant';
       case ReactionType.fire:
@@ -62,10 +66,10 @@ extension ReactionTypeInfo on ReactionType {
         ReactionType.like    => 'like',
         ReactionType.pray    => 'pray',
         ReactionType.love    => 'love',
-        ReactionType.glory   => 'amen',
-        ReactionType.strong  => 'fire',
+        ReactionType.glory   => 'glory',
+        ReactionType.strong  => 'strong',
         ReactionType.fire    => 'fire',
-        ReactionType.touched => 'love',
+        ReactionType.touched => 'touched',
       };
 }
 
@@ -136,7 +140,7 @@ Testimony _applyStatsDelta(
       durationSeconds: t.durationSeconds, thumbnailUrl: t.thumbnailUrl,
       mediaPath: t.mediaPath, renditions: t.renditions, renditionsStatus: t.renditionsStatus,
       bibleVerse: t.bibleVerse, bibleVerseRef: t.bibleVerseRef,
-      youtubeId: t.youtubeId,
+      youtubeId: t.youtubeId, hlsUrl: t.hlsUrl, videoStatus: t.videoStatus,
       isFeatured: t.isFeatured, isLiked: t.isLiked,
       isPrayed: t.isPrayed, isSaved: t.isSaved,
       shareUrl: t.shareUrl, proofs: t.proofs,
@@ -170,7 +174,59 @@ String? _validYouTubeId(dynamic raw) {
   return RegExp(r'^[A-Za-z0-9_-]{11}$').hasMatch(v) ? v : null;
 }
 
-Testimony? testimonyFromApiJson(dynamic raw) {
+/// Vidéo Bunny Stream d'un témoignage. Format cible : objet imbriqué
+/// `video: { status, hls_url, thumbnail_url, mp4_urls: {"240": url, …}, duration }`
+/// (`null` sans vidéo) ; l'ancien format à plat (`hls_url`, `mp4_urls`,
+/// `thumbnail_url`, `video_status` sur le témoignage) est lu en secours.
+typedef BunnyVideo = ({
+  String? status,
+  String? hlsUrl,
+  String? thumbnailUrl,
+  List<MediaRendition> mp4,
+  int duration,
+});
+
+BunnyVideo? parseBunnyVideo(Map<String, dynamic> m) {
+  final nested = m['video'];
+  final v = nested is Map ? Map<String, dynamic>.from(nested) : m;
+  String? str(List<String> keys) {
+    for (final k in keys) {
+      final x = v[k]?.toString();
+      if (x != null && x.isNotEmpty) return x;
+    }
+    return null;
+  }
+
+  final hls = str(['hls_url', 'hlsUrl']);
+  final status = nested is Map
+      ? str(['status'])
+      : str(['video_status', 'videoStatus']);
+  if (hls == null && status == null) return null;
+
+  final mp4 = <MediaRendition>[];
+  final raw = v['mp4_urls'] ?? v['mp4Urls'];
+  if (raw is Map) {
+    raw.forEach((k, url) {
+      final h = int.tryParse(RegExp(r'\d+').stringMatch(k.toString()) ?? '') ?? 0;
+      final u = _absUrl(url?.toString());
+      if (h > 0 && u != null && u.isNotEmpty) {
+        mp4.add(MediaRendition(url: u, label: '${h}p', height: h));
+      }
+    });
+    mp4.sort((a, b) => a.rank.compareTo(b.rank));
+  }
+  return (
+    status: status,
+    hlsUrl: _absUrl(hls),
+    thumbnailUrl: _absUrl(str(['thumbnail_url', 'thumbnailUrl'])),
+    mp4: mp4,
+    duration: nested is Map ? _parseInt(v['duration']) : 0,
+  );
+}
+
+/// [allowUnready] : garder une vidéo Bunny pas encore prête (page du
+/// témoignage ouverte par son auteur) ; sinon elle est ignorée (`null`).
+Testimony? testimonyFromApiJson(dynamic raw, {bool allowUnready = false}) {
   try {
     final m        = raw as Map<String, dynamic>;
     final userMap  = m['user']  as Map<String, dynamic>? ?? {};
@@ -212,6 +268,12 @@ Testimony? testimonyFromApiJson(dynamic raw) {
     final youtubeId     = _validYouTubeId(m['youtubeId'] ?? m['youtube_id']);
     // Preuves privées : clé absente pour le public (liste vide).
     final proofs        = TestimonyProof.parseList(m['proofs'], absUrl: _absUrl);
+    // Mentions « @ » du texte (docs serveur fonctionnalites/mentions.md).
+    final mentions      = MentionRef.listFrom(m['mentions']);
+    // « X a partagé » (compte suivi d'abord), réaction choisie et droit de suppression.
+    final repost        = RepostInfo.fromFeedItem(m);
+    final myReaction    = m['myReaction'] as String?;
+    final canDelete     = m['canDelete'] as bool? ?? false;
 
     switch (youtubeId != null ? 'video' : type) {
       case 'audio':
@@ -227,22 +289,37 @@ Testimony? testimonyFromApiJson(dynamic raw) {
           coverImageUrl: (m['coverUrl'] ?? m['cover_url']) as String?,
           bibleVerse: bibleVerse, bibleVerseRef: bibleVerseRef,
           isFeatured: isFeatured, isLiked: isLiked, isPrayed: isPrayed, isSaved: isSaved,
-          shareUrl: shareUrl, proofs: proofs,
+          shareUrl: shareUrl, proofs: proofs, mentions: mentions,
+          repost: repost, myReaction: myReaction, canDelete: canDelete,
         );
       case 'video':
+        final bunny = youtubeId == null ? parseBunnyVideo(m) : null;
+        // Vidéo pas encore prête (envoi, traitement, échec) : seulement dans
+        // « Mes publications », jamais dans les fils et listes publics.
+        if (bunny != null &&
+            bunny.status != null &&
+            bunny.status != 'ready' &&
+            !allowUnready) {
+          return null;
+        }
+        final duration = _parseInt(m['duration'] ?? m['duration_seconds']);
         return VideoTestimony(
           id: id, author: author, title: title,
           category: category, createdAt: createdAt, stats: stats,
-          durationSeconds: _parseInt(m['duration'] ?? m['duration_seconds']),
-          thumbnailUrl:    (m['coverUrl'] ?? m['cover_url']) as String? ??
+          durationSeconds: (bunny?.duration ?? 0) > 0 ? bunny!.duration : duration,
+          thumbnailUrl:    bunny?.thumbnailUrl ??
+              (m['coverUrl'] ?? m['cover_url']) as String? ??
               (youtubeId != null ? youTubeThumbnailUrl(youtubeId) : ''),
           mediaPath:       _absUrl((m['mediaUrl'] ?? m['media_url']) as String?),
-          renditions:      renditions,
+          renditions:      (bunny?.mp4.isNotEmpty ?? false) ? bunny!.mp4 : renditions,
           renditionsStatus: m['renditionsStatus'] as String?,
           bibleVerse: bibleVerse, bibleVerseRef: bibleVerseRef,
           youtubeId: youtubeId,
+          hlsUrl: bunny?.hlsUrl,
+          videoStatus: bunny?.status,
           isFeatured: isFeatured, isLiked: isLiked, isPrayed: isPrayed, isSaved: isSaved,
-          shareUrl: shareUrl, proofs: proofs,
+          shareUrl: shareUrl, proofs: proofs, mentions: mentions,
+          repost: repost, myReaction: myReaction, canDelete: canDelete,
         );
       default:
         final body = (m['bodyText'] ?? m['body_text']) as String? ?? '';
@@ -253,7 +330,8 @@ Testimony? testimonyFromApiJson(dynamic raw) {
           coverImageUrl: (m['coverUrl'] ?? m['cover_url']) as String?,
           bibleVerse: bibleVerse, bibleVerseRef: bibleVerseRef,
           isFeatured: isFeatured, isLiked: isLiked, isPrayed: isPrayed, isSaved: isSaved,
-          shareUrl: shareUrl, proofs: proofs,
+          shareUrl: shareUrl, proofs: proofs, mentions: mentions,
+          repost: repost, myReaction: myReaction, canDelete: canDelete,
         );
     }
   } catch (_) {
@@ -310,6 +388,7 @@ class FeedNotifier extends Notifier<List<Testimony>> {
       final meta = parsePageMeta(response.meta);
       _page     = meta.currentPage;
       _lastPage = meta.lastPage;
+      _readPlace(response.meta);
       state = items;
       // Synchronise l'état liked/prayed depuis le serveur.
       ref.read(interactionProvider.notifier).seedFromFeed(items);
@@ -319,6 +398,13 @@ class FeedNotifier extends Notifier<List<Testimony>> {
     } finally {
       if (!silent) ref.read(feedIsLoadingProvider.notifier).done();
     }
+  }
+
+  /// Zone utilisée par le classement (« Près de chez vous · Cotonou ») et étiquettes des
+  /// cartes proches (meta.place, meta.nearby ; docs serveur : localisation.md).
+  void _readPlace(Object? meta, {bool firstPage = true}) {
+    if (firstPage) ref.read(homeFeedPlaceProvider.notifier).set(FeedPlace.fromMeta(meta));
+    ref.read(nearbyLabelsProvider.notifier).merge(parseNearbyLabels(meta));
   }
 
   /// Page suivante (défilement infini). Ignoré pendant un chargement en cours
@@ -337,6 +423,7 @@ class FeedNotifier extends Notifier<List<Testimony>> {
           .where((t) => !known.contains(t.id))
           .toList();
       final meta = parsePageMeta(response.meta);
+      _readPlace(response.meta, firstPage: false);
       // Toujours avancer, même si le serveur renvoie une page courante figée.
       _page     = meta.currentPage > _page ? meta.currentPage : _page + 1;
       _lastPage = meta.lastPage;
@@ -540,127 +627,209 @@ final featuredProvider = Provider<List<Testimony>>((ref) {
 // Interactions : likes, prières, réactions emoji — avec appels API
 // ============================================================================
 
+/// Compteurs « j'aime » et « je prie » à jour (réponse du serveur ou mise à jour optimiste).
+typedef TestimonyCounts = ({int likes, int prayers});
+
+/// Réaction de l'application ← valeur de l'API (`myReaction`). `amen` : anciennes réactions « Gloire ».
+ReactionType? reactionTypeFromApi(String? value) => switch (value) {
+      'like'    => ReactionType.like,
+      'love'    => ReactionType.love,
+      'glory'   => ReactionType.glory,
+      'amen'    => ReactionType.glory,
+      'strong'  => ReactionType.strong,
+      'fire'    => ReactionType.fire,
+      'touched' => ReactionType.touched,
+      _         => null,
+    };
+
+/// État des réactions de la personne connectée.
+///
+/// Le serveur fait foi (docs serveur fonctionnalites/reactions.md) : une seule réaction « j'aime »
+/// (like, love, fire…) et une seule « je prie » par personne et par témoignage. Tant qu'un
+/// témoignage n'a pas été touché ici (`known`), on lit l'état renvoyé par l'API dans le modèle
+/// (`isLiked`, `myReaction`, `stats`) ; ensuite, l'état local (mis à jour par la réponse du serveur).
 class TestimonyInteractions {
   const TestimonyInteractions({
     this.liked     = const {},
     this.prayed    = const {},
     this.saved     = const {},
     this.reactions = const {},
+    this.counts    = const {},
+    this.known     = const {},
   });
 
   final Set<String> liked;
   final Set<String> prayed;
   final Set<String> saved;
   final Map<String, ReactionType> reactions;
+  final Map<String, TestimonyCounts> counts;
 
-  TestimonyInteractions setReaction(String id, ReactionType type) {
-    final newReactions = Map<String, ReactionType>.from(reactions)..[id] = type;
-    final newLiked     = Set<String>.from(liked);
-    if (type == ReactionType.like) {
-      newLiked.add(id);
-    } else {
-      newLiked.remove(id);
-    }
-    return copyWith(reactions: newReactions, liked: newLiked);
+  /// Témoignages dont l'état local fait foi (réaction posée ici ou réponse du serveur reçue).
+  final Set<String> known;
+
+  bool likedOf(Testimony t) => known.contains(t.id) ? liked.contains(t.id) : t.isLiked;
+  bool prayedOf(Testimony t) => known.contains(t.id) ? prayed.contains(t.id) : t.isPrayed;
+
+  ReactionType? reactionOf(Testimony t) {
+    if (known.contains(t.id)) return reactions[t.id];
+    return reactionTypeFromApi(t.myReaction) ?? (t.isLiked ? ReactionType.like : null);
   }
 
-  TestimonyInteractions removeReaction(String id) {
-    final newReactions = Map<String, ReactionType>.from(reactions)..remove(id);
-    final newLiked     = Set<String>.from(liked)..remove(id);
-    return copyWith(reactions: newReactions, liked: newLiked);
-  }
+  int likesOf(Testimony t) => counts[t.id]?.likes ?? t.stats.likes;
+  int prayersOf(Testimony t) => counts[t.id]?.prayers ?? t.stats.prayers;
 
   TestimonyInteractions copyWith({
     Set<String>? liked,
     Set<String>? prayed,
     Set<String>? saved,
     Map<String, ReactionType>? reactions,
+    Map<String, TestimonyCounts>? counts,
+    Set<String>? known,
   }) =>
       TestimonyInteractions(
         liked:     liked     ?? this.liked,
         prayed:    prayed    ?? this.prayed,
         saved:     saved     ?? this.saved,
         reactions: reactions ?? this.reactions,
+        counts:    counts    ?? this.counts,
+        known:     known     ?? this.known,
       );
+
+  /// Nouvel état d'un témoignage (les autres sont conservés).
+  TestimonyInteractions withEntry(
+    String id, {
+    required bool liked,
+    required bool prayed,
+    required ReactionType? reaction,
+    required TestimonyCounts counts,
+  }) {
+    final r = Map<String, ReactionType>.from(reactions);
+    if (reaction == null) {
+      r.remove(id);
+    } else {
+      r[id] = reaction;
+    }
+    return copyWith(
+      liked: liked ? {...this.liked, id} : ({...this.liked}..remove(id)),
+      prayed: prayed ? {...this.prayed, id} : ({...this.prayed}..remove(id)),
+      reactions: r,
+      counts: {...this.counts, id: counts},
+      known: {...known, id},
+    );
+  }
 }
 
 class InteractionNotifier extends Notifier<TestimonyInteractions> {
-  /// Réactions envoyées au serveur — stocke l'ID retourné pour pouvoir supprimer.
-  final _reactionIds = <String, String>{}; // testimonyId → reactionId
-  final _prayIds     = <String, String>{}; // testimonyId → reactionId (pray)
+  /// Dernière requête envoyée par témoignage : une réponse plus ancienne est ignorée.
+  final _requests = <String, int>{};
 
   @override
   TestimonyInteractions build() => const TestimonyInteractions();
 
   // ── Seed depuis le serveur (appelé après chaque chargement du feed) ─────────
 
+  /// État frais renvoyé par l'API : remplace l'état local de ces témoignages,
+  /// sauf ceux dont une réaction est en cours d'envoi.
   void seedFromFeed(List<Testimony> testimonies) {
-    final serverLiked  = <String>{};
-    final serverPrayed = <String>{};
-    final serverSaved  = <String>{};
+    var next = state;
+    final saved = {...state.saved};
     for (final t in testimonies) {
-      if (t.isLiked)  serverLiked.add(t.id);
-      if (t.isPrayed) serverPrayed.add(t.id);
-      if (t.isSaved)  serverSaved.add(t.id);
+      if (t.isSaved) saved.add(t.id);
+      if (_requests.containsKey(t.id)) continue;
+      next = next.withEntry(
+        t.id,
+        liked: t.isLiked,
+        prayed: t.isPrayed,
+        reaction: reactionTypeFromApi(t.myReaction) ?? (t.isLiked ? ReactionType.like : null),
+        counts: (likes: t.stats.likes, prayers: t.stats.prayers),
+      );
     }
-    state = state.copyWith(
-      liked:  {...state.liked,  ...serverLiked},
-      prayed: {...state.prayed, ...serverPrayed},
-      saved:  {...state.saved,  ...serverSaved},
+    state = next.copyWith(saved: saved);
+  }
+
+  // ── Réactions « j'aime » (une seule à la fois) ───────────────────────────
+
+  /// Pose la réaction [type] (remplace la précédente) ou la retire si null.
+  /// Le compteur ne change que si la personne passe de « aucune » à « une » réaction.
+  void react(Testimony t, ReactionType? type) {
+    final wasLiked = state.likedOf(t);
+    final isLiked = type != null;
+    final likes = state.likesOf(t) + (isLiked == wasLiked ? 0 : (isLiked ? 1 : -1));
+    _optimistic(t, liked: isLiked, reaction: type, likes: likes < 0 ? 0 : likes);
+    _send(t, () {
+      final api = ref.read(apiServiceProvider);
+      return type != null
+          ? api.post<Map<String, dynamic>>(AppConstants.testimonyReactions(t.id), data: {'type': type.apiValue})
+          : api.delete<Map<String, dynamic>>(AppConstants.testimonyReactions(t.id), query: const {'group': 'appreciation'});
+    });
+  }
+
+  /// Appui simple sur le cœur : retire la réaction posée, sinon « J'aime ».
+  void toggleLike(Testimony t) => react(t, state.likedOf(t) ? null : ReactionType.like);
+
+  // ── Prière (une seule « je prie ») ────────────────────────────────────────
+
+  void togglePray(Testimony t) {
+    final prayed = !state.prayedOf(t);
+    final prayers = state.prayersOf(t) + (prayed ? 1 : -1);
+    _optimistic(t, prayed: prayed, prayers: prayers < 0 ? 0 : prayers);
+    _send(t, () {
+      final api = ref.read(apiServiceProvider);
+      return prayed
+          ? api.post<Map<String, dynamic>>(AppConstants.testimonyReactions(t.id), data: const {'type': 'pray'})
+          : api.delete<Map<String, dynamic>>(AppConstants.testimonyReactions(t.id), query: const {'group': 'prayer'});
+    });
+  }
+
+  bool isLiked(Testimony t) => state.likedOf(t);
+  bool isPrayed(Testimony t) => state.prayedOf(t);
+
+  void _optimistic(Testimony t, {bool? liked, bool? prayed, ReactionType? reaction, int? likes, int? prayers}) {
+    final s = state;
+    state = s.withEntry(
+      t.id,
+      liked: liked ?? s.likedOf(t),
+      prayed: prayed ?? s.prayedOf(t),
+      reaction: liked == null ? s.reactionOf(t) : reaction,
+      counts: (likes: likes ?? s.likesOf(t), prayers: prayers ?? s.prayersOf(t)),
     );
   }
 
-  // ── Réactions emoji ───────────────────────────────────────────────────────
-
-  void setReaction(String id, ReactionType type) {
-    final wasLiked = state.reactions[id] == ReactionType.like;
-    final isLike   = type == ReactionType.like;
-    state = state.setReaction(id, type);
-    // Mise à jour optimiste du compteur dans le feed.
-    ref.read(feedNotifierProvider.notifier).applyOptimisticDelta(
-      id,
-      likes: isLike && !wasLiked ? 1 : (!isLike && wasLiked ? -1 : 0),
-    );
-    _postReaction(id, type.apiValue, ids: _reactionIds);
-  }
-
-  void removeReaction(String id) {
-    final reactionId = _reactionIds.remove(id);
-    final wasLiked   = state.reactions[id] == ReactionType.like;
-    state = state.removeReaction(id);
-    if (wasLiked) {
-      ref.read(feedNotifierProvider.notifier).applyOptimisticDelta(id, likes: -1);
-    }
-    if (reactionId != null) _deleteReaction(id, reactionId);
-  }
-
-  ReactionType? getReaction(String id) => state.reactions[id];
-
-  // ── Like (rétrocompatibilité) ─────────────────────────────────────────────
-
-  void toggleLike(String id) {
-    if (state.reactions[id] == ReactionType.like) {
-      removeReaction(id);
-    } else {
-      setReaction(id, ReactionType.like);
-    }
-  }
-
-  // ── Prière ────────────────────────────────────────────────────────────────
-
-  void togglePray(String id) {
-    final prayed = {...state.prayed};
-    if (prayed.contains(id)) {
-      prayed.remove(id);
-      state = state.copyWith(prayed: prayed);
-      ref.read(feedNotifierProvider.notifier).applyOptimisticDelta(id, prayers: -1);
-      final reactionId = _prayIds.remove(id);
-      if (reactionId != null) _deleteReaction(id, reactionId);
-    } else {
-      prayed.add(id);
-      state = state.copyWith(prayed: prayed);
-      ref.read(feedNotifierProvider.notifier).applyOptimisticDelta(id, prayers: 1);
-      _postReaction(id, 'pray', ids: _prayIds);
+  /// Envoie la requête ; la réponse (état et compteurs du serveur) remplace l'état optimiste.
+  /// En cas d'échec, l'état d'avant est rétabli.
+  Future<void> _send(Testimony t, Future<LaravelResponse<Map<String, dynamic>>> Function() call) async {
+    final before = state;
+    final request = (_requests[t.id] ?? 0) + 1;
+    _requests[t.id] = request;
+    try {
+      final res = await call();
+      if (_requests[t.id] != request) return;
+      final d = res.data;
+      final s = state;
+      state = s.withEntry(
+        t.id,
+        liked: d['isLikedByMe'] as bool? ?? s.likedOf(t),
+        prayed: d['isPrayedByMe'] as bool? ?? s.prayedOf(t),
+        reaction: d.containsKey('myReaction') ? reactionTypeFromApi(d['myReaction'] as String?) : s.reactionOf(t),
+        counts: (
+          likes: (d['likesCount'] as num?)?.toInt() ?? s.likesOf(t),
+          prayers: (d['prayersCount'] as num?)?.toInt() ?? s.prayersOf(t),
+        ),
+      );
+    } catch (e) {
+      debugPrint('réaction ✗ $e');
+      if (_requests[t.id] == request) {
+        // Rétablit seulement ce témoignage.
+        state = state.withEntry(
+          t.id,
+          liked: before.likedOf(t),
+          prayed: before.prayedOf(t),
+          reaction: before.reactionOf(t),
+          counts: (likes: before.likesOf(t), prayers: before.prayersOf(t)),
+        );
+      }
+    } finally {
+      if (_requests[t.id] == request) _requests.remove(t.id);
     }
   }
 
@@ -694,35 +863,7 @@ class InteractionNotifier extends Notifier<TestimonyInteractions> {
     });
   }
 
-  bool isLiked(String id)  => state.liked.contains(id);
-  bool isPrayed(String id) => state.prayed.contains(id);
   bool isSaved(String id)  => state.saved.contains(id);
-
-  // ── Helpers API (fire-and-forget, ignorent les erreurs réseau) ────────────
-
-  Future<void> _postReaction(
-    String testimonyId,
-    String type, {
-    required Map<String, String> ids,
-  }) async {
-    await _callApi(() async {
-      final api      = ref.read(apiServiceProvider);
-      final response = await api.post<Map<String, dynamic>>(
-        AppConstants.testimonyReactions(testimonyId),
-        data: {'type': type},
-      );
-      final reactionId = response.data['id'] as String?;
-      if (reactionId != null) ids[testimonyId] = reactionId;
-    });
-  }
-
-  Future<void> _deleteReaction(String testimonyId, String reactionId) async {
-    await _callApi(() async {
-      final api = ref.read(apiServiceProvider);
-      await api.delete<void>(
-          AppConstants.testimonyReactionById(testimonyId, reactionId));
-    });
-  }
 
   Future<void> _callApi(Future<void> Function() fn) async {
     try {
@@ -735,59 +876,8 @@ final interactionProvider =
     NotifierProvider<InteractionNotifier, TestimonyInteractions>(
         InteractionNotifier.new);
 
-// Sélecteurs pratiques
-final likedIdsProvider =
-    Provider<Set<String>>((ref) => ref.watch(interactionProvider).liked);
-
-final prayedIdsProvider =
-    Provider<Set<String>>((ref) => ref.watch(interactionProvider).prayed);
-
 final savedIdsProvider =
     Provider<Set<String>>((ref) => ref.watch(interactionProvider).saved);
-
-final reactionsMapProvider = Provider<Map<String, ReactionType>>(
-    (ref) => ref.watch(interactionProvider).reactions);
-
-// ============================================================================
-// Statistiques effectives — intègre les interactions locales de l'utilisateur
-// ============================================================================
-
-class _EffectiveStats {
-  const _EffectiveStats({
-    required this.likes,
-    required this.prayers,
-    required this.saves,
-    required this.views,
-    required this.comments,
-  });
-
-  final int likes;
-  final int prayers;
-  final int saves;
-  final int views;
-  final int comments;
-}
-
-final computedStatsProvider =
-    Provider.family<_EffectiveStats, String>((ref, id) {
-  final feed = ref.watch(feedNotifierProvider);
-  final testimony = feed.where((t) => t.id == id).firstOrNull;
-
-  final interactions = ref.watch(interactionProvider);
-  final isLiked  = interactions.liked.contains(id);
-  final isPrayed = interactions.prayed.contains(id);
-  final isSaved  = interactions.saved.contains(id);
-
-  final base = testimony?.stats ?? TestimonyStats.zero;
-
-  return _EffectiveStats(
-    likes:    base.likes    + (isLiked  ? 1 : 0),
-    prayers:  base.prayers  + (isPrayed ? 1 : 0),
-    saves:    isSaved ? 1 : 0,
-    views:    base.views,
-    comments: base.comments,
-  );
-});
 
 // ============================================================================
 // Filtre de catégorie
@@ -871,6 +961,9 @@ class DailyVerseNotifier extends AsyncNotifier<DailyVerse> {
         'prayer_count':  verse.prayerCount,
         'is_liked':      verse.isLiked,
         'is_prayed':     verse.isPrayed,
+        // Hors connexion le même jour : design du jour du serveur (pas les
+        // préférences du membre, gardées dans shared_preferences).
+        'design_of_the_day': verse.designOfTheDay,
       }));
     } catch (e) {
       debugPrint('DailyVerse cache write error: $e');

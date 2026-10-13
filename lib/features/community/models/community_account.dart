@@ -102,6 +102,7 @@ class CommunityAccount {
 
 /// Onglets de « Communauté » (paramètre `tab` de l'API).
 enum CommunityTab {
+  all('all', 'Tous'),
   organizations('organizations', 'Organisations'),
   people('people', 'Personnes');
 

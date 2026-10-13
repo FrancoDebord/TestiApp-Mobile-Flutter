@@ -16,6 +16,18 @@ String? _str(Object? v) {
   return s.isEmpty ? null : s;
 }
 
+/// Heure « HH:MM » (l'API peut renvoyer « HH:MM:SS ») ; null si absente ou invalide.
+String? parseClockTime(Object? v) {
+  final m = RegExp(r'^([01]\d|2[0-3]):([0-5]\d)').firstMatch(v?.toString().trim() ?? '');
+  return m == null ? null : '${m.group(1)}:${m.group(2)}';
+}
+
+/// Heure actuelle « HH:MM ».
+String clockNow() {
+  final n = DateTime.now();
+  return '${n.hour.toString().padLeft(2, '0')}:${n.minute.toString().padLeft(2, '0')}';
+}
+
 /// Date seule au format de l'API (AAAA-MM-JJ).
 String apiDate(DateTime d) =>
     '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
@@ -86,6 +98,7 @@ class Prophecy {
   const Prophecy({
     required this.id,
     required this.receivedOn,
+    this.receivedTime,
     this.title,
     this.bodyText,
     this.audioUrl,
@@ -105,6 +118,7 @@ class Prophecy {
         id: '${m['id']}',
         title: _str(m['title']),
         receivedOn: _day(m['receivedOn']) ?? DateTime.now(),
+        receivedTime: parseClockTime(m['receivedTime']),
         bodyText: _str(m['bodyText']),
         audioUrl: _str(m['audioUrl']),
         audioDuration: _int(m['audioDuration']),
@@ -122,6 +136,9 @@ class Prophecy {
   final String id;
   final String? title;
   final DateTime receivedOn;
+
+  /// Heure à laquelle la parole a été reçue (« HH:MM »), si elle a été notée.
+  final String? receivedTime;
   final String? bodyText;
   final String? audioUrl;
   final int audioDuration;
@@ -158,6 +175,7 @@ class Prophecy {
 class ProphecyDraft {
   ProphecyDraft({
     DateTime? receivedOn,
+    String? receivedTime,
     this.title = '',
     this.bodyText = '',
     this.givenBy = '',
@@ -166,10 +184,13 @@ class ProphecyDraft {
     this.audioDuration = 0,
     this.localAudioPath,
     this.reminder,
-  }) : receivedOn = receivedOn ?? DateTime.now();
+  })  : receivedOn = receivedOn ?? DateTime.now(),
+        // Nouvelle parole : l'heure actuelle par défaut.
+        receivedTime = receivedTime ?? (receivedOn == null ? clockNow() : null);
 
   factory ProphecyDraft.fromProphecy(Prophecy p) => ProphecyDraft(
         receivedOn: p.receivedOn,
+        receivedTime: p.receivedTime,
         title: p.title ?? '',
         bodyText: p.bodyText ?? '',
         givenBy: p.givenBy ?? '',
@@ -180,6 +201,9 @@ class ProphecyDraft {
       );
 
   DateTime receivedOn;
+
+  /// Heure de réception « HH:MM » (facultative).
+  String? receivedTime;
   String title;
   String bodyText;
   String givenBy;
@@ -195,6 +219,7 @@ class ProphecyDraft {
 
   Map<String, dynamic> toJson() => {
         'received_on': apiDate(receivedOn),
+        'received_time': receivedTime,
         'title': _clean(title),
         'body_text': _clean(bodyText),
         'given_by': _clean(givenBy),

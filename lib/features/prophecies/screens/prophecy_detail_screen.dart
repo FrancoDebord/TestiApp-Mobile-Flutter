@@ -208,7 +208,7 @@ class _ProphecyDetailScreenState extends ConsumerState<ProphecyDetailScreen> {
           Text(p.displayTitle(prophecyDay),
               style: AppTextStyles.h3.copyWith(color: AppColors.primary, fontWeight: FontWeight.w800)),
           const SizedBox(height: 10),
-          _InfoLine(Icons.event_note_rounded, 'Reçue le ${prophecyDay(p.receivedOn)}'),
+          _InfoLine(Icons.event_note_rounded, 'Reçue le ${prophecyReceived(p.receivedOn, p.receivedTime)}'),
           if (p.givenBy != null) _InfoLine(Icons.person_outline_rounded, 'Donnée par ${p.givenBy}'),
           if (p.dueOn != null) _InfoLine(Icons.flag_outlined, 'Échéance : ${prophecyDay(p.dueOn!)}'),
           if (p.fulfilledOn != null)

@@ -1,7 +1,10 @@
-// Verset du jour en plein écran (inspiré de « Proclamer » des paroles
-// prophétiques) : grand texte sur fond bleu, versions de la Bible (choix
-// mémorisé, « Comparer »), J'aime / Je prie, partage, lecture vocale, mode
-// lecture ; puis sujets de prière, commentaires et témoignages liés.
+// Verset du jour en plein écran. Premier écran immersif : le verset, la
+// référence, les actions (J'aime, Je prie, Commentaires, Partager) et la
+// vignette du sélecteur de designs posés directement sur le design du jour
+// (lib/features/daily_verse/design). En faisant défiler : versions de la Bible
+// (choix mémorisé, « Comparer ») puis sujets de prière, commentaires et
+// témoignages liés, sur des cartes blanches. Lecture vocale, mode lecture,
+// partage en image.
 // Docs serveur : fonctionnalites/verset-du-jour.md
 
 import 'dart:async';
@@ -10,7 +13,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:share_plus/share_plus.dart' show ShareParams, SharePlus;
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -29,16 +31,22 @@ import '../../prayer/models/prayer_models.dart';
 import '../../prayer/widgets/prayer_widgets.dart';
 import '../../testimony/providers/tts_provider.dart' show ttsEngineProvider;
 import '../data/daily_verse_repository.dart';
+import '../design/verse_design.dart';
+import '../design/verse_design_picker.dart';
+import '../design/verse_layout.dart';
+import '../design/verse_share_image.dart';
+import '../design/verse_style_prefs.dart';
 import '../models/daily_verse_models.dart';
 import '../providers/daily_verse_providers.dart';
 
 /// Ouvre le verset du jour par-dessus l'écran courant (fondu + léger glissement).
-Future<void> openDailyVerse(BuildContext context) {
+/// [initialTab] : 0 sujets de prière, 1 commentaires, 2 témoignages.
+Future<void> openDailyVerse(BuildContext context, {int initialTab = 0}) {
   return Navigator.of(context, rootNavigator: true).push(PageRouteBuilder<void>(
     fullscreenDialog: true,
     transitionDuration: const Duration(milliseconds: 320),
     reverseTransitionDuration: const Duration(milliseconds: 220),
-    pageBuilder: (_, _, _) => const DailyVerseScreen(),
+    pageBuilder: (_, _, _) => DailyVerseScreen(initialTab: initialTab),
     transitionsBuilder: (_, animation, _, child) {
       final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
       return FadeTransition(
@@ -52,7 +60,6 @@ Future<void> openDailyVerse(BuildContext context) {
   ));
 }
 
-const _kNight = Color(0xFF0A2149);
 const _kFallbackVerse = DailyVerse(
   text: '« Car je connais les projets que j\'ai formés sur vous, dit l\'Éternel, '
       'projets de paix et non de malheur, afin de vous donner un avenir et de l\'espérance. »',
@@ -73,14 +80,24 @@ class _DailyVerseScreenState extends ConsumerState<DailyVerseScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabs =
       TabController(length: 3, vsync: this, initialIndex: widget.initialTab.clamp(0, 2));
+  final _scroll = ScrollController();
+  final _participationKey = GlobalKey();
   bool _compare = false;
   bool _reading = false;
+
+  /// Premier écran quitté : la barre compacte apparaît.
+  bool _pastHero = false;
+  double _heroHeight = 0;
   bool _speaking = false;
   int _speechRun = 0;
 
   @override
   void initState() {
     super.initState();
+    _scroll.addListener(() {
+      final past = _heroHeight > 0 && _scroll.offset > _heroHeight - 120;
+      if (past != _pastHero && mounted) setState(() => _pastHero = past);
+    });
     _tabs.addListener(() {
       if (!_tabs.indexIsChanging && mounted) setState(() {});
     });
@@ -88,6 +105,7 @@ class _DailyVerseScreenState extends ConsumerState<DailyVerseScreen>
 
   @override
   void dispose() {
+    _scroll.dispose();
     _tabs.dispose();
     if (_speaking) unawaited(ref.read(ttsEngineProvider).stop());
     super.dispose();
@@ -110,11 +128,34 @@ class _DailyVerseScreenState extends ConsumerState<DailyVerseScreen>
 
   // ── Actions ────────────────────────────────────────────────────────────────
 
-  Future<void> _share(String text, String reference, String label) async {
+  Future<void> _share(String text, String reference, String label, VerseVersion? version) async {
     final suffix = label == 'Texte du jour' ? '' : ' ($label)';
-    await SharePlus.instance.share(ShareParams(text: '« ${_strip(text)} »\n— $reference$suffix'));
+    await shareVerseImage(
+      context,
+      design: ref.read(currentVerseDesignProvider),
+      prefs: ref.read(verseStylePrefsProvider),
+      text: text,
+      reference: version == null ? reference : '$reference$suffix',
+      version: version,
+      shareText: '« ${_strip(text)} »\n— $reference$suffix',
+    );
     await ref.read(dailyVerseProvider.notifier).recordShare();
   }
+
+  /// Ouvre l'onglet Commentaires et fait défiler jusqu'à lui.
+  void _openComments() {
+    _tabs.animateTo(1);
+    final ctx = _participationKey.currentContext;
+    if (ctx != null) {
+      Scrollable.ensureVisible(ctx, duration: const Duration(milliseconds: 400), curve: Curves.easeOutCubic);
+    }
+  }
+
+  void _scrollDown(double heroHeight) => _scroll.animateTo(
+        heroHeight - MediaQuery.paddingOf(context).top,
+        duration: const Duration(milliseconds: 450),
+        curve: Curves.easeOutCubic,
+      );
 
   static String _strip(String t) => t.trim().replaceAll(RegExp(r'^[«"\s]+|[»"\s]+$'), '');
 
@@ -182,69 +223,203 @@ class _DailyVerseScreenState extends ConsumerState<DailyVerseScreen>
     final shown = _display(verse, data);
     final reference = _reference(verse, data);
 
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light,
-      child: Scaffold(
-        backgroundColor: _kNight,
-        body: DecoratedBox(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [AppColors.primary, AppColors.primaryDark, _kNight],
-              stops: [0, 0.45, 1],
+    final design = ref.watch(currentVerseDesignProvider);
+    final prefs = ref.watch(verseStylePrefsProvider);
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: LayoutBuilder(builder: (context, constraints) {
+        final screen = Size(constraints.maxWidth, constraints.maxHeight);
+        final topBar = _TopBar(
+          reading: _reading,
+          speaking: _speaking,
+          onClose: () => Navigator.of(context).maybePop(),
+          onSpeak: () => _toggleSpeech(shown.text, reference, shown.version),
+          onShare: () => _share(shown.text, reference, shown.label, shown.version),
+          onReading: () => setState(() => _reading = !_reading),
+        );
+
+        if (_reading) {
+          return _VerseHero(
+            size: screen,
+            design: design,
+            prefs: prefs,
+            topBar: topBar,
+            text: shown.text,
+            reference: reference,
+            label: null,
+            version: shown.version,
+            missing: null,
+            reading: true,
+          );
+        }
+
+        final hero = _VerseHero.layout(
+          screen: screen,
+          design: design,
+          prefs: prefs,
+          text: shown.text,
+          version: shown.version,
+          scale: verseTextScale(context),
+          safe: MediaQuery.paddingOf(context),
+          missing: shown.missing != null,
+          verse: verse,
+        );
+        _heroHeight = hero.height;
+        final list = ListView(
+          controller: _scroll,
+          padding: EdgeInsets.zero,
+          children: [
+            _VerseHero(
+              size: Size(screen.width, hero.height),
+              fontSize: hero.fontSize,
+              design: design,
+              prefs: prefs,
+              topBar: topBar,
+              text: shown.text,
+              reference: reference,
+              label: shown.label,
+              version: shown.version,
+              missing: shown.missing,
+              actions: (r) => _ReactionsRow(
+                verse: verse,
+                resolved: r,
+                onLike: () => _react(pray: false),
+                onPray: () => _react(pray: true),
+                onComments: _openComments,
+                onShare: () => _share(shown.text, reference, shown.label, shown.version),
+                picker: VerseDesignStackButton(
+                  design: design,
+                  ink: r.ink,
+                  onTap: () => showVerseDesignPicker(context, text: _strip(shown.text), reference: reference),
+                ),
+              ),
+              onScrollHint: () => _scrollDown(hero.height),
             ),
-          ),
-          child: SafeArea(
-            bottom: false,
-            child: Column(
+            // ── Sous le premier écran : cartes blanches ─────────────────
+            const SizedBox(height: AppSpacing.lg),
+            _WhiteCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _VersionSelector(
+                    async: versionsAsync,
+                    compare: _compare,
+                    onCompare: () => setState(() => _compare = !_compare),
+                  ),
+                  if (_compare && data != null) _CompareList(data: data),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            _WhiteCard(
+              key: _participationKey,
+              padding: EdgeInsets.zero,
+              child: _Participation(
+                verse: verse,
+                tabs: _tabs,
+                onTestify: () => _testify(verse, data),
+              ),
+            ),
+            SizedBox(height: MediaQuery.paddingOf(context).bottom + AppSpacing.xxl),
+          ],
+        );
+        return Stack(
+          children: [
+            list,
+            // Barre compacte une fois le premier écran quitté.
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: IgnorePointer(
+                ignoring: !_pastHero,
+                child: AnimatedOpacity(
+                  opacity: _pastHero ? 1 : 0,
+                  duration: const Duration(milliseconds: 180),
+                  child: _CompactBar(
+                    onClose: () => Navigator.of(context).maybePop(),
+                    onShare: () => _share(shown.text, reference, shown.label, shown.version),
+                    onTop: () => _scroll.animateTo(0,
+                        duration: const Duration(milliseconds: 450), curve: Curves.easeOutCubic),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      }),
+    );
+  }
+}
+
+/// Barre blanche affichée sous le premier écran (fermer, partager, remonter).
+class _CompactBar extends StatelessWidget {
+  const _CompactBar({required this.onClose, required this.onShare, required this.onTop});
+
+  final VoidCallback onClose;
+  final VoidCallback onShare;
+  final VoidCallback onTop;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.dark,
+      child: Material(
+        color: AppColors.surface,
+        elevation: 1,
+        shadowColor: AppColors.border,
+        child: SafeArea(
+          bottom: false,
+          child: SizedBox(
+            height: 52,
+            child: Row(
               children: [
-                _TopBar(
-                  reading: _reading,
-                  speaking: _speaking,
-                  onClose: () => Navigator.of(context).maybePop(),
-                  onSpeak: () => _toggleSpeech(shown.text, reference, shown.version),
-                  onShare: () => _share(shown.text, reference, shown.label),
-                  onReading: () => setState(() => _reading = !_reading),
+                IconButton(
+                  tooltip: 'Fermer',
+                  onPressed: onClose,
+                  icon: const Icon(Icons.close_rounded, color: AppColors.textPrimary),
                 ),
                 Expanded(
-                  child: _reading
-                      ? _ReadingView(text: shown.text, reference: reference, version: shown.version)
-                      : ListView(
-                          padding: EdgeInsets.zero,
-                          children: [
-                            _VerseHero(
-                              text: shown.text,
-                              reference: reference,
-                              label: shown.label,
-                              version: shown.version,
-                              missing: shown.missing,
-                            ),
-                            _ReactionsRow(
-                              verse: verse,
-                              onLike: () => _react(pray: false),
-                              onPray: () => _react(pray: true),
-                            ),
-                            _VersionSelector(
-                              async: versionsAsync,
-                              compare: _compare,
-                              onCompare: () => setState(() => _compare = !_compare),
-                            ),
-                            if (_compare && data != null) _CompareList(data: data),
-                            const SizedBox(height: AppSpacing.lg),
-                            _Participation(
-                              verse: verse,
-                              tabs: _tabs,
-                              onTestify: () => _testify(verse, data),
-                            ),
-                          ],
-                        ),
+                  child: Text('Verset du jour',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.labelMedium.copyWith(color: AppColors.primary, fontWeight: FontWeight.w700)),
+                ),
+                IconButton(
+                  tooltip: 'Partager',
+                  onPressed: onShare,
+                  icon: const Icon(Icons.share_rounded, color: AppColors.textPrimary),
+                ),
+                IconButton(
+                  tooltip: 'Revenir au verset',
+                  onPressed: onTop,
+                  icon: const Icon(Icons.vertical_align_top_rounded, color: AppColors.textPrimary),
                 ),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Carte blanche des sections sous le premier écran.
+class _WhiteCard extends StatelessWidget {
+  const _WhiteCard({required this.child, this.padding = const EdgeInsets.fromLTRB(0, 16, 0, 16), super.key});
+
+  final Widget child;
+  final EdgeInsets padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
+      padding: padding,
+      decoration: AppShadows.cardDecoration,
+      clipBehavior: Clip.antiAlias,
+      child: child,
     );
   }
 }
@@ -259,6 +434,8 @@ class _TopBar extends StatelessWidget {
     required this.onSpeak,
     required this.onShare,
     required this.onReading,
+    this.ink = Colors.white,
+    this.accent = AppColors.sun,
   });
 
   final bool reading;
@@ -267,6 +444,21 @@ class _TopBar extends StatelessWidget {
   final VoidCallback onSpeak;
   final VoidCallback onShare;
   final VoidCallback onReading;
+
+  /// Couleurs du design (contraste garanti).
+  final Color ink;
+  final Color accent;
+
+  _TopBar colored(ResolvedVerseDesign r) => _TopBar(
+        reading: reading,
+        speaking: speaking,
+        onClose: onClose,
+        onSpeak: onSpeak,
+        onShare: onShare,
+        onReading: onReading,
+        ink: r.ink,
+        accent: r.accent,
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -277,30 +469,30 @@ class _TopBar extends StatelessWidget {
           IconButton(
             tooltip: 'Fermer',
             onPressed: onClose,
-            icon: const Icon(Icons.close_rounded, color: Colors.white),
+            icon: Icon(Icons.close_rounded, color: ink),
           ),
           Expanded(
             child: Text(
               'Verset du jour',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.labelMedium.copyWith(color: AppColors.sun, fontWeight: FontWeight.w700),
+              style: verseLabelStyle(accent).copyWith(fontSize: 14, fontWeight: FontWeight.w700),
             ),
           ),
           IconButton(
             tooltip: speaking ? 'Arrêter la lecture' : 'Écouter',
             onPressed: onSpeak,
-            icon: Icon(speaking ? Icons.stop_circle_outlined : Icons.volume_up_rounded, color: Colors.white),
+            icon: Icon(speaking ? Icons.stop_circle_outlined : Icons.volume_up_rounded, color: ink),
           ),
           IconButton(
             tooltip: 'Partager',
             onPressed: onShare,
-            icon: const Icon(Icons.share_rounded, color: Colors.white),
+            icon: Icon(Icons.share_rounded, color: ink),
           ),
           IconButton(
             tooltip: reading ? 'Quitter le mode lecture' : 'Mode lecture',
             onPressed: onReading,
-            icon: Icon(reading ? Icons.fullscreen_exit_rounded : Icons.fullscreen_rounded, color: Colors.white),
+            icon: Icon(reading ? Icons.fullscreen_exit_rounded : Icons.fullscreen_rounded, color: ink),
           ),
         ],
       ),
@@ -310,193 +502,345 @@ class _TopBar extends StatelessWidget {
 
 // ── Le verset ────────────────────────────────────────────────────────────────
 
-/// Texte du passage, avec les numéros de versets si la version en a plusieurs.
-class _PassageText extends StatelessWidget {
-  const _PassageText({required this.text, required this.version, required this.style});
-
-  final String text;
-  final VerseVersion? version;
-  final TextStyle style;
-
-  @override
-  Widget build(BuildContext context) {
-    final lines = version?.lines ?? const <VerseLine>[];
-    if (lines.length < 2) {
-      final t = version == null ? text : '« ${text.trim()} »';
-      return Text(t, style: style);
-    }
-    return Text.rich(TextSpan(style: style, children: [
-      for (final l in lines) ...[
-        TextSpan(
-          text: '${l.verse} ',
-          style: style.copyWith(
-            fontSize: (style.fontSize ?? 20) * 0.6,
-            color: AppColors.sun,
-            fontStyle: FontStyle.normal,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        TextSpan(text: '${l.text} '),
-      ],
-    ]));
-  }
-}
-
+/// Premier écran : le design en plein cadre, la barre du haut, le verset
+/// (taille ajustée à la place, ≥ 22 sp), la référence, les actions, la
+/// vignette du sélecteur et l'indicateur « Faire défiler ».
 class _VerseHero extends StatelessWidget {
   const _VerseHero({
+    required this.size,
+    required this.design,
+    required this.prefs,
+    required this.topBar,
     required this.text,
     required this.reference,
     required this.label,
     required this.version,
     required this.missing,
+    this.fontSize,
+    this.actions,
+    this.onScrollHint,
+    this.reading = false,
   });
 
+  final Size size;
+  final VerseDesign design;
+  final VerseStylePrefs prefs;
+  final _TopBar topBar;
   final String text;
   final String reference;
-  final String label;
+  final String? label;
   final VerseVersion? version;
   final String? missing;
 
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 44,
-            height: 4,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: AppColors.sunGradient),
-              borderRadius: BorderRadius.circular(AppRadius.pill),
-            ),
-          ),
-          const SizedBox(height: 18),
-          _PassageText(
-            text: text,
-            version: version,
-            style: AppTextStyles.verseQuote.copyWith(color: Colors.white, fontSize: 24, height: 1.55),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            reference,
-            style: AppTextStyles.verseReference.copyWith(color: AppColors.sun, fontSize: 18),
-          ),
-          const SizedBox(height: 4),
-          Text(label, style: AppTextStyles.bodySmall.copyWith(color: Colors.white70)),
-          if (missing != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              'Passage absent de la version « $missing » : texte du jour affiché.',
-              style: AppTextStyles.bodySmall.copyWith(color: Colors.white70, fontStyle: FontStyle.italic),
-            ),
-          ],
-        ],
-      ),
+  /// Taille du verset (calculée par [layout]) ; null en mode lecture.
+  final double? fontSize;
+  final Widget Function(ResolvedVerseDesign r)? actions;
+  final VoidCallback? onScrollHint;
+  final bool reading;
+
+  static const _side = 24.0;
+
+  /// Place prise par tout ce qui entoure le verset (barre, référence,
+  /// libellé, actions, indicateur), en pixels logiques.
+  /// Marge de sécurité incluse (arrondis, actions sur deux lignes).
+  static double _chrome(VerseDesign d, double scale, EdgeInsets safe,
+          {required bool label, required bool missing, required double actionsHeight}) =>
+      safe.top + 52 + 20 + (d.accent == VerseAccent.line ? 17 : 0) +
+      (16 + 26) * scale +
+      (label ? (4 + 18) * scale : 0) +
+      (missing ? 8 + 36 * scale : 0) +
+      actionsHeight +
+      (6 + 16 + 22 + 6) * scale + 8 + 16 + safe.bottom;
+
+  /// Hauteur du premier écran (au moins l'écran) et taille du verset.
+  static ({double height, double fontSize}) layout({
+    required Size screen,
+    required VerseDesign design,
+    required VerseStylePrefs prefs,
+    required String text,
+    required VerseVersion? version,
+    required double scale,
+    required EdgeInsets safe,
+    required DailyVerse verse,
+    bool label = true,
+    bool missing = false,
+  }) {
+    final actionsHeight = _ReactionsRow.measureHeight(verse, screen.width, scale);
+    final shown = version == null ? text : '« ${text.trim()} »';
+    final width = screen.width - 2 * _side;
+    final room = screen.height -
+        _chrome(design, scale, safe, label: label, missing: missing, actionsHeight: actionsHeight);
+    final size = fitVerseFontSize(
+      text: shown,
+      surface: VerseSurface.fullscreen,
+      prefs: prefs,
+      maxWidth: width,
+      maxHeight: room,
+      scale: scale,
     );
+    // Verset très long : le premier écran s'allonge plutôt que de rapetisser le texte.
+    final needed = measureVerseHeight(shown, prefs, size, width) + 8;
+    return (height: needed > room ? screen.height + needed - room : screen.height, fontSize: size);
   }
-}
-
-class _ReadingView extends StatelessWidget {
-  const _ReadingView({required this.text, required this.reference, required this.version});
-
-  final String text;
-  final String reference;
-  final VerseVersion? version;
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) => SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(28, 12, 28, 40),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(minHeight: constraints.maxHeight - 52),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _PassageText(
-                text: text,
-                version: version,
-                style: AppTextStyles.verseQuote.copyWith(color: Colors.white, fontSize: 30, height: 1.5),
-              ),
-              const SizedBox(height: 24),
-              Text(reference, style: AppTextStyles.verseReference.copyWith(color: AppColors.sun, fontSize: 22)),
-            ],
+    return VerseCanvas(
+      design: design,
+      size: size,
+      builder: (context, r) {
+        final align = prefs.align;
+        final cross = align == VerseAlign.center ? CrossAxisAlignment.center : CrossAxisAlignment.start;
+        final safe = MediaQuery.paddingOf(context);
+        final verseSize = fontSize ??
+            fitVerseFontSize(
+              text: text,
+              surface: VerseSurface.fullscreen,
+              prefs: prefs.copyWith(size: VerseTextSize.large),
+              maxWidth: size.width - 2 * _side,
+              maxHeight: size.height - safe.vertical - 160,
+              scale: verseTextScale(context),
+            );
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: r.lightInk ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+          child: Padding(
+            padding: EdgeInsets.only(top: safe.top, bottom: safe.bottom),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                topBar.colored(r),
+                Expanded(
+                  child: Semantics(
+                    container: true,
+                    label: 'Verset du jour, $reference',
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(_side, 12, _side, 8),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: cross,
+                        children: [
+                          VerseAccentLine(resolved: r, align: align),
+                          VersePassageText(
+                            text: text,
+                            version: version,
+                            accent: r.accent,
+                            textAlign: align.textAlign,
+                            style: verseTextStyle(prefs, verseSize, r.ink),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(reference,
+                              textAlign: align.textAlign,
+                              style: verseReferenceStyle(r.accent, size: reading ? 20 : 17)),
+                          if (label != null) ...[
+                            const SizedBox(height: 4),
+                            Text(label!, textAlign: align.textAlign, style: verseLabelStyle(r.ink)),
+                          ],
+                          if (missing != null) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              'Passage absent de la version « $missing » : texte du jour affiché.',
+                              textAlign: align.textAlign,
+                              style: verseLabelStyle(r.ink).copyWith(fontWeight: FontWeight.w400),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                if (actions != null) actions!(r),
+                if (onScrollHint != null)
+                  Center(
+                    child: Semantics(
+                      button: true,
+                      label: 'Faire défiler : versions, prière, commentaires',
+                      excludeSemantics: true,
+                      child: InkWell(
+                        onTap: onScrollHint,
+                        borderRadius: BorderRadius.circular(AppRadius.pill),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text('Faire défiler', style: verseLabelStyle(r.ink).copyWith(fontSize: 11.5)),
+                              Icon(Icons.keyboard_arrow_down_rounded, color: r.ink, size: 22),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 8),
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
 
 class _ReactionsRow extends StatelessWidget {
-  const _ReactionsRow({required this.verse, required this.onLike, required this.onPray});
+  const _ReactionsRow({
+    required this.verse,
+    required this.resolved,
+    required this.onLike,
+    required this.onPray,
+    required this.onComments,
+    required this.onShare,
+    required this.picker,
+  });
 
   final DailyVerse verse;
+  final ResolvedVerseDesign resolved;
   final VoidCallback onLike;
   final VoidCallback onPray;
+  final VoidCallback onComments;
+  final VoidCallback onShare;
+  final Widget picker;
+
+  static String likeLabel(DailyVerse v) => v.likeCount > 0 ? "J'aime · ${v.likeCount}" : "J'aime";
+  static String prayLabel(DailyVerse v) => v.prayerCount > 0 ? 'Je prie · ${v.prayerCount}' : 'Je prie';
+  static const _commentLabel = 'Commenter';
+  static const _shareLabel = 'Partager';
+  static const _padding = EdgeInsets.fromLTRB(20, 4, 12, 4);
+  static const _pickerWidth = 56.0 + 8;
+  static const _pickerHeight = 64.0;
+
+  /// Hauteur exacte de la rangée (retour à la ligne des boutons simulé).
+  static double measureHeight(DailyVerse verse, double width, double scale) {
+    final style = AppTextStyles.labelMedium.copyWith(fontWeight: FontWeight.w700);
+    final available = width - _padding.horizontal - _pickerWidth;
+    double textWidth(String t) {
+      final p = TextPainter(
+        text: TextSpan(text: t, style: style),
+        textDirection: TextDirection.ltr,
+        textScaler: TextScaler.linear(scale),
+        maxLines: 1,
+      )..layout();
+      final w = p.width;
+      p.dispose();
+      return w;
+    }
+
+    final buttonHeight = 16 + 2 + 19.6 * scale;
+    var rows = 1;
+    var x = 0.0;
+    for (final l in [likeLabel(verse), prayLabel(verse), _commentLabel, _shareLabel]) {
+      final w = 12 + 18 + 6 + textWidth(l) + 12 + 4;
+      if (x > 0 && x + 8 + w > available) {
+        rows++;
+        x = w;
+      } else {
+        x += (x > 0 ? 8 : 0) + w;
+      }
+    }
+    final wrap = rows * buttonHeight + (rows - 1) * 8;
+    return _padding.vertical + (wrap > _pickerHeight ? wrap : _pickerHeight);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final r = resolved;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
+      padding: _padding,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          _GlassButton(
-            icon: verse.isLiked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-            label: verse.likeCount > 0 ? "J'aime · ${verse.likeCount}" : "J'aime",
-            active: verse.isLiked,
-            onTap: onLike,
+          Expanded(
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _GlassButton(
+                  icon: verse.isLiked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                  label: likeLabel(verse),
+                  active: verse.isLiked,
+                  resolved: r,
+                  onTap: onLike,
+                ),
+                _GlassButton(
+                  icon: verse.isPrayed ? Icons.volunteer_activism : Icons.volunteer_activism_outlined,
+                  label: prayLabel(verse),
+                  active: verse.isPrayed,
+                  resolved: r,
+                  onTap: onPray,
+                ),
+                _GlassButton(
+                  icon: Icons.chat_bubble_outline_rounded,
+                  label: _commentLabel,
+                  active: false,
+                  resolved: r,
+                  onTap: onComments,
+                ),
+                _GlassButton(
+                  icon: Icons.ios_share_rounded,
+                  label: _shareLabel,
+                  active: false,
+                  resolved: r,
+                  onTap: onShare,
+                ),
+              ],
+            ),
           ),
-          _GlassButton(
-            icon: verse.isPrayed ? Icons.volunteer_activism : Icons.volunteer_activism_outlined,
-            label: verse.prayerCount > 0 ? 'Je prie · ${verse.prayerCount}' : 'Je prie',
-            active: verse.isPrayed,
-            onTap: onPray,
-          ),
+          const SizedBox(width: 8),
+          picker,
         ],
       ),
     );
   }
 }
 
+/// Bouton posé sur le design : contour et texte à l'encre (ou à l'accent
+/// quand il est actif), sans fond, pour garder le contraste calculé.
 class _GlassButton extends StatelessWidget {
-  const _GlassButton({required this.icon, required this.label, required this.active, required this.onTap});
+  const _GlassButton({
+    required this.icon,
+    required this.label,
+    required this.active,
+    required this.resolved,
+    required this.onTap,
+  });
 
   final IconData icon;
   final String label;
   final bool active;
+  final ResolvedVerseDesign resolved;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final fg = active ? AppColors.primaryDark : Colors.white;
-    return Material(
-      color: active ? AppColors.sun : Colors.white.withAlpha(28),
-      borderRadius: BorderRadius.circular(AppRadius.pill),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadius.pill),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 18, color: fg),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.labelMedium.copyWith(color: fg, fontWeight: FontWeight.w600),
+    final fg = active ? resolved.accent : resolved.ink;
+    return Semantics(
+      button: true,
+      selected: active,
+      child: Material(
+        type: MaterialType.transparency,
+        shape: StadiumBorder(side: BorderSide(color: fg.withValues(alpha: active ? 1 : 0.55), width: active ? 1.6 : 1)),
+        child: InkWell(
+          customBorder: const StadiumBorder(),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 18, color: fg),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.labelMedium.copyWith(
+                      color: fg,
+                      fontWeight: active ? FontWeight.w700 : FontWeight.w600,
+                    ),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -530,21 +874,21 @@ class _VersionSelector extends ConsumerWidget {
 
     final notifier = ref.read(preferredVerseTranslationProvider.notifier);
     return Padding(
-      padding: const EdgeInsets.only(top: 12),
+      padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Text(
               'Versions de la Bible',
-              style: AppTextStyles.labelSmall.copyWith(color: Colors.white70, letterSpacing: 0.4),
+              style: AppTextStyles.labelMedium.copyWith(color: AppColors.primary, fontWeight: FontWeight.w700),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
                 _VersionChip(
@@ -571,8 +915,8 @@ class _VersionSelector extends ConsumerWidget {
           ),
           if (note != null)
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 6, 24, 0),
-              child: Text(note, style: AppTextStyles.bodySmall.copyWith(color: Colors.white70)),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Text(note, style: AppTextStyles.bodySmall),
             ),
         ],
       ),
@@ -592,12 +936,12 @@ class _VersionChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final enabled = onTap != null;
-    final fg = selected ? AppColors.primaryDark : (enabled ? Colors.white : Colors.white38);
+    final fg = selected ? AppColors.surface : (enabled ? AppColors.textPrimary : AppColors.textSecondary);
     final chip = Padding(
       padding: const EdgeInsets.only(right: 8),
       child: Material(
-        color: selected ? AppColors.sun : Colors.white.withAlpha(enabled ? 28 : 12),
-        shape: StadiumBorder(side: BorderSide(color: selected ? AppColors.sun : Colors.white24)),
+        color: selected ? AppColors.primary : AppColors.surface,
+        shape: StadiumBorder(side: BorderSide(color: selected ? AppColors.primary : AppColors.border)),
         child: InkWell(
           customBorder: const StadiumBorder(),
           onTap: onTap,
@@ -641,22 +985,22 @@ class _CompareList extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: 10),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: Colors.white.withAlpha(20),
+            color: AppColors.background,
             borderRadius: BorderRadius.circular(AppRadius.md),
-            border: Border.all(color: Colors.white24),
+            border: Border.all(color: AppColors.border),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: AppTextStyles.labelSmall.copyWith(color: AppColors.sun, fontWeight: FontWeight.w700)),
+              Text(title, style: AppTextStyles.labelSmall.copyWith(color: AppColors.primary, fontWeight: FontWeight.w700)),
               const SizedBox(height: 6),
               body,
             ],
           ),
         );
-    final style = AppTextStyles.bodyMedium.copyWith(color: Colors.white, height: 1.5);
+    final style = AppTextStyles.bodyMedium.copyWith(height: 1.5);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
       child: Column(
         children: [
           block('Texte du jour', Text(data.originalText, style: style)),
@@ -664,9 +1008,9 @@ class _CompareList extends StatelessWidget {
             block(
               '${v.code} · ${v.name}',
               v.available
-                  ? _PassageText(text: v.text!, version: v, style: style)
+                  ? VersePassageText(text: v.text!, version: v, style: style, accent: AppColors.secondaryDark)
                   : Text("Ce passage n'est pas disponible dans cette version.",
-                      style: style.copyWith(color: Colors.white60, fontStyle: FontStyle.italic)),
+                      style: style.copyWith(color: AppColors.textSecondary, fontStyle: FontStyle.italic)),
             ),
         ],
       ),
@@ -687,12 +1031,8 @@ class _Participation extends StatelessWidget {
   Widget build(BuildContext context) {
     final online = verse.id > 0;
     return Container(
-      constraints: BoxConstraints(minHeight: MediaQuery.sizeOf(context).height * 0.5),
-      decoration: const BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xxl)),
-      ),
-      padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom + 24),
+      constraints: BoxConstraints(minHeight: MediaQuery.sizeOf(context).height * 0.4),
+      padding: const EdgeInsets.only(bottom: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

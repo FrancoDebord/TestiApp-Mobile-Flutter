@@ -290,6 +290,7 @@ class LiveStageButton extends StatelessWidget {
     required this.ctrl,
     required this.onPressed,
     this.labeled = false,
+    this.light = false,
     super.key,
   });
 
@@ -297,12 +298,19 @@ class LiveStageButton extends StatelessWidget {
   final VoidCallback onPressed;
   final bool labeled;
 
+  /// Sur fond clair (panneau de chat) : pilule bleue au lieu de sombre.
+  final bool light;
+
   @override
   Widget build(BuildContext context) {
     final staff = ctrl.canModerate;
     final count = ctrl.stage.queueCount;
     final mine = ctrl.stage.mine;
     final invited = ctrl.pendingInvitation != null;
+    final neutralBg = light ? AppColors.primary : Colors.black.withAlpha(140);
+    final neutralBorder = light
+        ? AppColors.primary
+        : Colors.white.withAlpha(70);
 
     if (!labeled) {
       return Tooltip(
@@ -329,8 +337,8 @@ class LiveStageButton extends StatelessWidget {
         ? (
             Icons.groups_rounded,
             count > 0 ? 'Intervenants · $count' : 'Intervenants',
-            count > 0 ? kLiveRed : Colors.black.withAlpha(140),
-            count > 0 ? kLiveRed : Colors.white.withAlpha(70),
+            count > 0 ? kLiveRed : neutralBg,
+            count > 0 ? kLiveRed : neutralBorder,
           )
         : invited
         ? (Icons.mic_rounded, 'C\'est votre tour !', kLiveRed, kLiveRed)
@@ -338,14 +346,14 @@ class LiveStageButton extends StatelessWidget {
         ? (
             Icons.hourglass_top_rounded,
             'En file · n°${mine.position ?? '?'}',
-            Colors.black.withAlpha(150),
+            light ? AppColors.primary : Colors.black.withAlpha(150),
             AppColors.secondary,
           )
         : (
             Icons.front_hand_rounded,
             'Intervenir',
-            Colors.black.withAlpha(140),
-            Colors.white.withAlpha(90),
+            neutralBg,
+            light ? AppColors.primary : Colors.white.withAlpha(90),
           );
 
     return Semantics(
@@ -360,7 +368,9 @@ class LiveStageButton extends StatelessWidget {
           customBorder: const StadiumBorder(),
           onTap: onPressed,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            padding: light
+                ? const EdgeInsets.symmetric(horizontal: 12, vertical: 7)
+                : const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [

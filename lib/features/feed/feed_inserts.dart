@@ -8,7 +8,7 @@ import '../events/models/event_models.dart';
 import '../prayer/models/prayer_models.dart';
 import '../prophecies/models/public_prophecy.dart';
 
-// Éléments insérés dans « Mon fil » : GET /feed/inserts — événements à venir, sessions de
+// Éléments insérés dans « Mon fil » : GET /feed/inserts — événements à venir, en cours et passés, sessions de
 // prière programmées, requêtes de prière et paroles prophétiques publiques, ceux des comptes
 // suivis d'abord. Doc serveur : fonctionnalites/recommandations.md
 
@@ -19,15 +19,20 @@ class FeedInsertGroup {
     this.prayerSessions = const [],
     this.prayerRequests = const [],
     this.prophecies = const [],
+    this.pastEvents = const [],
   });
 
+  /// À venir et en cours.
   final List<ChristianEvent> events;
+
+  /// Terminés récemment : revivre l'événement (témoignages, commentaires).
+  final List<ChristianEvent> pastEvents;
   final List<PrayerSession> prayerSessions;
   final List<PrayerRequest> prayerRequests;
   final List<PublicProphecy> prophecies;
 
   /// Sources dans l'ordre d'alternance (même ordre que le site).
-  List<List<Object>> get sources => [events, prayerSessions, prayerRequests, prophecies];
+  List<List<Object>> get sources => [events, prayerSessions, prayerRequests, prophecies, pastEvents];
 
   static List<T> _list<T>(Object? raw, T? Function(Map<String, dynamic>) parse) => [
         if (raw is List)
@@ -51,6 +56,7 @@ class FeedInsertGroup {
       prayerSessions: _list(m['prayerSessions'], PrayerSession.fromJson),
       prayerRequests: _list(m['prayerRequests'], PrayerRequest.fromJson),
       prophecies: _list(m['prophecies'], PublicProphecy.tryParse),
+      pastEvents: _list(m['pastEvents'], ChristianEvent.fromJson),
     );
   }
 }

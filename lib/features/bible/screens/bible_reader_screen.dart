@@ -6,6 +6,8 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../shared/search/search_suggestions.dart';
+import '../../../shared/widgets/search_autocomplete_field.dart';
 import '../models/bible_models.dart';
 import '../providers/bible_providers.dart';
 
@@ -136,6 +138,89 @@ class _ReaderBodyState extends ConsumerState<_ReaderBody> {
         );
   }
 
+  // ── Aller à un livre (autocomplétion) ─ docs/fonctionnalites/recherche.md ──
+  // Livres de la traduction proposés sur l'appareil (hors ligne aussi), complétés
+  // par les suggestions du serveur ; « Jean 3 » ouvre directement le chapitre.
+
+  List<SearchDirectResult> _localBookResults(String query) {
+    final q = foldForSearch(query.trim().replaceFirst(RegExp(r'\s+\d+$'), ''));
+    if (q.isEmpty) return const [];
+    final books = widget.books.where((b) => findSearchMatch(b.name, q) != null).toList()
+      ..sort((a, b) => (foldForSearch(a.name).startsWith(q) ? 0 : 1)
+          .compareTo(foldForSearch(b.name).startsWith(q) ? 0 : 1));
+    return [
+      for (final b in books.take(4))
+        SearchDirectResult(
+          type: SearchResultType.bible,
+          id: '${b.bookNumber}',
+          label: b.name,
+          sublabel: b.chaptersCount > 0 ? 'Bible · ${b.chaptersCount} chapitres' : 'Bible',
+          book: b.bookNumber,
+          translation: widget.translationCode,
+        ),
+    ];
+  }
+
+  /// « Jean 3 » → (livre, chapitre) ; « Jean » → (livre, 1).
+  (int, int)? _parseReference(String text) {
+    final m = RegExp(r'^(.+?)\s+(\d+)$').firstMatch(text.trim());
+    final name = (m?.group(1) ?? text).trim();
+    final chapter = int.tryParse(m?.group(2) ?? '') ?? 1;
+    final found = _localBookResults(name);
+    if (found.isEmpty) return null;
+    return (found.first.book!, chapter);
+  }
+
+  void _goToBook(int bookNumber, int chapter) {
+    final index = widget.books.indexWhere((b) => b.bookNumber == bookNumber);
+    if (index < 0) return;
+    final max = widget.books[index].chaptersCount;
+    _navigate(index, max > 0 ? chapter.clamp(1, max) : chapter);
+  }
+
+  void _openBookSearch() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      builder: (sheet) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(sheet).bottom),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('Aller à un livre', style: AppTextStyles.h4),
+                const SizedBox(height: 12),
+                SearchAutocompleteField(
+                  autofocus: true,
+                  scope: SearchScope.bible,
+                  recentKey: 'bible',
+                  hintText: 'Livre (ex. Jean 3)',
+                  localResults: _localBookResults,
+                  onResultSelected: (r) {
+                    Navigator.pop(sheet);
+                    if (r.book != null) _goToBook(r.book!, 1);
+                  },
+                  onSubmitted: (q) {
+                    final target = _parseReference(q);
+                    if (target == null) return;
+                    Navigator.pop(sheet);
+                    _goToBook(target.$1, target.$2);
+                  },
+                ),
+                // Place pour la liste de suggestions sous le champ.
+                const SizedBox(height: 300),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   void _prevChapter() {
     if (_chapter > 1) {
       _navigate(_bookIndex, _chapter - 1);
@@ -244,8 +329,8 @@ class _ReaderBodyState extends ConsumerState<_ReaderBody> {
           IconButton(
             icon: const Icon(Icons.search_rounded,
                 color: AppColors.textSecondary),
-            onPressed: () {},
-            tooltip: 'Rechercher',
+            onPressed: _openBookSearch,
+            tooltip: 'Aller à un livre',
           ),
         ],
       ),

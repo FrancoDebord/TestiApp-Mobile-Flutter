@@ -23,6 +23,9 @@ class EventFailure implements Exception {
 /// Liste demandée à `GET /events`.
 enum EventScope {
   upcoming('upcoming'),
+
+  /// Commencés et pas encore terminés.
+  ongoing('ongoing'),
   past('past'),
   going('going'),
   mine('mine'),
@@ -95,12 +98,17 @@ class EventsRepository {
     EventType? type,
     String? query,
     int page = 1,
+    String? organizerId,
+    int? limit,
   }) =>
       _guard(() async {
         final res = await _api.get<dynamic>(AppConstants.events, query: {
           'scope': scope.apiValue,
           if (type != null) 'type': type.apiValue,
           if (query != null && query.trim().isNotEmpty) 'q': query.trim(),
+          // Profil d'un organisateur : ses seuls événements.
+          'organizer_id': ?organizerId,
+          'limit': ?limit,
           'page': page,
         });
         return _page(res, _asList(res.data).map(ChristianEvent.fromJson).toList());

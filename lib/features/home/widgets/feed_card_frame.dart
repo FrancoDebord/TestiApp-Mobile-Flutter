@@ -11,12 +11,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../shared/widgets/guest_gate.dart';
+import '../../repost/testimony_share_sheet.dart';
+import '../../testimony/testimony_delete.dart';
 import '../models/testimony_model.dart';
 import '../providers/home_providers.dart';
 import 'testimony_action_bar.dart';
@@ -50,8 +51,10 @@ class FeedCardFrame extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = testimony;
-    final liked = ref.watch(likedIdsProvider).contains(t.id);
-    final prayed = ref.watch(prayedIdsProvider).contains(t.id);
+    // État renvoyé par le serveur (une réaction « j'aime » et une « je prie » au plus).
+    final state = ref.watch(interactionProvider);
+    final liked = state.likedOf(t);
+    final prayed = state.prayedOf(t);
     final saved = ref.watch(savedIdsProvider).contains(t.id);
     final interactions = ref.read(interactionProvider.notifier);
 
@@ -62,31 +65,16 @@ class FeedCardFrame extends ConsumerWidget {
 
     Future<void> react(ReactionType? type) async {
       if (!await ensureMember(context, ref, 'réagir aux témoignages')) return;
-      type == null
-          ? interactions.removeReaction(t.id)
-          : interactions.setReaction(t.id, type);
+      interactions.react(t, type);
     }
 
     Future<void> pray() async {
       if (!await ensureMember(context, ref, 'réagir aux témoignages')) return;
-      interactions.togglePray(t.id);
+      interactions.togglePray(t);
     }
 
-    void shareFull() {
-      final excerpt = shareExcerpt?.trim() ?? '';
-      SharePlus.instance.share(ShareParams(
-        text: '${t.title}\n\n'
-            '${excerpt.isEmpty ? '' : '$excerpt\n\n'}'
-            '${t.shareLink}\n\n'
-            'Partagé depuis l\'application Témoignages ✝️',
-      ));
-      interactions.recordShare(t.id);
-    }
-
-    void shareLink() {
-      SharePlus.instance.share(ShareParams(text: '${t.title}\n\n${t.shareLink}'));
-      interactions.recordShare(t.id);
-    }
+    void shareFull() => showTestimonyShareSheet(context, ref, t, excerpt: shareExcerpt);
+    void shareLink() => showTestimonyShareSheet(context, ref, t);
 
     return DecoratedBox(
       decoration: AppShadows.cardDecoration,
@@ -126,6 +114,9 @@ class FeedCardFrame extends ConsumerWidget {
                           onShare: shareFull,
                           onReport: () =>
                               context.push('/testimony/${t.id}/report'),
+                          onDelete: canDeleteTestimony(ref, t)
+                              ? () => confirmDeleteTestimony(context, ref, t)
+                              : null,
                         ),
                       ],
                     ),
@@ -162,7 +153,9 @@ class FeedCardFrame extends ConsumerWidget {
                       isLiked: liked,
                       isPrayed: prayed,
                       isSaved: saved,
-                      currentReaction: ref.watch(reactionsMapProvider)[t.id],
+                      currentReaction: state.reactionOf(t),
+                      likesCount: state.likesOf(t),
+                      prayersCount: state.prayersOf(t),
                       onReact: react,
                       onPray: pray,
                       onComment: () =>

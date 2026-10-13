@@ -14,6 +14,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../core/app_constants.dart';
+import 'acting_as_interceptor.dart';
 
 // ── Secure storage singleton ───────────────────────────────────────────────────
 
@@ -295,7 +296,7 @@ class LoggingInterceptor extends Interceptor {
 // ── ApiService ─────────────────────────────────────────────────────────────────
 
 class ApiService {
-  ApiService._({required FlutterSecureStorage storage}) {
+  ApiService._({required FlutterSecureStorage storage, ActingAsStore? actingAs}) {
     _dio = Dio(
       BaseOptions(
         baseUrl: AppConstants.baseUrl,
@@ -310,6 +311,8 @@ class ApiService {
       ),
     )
       ..interceptors.add(AuthInterceptor(storage))
+      // Agir au nom d'un compte administré (en-tête X-Act-As).
+      ..interceptors.add(ActingAsInterceptor(actingAs ?? ActingAsStore()))
       ..interceptors.add(LoggingInterceptor());
 
     _dio.interceptors.add(RetryInterceptor(_dio));
@@ -395,9 +398,10 @@ class ApiService {
   Future<LaravelResponse<T>> delete<T>(
     String path, {
     dynamic data,
+    Map<String, dynamic>? query,
   }) async {
     final res = await _call(
-      () => _dio.delete<Map<String, dynamic>>(path, data: data),
+      () => _dio.delete<Map<String, dynamic>>(path, data: data, queryParameters: query),
     );
     return LaravelResponse.fromDio(res);
   }
@@ -436,7 +440,10 @@ class ApiService {
 
 // ── Provider ───────────────────────────────────────────────────────────────────
 
+/// Compte actif pour l'en-tête `X-Act-As` (mis à jour par actingAccountProvider).
+final actingAsStoreProvider = Provider<ActingAsStore>((_) => ActingAsStore());
+
 final apiServiceProvider = Provider<ApiService>((ref) {
   final storage = ref.watch(secureStorageProvider);
-  return ApiService._(storage: storage);
+  return ApiService._(storage: storage, actingAs: ref.watch(actingAsStoreProvider));
 });

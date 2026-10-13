@@ -2,6 +2,8 @@
 // (insérée dans « Mon fil » : GET /feed/inserts → prophecies). Doc serveur :
 // fonctionnalites/paroles-prophetiques.md et recommandations.md
 
+import 'prophecy.dart' show parseClockTime;
+
 class PublicProphecy {
   const PublicProphecy({
     required this.id,
@@ -15,6 +17,7 @@ class PublicProphecy {
     this.audioUrl,
     this.givenBy,
     this.receivedOn,
+    this.receivedTime,
     this.fulfilledOn,
   });
 
@@ -29,6 +32,9 @@ class PublicProphecy {
   final String? audioUrl;
   final String? givenBy;
   final DateTime? receivedOn;
+
+  /// Heure de réception « HH:MM », si l'auteur l'a notée.
+  final String? receivedTime;
   final DateTime? fulfilledOn;
 
   static String? _s(Object? v) => v is String && v.trim().isNotEmpty ? v : null;
@@ -55,6 +61,7 @@ class PublicProphecy {
       audioUrl: _s(m['audioUrl']),
       givenBy: _s(m['givenBy']),
       receivedOn: _d(m['receivedOn']),
+      receivedTime: parseClockTime(m['receivedTime']),
       fulfilledOn: _d(m['fulfilledOn']),
     );
   }

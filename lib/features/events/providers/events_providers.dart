@@ -70,8 +70,8 @@ final eventLayoutProvider =
 
 // ── Liste (paginée) ──────────────────────────────────────────────────────────
 
-/// Filtre d'une liste d'événements.
-typedef EventListKey = ({EventScope scope, EventType? type});
+/// Filtre d'une liste d'événements ([query] : recherche titre / ville / lieu, `null` sinon).
+typedef EventListKey = ({EventScope scope, EventType? type, String? query});
 
 class EventListState {
   const EventListState({
@@ -111,7 +111,7 @@ class EventListNotifier extends AsyncNotifier<EventListState> {
 
   @override
   Future<EventListState> build() async {
-    final p = await _repo.list(scope: key.scope, type: key.type);
+    final p = await _repo.list(scope: key.scope, type: key.type, query: key.query);
     return EventListState(items: p.items, hasMore: p.hasMore, canCreate: p.canCreate);
   }
 
@@ -120,7 +120,7 @@ class EventListNotifier extends AsyncNotifier<EventListState> {
     if (s == null || !s.hasMore || s.loadingMore) return;
     state = AsyncData(s.copyWith(loadingMore: true));
     try {
-      final p = await _repo.list(scope: key.scope, type: key.type, page: s.page + 1);
+      final p = await _repo.list(scope: key.scope, type: key.type, query: key.query, page: s.page + 1);
       state = AsyncData(s.copyWith(
         items: [...s.items, ...p.items],
         page: p.page,

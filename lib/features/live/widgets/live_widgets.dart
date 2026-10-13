@@ -225,8 +225,16 @@ class LiveCommentsList extends StatefulWidget {
     this.onModerate,
     this.hostId,
     this.pinnedId,
+    this.fadeTop = true,
+    this.light = false,
     super.key,
   });
+
+  /// Fondu des anciens messages en haut (utile posé sur la vidéo).
+  final bool fadeTop;
+
+  /// Panneau clair sous la vidéo : rangées simples (avatar, nom gris, texte).
+  final bool light;
 
   final List<LiveComment> comments;
   final void Function(LiveComment comment)? onModerate;
@@ -268,6 +276,141 @@ class _LiveCommentsListState extends State<LiveCommentsList> {
   @override
   Widget build(BuildContext context) {
     final items = widget.comments.reversed.toList();
+    final list = ListView.builder(
+      controller: _scroll,
+      reverse: true,
+      padding: EdgeInsets.only(top: widget.fadeTop ? 40 : 8),
+      itemCount: items.length,
+      itemBuilder: (context, i) {
+        final c = items[i];
+        final isHost = widget.hostId != null && c.user.id == widget.hostId;
+        final isPinned = c.id == widget.pinnedId;
+        if (widget.light) {
+          return GestureDetector(
+            onLongPress: widget.onModerate == null
+                ? null
+                : () => widget.onModerate!(c),
+            child: _LightCommentRow(
+              comment: c,
+              isHost: isHost,
+              isPinned: isPinned,
+            ),
+          );
+        }
+        return GestureDetector(
+          onLongPress: widget.onModerate == null
+              ? null
+              : () => widget.onModerate!(c),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 3),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                LiveAvatar(person: c.user, size: 28),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(11, 6, 11, 7),
+                    decoration: BoxDecoration(
+                      // Message du diffuseur mis en évidence ; épinglé : liseré ambré.
+                      color: isHost
+                          ? Colors.black.withAlpha(150)
+                          : Colors.black.withAlpha(105),
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(4),
+                        topRight: Radius.circular(14),
+                        bottomLeft: Radius.circular(14),
+                        bottomRight: Radius.circular(14),
+                      ),
+                      border: Border.all(
+                        color: isPinned
+                            ? AppColors.secondary.withAlpha(180)
+                            : Colors.white.withAlpha(isHost ? 40 : 18),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (isPinned) ...[
+                              const Icon(
+                                Icons.push_pin_rounded,
+                                size: 12,
+                                color: AppColors.secondary,
+                              ),
+                              const SizedBox(width: 3),
+                            ],
+                            Flexible(
+                              child: Text(
+                                c.user.displayName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: isHost
+                                      ? AppColors.secondary
+                                      : Colors.white.withAlpha(210),
+                                  fontFamily: 'Plus Jakarta Sans',
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                            if (isHost) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 1,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.secondary,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: const Text(
+                                  'Diffuseur',
+                                  style: TextStyle(
+                                    color: Colors.black,
+                                    fontFamily: 'Plus Jakarta Sans',
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 9.5,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        MentionText(
+                          c.body,
+                          mentions: c.mentions,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontFamily: 'Plus Jakarta Sans',
+                            fontSize: 13.5,
+                            height: 1.35,
+                          ),
+                          mentionStyle: const TextStyle(
+                            color: AppColors.secondary,
+                            fontFamily: 'Plus Jakarta Sans',
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13.5,
+                            height: 1.35,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    if (!widget.fadeTop) return list;
     return ShaderMask(
       // Fondu en haut pour que les anciens messages s'effacent.
       shaderCallback: (rect) => const LinearGradient(
@@ -277,127 +420,108 @@ class _LiveCommentsListState extends State<LiveCommentsList> {
         stops: [0, 0.25],
       ).createShader(rect),
       blendMode: BlendMode.dstIn,
-      child: ListView.builder(
-        controller: _scroll,
-        reverse: true,
-        padding: const EdgeInsets.only(top: 40),
-        itemCount: items.length,
-        itemBuilder: (context, i) {
-          final c = items[i];
-          final isHost = widget.hostId != null && c.user.id == widget.hostId;
-          final isPinned = c.id == widget.pinnedId;
-          return GestureDetector(
-            onLongPress: widget.onModerate == null
-                ? null
-                : () => widget.onModerate!(c),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 3),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  LiveAvatar(person: c.user, size: 28),
-                  const SizedBox(width: 8),
-                  Flexible(
-                    child: Container(
-                      padding: const EdgeInsets.fromLTRB(11, 6, 11, 7),
-                      decoration: BoxDecoration(
-                        // Message du diffuseur mis en évidence ; épinglé : liseré ambré.
-                        color: isHost
-                            ? Colors.black.withAlpha(150)
-                            : Colors.black.withAlpha(105),
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(4),
-                          topRight: Radius.circular(14),
-                          bottomLeft: Radius.circular(14),
-                          bottomRight: Radius.circular(14),
-                        ),
-                        border: Border.all(
-                          color: isPinned
-                              ? AppColors.secondary.withAlpha(180)
-                              : Colors.white.withAlpha(isHost ? 40 : 18),
-                        ),
+      child: list,
+    );
+  }
+}
+
+/// Rangée de chat claire : avatar, nom en gris (badge « Diffuseur »), texte.
+class _LightCommentRow extends StatelessWidget {
+  const _LightCommentRow({
+    required this.comment,
+    required this.isHost,
+    required this.isPinned,
+  });
+
+  final LiveComment comment;
+  final bool isHost;
+  final bool isPinned;
+
+  @override
+  Widget build(BuildContext context) {
+    const font = 'Plus Jakarta Sans';
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 7),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          LiveAvatar(person: comment.user, size: 26),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    if (isPinned) ...[
+                      const Icon(
+                        Icons.push_pin_rounded,
+                        size: 12,
+                        color: AppColors.textSecondary,
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (isPinned) ...[
-                                const Icon(
-                                  Icons.push_pin_rounded,
-                                  size: 12,
-                                  color: AppColors.secondary,
-                                ),
-                                const SizedBox(width: 3),
-                              ],
-                              Flexible(
-                                child: Text(
-                                  c.user.displayName,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: isHost
-                                        ? AppColors.secondary
-                                        : Colors.white.withAlpha(210),
-                                    fontFamily: 'Plus Jakarta Sans',
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                              if (isHost) ...[
-                                const SizedBox(width: 6),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 1,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.secondary,
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: const Text(
-                                    'Diffuseur',
-                                    style: TextStyle(
-                                      color: Colors.black,
-                                      fontFamily: 'Plus Jakarta Sans',
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 9.5,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                          const SizedBox(height: 2),
-                          MentionText(
-                            c.body,
-                            mentions: c.mentions,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontFamily: 'Plus Jakarta Sans',
-                              fontSize: 13.5,
-                              height: 1.35,
-                            ),
-                            mentionStyle: const TextStyle(
-                              color: AppColors.secondary,
-                              fontFamily: 'Plus Jakarta Sans',
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13.5,
-                              height: 1.35,
-                            ),
-                          ),
-                        ],
+                      const SizedBox(width: 3),
+                    ],
+                    Flexible(
+                      child: Text(
+                        comment.user.displayName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: isHost
+                              ? AppColors.primary
+                              : AppColors.textSecondary,
+                          fontFamily: font,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12.5,
+                        ),
                       ),
                     ),
+                    if (isHost) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 1,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          'Diffuseur',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontFamily: font,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 9.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 1),
+                MentionText(
+                  comment.body,
+                  mentions: comment.mentions,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontFamily: font,
+                    fontSize: 14,
+                    height: 1.35,
                   ),
-                ],
-              ),
+                  mentionStyle: const TextStyle(
+                    color: AppColors.primary,
+                    fontFamily: font,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    height: 1.35,
+                  ),
+                ),
+              ],
             ),
-          );
-        },
+          ),
+        ],
       ),
     );
   }
@@ -411,8 +535,12 @@ class LiveCommentInput extends StatefulWidget {
     this.disabledHint,
     this.showPinOption = false,
     this.hint = 'Écrire un commentaire…',
+    this.light = false,
     super.key,
   });
+
+  /// Pilule grise sur fond clair (panneau de chat sous la vidéo).
+  final bool light;
 
   /// Renvoie un message d'erreur, ou null si le commentaire est publié.
   /// [pin] : épingler le message dès son envoi (option du diffuseur).
@@ -473,6 +601,9 @@ class _LiveCommentInputState extends State<LiveCommentInput> {
     final canSend = enabled && _ctrl.text.trim().isNotEmpty;
     final pin = _pin && widget.showPinOption;
     final focused = _focus.hasFocus;
+    final light = widget.light;
+    final textColor = light ? AppColors.textPrimary : Colors.white;
+    final mutedColor = light ? AppColors.textSecondary : Colors.white70;
 
     // Le thème global remplit les champs en blanc (InputDecorationTheme) :
     // tout est neutralisé ici pour garder un texte blanc lisible sur fond sombre.
@@ -483,12 +614,14 @@ class _LiveCommentInputState extends State<LiveCommentInput> {
       constraints: const BoxConstraints(minHeight: 48),
       padding: const EdgeInsets.fromLTRB(16, 4, 5, 4),
       decoration: BoxDecoration(
-        color: const Color(0xE6161022),
+        color: light ? const Color(0xFFF0F1F4) : const Color(0xE6161022),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
           width: focused || pin ? 1.5 : 1,
           color: pin
               ? AppColors.secondary
+              : light
+              ? (focused ? AppColors.primary : Colors.transparent)
               : focused
               ? Colors.white.withAlpha(170)
               : Colors.white.withAlpha(55),
@@ -509,13 +642,13 @@ class _LiveCommentInputState extends State<LiveCommentInput> {
               keyboardType: TextInputType.multiline,
               textInputAction: TextInputAction.send,
               onSubmitted: (_) => _send(),
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: textColor,
                 fontFamily: 'Plus Jakarta Sans',
                 fontSize: 14.5,
                 height: 1.35,
               ),
-              cursorColor: AppColors.secondary,
+              cursorColor: light ? AppColors.primary : AppColors.secondary,
               decoration: InputDecoration(
                 filled: false,
                 fillColor: Colors.transparent,
@@ -535,7 +668,9 @@ class _LiveCommentInputState extends State<LiveCommentInput> {
                     : widget.hint,
                 hintMaxLines: 1,
                 hintStyle: TextStyle(
-                  color: Colors.white.withAlpha(140),
+                  color: light
+                      ? AppColors.textSecondary
+                      : Colors.white.withAlpha(140),
                   fontFamily: 'Plus Jakarta Sans',
                   fontSize: 14.5,
                 ),
@@ -549,7 +684,7 @@ class _LiveCommentInputState extends State<LiveCommentInput> {
               child: Text(
                 '$length/500',
                 style: TextStyle(
-                  color: length >= 500 ? AppColors.danger : Colors.white70,
+                  color: length >= 500 ? AppColors.danger : mutedColor,
                   fontFamily: 'Plus Jakarta Sans',
                   fontSize: 11,
                 ),
@@ -564,13 +699,17 @@ class _LiveCommentInputState extends State<LiveCommentInput> {
               onPressed: enabled ? () => setState(() => _pin = !_pin) : null,
               icon: Icon(
                 pin ? Icons.push_pin_rounded : Icons.push_pin_outlined,
-                color: pin ? AppColors.secondary : Colors.white70,
+                color: pin ? AppColors.secondary : mutedColor,
                 size: 20,
               ),
             ),
           const SizedBox(width: 4),
           Material(
-            color: canSend ? kLiveRed : Colors.white.withAlpha(30),
+            color: canSend
+                ? (light ? AppColors.primary : kLiveRed)
+                : (light
+                      ? const Color(0xFFDDE0E6)
+                      : Colors.white.withAlpha(30)),
             shape: const CircleBorder(),
             child: InkWell(
               customBorder: const CircleBorder(),
@@ -592,7 +731,11 @@ class _LiveCommentInputState extends State<LiveCommentInput> {
                           label: 'Envoyer',
                           child: Icon(
                             Icons.send_rounded,
-                            color: canSend ? Colors.white : Colors.white54,
+                            color: canSend
+                                ? Colors.white
+                                : (light
+                                      ? AppColors.textSecondary
+                                      : Colors.white54),
                             size: 18,
                           ),
                         ),
@@ -615,12 +758,16 @@ class LivePinnedBanner extends StatefulWidget {
     required this.comment,
     this.hostId,
     this.onUnpin,
+    this.light = false,
     super.key,
   });
 
   final LiveComment comment;
   final String? hostId;
   final VoidCallback? onUnpin;
+
+  /// Carte claire dans le panneau de chat sous la vidéo.
+  final bool light;
 
   @override
   State<LivePinnedBanner> createState() => _LivePinnedBannerState();
@@ -648,9 +795,15 @@ class _LivePinnedBannerState extends State<LivePinnedBanner> {
           margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
           padding: const EdgeInsets.fromLTRB(10, 8, 4, 8),
           decoration: BoxDecoration(
-            color: Colors.black.withAlpha(150),
+            color: widget.light
+                ? const Color(0xFFF5F6F8)
+                : Colors.black.withAlpha(150),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.secondary.withAlpha(170)),
+            border: Border.all(
+              color: widget.light
+                  ? AppColors.border
+                  : AppColors.secondary.withAlpha(170),
+            ),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -674,8 +827,10 @@ class _LivePinnedBannerState extends State<LivePinnedBanner> {
                           : 'Épinglé · ${c.user.displayName}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.secondary,
+                      style: TextStyle(
+                        color: widget.light
+                            ? AppColors.textSecondary
+                            : AppColors.secondary,
                         fontFamily: 'Plus Jakarta Sans',
                         fontWeight: FontWeight.w700,
                         fontSize: 11,
@@ -686,8 +841,10 @@ class _LivePinnedBannerState extends State<LivePinnedBanner> {
                       c.body,
                       maxLines: _expanded ? 8 : 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: widget.light
+                            ? AppColors.textPrimary
+                            : Colors.white,
                         fontFamily: 'Plus Jakarta Sans',
                         fontSize: 13,
                         height: 1.35,
@@ -701,9 +858,11 @@ class _LivePinnedBannerState extends State<LivePinnedBanner> {
                   tooltip: 'Désépingler',
                   visualDensity: VisualDensity.compact,
                   onPressed: widget.onUnpin,
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.close_rounded,
-                    color: Colors.white70,
+                    color: widget.light
+                        ? AppColors.textSecondary
+                        : Colors.white70,
                     size: 18,
                   ),
                 ),
@@ -738,6 +897,7 @@ class LiveReactionButtons extends StatelessWidget {
     required this.counts,
     required this.onReact,
     this.enabled = true,
+    this.direction = Axis.vertical,
     super.key,
   });
 
@@ -745,14 +905,21 @@ class LiveReactionButtons extends StatelessWidget {
   final void Function(LiveReactionType type) onReact;
   final bool enabled;
 
+  /// Colonne sur la vidéo (plein écran) ou ligne sous le chat (vue « YouTube »).
+  final Axis direction;
+
   @override
   Widget build(BuildContext context) {
-    return Column(
+    final vertical = direction == Axis.vertical;
+    return Flex(
+      direction: direction,
       mainAxisSize: MainAxisSize.min,
       children: [
         for (final t in LiveReactionType.values)
           Padding(
-            padding: const EdgeInsets.only(top: 10),
+            padding: vertical
+                ? const EdgeInsets.only(top: 10)
+                : const EdgeInsets.only(left: 6),
             child: Opacity(
               opacity: enabled ? 1 : 0.4,
               child: InkResponse(

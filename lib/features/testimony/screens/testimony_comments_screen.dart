@@ -75,6 +75,7 @@ class TestimonyCommentsScreen extends ConsumerWidget {
                       comment: comment,
                       currentUserId:
                           ref.read(currentUserProvider)?.id,
+                      isAdmin: ref.watch(currentUserProvider)?.isAdmin ?? false,
                       onDelete: () => ref
                           .read(commentsProvider(testimonyId).notifier)
                           .deleteComment(comment.id),
@@ -109,13 +110,20 @@ class _CommentTile extends StatelessWidget {
     required this.comment,
     required this.currentUserId,
     required this.onDelete,
+    this.isAdmin = false,
   });
 
   final CommentModel comment;
   final String? currentUserId;
   final VoidCallback onDelete;
 
+  /// Administrateur : peut supprimer le commentaire d'un autre (jamais un modérateur).
+  final bool isAdmin;
+
   bool get _isOwn => comment.userId == currentUserId;
+
+  /// Auteur ou administrateur (`canDelete` de l'API).
+  bool get _canDelete => _isOwn || isAdmin || comment.canDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -194,7 +202,7 @@ class _CommentTile extends StatelessWidget {
                       ),
                     ],
                     const Spacer(),
-                    if (_isOwn)
+                    if (_canDelete)
                       GestureDetector(
                         onTap: () => _confirmDelete(context),
                         child: const Text(

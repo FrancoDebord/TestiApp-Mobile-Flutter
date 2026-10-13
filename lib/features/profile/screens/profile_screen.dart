@@ -27,6 +27,8 @@ import '../../../shared/widgets/profile_cover.dart';
 import '../models/profile_models.dart';
 import '../providers/profile_provider.dart';
 import '../widgets/profile_menu.dart';
+import '../../events/widgets/organizer_events_section.dart';
+import 'settings_screen.dart' show confirmLogout;
 
 /// Écran 9 de la maquette : « Profil utilisateur ».
 class ProfileScreen extends ConsumerWidget {
@@ -64,6 +66,18 @@ class ProfileScreen extends ConsumerWidget {
             _PersonalInfoCard(profile: profile),
             const SizedBox(height: AppSpacing.xl),
             _MyTestimoniesSection(testimonies: myTestimonies),
+            // Mes événements organisés : à venir / en cours, puis passés (masqué s'il n'y en a aucun).
+            if (ref.watch(currentUserProvider)?.id case final String myId when myId.isNotEmpty)
+              OrganizerEventsSection(organizerId: myId, padding: const EdgeInsets.only(top: AppSpacing.xl)),
+            // ── Déconnexion (avec confirmation, comme dans les Paramètres) ──
+            const SizedBox(height: AppSpacing.xxxl),
+            AppButton(
+              label: AppLocalizations.of(context).settingsLogout,
+              leadingIcon: Icons.logout_rounded,
+              variant: AppButtonVariant.danger,
+              fullWidth: true,
+              onPressed: () => confirmLogout(context, ref),
+            ),
           ],
         ),
       ),
@@ -546,6 +560,7 @@ class _SpaceMenu extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final canModerate = ref.watch(canModerateProvider);
     final isAdmin = ref.watch(currentUserProvider)?.isAdmin ?? false;
+    final me = ref.watch(currentUserProvider);
     final l10n = AppLocalizations.of(context);
 
     return Column(
@@ -554,6 +569,19 @@ class _SpaceMenu extends ConsumerWidget {
         ProfileMenuCard(
           title: 'Mon espace',
           children: [
+            // Compte personnel : badge « Compte vérifié » (docs/fonctionnalites/verification-des-comptes.md).
+            if (me != null && !me.isOrganization)
+              ProfileMenuTile(
+                icon: me.isVerified ? Icons.verified_rounded : Icons.verified_outlined,
+                title: me.isVerified ? 'Compte vérifié' : 'Faire vérifier mon compte',
+                subtitle: switch (me.verificationStatus) {
+                  _ when me.isVerified => 'Le badge apparaît à côté de votre nom',
+                  VerificationStatus.pending => 'Demande en cours d’examen',
+                  VerificationStatus.rejected => 'Demande refusée : voir le motif',
+                  _ => 'Pasteur, chantre, personnalité publique…',
+                },
+                onTap: () => context.pushNamed(AppRoutes.accountVerification),
+              ),
             ProfileMenuTile(
               icon: Icons.bookmark_outline_rounded,
               title: l10n.profileSaved,

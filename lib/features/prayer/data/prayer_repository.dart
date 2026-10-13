@@ -96,12 +96,15 @@ class PrayerRepository {
     bool answeredOnly = false,
     int page = 1,
     int limit = 20,
+    // Les plus proches de la personne d'abord (fil « Pour vous » ; docs serveur : localisation.md).
+    bool near = false,
   }) =>
       _guard(() async {
         final res = await _api.get<dynamic>(AppConstants.prayerRequests, query: {
           'scope': scope.apiValue,
           'event_id': ?eventId,
           if (answeredOnly) 'status': 'answered',
+          if (near) 'near': 1,
           'page': page,
           'limit': limit,
         });

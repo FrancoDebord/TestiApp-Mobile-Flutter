@@ -29,7 +29,7 @@
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Témoignages a besoin d'accéder à votre microphone pour enregistrer l'audio de vos témoignages et diffuser en direct.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Témoignages utilise votre position, seulement si vous appuyez sur « Ma position », pour placer le lieu d'un événement sur la carte.</string>
+	<string>Témoignages utilise votre position, seulement si vous le demandez : pour placer le lieu d'un événement sur la carte (« Ma position ») et, si vous activez « Utiliser ma position pour personnaliser mes fils », pour vous proposer d'abord les témoignages et événements proches (position arrondie à environ 1 km).</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Témoignages a besoin d'accéder à vos photos pour choisir une image ou une vidéo.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>

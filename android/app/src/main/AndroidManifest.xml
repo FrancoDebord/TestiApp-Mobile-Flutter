@@ -21,17 +21,17 @@
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30"/>
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
 
-    <!-- Stockage (Android ≤ 12) -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
-        android:maxSdkVersion="32"/>
+    <!-- Galerie : aucune permission de lecture. Les vidéos et images sont choisies avec le
+         sélecteur de médias du système (image_picker → Photo Picker), les fichiers avec le
+         sélecteur de documents (file_picker) : ils donnent accès au seul fichier choisi.
+         READ_MEDIA_* / READ_EXTERNAL_STORAGE ne sont donc pas déclarées.
+         WRITE_EXTERNAL_STORAGE, ajoutée par video_compress et camera, est limitée à Android ≤ 10
+         et n'est jamais demandée : la compression écrit dans le dossier propre à l'application. -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="29"
         tools:replace="android:maxSdkVersion"/>
-
-    <!-- Media (Android 13+) -->
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
-    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>
-    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>
+    <!-- Ajoutée d'office par le fusionneur (déduite de WRITE_EXTERNAL_STORAGE du plugin camera) : retirée. -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" tools:node="remove"/>
 
     <!-- Position (bouton « Ma position » du lieu d'un événement, geolocator) -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
@@ -78,22 +78,23 @@
 
             <!-- App Links : liens de partage (share_url) ouverts directement
                  dans l'app. Vérifiés via
-                 https://testi.airid-africa.com/.well-known/assetlinks.json -->
+                 https://temoignage.as-krea.com/.well-known/assetlinks.json -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="https"
-                      android:host="testi.airid-africa.com"
+                      android:host="temoignage.as-krea.com"
                       android:pathPrefix="/testimonies/"/>
                 <!-- Pages web des directs : /lives/{id} -->
                 <data android:pathPrefix="/lives/"/>
             </intent-filter>
         </activity>
 
-        <!-- ══════════════════════════════════════════════════
+        <!-- Connexion Facebook désactivée (retirée de l'application) : à réactiver si besoin.
+         ══════════════════════════════════════════════════
              FACEBOOK LOGIN — Activité et meta-data obligatoires
-             ══════════════════════════════════════════════════ -->
+             ══════════════════════════════════════════════════ 
         <meta-data
             android:name="com.facebook.sdk.ApplicationId"
             android:value="@string/facebook_app_id"/>
@@ -114,11 +115,22 @@
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
-                <!-- Schéma = "fb" + App ID, ex: fb1234567890 -->
+                 Schéma = "fb" + App ID, ex: fb1234567890 
                 <data android:scheme="@string/fb_login_protocol_scheme"/>
             </intent-filter>
         </activity>
+        -->
         <!-- ══════════════════════════════════════════════════ -->
+
+        <!-- Notifications push FCM (lib/services/push_service.dart) : canal et icône utilisés
+             quand Android affiche lui-même un push (application en arrière-plan ou fermée).
+             Même canal que le serveur (FCM_ANDROID_CHANNEL) et que l'application. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="testi_notifications"/>
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@mipmap/ic_launcher"/>
 
         <!-- Flutter embedding -->
         <meta-data

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../repost/content_interactions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -151,6 +152,17 @@ class _PrayerSessionDetailScreenState extends ConsumerState<PrayerSessionDetailS
               padding: const EdgeInsets.fromLTRB(AppSpacing.screen, AppSpacing.lg, AppSpacing.screen, 40),
               children: [
                 _Header(session: value),
+                // J'aime, je prie, partager (docs serveur fonctionnalites/reactions.md).
+                if (value.phase != PrayerSessionPhase.cancelled) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  ContentReactionBar(
+                    kind: ContentKind.prayerSession,
+                    id: value.id,
+                    initial: value.reactions,
+                    title: value.title,
+                    webUrl: value.webUrl,
+                  ),
+                ],
                 const SizedBox(height: AppSpacing.lg),
                 _RoomCard(
                   session: value,

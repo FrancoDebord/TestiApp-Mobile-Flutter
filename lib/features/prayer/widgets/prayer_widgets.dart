@@ -6,6 +6,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../shared/widgets/guest_gate.dart' show requireAccount;
+import '../../../shared/widgets/mention_text.dart' show MentionText;
 import '../../../shared/widgets/organization_badge.dart';
 import '../data/prayer_repository.dart';
 import '../models/prayer_models.dart';
@@ -153,7 +154,7 @@ class _PrayerRequestFeedCardState extends ConsumerState<PrayerRequestFeedCard> {
                                   style: AppTextStyles.labelMedium.copyWith(color: AppColors.textPrimary)),
                             ),
                             if (r.author?.isVerified ?? false)
-                              const OrganizationBadge(isOrganization: true, isVerified: true, size: 14),
+                              OrganizationBadge(isOrganization: r.author!.isOrganization, isVerified: true, size: 14),
                           ]),
                           Text(
                             [
@@ -177,7 +178,8 @@ class _PrayerRequestFeedCardState extends ConsumerState<PrayerRequestFeedCard> {
                   _HiddenNotice(reason: r.hiddenReason),
                 ],
                 const SizedBox(height: AppSpacing.md),
-                Text(r.body,
+                MentionText(r.body,
+                    mentions: r.mentions,
                     maxLines: widget.maxLines,
                     overflow: TextOverflow.ellipsis,
                     style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textPrimary, height: 1.45)),

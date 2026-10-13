@@ -6,6 +6,8 @@ import '../../../core/media/playback_preferences.dart' show FeedLayout;
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
+import '../../../shared/search/search_suggestions.dart' show SearchScope;
+import '../../../shared/widgets/search_autocomplete_field.dart';
 import '../../auth/providers/auth_notifier.dart' show currentUserProvider;
 import '../data/events_repository.dart';
 import '../models/event_models.dart';
@@ -23,12 +25,28 @@ class EventsScreen extends ConsumerStatefulWidget {
 class _EventsScreenState extends ConsumerState<EventsScreen> {
   EventType? _type;
 
+  /// Recherche validée (titre, ville, lieu) ; null = pas de recherche.
+  String? _query;
+  final _search = TextEditingController();
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  void _submitSearch(String q) {
+    final v = q.trim();
+    setState(() => _query = v.isEmpty ? null : v);
+  }
+
   @override
   Widget build(BuildContext context) {
     final loggedIn = ref.watch(currentUserProvider) != null;
     final canCreate = ref.watch(canCreateEventsProvider);
     final tabs = <(String, EventScope)>[
       ('À venir', EventScope.upcoming),
+      ('En cours', EventScope.ongoing),
       if (loggedIn) ("J'y participe", EventScope.going),
       ('Passés', EventScope.past),
       if (canCreate) ('Mes événements', EventScope.mine),
@@ -46,9 +64,27 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
           surfaceTintColor: AppColors.surface,
           elevation: 0,
           bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(96),
+            preferredSize: const Size.fromHeight(152),
             child: Column(
               children: [
+                // Recherche avec autocomplétion (GET /search/suggest?scope=events) ;
+                // un résultat direct ouvre l'événement, la validation filtre la liste.
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(AppSpacing.screen, 4, AppSpacing.screen, 4),
+                  child: SearchAutocompleteField(
+                    controller: _search,
+                    scope: SearchScope.events,
+                    recentKey: 'events',
+                    hintText: 'Rechercher : titre, ville, lieu…',
+                    onSubmitted: _submitSearch,
+                    onChanged: (v) {
+                      if (v.trim().isEmpty && _query != null) _submitSearch('');
+                    },
+                    onResultSelected: (r) {
+                      if (r.route != null) context.push(r.route!);
+                    },
+                  ),
+                ),
                 _TypeFilter(
                   selected: _type,
                   onChanged: (t) => setState(() => _type = t),
@@ -74,7 +110,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
         body: TabBarView(
           children: [
             for (final (_, scope) in tabs)
-              _EventList(listKey: (scope: scope, type: _type)),
+              _EventList(listKey: (scope: scope, type: _type, query: _query)),
           ],
         ),
       ),
@@ -149,6 +185,7 @@ class _EventList extends ConsumerWidget {
     final empty = switch (listKey.scope) {
       EventScope.upcoming => 'Aucun événement à venir pour le moment.',
       EventScope.going => "Vous n'avez encore répondu « Je participe » à aucun événement.",
+      EventScope.ongoing => "Aucun événement en cours en ce moment.",
       EventScope.past => 'Aucun événement passé.',
       EventScope.mine => 'Vous n\'avez pas encore créé d\'événement.\nCroisade, conférence, camp… lancez-vous !',
       EventScope.following => 'Aucun événement à venir des comptes que vous suivez.',

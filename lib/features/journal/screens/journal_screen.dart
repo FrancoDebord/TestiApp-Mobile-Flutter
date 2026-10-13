@@ -14,6 +14,8 @@ import '../data/journal_offline_controller.dart';
 import '../data/journal_repository.dart';
 import '../widgets/journal_offline_sheet.dart';
 import '../models/journal_entry.dart';
+import '../../../shared/search/search_suggestions.dart';
+import '../../../shared/widgets/search_autocomplete_field.dart';
 
 const _months = [
   'janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet',
@@ -92,6 +94,7 @@ class JournalScreen extends ConsumerStatefulWidget {
 class _JournalScreenState extends ConsumerState<JournalScreen> {
   final _scroll = ScrollController();
   final _search = TextEditingController();
+  final _searchFocus = FocusNode();
   Timer? _debounce;
 
   JournalEntryType? _type;
@@ -125,6 +128,7 @@ class _JournalScreenState extends ConsumerState<JournalScreen> {
     _debounce?.cancel();
     _scroll.dispose();
     _search.dispose();
+    _searchFocus.dispose();
     super.dispose();
   }
 
@@ -262,32 +266,46 @@ class _JournalScreenState extends ConsumerState<JournalScreen> {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                child: TextField(
+                // Carnet privé : recherches récentes de l'appareil seulement, rien n'est
+                // demandé ni envoyé au serveur (docs/fonctionnalites/recherche.md).
+                child: SearchAutocomplete(
                   controller: _search,
-                  onChanged: _onSearch,
-                  textInputAction: TextInputAction.search,
-                  decoration: InputDecoration(
-                    hintText: 'Rechercher dans mon carnet…',
-                    prefixIcon: const Icon(Icons.search_rounded),
-                    suffixIcon: _search.text.isEmpty
-                        ? null
-                        : IconButton(
-                            icon: const Icon(Icons.close_rounded),
-                            onPressed: () {
-                              _search.clear();
-                              unawaited(_reload());
-                            },
-                          ),
-                    filled: true,
-                    fillColor: AppColors.surface,
-                    isDense: true,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.border),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.border),
+                  focusNode: _searchFocus,
+                  scope: SearchScope.local,
+                  recentKey: 'journal',
+                  onSubmitted: (_) {
+                    _debounce?.cancel();
+                    unawaited(_reload());
+                  },
+                  fieldBuilder: (context, submit) => TextField(
+                    controller: _search,
+                    focusNode: _searchFocus,
+                    onChanged: _onSearch,
+                    onSubmitted: submit,
+                    textInputAction: TextInputAction.search,
+                    decoration: InputDecoration(
+                      hintText: 'Rechercher dans mon carnet…',
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      suffixIcon: _search.text.isEmpty
+                          ? null
+                          : IconButton(
+                              icon: const Icon(Icons.close_rounded),
+                              onPressed: () {
+                                _search.clear();
+                                unawaited(_reload());
+                              },
+                            ),
+                      filled: true,
+                      fillColor: AppColors.surface,
+                      isDense: true,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.border),
+                      ),
                     ),
                   ),
                 ),

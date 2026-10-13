@@ -5,7 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../models/public_prophecy.dart';
-import 'prophecy_widgets.dart' show prophecyDay;
+import 'prophecy_widgets.dart' show prophecyDay, prophecyReceived;
 
 /// Carte d'une parole prophétique publique dans un fil : extrait de la parole et lien
 /// vers le témoignage d'accomplissement (qui reste celui de son auteur).
@@ -18,7 +18,7 @@ class PublicProphecyFeedCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = prophecy;
     final meta = [
-      if (p.receivedOn != null) 'Reçue le ${prophecyDay(p.receivedOn!)}',
+      if (p.receivedOn != null) 'Reçue le ${prophecyReceived(p.receivedOn!, p.receivedTime)}',
       if (p.givenBy != null) 'donnée par ${p.givenBy}',
     ].join(', ');
     return Material(
