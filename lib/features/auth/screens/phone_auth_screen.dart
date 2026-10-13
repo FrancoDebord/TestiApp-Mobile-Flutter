@@ -21,7 +21,7 @@ import '../widgets/auth_widgets.dart';
 
 // ── Constantes ─────────────────────────────────────────────────────────────────
 
-const _kPurple = AppColors.primary;
+const _kPrimary = AppColors.primary;
 const _kGold   = AppColors.secondary;
 
 // ── Indicatifs pays ─────────────────────────────────────────────────────────────
@@ -252,7 +252,7 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
                     FilledButton(
                       onPressed: _isLoading ? null : _sendOtp,
                       style: FilledButton.styleFrom(
-                        backgroundColor: _kPurple,
+                        backgroundColor: _kPrimary,
                         minimumSize: const Size.fromHeight(48),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.button)),
                       ),
@@ -277,15 +277,16 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
                       onPressed: _isLoading ? null : () =>
                           ref.read(authStateProvider.notifier).signInWithGoogle(),
                     ),
-                    const SizedBox(height: 12),
-                    AppButton(
-                      label: 'Continuer avec Facebook',
-                      variant: AppButtonVariant.outline,
-                      leadingIcon: Icons.facebook_rounded,
-                      fullWidth: true,
-                      onPressed: _isLoading ? null : () =>
-                          ref.read(authStateProvider.notifier).signInWithFacebook(),
-                    ),
+                    // Connexion Facebook désactivée (retirée de l'application) : à réactiver si besoin.
+                    // const SizedBox(height: 12),
+                    // AppButton(
+                    //   label: 'Continuer avec Facebook',
+                    //   variant: AppButtonVariant.outline,
+                    //   leadingIcon: Icons.facebook_rounded,
+                    //   fullWidth: true,
+                    //   onPressed: _isLoading ? null : () =>
+                    //       ref.read(authStateProvider.notifier).signInWithFacebook(),
+                    // ),
                   ],
                 ),
               ),
@@ -541,7 +542,7 @@ class _OtpScreenState extends ConsumerState<_OtpScreen> {
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: _kPurple, width: 2),
+                                borderSide: const BorderSide(color: _kPrimary, width: 2),
                               ),
                               contentPadding: EdgeInsets.zero,
                             ),
@@ -563,7 +564,7 @@ class _OtpScreenState extends ConsumerState<_OtpScreen> {
                   FilledButton(
                     onPressed: (_isComplete && !_isLoading) ? _verify : null,
                     style: FilledButton.styleFrom(
-                      backgroundColor: _kPurple,
+                      backgroundColor: _kPrimary,
                       minimumSize: const Size.fromHeight(48),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.button)),
                     ),
@@ -586,7 +587,7 @@ class _OtpScreenState extends ConsumerState<_OtpScreen> {
                             : 'Renvoyer le code',
                         style: TextStyle(
                           fontFamily: AppFonts.family, fontSize: 14,
-                          color: _secondsLeft > 0 ? AppColors.textSecondary : _kPurple,
+                          color: _secondsLeft > 0 ? AppColors.textSecondary : _kPrimary,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -749,7 +750,7 @@ class _ProfileScreenState extends ConsumerState<_ProfileScreen> {
                     FilledButton(
                       onPressed: _isLoading ? null : _submit,
                       style: FilledButton.styleFrom(
-                        backgroundColor: _kPurple,
+                        backgroundColor: _kPrimary,
                         minimumSize: const Size.fromHeight(48),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.button)),
                       ),
@@ -790,7 +791,7 @@ class _ProfileScreenState extends ConsumerState<_ProfileScreen> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: _kPurple, width: 1.5),
+              borderSide: const BorderSide(color: _kPrimary, width: 1.5),
             ),
             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
           ),

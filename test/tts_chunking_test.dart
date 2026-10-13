@@ -221,4 +221,31 @@ void main() {
       expect(c.read(ttsControllerProvider).autoRead, isTrue);
     });
   });
+
+  group('detectTextLanguage', () {
+    test('reconnaît un témoignage en français', () {
+      expect(
+          detectTextLanguage(
+              "Il y a des moments dans la vie où l'on ne comprend pas pourquoi. On prie, on pleure, et Dieu m'a relevée.",
+              fallback: 'en'),
+          'fr');
+    });
+    test('reconnaît un témoignage en anglais', () {
+      expect(
+          detectTextLanguage(
+              'I was sick for three years and the doctors said there was nothing they could do. But God healed me.'),
+          'en');
+    });
+    test('quelques mots anglais dans un texte français restent en français', () {
+      expect(
+          detectTextLanguage(
+              'Je suis allée au meeting, le worship était puissant et le pasteur a prié pour moi.',
+              fallback: 'en'),
+          'fr');
+    });
+    test("texte trop court : langue de l'application", () {
+      expect(detectTextLanguage('Amen !', fallback: 'en'), 'en');
+      expect(detectTextLanguage('Amen !', fallback: 'fr'), 'fr');
+    });
+  });
 }

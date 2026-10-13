@@ -11,8 +11,12 @@ import '../../../core/providers/categories_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../auth/providers/auth_notifier.dart' show currentUserProvider;
+import '../../events/data/events_repository.dart';
+import '../../events/models/event_models.dart';
 import '../data/live_repository.dart';
+import '../models/ip_camera_config.dart';
 import '../models/live_models.dart';
+import '../widgets/ip_camera_form.dart';
 import 'live_studio_screen.dart';
 
 enum _CheckState { pending, ok, warning, failed }
@@ -25,8 +29,14 @@ class _Check {
 
 /// Préparer un direct (modérateurs / administrateurs) : vérifications,
 /// aperçu caméra, titre et options, puis ouverture du studio.
+///
+/// [eventId] : direct d'un événement, que son organisateur (organisation
+/// vérifiée) peut lancer sans être modérateur (docs serveur
+/// fonctionnalites/evenements.md).
 class LiveSetupScreen extends ConsumerStatefulWidget {
-  const LiveSetupScreen({super.key});
+  const LiveSetupScreen({this.eventId, super.key});
+
+  final String? eventId;
 
   @override
   ConsumerState<LiveSetupScreen> createState() => _LiveSetupScreenState();
@@ -37,9 +47,15 @@ class _LiveSetupScreenState extends ConsumerState<LiveSetupScreen>
   final _form = GlobalKey<FormState>();
   final _title = TextEditingController();
   final _description = TextEditingController();
-  final _cameraUrl = TextEditingController();
+  /// Caméra IP (mode url) : adresse composée par [IpCameraForm] et réglage
+  /// structuré (mémorisé sans mot de passe après la création du direct).
+  String _cameraUrl = '';
+  IpCameraConfig? _ipCamera;
   String? _category;
   bool _commentsEnabled = true;
+
+  /// Événement diffusé (chargé depuis [LiveSetupScreen.eventId]).
+  ChristianEvent? _event;
 
   /// Caméra utilisée : appareil, caméra IP / encodeur (RTMP) ou adresse de flux.
   LiveSource _source = LiveSource.browser;
@@ -88,7 +104,6 @@ class _LiveSetupScreenState extends ConsumerState<LiveSetupScreen>
     WidgetsBinding.instance.removeObserver(this);
     _title.dispose();
     _description.dispose();
-    _cameraUrl.dispose();
     if (!_handedOff) unawaited(_preview?.stop());
     super.dispose();
   }
@@ -97,10 +112,29 @@ class _LiveSetupScreenState extends ConsumerState<LiveSetupScreen>
 
   Future<void> _runChecks() async {
     final user = ref.read(currentUserProvider);
-    setState(() => _rights = user?.canModerate == true
-        ? const _Check(_CheckState.ok, 'Compte modérateur ou administrateur')
-        : const _Check(_CheckState.failed,
-            'Seuls les modérateurs et administrateurs peuvent diffuser.'));
+    final eventId = widget.eventId;
+    if (eventId != null) {
+      // Direct d'un événement : le titre reprend celui de l'événement.
+      try {
+        final e = await ref.read(eventsRepositoryProvider).show(eventId);
+        if (!mounted) return;
+        setState(() {
+          _event = e;
+          if (_title.text.isEmpty) _title.text = e.title;
+          _rights = e.canManage
+              ? const _Check(_CheckState.ok, "Organisateur de l'événement")
+              : const _Check(_CheckState.failed,
+                  "Seuls l'organisateur et les administrateurs peuvent diffuser cet événement.");
+        });
+      } on EventFailure catch (e) {
+        if (mounted) setState(() => _rights = _Check(_CheckState.failed, e.message));
+      }
+    } else {
+      setState(() => _rights = user?.canModerate == true
+          ? const _Check(_CheckState.ok, 'Compte modérateur ou administrateur')
+          : const _Check(_CheckState.failed,
+              'Seuls les modérateurs et administrateurs peuvent diffuser.'));
+    }
 
     await Future.wait([
       _checkService(),
@@ -238,8 +272,12 @@ class _LiveSetupScreenState extends ConsumerState<LiveSetupScreen>
         categorySlug: _category,
         commentsEnabled: _commentsEnabled,
         source: _source,
-        cameraUrl: _source == LiveSource.url ? _cameraUrl.text : null,
+        cameraUrl: _source == LiveSource.url ? _cameraUrl : null,
+        eventId: widget.eventId,
       );
+      if (_source == LiveSource.url && _ipCamera != null) {
+        unawaited(IpCameraForm.remember(ref, _ipCamera!));
+      }
       if (!mounted) return;
       _openStudio(LiveStudioArgs(
         live: live,
@@ -309,6 +347,34 @@ class _LiveSetupScreenState extends ConsumerState<LiveSetupScreen>
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
           children: [
+            if (_event != null) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.primarySoft,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.event_rounded, color: AppColors.primary),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text.rich(
+                        TextSpan(children: [
+                          const TextSpan(text: "Direct de l'événement\n"),
+                          TextSpan(
+                            text: _event!.title,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w700, color: AppColors.primary),
+                          ),
+                        ]),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+            ],
             Text('Caméra utilisée', style: AppTextStyles.h4),
             const SizedBox(height: 4),
             RadioGroup<LiveSource>(
@@ -332,30 +398,18 @@ class _LiveSetupScreenState extends ConsumerState<LiveSetupScreen>
                   RadioListTile<LiveSource>(
                     contentPadding: EdgeInsets.zero,
                     value: LiveSource.url,
-                    title: Text('Adresse du flux de la caméra'),
-                    subtitle: Text('Le service vidéo lit lui-même un flux joignable depuis Internet.'),
+                    title: Text('Caméra IP (adresse du flux)'),
+                    subtitle: Text('Renseignez la caméra (RTSP, SRT, HLS…) : le service vidéo lit lui-même son flux, joignable depuis Internet.'),
                   ),
                 ],
               ),
             ),
             if (_source == LiveSource.url) ...[
               const SizedBox(height: 8),
-              TextFormField(
-                controller: _cameraUrl,
-                keyboardType: TextInputType.url,
-                autocorrect: false,
-                decoration: const InputDecoration(
-                  labelText: 'Adresse du flux *',
-                  hintText: 'rtsp://, rtmp://, https:// ou srt://',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (v) {
-                  final value = v?.trim() ?? '';
-                  if (value.isEmpty) return "Indiquez l'adresse du flux de la caméra.";
-                  if (!liveCameraUrlPattern.hasMatch(value)) {
-                    return 'Adresse non reconnue : elle doit commencer par rtsp://, rtmp://, http(s):// ou srt://.';
-                  }
-                  return null;
+              IpCameraForm(
+                onChanged: (url, config) {
+                  _cameraUrl = url;
+                  _ipCamera = config;
                 },
               ),
             ],

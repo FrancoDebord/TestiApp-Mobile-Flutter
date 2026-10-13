@@ -9,8 +9,22 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/content/encouragements.dart';
 import '../../../shared/widgets/app_logo.dart';
+import '../../../shared/widgets/encouragement_card.dart';
 import '../../../shared/widgets/guest_gate.dart';
+import '../../../shared/widgets/why_testify_card.dart';
+import '../../events/providers/events_providers.dart' show upcomingEventsProvider;
+import '../../events/widgets/upcoming_events_strip.dart';
+import '../../live/data/live_repository.dart' show livesIndexProvider;
+import '../../live/widgets/live_now_strip.dart';
+import '../../feed/feed_insert_card.dart';
+import '../../prayer/data/prayer_repository.dart' show PrayerRequestScope;
+import '../../prayer/models/prayer_models.dart' show PrayerRequest;
+import '../../prayer/providers/prayer_providers.dart' show prayerRequestsPageProvider;
+import '../../prayer/widgets/upcoming_prayer_sessions_strip.dart';
+import '../../community/widgets/suggested_accounts_strip.dart';
+import '../../../shared/content/feed_mix.dart';
 import '../../explore/providers/explore_providers.dart'
     show searchBarActiveProvider, searchFocusRequestProvider;
 import '../../notifications/providers/notifications_provider.dart'
@@ -23,6 +37,8 @@ import '../widgets/featured_carousel.dart';
 import '../widgets/pill_tabs.dart';
 import '../widgets/skeleton_card.dart';
 import '../widgets/testimony_feed_item.dart';
+import '../../location/location_providers.dart' show homeFeedPlaceProvider;
+import '../../location/nearby_widgets.dart' show NearbyCardLabel, NearbyFeedBanner;
 
 /// Accueil (Home) screen.
 ///
@@ -38,13 +54,20 @@ import '../widgets/testimony_feed_item.dart';
 ///       ├─ SliverToBoxAdapter → CategoryChipsRow
 ///       ├─ SliverToBoxAdapter → DailyVerseBanner
 ///       ├─ SliverToBoxAdapter → _BibleBanner
+///       ├─ SliverToBoxAdapter → LiveNowStrip (directs en cours, masqué sinon)
+///       ├─ SliverToBoxAdapter → UpcomingEventsStrip
+///       ├─ SliverToBoxAdapter → UpcomingPrayerSessionsStrip (masqué sinon)
 ///       ├─ SliverToBoxAdapter → FeaturedCarousel
+///       ├─ SliverToBoxAdapter → WhyTestifyCard (replié)
 ///       ├─ SliverToBoxAdapter → _FeedHeader
 ///       └─ SliverList → _FeedBody
 ///           ├─ [loading] SkeletonCard × 3
 ///           └─ [loaded]  TestimonyFeedItem (grande carte par type, ou
 ///                         ligne compacte dépliable selon feedLayoutProvider)
 /// ─────────────────────────────────────────────────────────────────────────────
+/// Requêtes de prière publiques récentes insérées dans le fil « Pour vous ».
+const homePrayerRequests = (PrayerRequestScope.feed, null);
+
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
@@ -56,7 +79,15 @@ class HomeScreen extends ConsumerWidget {
       drawer: const AppDrawer(),
       body: RefreshIndicator(
         color: AppColors.primary,
-        onRefresh: () => ref.read(feedNotifierProvider.notifier).refresh(),
+        onRefresh: () {
+          ref
+            ..invalidate(upcomingEventsProvider)
+            ..invalidate(livesIndexProvider)
+            ..invalidate(upcomingPrayerSessionsProvider)
+            ..invalidate(featuredFromApiProvider)
+            ..invalidate(prayerRequestsPageProvider(homePrayerRequests));
+          return ref.read(feedNotifierProvider.notifier).refresh();
+        },
         // Défilement infini : page suivante du fil « Pour vous » à l'approche du bas.
         child: NotificationListener<ScrollNotification>(
           onNotification: (n) {
@@ -115,11 +146,36 @@ class HomeScreen extends ConsumerWidget {
             // ── Bible shortcut ─────────────────────────────────────────────────
             const SliverToBoxAdapter(child: _BibleBanner()),
 
+            // ── Directs en cours (masqué s'il n'y en a pas) ────────────────────
+            const SliverToBoxAdapter(child: LiveNowStrip(padding: EdgeInsets.only(top: 20))),
+
+            // ── Événements à venir (masqué s'il n'y en a pas) ──────────────────
+            const SliverToBoxAdapter(child: UpcomingEventsStrip()),
+
+            // ── Sessions de prière à venir (masqué s'il n'y en a pas) ─────────
+            const SliverToBoxAdapter(child: UpcomingPrayerSessionsStrip()),
+
             // ── Featured carousel ──────────────────────────────────────────────
             const SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.only(top: 20, bottom: 4),
                 child: FeaturedCarousel(),
+              ),
+            ),
+
+            // ── Comptes à suivre (masqué s'il n'y en a pas, ni pour un invité sans suggestion) ──
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.only(top: 12),
+                child: SuggestedAccountsStrip(),
+              ),
+            ),
+
+            // ── Pourquoi témoigner ? (replié sur une ligne) ────────────────────
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(16, 20, 16, 0),
+                child: WhyTestifyCard(collapsible: true),
               ),
             ),
 
@@ -313,7 +369,7 @@ class _FeedHeader extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final layout = ref.watch(feedLayoutProvider);
-    return Row(
+    final header = Row(
       children: [
         Expanded(
           child: Text(
@@ -329,6 +385,14 @@ class _FeedHeader extends ConsumerWidget {
               .read(playbackPreferencesProvider.notifier)
               .setFeedLayout(l),
         ),
+      ],
+    );
+    // « Près de chez vous · Cotonou » et invitation à activer la position (localisation.md).
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        header,
+        NearbyFeedBanner(place: ref.watch(homeFeedPlaceProvider), padding: const EdgeInsets.only(top: 8)),
       ],
     );
   }
@@ -411,7 +475,16 @@ class _FeedBody extends ConsumerWidget {
     // Chargement initial — squelettes animés
     if (isLoading) return const FeedLoadingSkeleton();
 
-    // Feed vide après chargement
+    // Requêtes de prière publiques récentes insérées dans le fil, sans filtre seulement
+    // (comme sur le site) : elles n'ont ni type ni catégorie.
+    final filtered = ref.watch(selectedCategoryProvider) != null ||
+        ref.watch(selectedFeedTypeProvider) != null;
+    final prayers = filtered
+        ? const <PrayerRequest>[]
+        : ref.watch(prayerRequestsPageProvider(homePrayerRequests)).value?.items ??
+            const <PrayerRequest>[];
+
+    // Feed vide après chargement (les requêtes de prière restent visibles)
     if (feed.isEmpty) {
       return SliverList(
         delegate: SliverChildListDelegate([
@@ -419,19 +492,37 @@ class _FeedBody extends ConsumerWidget {
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 40),
             child: _EmptyFeed(),
           ),
+          for (final r in prayers)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: FeedInsertCard(item: r),
+            ),
         ]),
       );
     }
 
+    // Un message pour inciter à témoigner tous les [encouragementEvery] témoignages, et les
+    // requêtes de prière insérées (lib/shared/content/feed_mix.dart).
+    final slots = mixFeed(feed.length, inserts: prayers.length);
     return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       sliver: SliverList.separated(
-        itemCount: feed.length,
+        itemCount: slots.length,
         separatorBuilder: (_, _) => SizedBox(height: feedItemGap(layout)),
-        itemBuilder: (context, index) => TestimonyFeedItem(
-          key: ValueKey(feed[index].id),
-          testimony: feed[index],
-        ),
+        itemBuilder: (context, position) => switch (slots[position]) {
+          EncouragementSlot(:final number) =>
+            EncouragementCard(message: encouragementOfTheDay(number)),
+          InsertSlot(:final index) => FeedInsertCard(item: prayers[index]),
+          // Étiquette discrète des cartes proches (« À Cotonou ») : localisation.md
+          TestimonySlot(:final index) => Column(
+              key: ValueKey(feed[index].id),
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                NearbyCardLabel(testimonyId: feed[index].id),
+                TestimonyFeedItem(testimony: feed[index]),
+              ],
+            ),
+        },
       ),
     );
   }

@@ -32,6 +32,8 @@ abstract final class AppRoutes {
   // ── Tab: Publier ────────────────────────────────────────────────────────
   static const String publish = 'publish';
   static const String publishPreview = 'publish-preview';
+  // Suivi de l'envoi d'une vidéo (Bunny Stream), ouvert par-dessus les onglets.
+  static const String videoUpload = 'video-upload';
 
   // ── Notifications (cloche de l'accueil, ouverte par-dessus les onglets) ──
   static const String notifications = 'notifications';
@@ -47,7 +49,11 @@ abstract final class AppRoutes {
   static const String settings = 'settings';
   static const String changePassword = 'change-password';
   static const String deleteAccount = 'delete-account';
+  // Profil → « Faire vérifier mon compte » (comptes personnels)
+  static const String accountVerification = 'account-verification';
   static const String language = 'language';
+  // Paramètres › Qualité vidéo (données mobiles / Wi-Fi)
+  static const String videoQuality = 'video-quality';
   static const String help = 'help';
   static const String about = 'about';
 
@@ -101,6 +107,7 @@ abstract final class AppPaths {
   static const String shortsPath = '/shorts';
   static const String publishPath = '/publish';
   static const String notificationsPath = '/notifications';
+  static const String videoUploadPath = '/video-upload';
   static const String downloadsPath = '/downloads';
   static const String profilePath = '/profile';
 

@@ -13,8 +13,11 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../../core/app_constants.dart';
 import '../../../services/api_service.dart';
-import '../../../services/fcm_service.dart';
+import '../../../services/push_service.dart';
 import '../../../shared/models/models.dart';
+import '../../daily_verse/design/verse_style_prefs.dart' show VerseStylePrefsNotifier;
+import '../../accounts/providers/acting_account_provider.dart'
+    show actingAccountProvider, kActingAccountStorageKey, loadActingSnapshot;
 import '../services/social_auth_service.dart';
 
 const _kLocalDisplayName = 'local_display_name';
@@ -115,6 +118,8 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     _api          = ref.read(apiServiceProvider);
     _storage      = ref.read(secureStorageProvider);
     _social       = ref.read(socialAuthServiceProvider);
+    // Compte administré mémorisé (en-tête X-Act-As dès les premières requêtes).
+    await loadActingSnapshot(ref.read(actingAsStoreProvider), _storage);
     return _restoreSession();
   }
 
@@ -383,6 +388,13 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
   Future<void> updateDisplayName(String displayName) async {
     final current = state.value;
     if (current is! AuthStateAuthenticated) return;
+    // Agit pour un compte administré : c'est ce compte qui change.
+    final acting = ref.read(actingAccountProvider);
+    if (acting != null) {
+      ref.read(actingAccountProvider.notifier)
+          .updateUser(acting.asUser.copyWith(displayName: displayName));
+      return;
+    }
     final updated = current.user.copyWith(displayName: displayName);
     state = AsyncValue.data(AuthStateAuthenticated(updated));
   }
@@ -509,6 +521,12 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
   Future<void> updateCurrentUser(UserModel user) async {
     final current = state.value;
     if (current is! AuthStateAuthenticated) return;
+    // Agit pour un compte administré : mettre à jour ce compte, pas le sien.
+    final acting = ref.read(actingAccountProvider);
+    if (acting != null && user.id == acting.id) {
+      ref.read(actingAccountProvider.notifier).updateUser(user);
+      return;
+    }
     await _cacheUser(user);
     state = AsyncValue.data(AuthStateAuthenticated(user));
   }
@@ -536,47 +554,59 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     );
   }
 
-  // ── Social login (Google / Facebook) ───────────────────────────────────────
+  // ── Social login (Google) ───────────────────────────────────────
 
+  /// Connexion Google : idToken (google_sign_in 7.x) envoyé à POST /auth/google, puis même
+  /// traitement qu'une connexion e-mail / mot de passe (stockage du token, état, navigation par
+  /// le routeur). Annulation par l'utilisateur : rien ne change. Échec : [GoogleSignInFailure]
+  /// ou [LaravelApiException] (401, 403, 5xx) — voir [googleSignInErrorMessage].
   Future<void> signInWithGoogle() async {
     final result = await _social.signInWithGoogle();
-    final next = switch (result) {
-      SocialAuthSuccess()              => await _exchangeSocialToken(result),
-      SocialAuthCancelled()            => await _signedOutState(),
-      SocialAuthError(:final message)  => throw Exception(message),
-    };
-    state = AsyncValue.data(next);
+    switch (result) {
+      case SocialAuthCancelled():
+        return;
+      case SocialAuthError(:final message):
+        throw GoogleSignInFailure(message);
+      case SocialAuthSuccess(:final token):
+        final response = await _api.post<Map<String, dynamic>>(
+          AppConstants.authGoogle,
+          data: {'id_token': token},
+        );
+        state = AsyncValue.data(await _handleTokenResponse(response.data));
+    }
   }
 
-  Future<void> signInWithFacebook() async {
-    final result = await _social.signInWithFacebook();
-    final next = switch (result) {
-      SocialAuthSuccess()              => await _exchangeSocialToken(result),
-      SocialAuthCancelled()            => await _signedOutState(),
-      SocialAuthError(:final message)  => throw Exception(message),
-    };
-    state = AsyncValue.data(next);
-  }
+  // Connexion Facebook désactivée (retirée de l'application) : à réactiver si besoin.
+  // Future<void> signInWithFacebook() async {
+  //   final result = await _social.signInWithFacebook();
+  //   final next = switch (result) {
+  //     SocialAuthSuccess()              => await _exchangeSocialToken(result),
+  //     SocialAuthCancelled()            => await _signedOutState(),
+  //     SocialAuthError(:final message)  => throw Exception(message),
+  //   };
+  //   state = AsyncValue.data(next);
+  // }
 
-  Future<AuthState> _exchangeSocialToken(SocialAuthSuccess social) async {
-    final response = await _api.post<Map<String, dynamic>>(
-      AppConstants.authSocial,
-      data: {
-        'provider': social.provider,
-        'token': social.token,
-        if (social.email != null)       'email': social.email,
-        if (social.displayName != null) 'name': social.displayName,
-        if (social.avatarUrl != null)   'avatar_url': social.avatarUrl,
-      },
-    );
-    return _handleTokenResponse(response.data);
-  }
+  // Future<AuthState> _exchangeSocialToken(SocialAuthSuccess social) async {
+  //   final response = await _api.post<Map<String, dynamic>>(
+  //     AppConstants.authSocial,
+  //     data: {
+  //       'provider': social.provider,
+  //       'token': social.token,
+  //       if (social.email != null)       'email': social.email,
+  //       if (social.displayName != null) 'name': social.displayName,
+  //       if (social.avatarUrl != null)   'avatar_url': social.avatarUrl,
+  //     },
+  //   );
+  //   return _handleTokenResponse(response.data);
+  // }
 
   // ── Logout ──────────────────────────────────────────────────────────────────
 
   Future<void> logout() async {
-    // Dissocier le token FCM de ce compte avant de révoquer la session.
-    await ref.read(fcmServiceProvider).unregister();
+    // Dissocier l'appareil (jeton FCM) de ce compte AVANT de révoquer la session :
+    // DELETE /devices/token a besoin du token Sanctum. Jamais bloquant.
+    await ref.read(pushServiceProvider).unregisterDevice();
     try {
       await _api.post<void>(AppConstants.authLogout);
     } catch (_) {}
@@ -588,6 +618,9 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
       _storage.delete(key: _kAutoLoginEmail),
       _storage.delete(key: _kAutoLoginPassword),
       _storage.delete(key: kGuestModeStorageKey),
+      _storage.delete(key: kActingAccountStorageKey),
+      // Design et réglages du verset du jour : propres à ce compte.
+      VerseStylePrefsNotifier.clearStored(),
     ]);
     state = const AsyncValue.data(AuthStateUnauthenticated());
   }
@@ -731,10 +764,21 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
 final authStateProvider =
     AsyncNotifierProvider<AuthNotifier, AuthState>(AuthNotifier.new);
 
-final currentUserProvider = Provider<UserModel?>((ref) {
+/// La personne réellement connectée (titulaire de la session), même quand elle
+/// agit pour un compte qu'elle administre. Pour les écrans réservés au titulaire.
+final realUserProvider = Provider<UserModel?>((ref) {
   final value = ref.watch(authStateProvider).value;
   if (value is AuthStateAuthenticated) return value.user;
   return null;
+});
+
+/// Compte actif : la personne connectée, ou le compte qu'elle administre et pour
+/// lequel elle agit (lib/features/accounts/providers/acting_account_provider.dart).
+/// Sert à « est-ce mon contenu », à l'avatar affiché, à la publication…
+final currentUserProvider = Provider<UserModel?>((ref) {
+  final real = ref.watch(realUserProvider);
+  if (real == null) return null;
+  return ref.watch(actingAccountProvider)?.asUser ?? real;
 });
 
 final isAuthenticatedProvider =

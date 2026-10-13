@@ -27,6 +27,8 @@ import '../../../shared/widgets/profile_cover.dart';
 import '../models/profile_models.dart';
 import '../providers/profile_provider.dart';
 import '../widgets/profile_menu.dart';
+import '../../events/widgets/organizer_events_section.dart';
+import 'settings_screen.dart' show confirmLogout;
 
 /// Écran 9 de la maquette : « Profil utilisateur ».
 class ProfileScreen extends ConsumerWidget {
@@ -64,6 +66,18 @@ class ProfileScreen extends ConsumerWidget {
             _PersonalInfoCard(profile: profile),
             const SizedBox(height: AppSpacing.xl),
             _MyTestimoniesSection(testimonies: myTestimonies),
+            // Mes événements organisés : à venir / en cours, puis passés (masqué s'il n'y en a aucun).
+            if (ref.watch(currentUserProvider)?.id case final String myId when myId.isNotEmpty)
+              OrganizerEventsSection(organizerId: myId, padding: const EdgeInsets.only(top: AppSpacing.xl)),
+            // ── Déconnexion (avec confirmation, comme dans les Paramètres) ──
+            const SizedBox(height: AppSpacing.xxxl),
+            AppButton(
+              label: AppLocalizations.of(context).settingsLogout,
+              leadingIcon: Icons.logout_rounded,
+              variant: AppButtonVariant.danger,
+              fullWidth: true,
+              onPressed: () => confirmLogout(context, ref),
+            ),
           ],
         ),
       ),
@@ -120,7 +134,7 @@ class _GuestProfile extends StatelessWidget {
                 ProfileMenuTile(
                   icon: Icons.download_rounded,
                   title: l10n.profileDownloads,
-                  onTap: () => context.go(AppPaths.downloadsPath),
+                  onTap: () => context.push(AppPaths.downloadsPath),
                 ),
                 ProfileMenuTile(
                   icon: Icons.language_rounded,
@@ -393,7 +407,8 @@ class _StatsRow extends StatelessWidget {
             _StatTile(_fmt(profile.testimonyCount), l10n.profileTestimonies,
                 onTap: () => context.pushNamed(AppRoutes.myTestimonies)),
             _StatTile(_fmt(profile.likeCount), l10n.profileLikes),
-            _StatTile(_fmt(profile.followersCount), l10n.profileFollowers),
+            _StatTile(_fmt(profile.followersCount), l10n.profileFollowers,
+                onTap: () => context.push('/followers')),
           ],
         ),
         const SizedBox(height: AppSpacing.sm),
@@ -508,7 +523,7 @@ class _MainMenu extends StatelessWidget {
         ProfileMenuTile(
           icon: Icons.download_rounded,
           title: l10n.profileDownloads,
-          onTap: () => context.go(AppPaths.downloadsPath),
+          onTap: () => context.push(AppPaths.downloadsPath),
         ),
         ProfileMenuTile(
           icon: Icons.notifications_none_rounded,
@@ -545,6 +560,7 @@ class _SpaceMenu extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final canModerate = ref.watch(canModerateProvider);
     final isAdmin = ref.watch(currentUserProvider)?.isAdmin ?? false;
+    final me = ref.watch(currentUserProvider);
     final l10n = AppLocalizations.of(context);
 
     return Column(
@@ -553,6 +569,19 @@ class _SpaceMenu extends ConsumerWidget {
         ProfileMenuCard(
           title: 'Mon espace',
           children: [
+            // Compte personnel : badge « Compte vérifié » (docs/fonctionnalites/verification-des-comptes.md).
+            if (me != null && !me.isOrganization)
+              ProfileMenuTile(
+                icon: me.isVerified ? Icons.verified_rounded : Icons.verified_outlined,
+                title: me.isVerified ? 'Compte vérifié' : 'Faire vérifier mon compte',
+                subtitle: switch (me.verificationStatus) {
+                  _ when me.isVerified => 'Le badge apparaît à côté de votre nom',
+                  VerificationStatus.pending => 'Demande en cours d’examen',
+                  VerificationStatus.rejected => 'Demande refusée : voir le motif',
+                  _ => 'Pasteur, chantre, personnalité publique…',
+                },
+                onTap: () => context.pushNamed(AppRoutes.accountVerification),
+              ),
             ProfileMenuTile(
               icon: Icons.bookmark_outline_rounded,
               title: l10n.profileSaved,
@@ -584,6 +613,12 @@ class _SpaceMenu extends ConsumerWidget {
               title: l10n.profileFollowing,
               subtitle: 'Les comptes que vous suivez',
               onTap: () => context.push('/following'),
+            ),
+            ProfileMenuTile(
+              icon: Icons.people_alt_outlined,
+              title: 'Mes abonnés',
+              subtitle: 'Les comptes qui vous suivent',
+              onTap: () => context.push('/followers'),
             ),
             ProfileMenuTile(
               icon: Icons.diversity_3_outlined,
@@ -680,7 +715,11 @@ class _PersonalInfoCard extends StatelessWidget {
               ),
             )
           else ...[
-            if (e.gender.isNotEmpty) _InfoRow(Icons.wc_rounded, 'Sexe', e.gender),
+            if (e.gender == 'Homme' || e.gender == 'Femme')
+              _InfoRow(Icons.wc_rounded, 'Sexe',
+                  e.gender == 'Homme'
+                      ? AppLocalizations.of(context).genderMale
+                      : AppLocalizations.of(context).genderFemale),
             if (e.phone.isNotEmpty) _InfoRow(Icons.phone_outlined, 'Téléphone', e.phone),
             if (e.email.isNotEmpty) _InfoRow(Icons.email_outlined, 'Email', e.email),
             if (e.country.isNotEmpty) _InfoRow(Icons.public_rounded, 'Pays', e.country, isLast: true),

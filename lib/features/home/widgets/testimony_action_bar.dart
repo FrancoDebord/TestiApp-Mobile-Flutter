@@ -37,10 +37,16 @@ class TestimonyActionBar extends StatelessWidget {
     this.onShare,
     this.onSave,
     this.showDownload = true,
+    this.likesCount,
+    this.prayersCount,
     super.key,
   });
 
   final Testimony testimony;
+
+  /// Compteurs à jour (réponse du serveur après une réaction) ; sinon ceux du modèle.
+  final int? likesCount;
+  final int? prayersCount;
 
   /// Overrides: si null, on utilise la valeur du modèle.
   final bool? isLiked;
@@ -79,7 +85,7 @@ class TestimonyActionBar extends StatelessWidget {
                 child: _ReactionButton(
                   currentReaction: currentReaction,
                   liked: isLiked ?? testimony.isLiked,
-                  count: stats.likes,
+                  count: likesCount ?? stats.likes,
                   onReact: onReact,
                 ),
               ),
@@ -88,7 +94,7 @@ class TestimonyActionBar extends StatelessWidget {
                   icon: prayed
                       ? Icons.volunteer_activism
                       : Icons.volunteer_activism_outlined,
-                  count: stats.prayers,
+                  count: prayersCount ?? stats.prayers,
                   tooltip: 'Je prie',
                   color: prayed ? AppColors.primary : AppColors.textSecondary,
                   onTap: onPray,
@@ -438,13 +444,15 @@ class _ReactionPickerItemState extends State<_ReactionPickerItem>
 
 // ── Menu « ⋮ » commun aux cartes ─────────────────────────────────────────────
 
-/// Menu contextuel des cartes : sauvegarder, partager, signaler.
+/// Menu contextuel des cartes : sauvegarder, partager, signaler, supprimer
+/// (l'auteur ou un administrateur : `canDelete` de l'API).
 class TestimonyCardMenu extends StatelessWidget {
   const TestimonyCardMenu({
     required this.isSaved,
     required this.onSave,
     required this.onShare,
     required this.onReport,
+    this.onDelete,
     this.iconColor = AppColors.textSecondary,
     super.key,
   });
@@ -453,6 +461,9 @@ class TestimonyCardMenu extends StatelessWidget {
   final VoidCallback onSave;
   final VoidCallback onShare;
   final VoidCallback onReport;
+
+  /// Null : pas de « Supprimer » (ni auteur ni administrateur).
+  final VoidCallback? onDelete;
   final Color iconColor;
 
   @override
@@ -473,6 +484,8 @@ class TestimonyCardMenu extends StatelessWidget {
             onShare();
           case 'report':
             onReport();
+          case 'delete':
+            onDelete?.call();
         }
       },
       itemBuilder: (_) => [
@@ -523,6 +536,24 @@ class TestimonyCardMenu extends StatelessWidget {
             ],
           ),
         ),
+        if (onDelete != null)
+          PopupMenuItem(
+            value: 'delete',
+            child: Row(
+              children: [
+                const Icon(Icons.delete_outline_rounded,
+                    size: 18, color: AppColors.danger),
+                const SizedBox(width: 10),
+                Flexible(
+                  child: Text(
+                    'Supprimer',
+                    style: AppTextStyles.bodyMedium
+                        .copyWith(color: AppColors.danger),
+                  ),
+                ),
+              ],
+            ),
+          ),
       ],
     );
   }

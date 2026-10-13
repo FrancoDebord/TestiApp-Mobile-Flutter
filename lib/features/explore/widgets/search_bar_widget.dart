@@ -6,6 +6,8 @@ import 'package:speech_to_text/speech_to_text.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
+import '../../../shared/search/search_suggestions.dart';
+import '../../../shared/widgets/search_autocomplete_field.dart';
 import '../providers/explore_providers.dart';
 
 /// Animated search bar with real voice-search via speech_to_text.
@@ -102,6 +104,12 @@ class _SearchBarWidgetState extends ConsumerState<SearchBarWidget>
     );
   }
 
+  /// Suggestion, récente ou touche « Rechercher » : la recherche (en direct) porte sur ce texte.
+  void _submitSearch(String text) {
+    if (_ctrl.text != text) _ctrl.text = text;
+    ref.read(searchQueryProvider.notifier).update(text);
+  }
+
   void _clear() {
     _ctrl.clear();
     ref.read(searchQueryProvider.notifier).update('');
@@ -133,9 +141,23 @@ class _SearchBarWidgetState extends ConsumerState<SearchBarWidget>
       if (next.isEmpty && _ctrl.text.isNotEmpty) _ctrl.clear();
     });
 
+    // Autocomplétion (docs/fonctionnalites/recherche.md) : la recherche reste en direct.
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: SearchAutocomplete(
+        controller: _ctrl,
+        focusNode: _focus,
+        scope: SearchScope.all,
+        recentKey: 'explore',
+        onSubmitted: _submitSearch,
+        fieldBuilder: (context, submit) => _field(query, submit),
+      ),
+    );
+  }
+
+  Widget _field(String query, ValueChanged<String> submit) {
     return Container(
       height: 48,
-      margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         color: _isListening ? AppColors.primarySoft : AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadius.pill),
@@ -177,6 +199,7 @@ class _SearchBarWidgetState extends ConsumerState<SearchBarWidget>
                       contentPadding: EdgeInsets.zero,
                     ),
                     textInputAction: TextInputAction.search,
+                    onSubmitted: submit,
                     maxLines: 1,
                   ),
           ),

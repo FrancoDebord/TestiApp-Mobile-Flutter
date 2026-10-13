@@ -21,6 +21,7 @@ import '../../home/providers/home_providers.dart';
 import '../../../shared/widgets/guest_gate.dart';
 import '../widgets/testimony_info.dart';
 import 'video_player_screen.dart' show showVideoQualitySheet, videoQualityChipLabel;
+import '../../../shared/widgets/video_poster.dart';
 
 // ============================================================================
 // ShortsScreen
@@ -98,6 +99,7 @@ class _ShortsScreenState extends ConsumerState<ShortsScreen> {
     final picked = await showVideoQualitySheet(
       context,
       original: current.mediaPath,
+      hlsUrl: current.hlsUrl,
       renditions: current.renditions,
       prefs: ref.read(playbackPreferencesProvider),
       metered: ref.read(isMeteredConnectionProvider).value ?? true,
@@ -149,7 +151,7 @@ class _ShortsScreenState extends ConsumerState<ShortsScreen> {
           if (current != null)
             _ShortsQualityChip(
               label: videoQualityChipLabel(
-                _override ?? prefs.videoQuality,
+                _override ?? prefs.videoQualityFor(metered: metered),
                 resolveVideoTestimony(
                   current,
                   prefs: prefs,
@@ -287,6 +289,11 @@ class _ShortPageState extends ConsumerState<_ShortPage> {
   /// Évite de signaler deux fois la même fin de lecture.
   bool _endHandled = false;
 
+  /// Données mobiles : pas de lecture automatique, l'affiche attend un toucher
+  /// (rien n'est téléchargé avant, pas même la page suivante préchargée).
+  bool _awaitingTap = false;
+  bool _userStarted = false;
+
   @override
   void initState() {
     super.initState();
@@ -304,11 +311,13 @@ class _ShortPageState extends ConsumerState<_ShortPage> {
   /// manuel), bascule sur la version adaptée en gardant sa position.
   Future<void> _onNetworkChanged(bool? was, bool? now) async {
     if (now == null || was == null || was == now) return;
-    if (!widget.isActive || widget.qualityOverride != null) return;
-    if (ref.read(playbackPreferencesProvider).videoQuality !=
-        VideoQuality.auto) {
+    // Passage en Wi-Fi : la lecture automatique redevient possible.
+    if (!now && _awaitingTap) {
+      setState(() => _awaitingTap = false);
+      await _initVideo();
       return;
     }
+    if (!widget.isActive || widget.qualityOverride != null) return;
     final resolved = resolveVideoTestimony(
       widget.testimony,
       prefs: ref.read(playbackPreferencesProvider),
@@ -344,10 +353,21 @@ class _ShortPageState extends ConsumerState<_ShortPage> {
   }
 
   Future<void> _initVideo() async {
-    final path = _resolveUrl();
+    final resolved = resolveVideoTestimony(
+      widget.testimony,
+      prefs: ref.read(playbackPreferencesProvider),
+      metered: ref.read(isMeteredConnectionProvider).value ?? true,
+      override: widget.qualityOverride,
+    );
+    final path = resolved?.url;
     debugPrint('⚡ _initVideo id=${widget.testimony.id} path=$path');
     if (path == null || path.isEmpty) {
       debugPrint('⚡ _initVideo: path null/empty → placeholder');
+      return;
+    }
+    final metered = ref.read(isMeteredConnectionProvider).value ?? true;
+    if (metered && !resolved!.isLocal && !_userStarted) {
+      if (mounted) setState(() => _awaitingTap = true);
       return;
     }
 
@@ -464,6 +484,13 @@ class _ShortPageState extends ConsumerState<_ShortPage> {
     super.dispose();
   }
 
+  /// Toucher de l'affiche (données mobiles) : chargement puis lecture.
+  void _playFromPoster() {
+    _userStarted = true;
+    setState(() => _awaitingTap = false);
+    _initVideo();
+  }
+
   void _togglePlayPause() {
     final controller = _videoController;
     if (controller == null || !_controllerReady) return;
@@ -512,6 +539,14 @@ class _ShortPageState extends ConsumerState<_ShortPage> {
           // ── 1. Video or placeholder ─────────────────────────────────────
           if (_controllerReady && _videoController != null)
             _VideoFill(controller: _videoController!)
+          else if (_awaitingTap)
+            VideoPoster(
+              thumbnailUrl: widget.testimony.thumbnailUrl,
+              durationSeconds: widget.testimony.durationSeconds,
+              hint: 'Données mobiles · touchez pour lire',
+              fit: BoxFit.contain,
+              onPlay: _playFromPoster,
+            )
           else
             _PlaceholderGradient(
               colors: _categoryGradient(widget.testimony.category),
@@ -761,12 +796,14 @@ class _ShortActions extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final liked  = ref.watch(likedIdsProvider).contains(testimony.id);
-    final prayed = ref.watch(prayedIdsProvider).contains(testimony.id);
+    // Compteurs du serveur : la réaction de la personne y est déjà comptée (une seule fois).
+    final state  = ref.watch(interactionProvider);
+    final liked  = state.likedOf(testimony);
+    final prayed = state.prayedOf(testimony);
     final saved  = ref.watch(savedIdsProvider).contains(testimony.id);
 
-    final effectiveLikes   = testimony.stats.likes   + (liked  ? 1 : 0);
-    final effectivePrayers = testimony.stats.prayers + (prayed ? 1 : 0);
+    final effectiveLikes   = state.likesOf(testimony);
+    final effectivePrayers = state.prayersOf(testimony);
 
     // Actions réservées aux membres (mode invité : feuille « compte requis »).
     Future<void> guarded(String reason, void Function() action) async {
@@ -783,7 +820,7 @@ class _ShortActions extends ConsumerWidget {
           label: _formatCount(effectiveLikes),
           onTap: () => guarded(
             'réagir aux témoignages',
-            () => ref.read(interactionProvider.notifier).toggleLike(testimony.id),
+            () => ref.read(interactionProvider.notifier).toggleLike(testimony),
           ),
         ),
         const SizedBox(height: 20),
@@ -795,7 +832,7 @@ class _ShortActions extends ConsumerWidget {
           label: _formatCount(effectivePrayers),
           onTap: () => guarded(
             'réagir aux témoignages',
-            () => ref.read(interactionProvider.notifier).togglePray(testimony.id),
+            () => ref.read(interactionProvider.notifier).togglePray(testimony),
           ),
         ),
         const SizedBox(height: 20),

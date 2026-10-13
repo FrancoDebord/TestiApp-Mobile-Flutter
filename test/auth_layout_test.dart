@@ -61,7 +61,8 @@ void main() {
         expect(find.text('Se connecter avec numéro'), findsOneWidget);
         expect(find.text('Se connecter avec Google'), findsOneWidget);
         expect(find.text('Mode invité'), findsOneWidget);
-        expect(find.text('Continuer avec Facebook'), findsOneWidget);
+        // Connexion Facebook désactivée : plus de bouton.
+        expect(find.text('Continuer avec Facebook'), findsNothing);
         expect(tester.takeException(), isNull);
 
         await tester.ensureVisible(find.text('Se connecter avec Email'));

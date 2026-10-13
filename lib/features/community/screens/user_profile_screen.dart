@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../events/widgets/organizer_events_section.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -8,6 +9,7 @@ import '../../../shared/widgets/organization_badge.dart';
 import '../../auth/providers/auth_notifier.dart' show currentUserProvider;
 import '../../home/models/testimony_model.dart';
 import '../../home/widgets/testimony_feed_item.dart';
+import '../../repost/repost_widgets.dart' show UserRepostsSection;
 import '../data/community_repository.dart';
 import '../models/community_account.dart';
 import '../providers/follow_provider.dart';
@@ -116,6 +118,10 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                     )
                   else
                     for (final t in _testimonies) TestimonyFeedItem(testimony: t),
+                  // Événements organisés : à venir / en cours, puis passés (masqué s'il n'y en a aucun).
+                  OrganizerEventsSection(organizerId: widget.userId),
+                  // Partages internes « X a partagé » (masqué s'il n'y en a aucun).
+                  UserRepostsSection(userId: widget.userId),
                 ],
               ),
             ),

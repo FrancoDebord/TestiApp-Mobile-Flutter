@@ -1,12 +1,14 @@
+import '../../prophecies/widgets/public_prophecy_card.dart';
+import '../testimony_delete.dart';
 import '../../home/widgets/compact_testimony_tile.dart';
 import '../../home/widgets/testimony_card_header.dart' show openAuthorProfile;
 import '../../community/widgets/follow_button.dart';
+import '../../repost/testimony_share_sheet.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
 
 import '../../../core/app_constants.dart';
 import '../../../core/local_db/daos/comment_dao.dart';
@@ -24,7 +26,11 @@ import '../../../features/home/providers/home_providers.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/utils/rich_text_utils.dart';
 import '../../../shared/widgets/guest_gate.dart';
+import '../../../shared/widgets/mention_text.dart';
+import '../../../shared/widgets/mention_text_field.dart';
 import '../../../shared/widgets/testimony_proofs_card.dart';
+import '../../../shared/widgets/video_poster.dart';
+import '../../../shared/widgets/why_testify_card.dart';
 import '../../../shared/widgets/youtube_video_player.dart';
 import '../../../services/audio_player_service.dart' show audioPlayerProvider;
 import '../providers/recommendations_provider.dart';
@@ -42,10 +48,14 @@ class _LocalComment {
     required this.authorName,
     required this.body,
     required this.createdAt,
+    this.authorId = '',
   });
 
   final String id;
   final String authorName;
+  final String authorId;
+
+  /// Texte avec mentions sous forme de jetons `@[Nom](user:id)` (affiché par MentionText).
   final String body;
   final DateTime createdAt;
   final int likes = 0;
@@ -69,7 +79,8 @@ class _LocalComment {
   factory _LocalComment.fromModel(CommentModel m) => _LocalComment(
     id: m.id,
     authorName: m.user?.displayName ?? 'Anonyme',
-    body: m.text,
+    authorId: m.userId,
+    body: MentionCodec.encode(m.text, m.mentions),
     createdAt: DateTime.tryParse(m.createdAt ?? '') ?? DateTime.now(),
   );
 }
@@ -111,10 +122,6 @@ class TestimonyDetailScreen extends ConsumerStatefulWidget {
 class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
   // ── Interactions ──────────────────────────────────────────────────────────
   bool _isBookmarked = false;
-  bool _isLiked = false;
-  bool _isPraying = false;
-  int _likeCount = 0;
-  int _prayCount = 0;
 
   // ── Testimony (fallback when not in feed) ─────────────────────────────────
   Testimony? _singleTestimony;
@@ -174,14 +181,6 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
     if (user != null && (user.id == t.author.uid || user.canModerate)) {
       _fetchSingleTestimony(proofsOnly: true);
     }
-    if (mounted) {
-      setState(() {
-        _likeCount = t.stats.likes;
-        _prayCount = t.stats.prayers;
-        _isLiked = t.isLiked;
-        _isPraying = t.isPrayed;
-      });
-    }
   }
 
   Future<void> _fetchSingleTestimony({bool proofsOnly = false}) async {
@@ -190,19 +189,16 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
       final response = await api.get<Map<String, dynamic>>(
         AppConstants.testimonyById(widget.testimonyId),
       );
-      final t = testimonyFromApiJson(response.data);
+      // L'auteur peut ouvrir son témoignage vidéo encore en traitement.
+      final t = testimonyFromApiJson(response.data, allowUnready: true);
       if (t != null && mounted && proofsOnly) {
         setState(() => _proofs = t.proofs);
         return;
       }
       if (t != null && mounted) {
-        setState(() {
-          _singleTestimony = t;
-          _likeCount = t.stats.likes;
-          _prayCount = t.stats.prayers;
-          _isLiked = t.isLiked;
-          _isPraying = t.isPrayed;
-        });
+        // État des réactions renvoyé par le serveur (j'aime, je prie, compteurs).
+        ref.read(interactionProvider.notifier).seedFromFeed([t]);
+        setState(() => _singleTestimony = t);
       }
     } catch (_) {}
   }
@@ -220,6 +216,7 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
                 (r) => _LocalComment(
                   id: r['id'] as String,
                   authorName: r['author_name'] as String? ?? 'Anonyme',
+                  authorId: r['user_id'] as String? ?? '',
                   body: r['body'] as String? ?? '',
                   createdAt:
                       DateTime.tryParse(r['created_at'] as String? ?? '') ??
@@ -265,7 +262,7 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
           'user_id': c.userId,
           'author_name': c.user?.displayName ?? '',
           'parent_id': c.parentId,
-          'body': c.text,
+          'body': MentionCodec.encode(c.text, c.mentions), // mentions conservées hors connexion
           'likes': c.likesCount,
           'reply_count': c.repliesCount,
           'created_at': c.createdAt ?? DateTime.now().toIso8601String(),
@@ -292,6 +289,7 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
         _LocalComment(
           id: tempId,
           authorName: authorName,
+          authorId: user?.id ?? '',
           body: text,
           createdAt: now,
         ),
@@ -327,7 +325,7 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
         'user_id': saved.userId,
         'author_name': saved.user?.displayName ?? authorName,
         'parent_id': saved.parentId,
-        'body': saved.text,
+        'body': MentionCodec.encode(saved.text, saved.mentions),
         'likes': 0,
         'reply_count': 0,
         'created_at': saved.createdAt ?? now.toIso8601String(),
@@ -379,6 +377,10 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
     final currentUser = ref.watch(currentUserProvider);
     final isOwnProfile = testimony.author.uid == (currentUser?.id ?? '');
     final fr = AppLocalizations.of(context).isFr;
+    // Réactions : état du serveur, une « j'aime » et une « je prie » au plus.
+    final rx = ref.watch(interactionProvider);
+    final isLiked = rx.likedOf(testimony);
+    final isPraying = rx.prayedOf(testimony);
 
     final isAudio = testimony is AudioTestimony;
     final isText = testimony is TextTestimony;
@@ -415,6 +417,14 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
                 isBookmarked: _isBookmarked,
                 onBookmark: _toggleSave,
                 onShare: () => _shareTestimony(testimony),
+                // Auteur ou administrateur (jamais un modérateur).
+                onDelete: canDeleteTestimony(ref, testimony)
+                    ? () async {
+                        if (await confirmDeleteTestimony(context, ref, testimony) && context.mounted) {
+                          _leaveDetail(context);
+                        }
+                      }
+                    : null,
               ),
               SliverToBoxAdapter(
                 child: Column(
@@ -439,12 +449,7 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
                         ),
                       )
                     else if (testimony is VideoTestimony)
-                      _VideoPlayerEmbed(
-                        testimonyId: testimony.id,
-                        durationSeconds: testimony.durationSeconds,
-                        mediaPath: testimony.mediaPath,
-                        thumbnailUrl: testimony.thumbnailUrl,
-                      ),
+                      _VideoPlayerEmbed(testimony: testimony),
 
                     // Titre
                     _TitleText(title: testimony.title),
@@ -464,20 +469,24 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
                       TtsListenCard(testimony: testimony),
 
                     // Corps du témoignage
-                    if (isText || isAudio) _ContentBody(text: bodyText),
+                    if (isText || isAudio)
+                      _ContentBody(text: bodyText, mentions: testimony.mentions),
+
+                    // Parole prophétique accomplie (rendue publique par l'auteur)
+                    PublicProphecyCard(testimonyId: testimony.id),
 
                     // ❤ · partage · commentaires · télécharger
                     Padding(
                       padding: const EdgeInsets.fromLTRB(10, 0, 8, 12),
                       child: TestimonyStatsRow(
                         testimony: testimony,
-                        likes: _likeCount,
-                        isLiked: _isLiked,
+                        likes: rx.likesOf(testimony),
+                        isLiked: isLiked,
                         comments: _comments.length,
-                        prayers: _prayCount,
-                        isPraying: _isPraying,
-                        onLike: _toggleLike,
-                        onPray: _togglePray,
+                        prayers: rx.prayersOf(testimony),
+                        isPraying: isPraying,
+                        onLike: () => _toggleLike(testimony),
+                        onPray: () => _togglePray(testimony),
                         onShare: () => _onShare(testimony),
                         onComment: () => _showCommentsSheet(context),
                         fr: fr,
@@ -503,6 +512,12 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
                       forStaffOrAuthor: _canSeePrivateProofs(testimony),
                     ),
 
+                    // Pourquoi témoigner ? (replié), avant les commentaires
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(16, 8, 16, 16),
+                      child: WhyTestifyCard(collapsible: true),
+                    ),
+
                     // Commentaires (preview + saisie)
                     _CommentsSection(
                       comments: _comments,
@@ -523,11 +538,11 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
             ],
           ),
           bottomNavigationBar: _StickyReactionBar(
-            isLiked: _isLiked,
-            isPraying: _isPraying,
+            isLiked: isLiked,
+            isPraying: isPraying,
             isBookmarked: _isBookmarked,
-            onLike: _toggleLike,
-            onPray: _togglePray,
+            onLike: () => _toggleLike(testimony),
+            onPray: () => _togglePray(testimony),
             onComment: () => _showCommentsSheet(context),
             onBookmark: _toggleSave,
             onShare: () => _onShare(testimony),
@@ -539,35 +554,20 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
 
   // ── Actions réservées aux membres (mode invité : feuille « compte requis »)
 
-  Future<void> _toggleLike() async {
+  Future<void> _toggleLike(Testimony t) async {
     if (!await requireAccount(context, ref, reason: 'réagir aux témoignages')) {
       return;
     }
     if (!mounted) return;
-    final wasLiked = _isLiked;
-    setState(() {
-      _isLiked = !_isLiked;
-      _likeCount += _isLiked ? 1 : -1;
-    });
-    if (!wasLiked) {
-      ref
-          .read(interactionProvider.notifier)
-          .setReaction(widget.testimonyId, ReactionType.like);
-    } else {
-      ref.read(interactionProvider.notifier).removeReaction(widget.testimonyId);
-    }
+    ref.read(interactionProvider.notifier).toggleLike(t);
   }
 
-  Future<void> _togglePray() async {
+  Future<void> _togglePray(Testimony t) async {
     if (!await requireAccount(context, ref, reason: 'réagir aux témoignages')) {
       return;
     }
     if (!mounted) return;
-    setState(() {
-      _isPraying = !_isPraying;
-      _prayCount += _isPraying ? 1 : -1;
-    });
-    ref.read(interactionProvider.notifier).togglePray(widget.testimonyId);
+    ref.read(interactionProvider.notifier).togglePray(t);
   }
 
   Future<void> _toggleSave() async {
@@ -599,19 +599,30 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
         comments: _comments,
         currentUser: ref.read(currentUserProvider)?.displayName ?? 'Vous',
         onAdd: _addComment,
+        // Auteur du commentaire ou administrateur (jamais un modérateur).
+        canDelete: (c) {
+          final me = ref.read(currentUserProvider);
+          return me != null && (c.authorId == me.id || me.isAdmin);
+        },
+        onDelete: _deleteComment,
       ),
     );
   }
 
-  void _shareTestimony(Testimony testimony) {
-    // share_url du serveur : lien https ouvert directement par l'app.
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (_) =>
-          _ShareSheet(title: testimony.title, link: testimony.shareLink),
-    );
+  /// Supprime un commentaire (auteur ou administrateur). Vrai si le serveur l'a supprimé.
+  Future<bool> _deleteComment(String commentId) async {
+    try {
+      await ref.read(apiServiceProvider).delete<void>(AppConstants.commentById(commentId));
+    } catch (_) {
+      return false;
+    }
+    if (mounted) setState(() => _comments = _comments.where((c) => c.id != commentId).toList());
+    ref.read(feedNotifierProvider.notifier).applyOptimisticDelta(widget.testimonyId, comments: -1);
+    return true;
   }
+
+  void _shareTestimony(Testimony testimony) =>
+      showTestimonyShareSheet(context, ref, testimony);
 
   static String? _extractBibleVerse(Testimony t) {
     if (t is TextTestimony) return t.bibleVerse;
@@ -638,12 +649,16 @@ class _HeroSliverAppBar extends StatelessWidget {
     required this.isBookmarked,
     required this.onBookmark,
     required this.onShare,
+    this.onDelete,
   });
 
   final TestimonyCategory category;
   final bool isBookmarked;
   final VoidCallback onBookmark;
   final VoidCallback onShare;
+
+  /// Supprimer (auteur ou administrateur) ; null : bouton masqué.
+  final VoidCallback? onDelete;
 
   static IconData _categoryIcon(TestimonyCategory cat) => switch (cat) {
     TestimonyCategory.guerison => Icons.healing_rounded,
@@ -683,6 +698,13 @@ class _HeroSliverAppBar extends StatelessWidget {
         ),
         const SizedBox(width: 6),
         _CircleIconButton(icon: Icons.share_rounded, onTap: onShare),
+        if (onDelete != null) ...[
+          const SizedBox(width: 6),
+          Tooltip(
+            message: 'Supprimer le témoignage',
+            child: _CircleIconButton(icon: Icons.delete_outline_rounded, onTap: onDelete!, color: AppColors.danger),
+          ),
+        ],
         const SizedBox(width: 12),
       ],
       flexibleSpace: FlexibleSpaceBar(
@@ -857,8 +879,11 @@ class _TitleText extends StatelessWidget {
 // ============================================================================
 
 class _ContentBody extends StatelessWidget {
-  const _ContentBody({required this.text});
+  const _ContentBody({required this.text, this.mentions = const []});
   final String text;
+
+  /// Mentions « @Nom » du texte : cliquables (profil).
+  final List<MentionRef> mentions;
 
   @override
   Widget build(BuildContext context) {
@@ -867,6 +892,7 @@ class _ContentBody extends StatelessWidget {
       // Texte complet mis en forme, dévoilé morceau par morceau.
       child: ProgressiveRichText(
         text: text,
+        mentions: mentions,
         style: AppTextStyles.bodyLarge,
         initialChars: 700,
         stepChars: 1200,
@@ -1045,88 +1071,65 @@ class _AudioPlayerEmbedState extends ConsumerState<_AudioPlayerEmbed> {
 // ============================================================================
 
 class _VideoPlayerEmbed extends StatelessWidget {
-  const _VideoPlayerEmbed({
-    required this.testimonyId,
-    required this.durationSeconds,
-    this.mediaPath,
-    this.thumbnailUrl,
-  });
+  const _VideoPlayerEmbed({required this.testimony});
 
-  final String testimonyId;
-  final int durationSeconds;
-  final String? mediaPath;
-  final String? thumbnailUrl;
-
-  static String _fmt(int s) =>
-      '${(s ~/ 60).toString().padLeft(2, '0')}:${(s % 60).toString().padLeft(2, '0')}';
+  final VideoTestimony testimony;
 
   @override
   Widget build(BuildContext context) {
-    final thumb = thumbnailUrl;
-    return GestureDetector(
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) =>
-              VideoPlayerScreen(testimonyId: testimonyId, mediaPath: mediaPath),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        child: ClipRRect(
-          borderRadius: AppRadius.cardRadius,
-          child: AspectRatio(
-            aspectRatio: 16 / 9,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                // Zone vidéo (reste sombre) ; miniature si disponible.
-                const ColoredBox(color: AppColors.primaryDark),
-                if (thumb != null && thumb.startsWith('http'))
-                  Image.network(
-                    thumb,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => const SizedBox.shrink(),
-                  ),
-                // Bouton lecture
-                Center(
-                  child: Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      color: AppColors.surface.withValues(alpha: 0.92),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.play_arrow_rounded,
-                      color: AppColors.primary,
-                      size: 36,
-                    ),
-                  ),
+    final ready = testimony.isReady;
+    final failed = testimony.videoStatus == 'failed';
+    final media = ready
+        // Miniature + durée : rien n'est téléchargé avant le toucher.
+        ? VideoPoster(
+            thumbnailUrl: testimony.thumbnailUrl,
+            durationSeconds: testimony.durationSeconds,
+            onPlay: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => VideoPlayerScreen(
+                  testimonyId: testimony.id,
+                  mediaPath: testimony.mediaPath,
+                  testimony: testimony,
                 ),
-                // Durée
-                Positioned(
-                  bottom: 10,
-                  right: 10,
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryDark.withValues(alpha: 0.75),
-                      borderRadius: BorderRadius.circular(AppRadius.xs),
-                    ),
-                    child: Text(
-                      durationSeconds > 0 ? _fmt(durationSeconds) : '--:--',
-                      style: AppTextStyles.labelSmall.copyWith(
-                        color: AppColors.surface,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
-        ),
+          )
+        // Vidéo en traitement ou en échec (visible par son auteur seulement).
+        : ColoredBox(
+            color: AppColors.primaryDark,
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      failed
+                          ? Icons.error_outline_rounded
+                          : Icons.hourglass_top_rounded,
+                      color: AppColors.surface,
+                      size: 32,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      failed
+                          ? 'Le traitement de la vidéo a échoué.'
+                          : 'Vidéo en cours de traitement. Vous serez notifié '
+                              'dès qu\'elle sera en ligne.',
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.bodySmall
+                          .copyWith(color: AppColors.surface),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: ClipRRect(
+        borderRadius: AppRadius.cardRadius,
+        child: AspectRatio(aspectRatio: 16 / 9, child: media),
       ),
     );
   }
@@ -1303,6 +1306,7 @@ class _CommentItem extends StatelessWidget {
     this.isLiked = false,
     this.onLike,
     this.onReply,
+    this.onDelete,
   });
 
   final String name;
@@ -1313,6 +1317,9 @@ class _CommentItem extends StatelessWidget {
   final bool isLiked;
   final VoidCallback? onLike;
   final VoidCallback? onReply;
+
+  /// Auteur ou administrateur ; null : pas de « Supprimer ».
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -1357,7 +1364,8 @@ class _CommentItem extends StatelessWidget {
                     children: [
                       Text(name, style: AppTextStyles.labelMedium),
                       const SizedBox(height: 4),
-                      _buildMentionText(text, AppTextStyles.bodyMedium),
+                      // Mentions « @ » cliquables (profil)
+                      MentionText(text, style: AppTextStyles.bodyMedium),
                     ],
                   ),
                 ),
@@ -1397,6 +1405,21 @@ class _CommentItem extends StatelessWidget {
                         ),
                       ),
                     ),
+                    if (onDelete != null) ...[
+                      const SizedBox(width: 16),
+                      GestureDetector(
+                        onTap: onDelete,
+                        child: const Text(
+                          'Supprimer',
+                          style: TextStyle(
+                            fontFamily: AppFonts.family,
+                            fontSize: 12,
+                            color: AppColors.danger,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ],
@@ -1608,19 +1631,24 @@ class _CommentsBottomSheet extends StatefulWidget {
     required this.comments,
     required this.currentUser,
     required this.onAdd,
+    required this.canDelete,
+    required this.onDelete,
   });
 
   final String testimonyId;
   final List<_LocalComment> comments;
   final String currentUser;
   final Future<void> Function(String text) onAdd;
+  final bool Function(_LocalComment comment) canDelete;
+  final Future<bool> Function(String commentId) onDelete;
 
   @override
   State<_CommentsBottomSheet> createState() => _CommentsBottomSheetState();
 }
 
 class _CommentsBottomSheetState extends State<_CommentsBottomSheet> {
-  final _ctrl = TextEditingController();
+  // Saisie avec mentions « @ » sur les vrais comptes (GET /users/mention-search).
+  final _ctrl = MentionEditingController();
   final _focusNode = FocusNode();
   bool _sending = false;
 
@@ -1631,27 +1659,10 @@ class _CommentsBottomSheetState extends State<_CommentsBottomSheet> {
   final Set<String> _likedIds = {};
   String? _replyingToName; // nom de l'auteur auquel on répond
 
-  // ── @mention ──────────────────────────────────────────────────────────────
-  String? _mentionQuery;
-  List<String> _filteredUsers = const [];
-  static const _mockUsers = [
-    'Paul Mbeki',
-    'Sarah Diallo',
-    'John Osei',
-    'Grace Nwosu',
-    'David Kamau',
-    'Marie Dupont',
-    'Samuel Tchibozo',
-    'Ruth Mensah',
-    'Esther Yao',
-    'Elie Ndoumbe',
-  ];
-
   @override
   void initState() {
     super.initState();
     _local = List.from(widget.comments);
-    _ctrl.addListener(_onTextChanged);
     // Auto-focus the input so keyboard appears immediately
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _focusNode.requestFocus();
@@ -1660,59 +1671,9 @@ class _CommentsBottomSheetState extends State<_CommentsBottomSheet> {
 
   @override
   void dispose() {
-    _ctrl.removeListener(_onTextChanged);
     _ctrl.dispose();
     _focusNode.dispose();
     super.dispose();
-  }
-
-  void _onTextChanged() {
-    final text = _ctrl.text;
-    final cursor = _ctrl.selection.baseOffset;
-    if (cursor <= 0 || cursor > text.length) {
-      if (_mentionQuery != null) setState(() => _mentionQuery = null);
-      return;
-    }
-    final before = text.substring(0, cursor);
-    final match = RegExp(r'@(\w*)$').firstMatch(before);
-    if (match != null) {
-      final query = match.group(1) ?? '';
-      final filtered = _mockUsers
-          .where(
-            (u) =>
-                query.isEmpty ||
-                u.toLowerCase().startsWith(query.toLowerCase()),
-          )
-          .take(5)
-          .toList();
-      setState(() {
-        _mentionQuery = query;
-        _filteredUsers = filtered;
-      });
-    } else {
-      if (_mentionQuery != null) setState(() => _mentionQuery = null);
-    }
-  }
-
-  void _insertMention(String username) {
-    final handle = '@${username.replaceAll(' ', '_')}';
-    final text = _ctrl.text;
-    final cursor = _ctrl.selection.baseOffset.clamp(0, text.length);
-    final before = text.substring(0, cursor);
-    final after = text.substring(cursor);
-    final newBefore = before.replaceFirstMapped(
-      RegExp(r'@\w*$'),
-      (_) => '$handle ',
-    );
-    _ctrl.value = TextEditingValue(
-      text: newBefore + after,
-      selection: TextSelection.collapsed(offset: newBefore.length),
-    );
-    setState(() {
-      _mentionQuery = null;
-      _filteredUsers = [];
-    });
-    _focusNode.requestFocus();
   }
 
   void _toggleLike(String commentId) {
@@ -1725,13 +1686,45 @@ class _CommentsBottomSheetState extends State<_CommentsBottomSheet> {
     });
   }
 
-  void _startReply(String authorName) {
-    final handle = '@${authorName.replaceAll(' ', '_')} ';
-    _ctrl.value = TextEditingValue(
-      text: handle,
-      selection: TextSelection.collapsed(offset: handle.length),
+  Future<void> _delete(_LocalComment c) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Supprimer ce commentaire ?'),
+        content: const Text('Le commentaire sera définitivement supprimé.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Annuler')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
     );
-    setState(() => _replyingToName = authorName);
+    if (ok != true || !mounted) return;
+    final deleted = await widget.onDelete(c.id);
+    if (!mounted) return;
+    if (deleted) {
+      setState(() => _local.removeWhere((x) => x.id == c.id));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Impossible de supprimer. Réessayez.')),
+      );
+    }
+  }
+
+  void _startReply(_LocalComment c) {
+    if (c.authorId.isNotEmpty) {
+      _ctrl.startWithMention(MentionRef(id: c.authorId, displayName: c.authorName));
+    } else {
+      final handle = '@${c.authorName} ';
+      _ctrl.value = TextEditingValue(
+        text: handle,
+        selection: TextSelection.collapsed(offset: handle.length),
+      );
+    }
+    setState(() => _replyingToName = c.authorName);
     _focusNode.requestFocus();
   }
 
@@ -1741,8 +1734,8 @@ class _CommentsBottomSheetState extends State<_CommentsBottomSheet> {
   }
 
   Future<void> _send() async {
-    final text = _ctrl.text.trim();
-    if (text.isEmpty || _sending) return;
+    if (_ctrl.text.trim().isEmpty || _sending) return;
+    final text = _ctrl.encodedText; // « @Nom » choisis → jetons @[Nom](user:id)
 
     setState(() => _sending = true);
     _ctrl.clear();
@@ -1832,7 +1825,8 @@ class _CommentsBottomSheetState extends State<_CommentsBottomSheet> {
                             likeCount: c.likes + (isLiked ? 1 : 0),
                             isLiked: isLiked,
                             onLike: () => _toggleLike(c.id),
-                            onReply: () => _startReply(c.authorName),
+                            onReply: () => _startReply(c),
+                            onDelete: widget.canDelete(c) ? () => _delete(c) : null,
                           );
                         },
                       ),
@@ -1858,7 +1852,7 @@ class _CommentsBottomSheetState extends State<_CommentsBottomSheet> {
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          '${AppLocalizations.of(context).detailReplyingTo} @${_replyingToName!.replaceAll(' ', '_')}',
+                          '${AppLocalizations.of(context).detailReplyingTo} @$_replyingToName',
                           style: const TextStyle(
                             fontFamily: AppFonts.family,
                             fontSize: 12,
@@ -1879,17 +1873,11 @@ class _CommentsBottomSheetState extends State<_CommentsBottomSheet> {
                   ),
                 ),
 
-              // ── Suggestions @mention ──────────────────────────────────
-              if (_mentionQuery != null && _filteredUsers.isNotEmpty)
-                _MentionSuggestions(
-                  users: _filteredUsers,
-                  onTap: _insertMention,
-                ),
-
               // ── Saisie ─────────────────────────────────────────────────
               _CommentInputBar(
                 controller: _ctrl,
                 focusNode: _focusNode,
+                testimonyId: widget.testimonyId,
                 onSend: _send,
               ),
               SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
@@ -1949,11 +1937,13 @@ class _CommentInputBar extends StatelessWidget {
   const _CommentInputBar({
     required this.controller,
     required this.focusNode,
+    required this.testimonyId,
     required this.onSend,
   });
 
-  final TextEditingController controller;
+  final MentionEditingController controller;
   final FocusNode focusNode;
+  final String testimonyId;
   final VoidCallback onSend;
 
   @override
@@ -1961,6 +1951,7 @@ class _CommentInputBar extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Container(
             width: 36,
@@ -1983,10 +1974,14 @@ class _CommentInputBar extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: TextField(
+            // Suggestions « @ » au-dessus du champ (anti-rebond, chargement, aucun résultat).
+            child: MentionTextField(
               controller: controller,
               focusNode: focusNode,
+              testimonyId: testimonyId,
               style: AppTextStyles.bodyMedium,
+              minLines: 1,
+              maxLines: 4,
               decoration: InputDecoration(
                 hintText: AppLocalizations.of(context).detailCommentHint,
                 hintStyle: const TextStyle(
@@ -2042,261 +2037,8 @@ class _CommentInputBar extends StatelessWidget {
 }
 
 // ============================================================================
-// @mention helpers
-// ============================================================================
-
-Widget _buildMentionText(String text, TextStyle base) {
-  final spans = <InlineSpan>[];
-  final pattern = RegExp(r'@\w+');
-  int last = 0;
-  for (final m in pattern.allMatches(text)) {
-    if (m.start > last) {
-      spans.add(TextSpan(text: text.substring(last, m.start), style: base));
-    }
-    spans.add(
-      TextSpan(
-        text: m.group(0),
-        style: base.copyWith(
-          color: AppColors.primary,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-    last = m.end;
-  }
-  if (last < text.length) {
-    spans.add(TextSpan(text: text.substring(last), style: base));
-  }
-  if (spans.isEmpty) return Text(text, style: base);
-  return RichText(text: TextSpan(children: spans));
-}
-
-// ── Mention suggestions panel ────────────────────────────────────────────────
-
-class _MentionSuggestions extends StatelessWidget {
-  const _MentionSuggestions({required this.users, required this.onTap});
-
-  final List<String> users;
-  final void Function(String) onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: AppColors.surface,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Divider(height: 1, color: AppColors.border),
-          ...users.map((u) => _MentionTile(username: u, onTap: () => onTap(u))),
-        ],
-      ),
-    );
-  }
-}
-
-class _MentionTile extends StatelessWidget {
-  const _MentionTile({required this.username, required this.onTap});
-
-  final String username;
-  final VoidCallback onTap;
-
-  String get _initials {
-    final parts = username.trim().split(' ');
-    if (parts.length >= 2) {
-      return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
-    }
-    return username.isNotEmpty ? username[0].toUpperCase() : '?';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: AppColors.primary.withAlpha(30),
-              child: Text(
-                _initials,
-                style: const TextStyle(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
-                  fontFamily: AppFonts.family,
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                '@${username.replaceAll(' ', '_')}',
-                style: const TextStyle(
-                  fontFamily: AppFonts.family,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                  color: AppColors.primary,
-                ),
-              ),
-            ),
-            Text(
-              username,
-              style: const TextStyle(
-                fontFamily: AppFonts.family,
-                fontSize: 13,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ============================================================================
 // Share sheet (copier lien + partager)
 // ============================================================================
-
-class _ShareSheet extends StatelessWidget {
-  const _ShareSheet({required this.title, required this.link});
-
-  final String title;
-  final String link;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Drag handle
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            AppLocalizations.of(context).detailShareTitle,
-            style: const TextStyle(
-              fontFamily: AppFonts.family,
-              fontWeight: FontWeight.w700,
-              fontSize: 16,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            link,
-            style: const TextStyle(
-              fontFamily: AppFonts.family,
-              fontSize: 12,
-              color: AppColors.textSecondary,
-            ),
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: _ShareOption(
-                  icon: Icons.copy_rounded,
-                  label: AppLocalizations.of(context).detailCopyLink,
-                  color: AppColors.primary,
-                  onTap: () {
-                    Clipboard.setData(ClipboardData(text: link));
-                    Navigator.of(context).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          AppLocalizations.of(context).detailLinkCopied,
-                        ),
-                        behavior: SnackBarBehavior.floating,
-                        duration: const Duration(seconds: 2),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _ShareOption(
-                  icon: Icons.share_rounded,
-                  label: AppLocalizations.of(context).detailShareOn,
-                  color: AppColors.secondary,
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    SharePlus.instance.share(
-                      ShareParams(text: '$title\n\n$link'),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ShareOption extends StatelessWidget {
-  const _ShareOption({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: color.withAlpha(20),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: color.withAlpha(60)),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 28),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontFamily: AppFonts.family,
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-                color: color,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 // ============================================================================
 // Custom Painters

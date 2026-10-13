@@ -16,28 +16,43 @@ import '../../services/api_service.dart';
 
 // ── Enums ────────────────────────────────────────────────────────────────────
 
-/// Qualité vidéo préférée. [height] = hauteur maximale en pixels (0 = Auto).
+/// Qualité vidéo. [height] = hauteur de la version MP4 forcée (0 = Auto).
+///
+/// Auto lit le flux HLS adaptatif (Bunny Stream) ; les autres choix lisent la
+/// version MP4 correspondante (`mp4_urls`), video_player ne permettant pas de
+/// choisir une variante HLS.
 enum VideoQuality {
   auto(0),
-  p1080(1080),
   p720(720),
-  p480(480),
   p360(360),
-  p240(240),
-  p144(144);
+  p240(240);
 
   const VideoQuality(this.height);
   final int height;
 
-  String get label => this == auto ? 'Auto' : '${height}p';
+  /// Libellé court (bouton du lecteur).
+  String get label => switch (this) {
+        auto => 'Auto',
+        p720 => 'HD',
+        p360 => 'Standard',
+        p240 => 'Économie',
+      };
+
+  /// Libellé complet (menus) : « Économie (240p) ».
+  String get fullLabel => this == auto ? 'Auto' : '$label (${height}p)';
 
   String get hint => switch (this) {
         auto => "S'adapte à votre connexion",
-        p1080 || p720 => 'Haute qualité · plus de données',
-        p480 => 'Qualité standard',
-        p360 => 'Économique',
-        p240 || p144 => 'Très économique',
+        p720 => 'Haute qualité · plus de données',
+        p360 => 'Bon compromis · ≈ 6 Mo par minute',
+        p240 => 'Minimum de données · ≈ 4,5 Mo par minute',
       };
+
+  /// Choix proposés sur données mobiles (jamais Auto ni HD).
+  static const mobileChoices = [p360, p240];
+
+  /// Choix proposés en Wi-Fi.
+  static const wifiChoices = [auto, p720, p360, p240];
 }
 
 /// Qualité audio préférée. [maxKbps] = débit maximal (0 = Auto / illimité).
@@ -95,7 +110,8 @@ enum FeedLayout {
 
 class PlaybackPreferences {
   const PlaybackPreferences({
-    this.videoQuality = VideoQuality.auto,
+    this.videoQualityMobile = VideoQuality.p360,
+    this.videoQualityWifi = VideoQuality.auto,
     this.audioQuality = AudioQuality.auto,
     this.dataSaver = false,
     this.autoplayNext = true,
@@ -104,10 +120,20 @@ class PlaybackPreferences {
     this.offlineMode = false,
   });
 
-  final VideoQuality videoQuality;
+  /// Qualité vidéo sur données mobiles : Standard (360p) ou Économie (240p).
+  final VideoQuality videoQualityMobile;
+
+  /// Qualité vidéo en Wi-Fi (Auto par défaut).
+  final VideoQuality videoQualityWifi;
+
+  /// Qualité vidéo par défaut pour le réseau en cours.
+  VideoQuality videoQualityFor({required bool metered}) =>
+      metered ? videoQualityMobile : videoQualityWifi;
+
   final AudioQuality audioQuality;
 
-  /// Économiseur de données : force la plus basse qualité sur données mobiles.
+  /// Économiseur de données : force la plus basse qualité audio (et vidéo des
+  /// anciens témoignages sans flux adaptatif) sur données mobiles.
   final bool dataSaver;
 
   /// Enchaîne automatiquement le témoignage suivant à la fin de la lecture.
@@ -121,7 +147,8 @@ class PlaybackPreferences {
   final bool offlineMode;
 
   PlaybackPreferences copyWith({
-    VideoQuality? videoQuality,
+    VideoQuality? videoQualityMobile,
+    VideoQuality? videoQualityWifi,
     AudioQuality? audioQuality,
     bool? dataSaver,
     bool? autoplayNext,
@@ -130,7 +157,8 @@ class PlaybackPreferences {
     bool? offlineMode,
   }) =>
       PlaybackPreferences(
-        videoQuality: videoQuality ?? this.videoQuality,
+        videoQualityMobile: videoQualityMobile ?? this.videoQualityMobile,
+        videoQualityWifi: videoQualityWifi ?? this.videoQualityWifi,
         audioQuality: audioQuality ?? this.audioQuality,
         dataSaver: dataSaver ?? this.dataSaver,
         autoplayNext: autoplayNext ?? this.autoplayNext,
@@ -140,7 +168,8 @@ class PlaybackPreferences {
       );
 
   Map<String, dynamic> toJson() => {
-        'video_quality': videoQuality.name,
+        'video_quality_mobile': videoQualityMobile.name,
+        'video_quality_wifi': videoQualityWifi.name,
         'audio_quality': audioQuality.name,
         'data_saver': dataSaver,
         'autoplay_next': autoplayNext,
@@ -153,8 +182,11 @@ class PlaybackPreferences {
     T pick<T extends Enum>(List<T> values, Object? name, T fallback) =>
         values.firstWhere((v) => v.name == name, orElse: () => fallback);
     return PlaybackPreferences(
-      videoQuality:
-          pick(VideoQuality.values, j['video_quality'], VideoQuality.auto),
+      // L'ancienne clé « video_quality » (une seule qualité) est ignorée.
+      videoQualityMobile: pick(VideoQuality.mobileChoices,
+          j['video_quality_mobile'], VideoQuality.p360),
+      videoQualityWifi: pick(VideoQuality.wifiChoices,
+          j['video_quality_wifi'], VideoQuality.auto),
       audioQuality:
           pick(AudioQuality.values, j['audio_quality'], AudioQuality.auto),
       dataSaver: j['data_saver'] as bool? ?? false,
@@ -204,8 +236,14 @@ class PlaybackPreferencesNotifier extends Notifier<PlaybackPreferences> {
     unawaited(_save());
   }
 
-  void setVideoQuality(VideoQuality q) =>
-      _update(state.copyWith(videoQuality: q));
+  void setVideoQualityMobile(VideoQuality q) {
+    if (VideoQuality.mobileChoices.contains(q)) {
+      _update(state.copyWith(videoQualityMobile: q));
+    }
+  }
+
+  void setVideoQualityWifi(VideoQuality q) =>
+      _update(state.copyWith(videoQualityWifi: q));
   void setAudioQuality(AudioQuality q) =>
       _update(state.copyWith(audioQuality: q));
   void setDataSaver(bool v) => _update(state.copyWith(dataSaver: v));

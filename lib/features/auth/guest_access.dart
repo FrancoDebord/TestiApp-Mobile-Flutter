@@ -40,9 +40,13 @@ bool guestCanAccess(String location) {
     '/trending',
     '/live-discovery',
     '/lives',
+    '/events',
     '/community',
     '/users/',
     '/shorts',
+    // Prière : lecture libre ; confier, programmer, modifier demandent un compte.
+    '/prayer-requests',
+    '/prayer-sessions',
   ];
   for (final prefix in allowedPrefixes) {
     if (path == prefix || path.startsWith(prefix.endsWith('/') ? prefix : '$prefix/')) {
@@ -70,10 +74,21 @@ bool _isBlocked(String path) {
     return true;
   }
   if (path == '/journal' || path.startsWith('/journal/')) return true;
+  if (path == '/prophecies' || path.startsWith('/prophecies/')) return true;
+  if (path == '/my-feed') return true;
+  if (path == '/managers') return true;
   if (path == '/following') return true;
   if (path.startsWith('/moderation') || path.startsWith('/admin')) return true;
   if (path == '/lives/new' ||
       (path.startsWith('/lives/') && path.endsWith('/studio'))) {
+    return true;
+  }
+  if (path == '/events/new' ||
+      (path.startsWith('/events/') && path.endsWith('/edit'))) {
+    return true;
+  }
+  if (path == '/prayer-requests/new' || path == '/prayer-sessions/new' ||
+      (path.startsWith('/prayer-sessions/') && path.endsWith('/edit'))) {
     return true;
   }
   if ((path.startsWith('/testimony/') || path.startsWith('/testimonies/')) &&
@@ -89,6 +104,11 @@ String guestBlockedReason(String location) {
   if (path.startsWith('/publish')) return 'publier votre témoignage';
   if (path.startsWith('/notifications')) return 'recevoir vos notifications';
   if (path.startsWith('/journal')) return 'tenir votre journal spirituel';
+  if (path.startsWith('/prophecies')) return 'garder vos paroles prophétiques';
+  if (path == '/my-feed') return 'suivre les témoignages de vos abonnements';
+  if (path.startsWith('/prayer-requests')) return 'confier une requête de prière';
+  if (path.startsWith('/prayer-sessions')) return 'programmer une session de prière';
+  if (path.startsWith('/events/')) return 'gérer un événement';
   if (path.endsWith('/comments')) return 'commenter les témoignages';
   if (path.endsWith('/report')) return 'signaler un contenu';
   if (path == '/following') return 'suivre des membres';

@@ -110,6 +110,11 @@ void main() {
           await pump(tester, const LiveViewerScreen(liveId: 'l1'), live,
               size: size, scale: scale, keyboard: keyboard);
           expect(tester.takeException(), isNull);
+          // Vue « YouTube » par défaut, puis plein écran à la demande.
+          await tester.tap(find.byTooltip('Plein écran'));
+          await tester.pump();
+          expect(tester.takeException(), isNull);
+          expect(find.byTooltip('Quitter le plein écran'), findsOneWidget);
           await tester.pumpWidget(const SizedBox());
         });
       }

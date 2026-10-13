@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../shared/models/user_model.dart' show UserRole;
 import '../providers/admin_provider.dart';
 import '../widgets/admin_user_row.dart';
+import '../../../shared/search/search_suggestions.dart';
+import '../../../shared/widgets/search_autocomplete_field.dart';
 
 // =============================================================================
 // AdminUsersScreen — User Management section
@@ -24,6 +26,7 @@ class AdminUsersScreen extends ConsumerStatefulWidget {
 
 class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
   final _searchController = TextEditingController();
+  final _searchFocus = FocusNode();
 
   @override
   void initState() {
@@ -34,6 +37,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _searchFocus.dispose();
     super.dispose();
   }
 
@@ -110,43 +114,54 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
         // ── Barre de recherche ───────────────────────────────────────────────
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: TextField(
+          // Autocomplétion des noms de comptes (docs/fonctionnalites/recherche.md).
+          child: SearchAutocomplete(
             controller: _searchController,
-            onChanged: (v) =>
+            focusNode: _searchFocus,
+            scope: SearchScope.users,
+            recentKey: 'admin-users',
+            onSubmitted: (v) =>
                 ref.read(adminUserSearchProvider.notifier).update(v),
-            decoration: InputDecoration(
-              hintText: 'Rechercher par nom ou e-mail…',
-              hintStyle: const TextStyle(
-                fontFamily: 'Plus Jakarta Sans',
-                fontSize: 13,
-                color: Color(0xFF98A2B3),
+            fieldBuilder: (context, submit) => TextField(
+              controller: _searchController,
+              focusNode: _searchFocus,
+              onSubmitted: submit,
+              onChanged: (v) =>
+                  ref.read(adminUserSearchProvider.notifier).update(v),
+              decoration: InputDecoration(
+                hintText: 'Rechercher par nom ou e-mail…',
+                hintStyle: const TextStyle(
+                  fontFamily: 'Plus Jakarta Sans',
+                  fontSize: 13,
+                  color: Color(0xFF98A2B3),
+                ),
+                prefixIcon: const Icon(Icons.search_rounded,
+                    size: 18, color: Color(0xFF98A2B3)),
+                suffixIcon: query.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear_rounded,
+                            size: 16, color: Color(0xFF98A2B3)),
+                        onPressed: _clearSearch,
+                      )
+                    : null,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide:
+                      const BorderSide(color: Color(0xFF184797), width: 1.5),
+                ),
+                filled: true,
+                fillColor: Colors.white,
               ),
-              prefixIcon: const Icon(Icons.search_rounded,
-                  size: 18, color: Color(0xFF98A2B3)),
-              suffixIcon: query.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear_rounded,
-                          size: 16, color: Color(0xFF98A2B3)),
-                      onPressed: _clearSearch,
-                    )
-                  : null,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide:
-                    const BorderSide(color: Color(0xFF184797), width: 1.5),
-              ),
-              filled: true,
-              fillColor: Colors.white,
             ),
           ),
         ),

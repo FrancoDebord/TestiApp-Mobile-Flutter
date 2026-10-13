@@ -1,4 +1,11 @@
 Copyright 2020 The Plus Jakarta Sans Project Authors (https://github.com/tokotype/PlusJakartaSans)
+Copyright 2011 The Lora Project Authors (https://github.com/cyrealtype/Lora-Cyrillic), with Reserved Font Name "Lora".
+Copyright 2014 - 2023 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'. (Source Serif 4)
+Copyright 2020 The Inter Project Authors (https://github.com/rsms/inter)
+Copyright 2016 The Nunito Sans Project Authors (https://github.com/Fonthausen/NunitoSans)
+
+Polices du verset du jour (Lora, Source Serif 4, Inter, Nunito Sans) : sous-ensembles latin et
+latin-ext, graisses Regular et SemiBold, sous la même licence.
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:

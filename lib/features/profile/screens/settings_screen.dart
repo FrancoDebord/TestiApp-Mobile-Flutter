@@ -3,14 +3,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart' show ShareParams, SharePlus;
 
-import '../../../core/media/media_quality.dart' show autoVideoHeight;
 import '../../../core/media/playback_preferences.dart';
 import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
+import '../../../features/accounts/providers/acting_account_provider.dart'
+    show actingAccountProvider, myAccountsProvider;
+import '../../../features/accounts/widgets/account_widgets.dart'
+    show ensureOwnerAction, returnToOwnAccount, showAccountSwitcher;
 import '../../../features/auth/providers/auth_notifier.dart'
     show authStateProvider;
+import '../../../features/location/nearby_widgets.dart' show locationSettingsPath;
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/quality_picker_sheet.dart';
@@ -31,13 +35,13 @@ class SettingsScreen extends ConsumerWidget {
     final playback = ref.watch(playbackPreferencesProvider);
     final playCtl  = ref.read(playbackPreferencesProvider.notifier);
 
-    // Plafonds réels du mode Auto (tiennent compte de l'économiseur).
-    final autoMobile =
-        autoVideoHeight(metered: true, dataSaver: playback.dataSaver);
-    final autoWifi =
-        autoVideoHeight(metered: false, dataSaver: playback.dataSaver);
-
     final l10n = AppLocalizations.of(context);
+
+    // Agit pour un compte administré : les réglages réservés au titulaire
+    // (sécurité, notifications, localisation, commentaires) sont bloqués.
+    final acting = ref.watch(actingAccountProvider);
+    final canSwitch = acting != null ||
+        (ref.watch(myAccountsProvider).value?.managed.isNotEmpty ?? false);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -54,6 +58,13 @@ class SettingsScreen extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(
             AppSpacing.screen, AppSpacing.sm, AppSpacing.screen, AppSpacing.xxxl),
         children: [
+          if (acting != null) ...[
+            _ActingNotice(
+              name: acting.displayName,
+              onReturn: () => returnToOwnAccount(context, ref),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+          ],
           // ── Menu principal (maquette) ───────────────────────────────────
           ProfileMenuCard(
             children: [
@@ -62,16 +73,47 @@ class SettingsScreen extends ConsumerWidget {
                 title: l10n.settingsAccountSecurity,
                 onTap: () => _showAccountSheet(context),
               ),
+              // Administrateurs du compte : tous les comptes (2 personnes au plus).
+              ProfileMenuTile(
+                icon: Icons.manage_accounts_outlined,
+                title: 'Administrateurs du compte',
+                subtitle: 'Deux personnes au plus agissent en votre nom',
+                onTap: () => context.push('/managers'),
+              ),
+              if (canSwitch)
+                ProfileMenuTile(
+                  icon: Icons.swap_horiz_rounded,
+                  title: 'Changer de compte',
+                  subtitle: acting == null
+                      ? "Agir au nom d'un compte que vous administrez"
+                      : 'Vous agissez au nom de ${acting.displayName}',
+                  onTap: () => showAccountSwitcher(context),
+                ),
               ProfileMenuTile(
                 icon: Icons.notifications_none_rounded,
                 title: l10n.settingsNotifs,
-                onTap: () => _showNotificationsSheet(context),
+                onTap: () {
+                  if (ensureOwnerAction(context, ref)) {
+                    _showNotificationsSheet(context);
+                  }
+                },
               ),
               ProfileMenuTile(
                 icon: Icons.language_rounded,
                 title: l10n.settingsLanguage,
                 value: isFr ? 'Français' : 'English',
                 onTap: () => context.pushNamed(AppRoutes.language),
+              ),
+              // Localisation privée : fils classés par zone (docs serveur : localisation.md).
+              ProfileMenuTile(
+                icon: Icons.location_on_outlined,
+                title: 'Localisation',
+                subtitle: 'Témoignages et événements proches de vous',
+                onTap: () {
+                  if (ensureOwnerAction(context, ref)) {
+                    context.push(locationSettingsPath);
+                  }
+                },
               ),
               ProfileMenuTile(
                 icon: Icons.download_for_offline_outlined,
@@ -87,7 +129,7 @@ class SettingsScreen extends ConsumerWidget {
                 icon: Icons.sd_storage_outlined,
                 title: l10n.settingsStorage,
                 subtitle: l10n.profileDownloads,
-                onTap: () => context.go(AppPaths.downloadsPath),
+                onTap: () => context.push(AppPaths.downloadsPath),
               ),
               ProfileMenuTile(
                 icon: Icons.help_outline_rounded,
@@ -109,22 +151,10 @@ class SettingsScreen extends ConsumerWidget {
             children: [
               ProfileMenuTile(
                 icon: Icons.hd_outlined,
-                title: 'Qualité vidéo par défaut',
-                value: playback.videoQuality.label,
-                onTap: () async {
-                  final q = await showQualityPickerSheet<VideoQuality>(
-                    context,
-                    title: 'Qualité vidéo par défaut',
-                    options: [
-                      for (final v in VideoQuality.values)
-                        QualityOption(value: v, label: v.label, hint: v.hint),
-                    ],
-                    selected: playback.videoQuality,
-                    footer: 'Auto : ${autoMobile}p sur données mobiles, '
-                        '${autoWifi}p en Wi-Fi.',
-                  );
-                  if (q != null) playCtl.setVideoQuality(q);
-                },
+                title: 'Qualité vidéo',
+                subtitle: 'Données mobiles : ${playback.videoQualityMobile.fullLabel}'
+                    ' · Wi-Fi : ${playback.videoQualityWifi.fullLabel}',
+                onTap: () => context.pushNamed(AppRoutes.videoQuality),
               ),
               ProfileMenuTile(
                 icon: Icons.graphic_eq_rounded,
@@ -146,7 +176,7 @@ class SettingsScreen extends ConsumerWidget {
               _toggle(
                 icon: Icons.data_saver_on_rounded,
                 title: 'Économiseur de données',
-                subtitle: 'Qualité réduite sur données mobiles',
+                subtitle: 'Audio en qualité réduite sur données mobiles',
                 value: playback.dataSaver,
                 onChanged: playCtl.setDataSaver,
               ),
@@ -177,37 +207,29 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ],
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(4, AppSpacing.sm, 4, 0),
-            child: Text(
-              'Auto : ${autoMobile}p sur données mobiles, ${autoWifi}p en Wi-Fi.',
-              style: AppTextStyles.bodySmall,
-            ),
-          ),
 
           // ── Préférences : commentaires, apparence, communauté ──────────
           const SizedBox(height: AppSpacing.xxl),
           ProfileMenuCard(
             title: 'Préférences',
             children: [
-              _select<CommentPermission>(
-                context,
-                icon: Icons.lock_outline_rounded,
-                title: l10n.settingsWhoCanComment,
-                value: settings.commentPermission,
-                items: CommentPermission.values,
-                labelOf: (v) => v.label,
-                onChanged: notifier.setCommentPermission,
-              ),
-              _select<AppTheme>(
-                context,
-                icon: Icons.palette_outlined,
-                title: l10n.settingsTheme,
-                value: settings.appTheme,
-                items: AppTheme.values,
-                labelOf: (v) => v.label,
-                onChanged: notifier.setTheme,
-              ),
+              if (acting != null)
+                ProfileMenuTile(
+                  icon: Icons.lock_outline_rounded,
+                  title: l10n.settingsWhoCanComment,
+                  value: settings.commentPermission.label,
+                  onTap: () => ensureOwnerAction(context, ref),
+                )
+              else
+                _select<CommentPermission>(
+                  context,
+                  icon: Icons.lock_outline_rounded,
+                  title: l10n.settingsWhoCanComment,
+                  value: settings.commentPermission,
+                  items: CommentPermission.values,
+                  labelOf: (v) => v.label,
+                  onChanged: notifier.setCommentPermission,
+                ),
               ProfileMenuTile(
                 icon: Icons.group_add_outlined,
                 title: l10n.settingsInvite,
@@ -236,7 +258,7 @@ class SettingsScreen extends ConsumerWidget {
             leadingIcon: Icons.logout_rounded,
             variant: AppButtonVariant.danger,
             fullWidth: true,
-            onPressed: () => _confirmLogout(context, ref),
+            onPressed: () => confirmLogout(context, ref),
           ),
           const SizedBox(height: AppSpacing.xl),
           Center(
@@ -348,43 +370,83 @@ class SettingsScreen extends ConsumerWidget {
       ),
     );
   }
+}
 
-  Future<void> _confirmLogout(BuildContext context, WidgetRef ref) async {
-    final l10n = AppLocalizations.of(context);
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (dialog) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        surfaceTintColor: Colors.transparent,
-        title: Text(l10n.settingsLogout, style: AppTextStyles.h4),
-        content: Text(l10n.settingsLogoutConfirm, style: AppTextStyles.bodyMedium),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialog, false),
-            child: Text(l10n.commonCancel,
-                style: const TextStyle(
-                    fontFamily: AppFonts.family,
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w600)),
-          ),
-          AppButton(
-            label: l10n.settingsLogout,
-            variant: AppButtonVariant.danger,
-            size: AppButtonSize.small,
-            onPressed: () => Navigator.pop(dialog, true),
-          ),
-        ],
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.card)),
-      ),
-    );
-    if (ok == true) {
-      await ref.read(authStateProvider.notifier).logout();
-    }
+/// Demande confirmation puis déconnecte (Paramètres et Mon profil).
+Future<void> confirmLogout(BuildContext context, WidgetRef ref) async {
+  final l10n = AppLocalizations.of(context);
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (dialog) => AlertDialog(
+      backgroundColor: AppColors.surface,
+      surfaceTintColor: Colors.transparent,
+      title: Text(l10n.settingsLogout, style: AppTextStyles.h4),
+      content: Text(l10n.settingsLogoutConfirm, style: AppTextStyles.bodyMedium),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialog, false),
+          child: Text(l10n.commonCancel,
+              style: const TextStyle(
+                  fontFamily: AppFonts.family,
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w600)),
+        ),
+        AppButton(
+          label: l10n.settingsLogout,
+          variant: AppButtonVariant.danger,
+          size: AppButtonSize.small,
+          onPressed: () => Navigator.pop(dialog, true),
+        ),
+      ],
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.card)),
+    ),
+  );
+  if (ok == true) {
+    await ref.read(authStateProvider.notifier).logout();
   }
 }
 
 // ── Sous-widgets ──────────────────────────────────────────────────────────
+
+/// Encadré affiché quand on agit pour un compte administré.
+class _ActingNotice extends StatelessWidget {
+  const _ActingNotice({required this.name, required this.onReturn});
+  final String name;
+  final VoidCallback onReturn;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.secondarySoft,
+        borderRadius: AppRadius.cardRadius,
+        border: Border.all(color: AppColors.secondary.withAlpha(90)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text.rich(
+            TextSpan(children: [
+              const TextSpan(text: 'Vous agissez au nom de '),
+              TextSpan(text: name, style: const TextStyle(fontWeight: FontWeight.w800)),
+              const TextSpan(
+                  text: '. La sécurité, les notifications, la localisation et « Qui peut '
+                      'commenter » restent ceux de votre compte : revenez sur votre compte '
+                      'pour les modifier.'),
+            ]),
+            style: AppTextStyles.bodySmall.copyWith(color: AppColors.textPrimary, height: 1.4),
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(onPressed: onReturn, child: const Text('Revenir à mon compte')),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 Widget _toggle({
   required IconData icon,

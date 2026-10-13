@@ -2,6 +2,8 @@
 // paramètres, langue, aide, à propos et notifications — sans débordement sur
 // petit écran (320 / 390 px) avec une police agrandie (×1.0 / ×1.3).
 
+import 'package:testi_app/features/events/models/event_models.dart' show ChristianEvent;
+import 'package:testi_app/features/events/widgets/organizer_events_section.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -102,6 +104,8 @@ Widget _app(Widget child,
         currentUserProvider.overrideWithValue(guest ? null : _user(org: org)),
         userProfileProvider.overrideWithValue(guest ? null : _profile()),
         myTestimoniesProvider.overrideWithValue(const <Testimony>[]),
+        // Événements organisés (section du profil) : aucun, sans appel réseau.
+        organizerEventsProvider.overrideWith((ref, id) async => (upcoming: <ChristianEvent>[], past: <ChristianEvent>[])),
       ],
       child: MaterialApp(
         locale: const Locale('fr'),

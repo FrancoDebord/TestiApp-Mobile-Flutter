@@ -78,6 +78,8 @@ class UserModel {
     this.avatarUrl,
     this.coverUrl,
     this.country = '',
+    this.bio = '',
+    this.hasPassword = true,
     this.role = UserRole.utilisateur,
     this.isEmailVerified = true,
     this.testimonyCount = 0,
@@ -111,6 +113,11 @@ class UserModel {
   /// Photo de couverture du profil (bandeau), null si aucune.
   final String? coverUrl;
   final String  country;
+  /// Présentation du profil (`bio` de UserResource).
+  final String  bio;
+  /// Compte avec mot de passe (e-mail). Faux pour un compte téléphone / Google /
+  /// Facebook : suppression par simple confirmation, pas de changement de mot de passe.
+  final bool    hasPassword;
   final UserRole role;
   final bool    isEmailVerified;
   final int     testimonyCount;
@@ -159,6 +166,9 @@ class UserModel {
       avatarUrl:        j['avatar_url']       as String?,
       coverUrl:         _str(j['cover_url']),
       country:          j['country']          as String? ?? '',
+      bio:              j['bio']              as String? ?? '',
+      // Absent (ancien serveur) : on suppose un mot de passe.
+      hasPassword:      j['has_password'] == null || _bool(j['has_password']),
       role:             UserRole.fromJson(j['role'] as String?),
       isEmailVerified:  j['is_email_verified'] as bool? ?? true,
       testimonyCount:   (j['testimony_count']  as num?)?.toInt() ?? 0,
@@ -186,7 +196,7 @@ class UserModel {
     'is_phone_verified': isPhoneVerified,
     if (avatarUrl != null) 'avatar_url': avatarUrl,
     if (coverUrl != null) 'cover_url': coverUrl,
-    'country': country, 'role': role.toJson(), 'is_email_verified': isEmailVerified,
+    'country': country, 'bio': bio, 'has_password': hasPassword, 'role': role.toJson(), 'is_email_verified': isEmailVerified,
     'testimony_count': testimonyCount, 'like_count': likeCount, 'prayer_count': prayerCount,
     'follower_count': followerCount, 'following_count': followingCount,
     if (createdAt != null) 'created_at': createdAt,
@@ -217,7 +227,7 @@ class UserModel {
   UserModel copyWith({
     String? id, String? displayName, String? email, String? phone,
     String? phoneCountry, bool? isPhoneVerified,
-    String? avatarUrl, String? country, UserRole? role, bool? isEmailVerified,
+    String? avatarUrl, String? country, String? bio, bool? hasPassword, UserRole? role, bool? isEmailVerified,
     int? testimonyCount, int? likeCount, int? prayerCount,
     int? followerCount, int? followingCount,
     String? createdAt, String? updatedAt,
@@ -236,6 +246,8 @@ class UserModel {
     avatarUrl:       avatarUrl       ?? this.avatarUrl,
     coverUrl:        clearCoverUrl ? null : (coverUrl ?? this.coverUrl),
     country:         country         ?? this.country,
+    bio:             bio             ?? this.bio,
+    hasPassword:     hasPassword     ?? this.hasPassword,
     role:            role            ?? this.role,
     isEmailVerified: isEmailVerified ?? this.isEmailVerified,
     testimonyCount:  testimonyCount  ?? this.testimonyCount,

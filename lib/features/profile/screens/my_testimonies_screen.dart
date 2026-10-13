@@ -3,8 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/router/app_routes.dart' show AppPaths;
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../shared/widgets/video_poster.dart' show VideoThumbnailImage;
+import '../../../shared/widgets/why_testify_card.dart';
+import '../../publish/screens/video_upload_screen.dart' show VideoUploadPanel;
+import '../../publish/upload/video_upload_controller.dart' show videoUploadProvider;
+import '../../publish/upload/video_upload_models.dart' show VideoUploadPhase;
 import '../models/user_testimony_model.dart';
 import '../providers/profile_provider.dart';
 
@@ -40,6 +46,7 @@ class _MyTestimoniesScreenState extends ConsumerState<MyTestimoniesScreen>
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(myTestimoniesNotifierProvider);
+    final upload = ref.watch(videoUploadProvider);
 
     final all       = async.value ?? [];
     final pending   = all.where((t) => t.status == 'pending').toList();
@@ -100,21 +107,36 @@ class _MyTestimoniesScreenState extends ConsumerState<MyTestimoniesScreen>
           ],
         ),
       ),
-      body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => _ErrorView(
-          message: e.toString(),
-          onRetry: () => ref.invalidate(myTestimoniesNotifierProvider),
-        ),
-        data: (_) => TabBarView(
-          controller: _tabs,
-          children: [
-            _TestimonyTab(testimonies: all,       status: null),
-            _TestimonyTab(testimonies: pending,   status: 'pending'),
-            _TestimonyTab(testimonies: published, status: 'published'),
-            _TestimonyTab(testimonies: rejected,  status: 'rejected'),
-          ],
-        ),
+      body: Column(
+        children: [
+          // Envoi de vidéo en cours ou interrompu : progression, Annuler, Réessayer.
+          if (upload != null && upload.phase != VideoUploadPhase.done)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: GestureDetector(
+                onTap: () => context.push(AppPaths.videoUploadPath),
+                child: VideoUploadPanel(state: upload, compact: true),
+              ),
+            ),
+          Expanded(
+            child: async.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, _) => _ErrorView(
+                message: e.toString(),
+                onRetry: () => ref.invalidate(myTestimoniesNotifierProvider),
+              ),
+              data: (_) => TabBarView(
+                controller: _tabs,
+                children: [
+                  _TestimonyTab(testimonies: all,       status: null),
+                  _TestimonyTab(testimonies: pending,   status: 'pending'),
+                  _TestimonyTab(testimonies: published, status: 'published'),
+                  _TestimonyTab(testimonies: rejected,  status: 'rejected'),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.go('/publish'),
@@ -152,9 +174,12 @@ class _TestimonyTab extends ConsumerWidget {
       onRefresh: () => ref.read(myTestimoniesNotifierProvider.notifier).refresh(),
       child: ListView.separated(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-        itemCount: testimonies.length,
-        separatorBuilder: (_, _) => const SizedBox(height: 10),
-        itemBuilder: (_, i) => _MyTestimonyCard(testimony: testimonies[i]),
+        // Onglet « Tous » : « Pourquoi témoigner ? » replié en fin de liste.
+        itemCount: testimonies.length + (status == null ? 1 : 0),
+        separatorBuilder: (_, i) => SizedBox(height: i == testimonies.length - 1 ? 24 : 10),
+        itemBuilder: (_, i) => i < testimonies.length
+            ? _MyTestimonyCard(testimony: testimonies[i])
+            : const WhyTestifyCard(collapsible: true),
       ),
     );
   }
@@ -227,6 +252,11 @@ class _MyTestimonyCard extends ConsumerWidget {
             Row(
               children: [
                 _StatusBadge(status: testimony.status),
+                // Vidéo pas encore en ligne : visible ici seulement.
+                if (testimony.isVideoProcessing || testimony.isVideoFailed) ...[
+                  const SizedBox(width: 6),
+                  _VideoStatusBadge(failed: testimony.isVideoFailed),
+                ],
                 if (testimony.type != 'text' && testimony.durationSeconds > 0) ...[
                   const SizedBox(width: 8),
                   Icon(Icons.schedule_rounded,
@@ -424,10 +454,9 @@ class _TypeIcon extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         child: SizedBox(
           width: 52, height: 52,
-          child: Image.network(
-            thumbnailUrl!,
-            fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => _iconContainer(),
+          child: VideoThumbnailImage(
+            url: thumbnailUrl,
+            fallback: _iconContainer(),
           ),
         ),
       );
@@ -475,6 +504,39 @@ class _StatusBadge extends StatelessWidget {
           fontWeight: FontWeight.w600,
           color: fg,
         ),
+      ),
+    );
+  }
+}
+
+/// « En traitement » (envoi ou encodage Bunny) ou « Échec » d'une vidéo.
+class _VideoStatusBadge extends StatelessWidget {
+  const _VideoStatusBadge({required this.failed});
+  final bool failed;
+
+  @override
+  Widget build(BuildContext context) {
+    final (label, icon, bg, fg) = failed
+        ? ('Échec', Icons.error_outline_rounded, AppColors.dangerSoft, AppColors.danger)
+        : ('En traitement', Icons.hourglass_top_rounded, AppColors.infoSoft, AppColors.info);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: fg),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: AppFonts.family,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: fg,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -622,7 +684,7 @@ class _EmptyState extends StatelessWidget {
         ),
     };
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -651,6 +713,15 @@ class _EmptyState extends StatelessWidget {
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),
+              ),
+            ],
+            // Aucun témoignage : « Pourquoi témoigner ? » ouvert sur la première raison
+            // (le bouton Publier est juste au-dessus).
+            if (status == null) ...[
+              const SizedBox(height: 28),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 640),
+                child: const WhyTestifyCard(initiallyOpen: 0, showAction: false),
               ),
             ],
           ],

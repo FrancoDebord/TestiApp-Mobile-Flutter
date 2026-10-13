@@ -1,386 +1,262 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
-import '../../../features/auth/providers/auth_notifier.dart'
-    show currentUserProvider;
-import '../../../l10n/app_localizations.dart';
+import '../../../core/theme/app_tokens.dart';
+import '../data/prayer_repository.dart';
 import '../models/prayer_models.dart';
 import '../providers/prayer_providers.dart';
-import 'prayer_session_live_screen.dart';
+import '../widgets/prayer_widgets.dart';
 
-// =============================================================================
-// CreatePrayerSessionScreen — créer une session de prière en groupe
-// =============================================================================
-
+/// Programmer (ou modifier, [sessionId]) une session de prière. Tout compte connecté peut
+/// programmer ; [eventId] : session d'un événement (réservé à ses gestionnaires, vérifié par le serveur).
 class CreatePrayerSessionScreen extends ConsumerStatefulWidget {
-  const CreatePrayerSessionScreen({super.key});
+  const CreatePrayerSessionScreen({this.sessionId, this.eventId, super.key});
+
+  final String? sessionId;
+  final String? eventId;
 
   @override
-  ConsumerState<CreatePrayerSessionScreen> createState() =>
-      _CreatePrayerSessionScreenState();
+  ConsumerState<CreatePrayerSessionScreen> createState() => _CreatePrayerSessionScreenState();
 }
 
-class _CreatePrayerSessionScreenState
-    extends ConsumerState<CreatePrayerSessionScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _titleCtrl = TextEditingController();
-  final _descCtrl = TextEditingController();
-  PrayerVisibility _visibility = PrayerVisibility.public;
-  bool _startNow = true;
-  bool _isRecorded = false;
-  bool _isSubmitting = false;
+class _CreatePrayerSessionScreenState extends ConsumerState<CreatePrayerSessionScreen> {
+  static const durations = [15, 30, 45, 60, 90, 120, 180, 240, 360, 480];
+
+  final _form = GlobalKey<FormState>();
+  final _title = TextEditingController();
+  final _description = TextEditingController();
+  final _topic = TextEditingController();
+  PrayerSessionDraft? _draft;
+  bool _saving = false;
+
+  bool get _editing => widget.sessionId != null;
 
   @override
-  void dispose() {
-    _titleCtrl.dispose();
-    _descCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _create() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() => _isSubmitting = true);
-
-    await Future<void>.delayed(const Duration(milliseconds: 300));
-
-    final user = ref.read(currentUserProvider);
-    final session = GroupPrayerSession(
-      id: 'gs_${DateTime.now().millisecondsSinceEpoch}',
-      hostId: user?.id ?? 'anon',
-      hostName: user?.displayName ?? 'Moi',
-      title: _titleCtrl.text.trim(),
-      description: _descCtrl.text.trim().isNotEmpty
-          ? _descCtrl.text.trim()
-          : null,
-      scheduledAt: DateTime.now(),
-      visibility: _visibility,
-      status: _startNow
-          ? PrayerSessionStatus.live
-          : PrayerSessionStatus.scheduled,
-      isRecorded: _isRecorded,
-    );
-
-    ref.read(groupSessionsProvider.notifier).addSession(session);
-
-    if (!mounted) return;
-
-    if (_startNow) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(
-          builder: (_) => PrayerSessionLiveScreen(session: session),
-        ),
-      );
-    } else {
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context).createSessionSuccess),
-          duration: const Duration(seconds: 3),
-        ),
+  void initState() {
+    super.initState();
+    if (!_editing) {
+      final tomorrow = DateTime.now().add(const Duration(days: 1));
+      _draft = PrayerSessionDraft(
+        startsAt: DateTime(tomorrow.year, tomorrow.month, tomorrow.day, 20),
+        eventId: widget.eventId,
       );
     }
   }
 
   @override
+  void dispose() {
+    _title.dispose();
+    _description.dispose();
+    _topic.dispose();
+    super.dispose();
+  }
+
+  void _load(PrayerSession s) {
+    if (_draft != null) return;
+    _draft = PrayerSessionDraft.from(s);
+    _title.text = s.title;
+    _description.text = s.description ?? '';
+  }
+
+  static String _durationLabel(int m) => m < 60 ? '$m min' : (m % 60 == 0 ? '${m ~/ 60} h' : '${m ~/ 60} h ${m % 60}');
+
+  Future<void> _pickDate() async {
+    final d = _draft!;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: d.startsAt,
+      firstDate: DateTime.now().subtract(const Duration(days: 1)),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (picked != null) {
+      setState(() => d.startsAt = DateTime(picked.year, picked.month, picked.day, d.startsAt.hour, d.startsAt.minute));
+    }
+  }
+
+  Future<void> _pickTime() async {
+    final d = _draft!;
+    final picked = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(d.startsAt));
+    if (picked != null) {
+      setState(() => d.startsAt = DateTime(d.startsAt.year, d.startsAt.month, d.startsAt.day, picked.hour, picked.minute));
+    }
+  }
+
+  void _addTopic() {
+    final t = _topic.text.trim();
+    if (t.isEmpty || _draft!.topics.length >= 10) return;
+    setState(() {
+      _draft!.topics.add(t.length > 150 ? t.substring(0, 150) : t);
+      _topic.clear();
+    });
+  }
+
+  Future<void> _save() async {
+    final d = _draft;
+    if (d == null || _saving || !(_form.currentState?.validate() ?? false)) return;
+    if (!_editing && d.startsAt.isBefore(DateTime.now())) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('La session doit être programmée dans le futur.')));
+      return;
+    }
+    if (_topic.text.trim().isNotEmpty) _addTopic();
+    d
+      ..title = _title.text
+      ..description = _description.text;
+    setState(() => _saving = true);
+    try {
+      final saved = await ref.read(prayerRepositoryProvider).saveSession(d, id: widget.sessionId);
+      ref.invalidate(prayerSessionListProvider);
+      if (_editing) ref.read(prayerSessionProvider(saved.id).notifier).replace(saved);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_editing ? 'Session mise à jour.' : 'Session de prière programmée.')),
+      );
+      if (_editing) {
+        context.pop(saved);
+      } else {
+        context.pushReplacement('/prayer-sessions/${saved.id}');
+      }
+    } on PrayerFailure catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+    if (_editing && _draft == null) {
+      final async = ref.watch(prayerSessionProvider(widget.sessionId!));
+      if (async.value case final s?) {
+        _load(s);
+      } else {
+        return Scaffold(
+          appBar: AppBar(title: const Text('Modifier la session')),
+          body: Center(
+            child: async.hasError
+                ? Text(async.error is PrayerFailure ? (async.error! as PrayerFailure).message : 'Session introuvable.')
+                : const CircularProgressIndicator(),
+          ),
+        );
+      }
+    }
+    final d = _draft!;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
+        title: Text(_editing ? 'Modifier la session' : 'Programmer une session'),
         backgroundColor: AppColors.surface,
-        surfaceTintColor: Colors.transparent,
+        foregroundColor: AppColors.textPrimary,
+        surfaceTintColor: AppColors.surface,
         elevation: 0,
-        title: Text(
-          l10n.prayerCreate,
-          style: const TextStyle(
-            fontFamily: 'Plus Jakarta Sans',
-            fontWeight: FontWeight.w600,
-            fontSize: 17,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        iconTheme: const IconThemeData(color: AppColors.textPrimary),
-        actions: [
-          TextButton(
-            onPressed: _isSubmitting ? null : _create,
-            child: _isSubmitting
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: AppColors.primary),
-                  )
-                : Text(
-                    _startNow ? l10n.createSessionStart : l10n.createSessionCreate,
-                    style: const TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primary,
-                    ),
-                  ),
-          ),
-        ],
       ),
       body: Form(
-        key: _formKey,
+        key: _form,
         child: ListView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(AppSpacing.screen),
           children: [
-            // ── Title ─────────────────────────────────────────────────────
-            _FieldLabel(l10n.createSessionTitleField),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _titleCtrl,
-              style: AppTextStyles.bodyMedium,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: _inputDecoration('ex: Prière du jeudi soir'),
-              validator: (v) =>
-                  (v == null || v.trim().length < 3) ? l10n.createSessionTitleReq : null,
+            Text(
+              "À l'heure prévue, vous ouvrez la salle (caméra ou micro) : les inscrits rejoignent, "
+              'commentent et peuvent prendre la parole à tour de rôle.',
+              style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
             ),
-            const SizedBox(height: 20),
-
-            // ── Description ───────────────────────────────────────────────
-            _FieldLabel(l10n.createSessionDescField),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _descCtrl,
-              maxLines: 3,
-              style: AppTextStyles.bodyMedium,
-              textCapitalization: TextCapitalization.sentences,
-              decoration:
-                  _inputDecoration("Décrivez l'intention de cette session…"),
-            ),
-            const SizedBox(height: 20),
-
-            // ── Visibility ────────────────────────────────────────────────
-            _FieldLabel(l10n.createSessionVisibility),
-            const SizedBox(height: 8),
-            _VisibilityRow(
-              value: _visibility,
-              onChanged: (v) => setState(() => _visibility = v),
-            ),
-            const SizedBox(height: 20),
-
-            // ── Options ───────────────────────────────────────────────────
-            _FieldLabel(l10n.createSessionOptions),
-            const SizedBox(height: 8),
-            _OptionTile(
-              icon: Icons.radio_button_on_rounded,
-              iconColor: const Color(0xFFD92D20),
-              title: l10n.createSessionStartNow,
-              subtitle: l10n.createSessionStartNowDesc,
-              value: _startNow,
-              onChanged: (v) => setState(() => _startNow = v),
-            ),
-            _OptionTile(
-              icon: Icons.fiber_manual_record_rounded,
-              iconColor: AppColors.primary,
-              title: l10n.createSessionRecord,
-              subtitle: l10n.createSessionRecordDesc,
-              value: _isRecorded,
-              onChanged: (v) => setState(() => _isRecorded = v),
-            ),
-            const SizedBox(height: 32),
-
-            // ── CTA ───────────────────────────────────────────────────────
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _isSubmitting ? null : _create,
-                icon: Icon(
-                  _startNow
-                      ? Icons.video_call_rounded
-                      : Icons.calendar_today_rounded,
+            if (d.eventId != null) ...[
+              const SizedBox(height: AppSpacing.md),
+              Row(children: [
+                const Icon(Icons.event_rounded, size: 18, color: AppColors.primary),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text("Session rattachée à l'événement.",
+                      style: AppTextStyles.bodySmall.copyWith(color: AppColors.primary)),
                 ),
-                label: Text(
-                  _startNow
-                      ? l10n.createSessionStartBtn
-                      : l10n.createSessionScheduleBtn,
-                  style: const TextStyle(
-                    fontFamily: 'Plus Jakarta Sans',
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _startNow
-                      ? const Color(0xFFD92D20)
-                      : AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+              ]),
+            ],
+            const SizedBox(height: AppSpacing.lg),
+            TextFormField(
+              controller: _title,
+              maxLength: 150,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(labelText: 'Titre *', hintText: 'Ex. : Veillée de prière pour les familles'),
+              validator: (v) => (v?.trim().isEmpty ?? true) ? 'Donnez un titre à la session.' : null,
+            ),
+            TextFormField(
+              controller: _description,
+              minLines: 3,
+              maxLines: 6,
+              maxLength: 3000,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(labelText: 'Présentation'),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Text('Sujets de prière', style: AppTextStyles.labelMedium),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(spacing: 6, runSpacing: 6, children: [
+              for (final (i, t) in d.topics.indexed)
+                InputChip(label: Text(t), onDeleted: () => setState(() => d.topics.removeAt(i))),
+            ]),
+            Row(children: [
+              Expanded(
+                child: TextField(
+                  controller: _topic,
+                  maxLength: 150,
+                  textCapitalization: TextCapitalization.sentences,
+                  onSubmitted: (_) => _addTopic(),
+                  decoration: InputDecoration(hintText: d.topics.length >= 10 ? '10 sujets au plus' : 'Ajouter un sujet'),
                 ),
               ),
+              IconButton(onPressed: _addTopic, icon: const Icon(Icons.add_circle_outline), tooltip: 'Ajouter le sujet'),
+            ]),
+            const SizedBox(height: AppSpacing.md),
+            Text('Quand ?', style: AppTextStyles.labelMedium),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(spacing: AppSpacing.sm, runSpacing: AppSpacing.sm, children: [
+              OutlinedButton.icon(
+                onPressed: _pickDate,
+                icon: const Icon(Icons.calendar_today_rounded, size: 18),
+                label: Text(formatPrayerDate(d.startsAt).split(',').first),
+              ),
+              OutlinedButton.icon(
+                onPressed: _pickTime,
+                icon: const Icon(Icons.schedule_rounded, size: 18),
+                label: Text(TimeOfDay.fromDateTime(d.startsAt).format(context)),
+              ),
+            ]),
+            const SizedBox(height: AppSpacing.md),
+            DropdownButtonFormField<int>(
+              initialValue: durations.contains(d.durationMinutes) ? d.durationMinutes : 60,
+              decoration: const InputDecoration(labelText: 'Durée'),
+              items: [for (final m in durations) DropdownMenuItem(value: m, child: Text(_durationLabel(m)))],
+              onChanged: (v) => setState(() => d.durationMinutes = v ?? 60),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text('Les inscrits reçoivent un rappel 15 minutes avant.',
+                style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
+            const SizedBox(height: AppSpacing.lg),
+            Text('Qui peut la voir ?', style: AppTextStyles.labelMedium),
+            RadioGroup<PrayerVisibility>(
+              groupValue: d.visibility == PrayerVisibility.followers ? PrayerVisibility.followers : PrayerVisibility.public,
+              onChanged: (v) => setState(() => d.visibility = v ?? PrayerVisibility.public),
+              child: const Column(children: [
+                RadioListTile<PrayerVisibility>(
+                    value: PrayerVisibility.public, contentPadding: EdgeInsets.zero, title: Text('Tout le monde')),
+                RadioListTile<PrayerVisibility>(
+                    value: PrayerVisibility.followers, contentPadding: EdgeInsets.zero, title: Text('Mes abonnés')),
+              ]),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            FilledButton.icon(
+              onPressed: _saving ? null : _save,
+              icon: _saving
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Icon(Icons.check_rounded),
+              label: Text(_editing ? 'Enregistrer' : 'Programmer la session'),
+              style: FilledButton.styleFrom(backgroundColor: AppColors.primary, padding: const EdgeInsets.symmetric(vertical: 14)),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  InputDecoration _inputDecoration(String hint) => InputDecoration(
-        hintText: hint,
-        hintStyle: AppTextStyles.bodyMedium.copyWith(
-          color: AppColors.textSecondary,
-          fontStyle: FontStyle.italic,
-        ),
-        filled: true,
-        fillColor: AppColors.surface,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.border),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.border),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
-        ),
-      );
-}
-
-// ── Visibility row ────────────────────────────────────────────────────────────
-
-class _VisibilityRow extends StatelessWidget {
-  const _VisibilityRow({required this.value, required this.onChanged});
-  final PrayerVisibility value;
-  final ValueChanged<PrayerVisibility> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    final opts = [
-      (PrayerVisibility.public,  Icons.public_rounded, l10n.prayerPublic),
-      (PrayerVisibility.friends, Icons.group_rounded,  l10n.prayerFriends),
-      (PrayerVisibility.private, Icons.lock_rounded,   l10n.prayerPrivate),
-    ];
-
-    return Row(
-      children: opts.map((opt) {
-        final (vis, icon, label) = opt;
-        final sel = value == vis;
-        return Expanded(
-          child: GestureDetector(
-            onTap: () => onChanged(vis),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              decoration: BoxDecoration(
-                color: sel
-                    ? AppColors.primary.withAlpha(15)
-                    : AppColors.surface,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: sel ? AppColors.primary : AppColors.border,
-                  width: sel ? 1.5 : 1,
-                ),
-              ),
-              child: Column(
-                children: [
-                  Icon(icon,
-                      size: 20,
-                      color:
-                          sel ? AppColors.primary : AppColors.textSecondary),
-                  const SizedBox(height: 4),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: sel
-                          ? AppColors.primary
-                          : AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-}
-
-// ── Option tile ───────────────────────────────────────────────────────────────
-
-class _OptionTile extends StatelessWidget {
-  const _OptionTile({
-    required this.icon,
-    required this.iconColor,
-    required this.title,
-    required this.subtitle,
-    required this.value,
-    required this.onChanged,
-  });
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final String subtitle;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: SwitchListTile(
-        value: value,
-        onChanged: onChanged,
-        activeTrackColor: AppColors.primary.withAlpha(80),
-        activeThumbColor: AppColors.primary,
-        title: Text(
-          title,
-          style: const TextStyle(
-            fontFamily: 'Plus Jakarta Sans',
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        subtitle: Text(subtitle, style: AppTextStyles.bodySmall),
-        secondary: Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: iconColor.withAlpha(20),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, size: 18, color: iconColor),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Field label ───────────────────────────────────────────────────────────────
-
-class _FieldLabel extends StatelessWidget {
-  const _FieldLabel(this.text);
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: const TextStyle(
-        fontFamily: 'Plus Jakarta Sans',
-        fontWeight: FontWeight.w600,
-        fontSize: 14,
-        color: AppColors.textPrimary,
       ),
     );
   }

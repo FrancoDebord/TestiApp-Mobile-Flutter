@@ -2,6 +2,8 @@
 // Publish feature — domain models
 // =============================================================================
 
+import '../../../shared/models/mention.dart';
+
 /// The three testimony formats a user can publish.
 enum TestimonyFormat { text, audio, video }
 
@@ -39,6 +41,10 @@ enum PublishStatus {
 
   /// Enregistré dans le carnet privé (jamais soumis à la modération).
   savedToJournal,
+
+  /// Vidéo confiée à l'envoi Bunny Stream (videoUploadProvider) : compression,
+  /// envoi reprenable, puis traitement côté serveur.
+  videoUploading,
 }
 
 extension PublishStatusLabel on PublishStatus {
@@ -56,6 +62,8 @@ extension PublishStatusLabel on PublishStatus {
         return 'Hors ligne';
       case PublishStatus.savedToJournal:
         return 'Dans mon carnet';
+      case PublishStatus.videoUploading:
+        return 'Envoi de la vidéo';
     }
   }
 }
@@ -160,6 +168,7 @@ class PublishDraft {
     this.categoryId,
     this.isUploadingMedia = false,
     this.uploadError,
+    this.mentions = const [],
   });
 
   TestimonyFormat? format;
@@ -212,6 +221,16 @@ class PublishDraft {
   bool isUploadingMedia;
   String? uploadError;
 
+  /// Comptes choisis après « @ » dans la description / transcription
+  /// (docs serveur fonctionnalites/mentions.md : prévenus à la publication).
+  List<MentionRef> mentions;
+
+  /// Identifiants des comptes mentionnés encore présents (« @Nom ») dans [text].
+  List<String> mentionIdsIn(String? text) {
+    if (text == null || text.isEmpty || mentions.isEmpty) return const [];
+    return MentionCodec.ranges(text, mentions).map((r) => r.ref.id).toSet().toList();
+  }
+
   /// Titre envoyé au serveur : le titre saisi, sinon (titre facultatif) la
   /// première ligne de la description, sinon un libellé selon le format.
   String get effectiveTitle {
@@ -260,6 +279,7 @@ class PublishDraft {
     Object? audioRemoteUrl = _sentinel,
     Object? videoRemoteUrl = _sentinel,
     Object? uploadError = _sentinel,
+    List<MentionRef>? mentions,
   }) {
     return PublishDraft(
       format: format ?? this.format,
@@ -300,6 +320,7 @@ class PublishDraft {
           errorMessage == _sentinel ? this.errorMessage : errorMessage as String?,
       uploadError:
           uploadError == _sentinel ? this.uploadError : uploadError as String?,
+      mentions: mentions ?? this.mentions,
     );
   }
 }

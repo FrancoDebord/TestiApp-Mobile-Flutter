@@ -10,6 +10,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../shared/widgets/app_badge.dart';
+import '../../../shared/widgets/video_poster.dart' show VideoThumbnailImage;
 import '../../home/models/testimony_model.dart';
 import '../../home/widgets/testimony_card_header.dart'
     show AuthorAvatar, categoryBadgeTone;
@@ -168,11 +169,9 @@ class _CardHeader extends StatelessWidget {
         return Stack(
           fit: StackFit.expand,
           children: [
-            Image.network(
-              url,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) =>
-                  _GradientHeader(testimony: testimony),
+            VideoThumbnailImage(
+              url: url,
+              fallback: _GradientHeader(testimony: testimony),
             ),
             Container(
               color: Colors.black.withAlpha(38),

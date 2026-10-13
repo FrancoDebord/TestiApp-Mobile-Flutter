@@ -2,8 +2,10 @@
 /// and the Explorer results grid.
 library;
 
+import '../../repost/repost.dart';
 import '../../../core/app_constants.dart';
 import 'media_rendition.dart';
+import '../../../shared/models/mention.dart';
 
 export 'media_rendition.dart';
 
@@ -173,6 +175,10 @@ sealed class Testimony {
     this.isSaved = false,
     this.shareUrl,
     this.proofs = const [],
+    this.mentions = const [],
+    this.repost,
+    this.myReaction,
+    this.canDelete = false,
   });
 
   final String id;
@@ -191,6 +197,21 @@ sealed class Testimony {
 
   /// Preuves privées : présentes seulement pour l'auteur et la modération.
   final List<TestimonyProof> proofs;
+
+  /// Comptes mentionnés (« @Nom ») dans le texte / la transcription
+  /// (`mentions` de l'API, docs serveur fonctionnalites/mentions.md).
+  final List<MentionRef> mentions;
+
+  /// Partage interne à afficher au-dessus de la carte (« X a partagé ») : un compte
+  /// suivi d'abord (`repostedBy` de l'API, docs serveur fonctionnalites/partage-interne.md).
+  final RepostInfo? repost;
+
+  /// Réaction « j'aime » choisie par la personne connectée (`myReaction` : like, love,
+  /// fire, glory, strong, touched) ; une seule à la fois (docs serveur fonctionnalites/reactions.md).
+  final String? myReaction;
+
+  /// L'auteur ou un administrateur peut le supprimer (`canDelete`) ; jamais un modérateur.
+  final bool canDelete;
 
   /// Lien à partager : `share_url` du serveur, sinon même format que le
   /// backend (APP_URL/testimonies/{id}) pour les témoignages en cache local.
@@ -221,6 +242,10 @@ final class TextTestimony extends Testimony {
     super.isSaved,
     super.shareUrl,
     super.proofs,
+    super.mentions,
+    super.repost,
+    super.myReaction,
+    super.canDelete,
   });
 
   final String preview;
@@ -256,6 +281,10 @@ final class AudioTestimony extends Testimony {
     super.isSaved,
     super.shareUrl,
     super.proofs,
+    super.mentions,
+    super.repost,
+    super.myReaction,
+    super.canDelete,
   });
 
   final int     durationSeconds;
@@ -300,12 +329,18 @@ final class VideoTestimony extends Testimony {
     this.bibleVerse,
     this.bibleVerseRef,
     this.youtubeId,
+    this.hlsUrl,
+    this.videoStatus,
     super.isFeatured,
     super.isLiked,
     super.isPrayed,
     super.isSaved,
     super.shareUrl,
     super.proofs,
+    super.mentions,
+    super.repost,
+    super.myReaction,
+    super.canDelete,
   });
 
   final int     durationSeconds;
@@ -326,6 +361,17 @@ final class VideoTestimony extends Testimony {
   final String? youtubeId;
 
   bool get isYouTube => youtubeId != null && youtubeId!.isNotEmpty;
+
+  /// Flux HLS adaptatif (Bunny Stream) : lu en mode Auto. Les versions MP4
+  /// (`mp4_urls`) sont dans [renditions].
+  final String? hlsUrl;
+
+  /// État de la vidéo Bunny : uploading, processing, ready, failed
+  /// (`null` pour une ancienne vidéo ou un lien YouTube : toujours lisible).
+  final String? videoStatus;
+
+  /// Lisible et visible publiquement (vidéo prête, ou sans suivi d'état).
+  bool get isReady => videoStatus == null || videoStatus == 'ready';
 
   String get formattedDuration {
     final m = durationSeconds ~/ 60;
@@ -348,6 +394,9 @@ class DailyVerse {
     this.prayerCount = 0,
     this.isLiked  = false,
     this.isPrayed = false,
+    this.designOfTheDay,
+    this.effectiveDesignId,
+    this.userStyle,
   });
 
   final int    id;
@@ -358,6 +407,15 @@ class DailyVerse {
   final bool   isLiked;
   final bool   isPrayed;
 
+  /// Design du jour calculé par le serveur (fuseau Africa/Porto-Novo).
+  final String? designOfTheDay;
+
+  /// Design à afficher selon le serveur (choix du membre, sinon design du jour).
+  final String? effectiveDesignId;
+
+  /// Préférences du membre connecté (`user_style`) ; null pour un visiteur.
+  final Map<String, dynamic>? userStyle;
+
   factory DailyVerse.fromJson(Map<String, dynamic> j) {
     String str(List<String> keys) {
       for (final k in keys) {
@@ -366,6 +424,10 @@ class DailyVerse {
       }
       return '';
     }
+    final counts = j['counts'] is Map ? j['counts'] as Map : null;
+    final reactions = j['myReactions'] is List
+        ? (j['myReactions'] as List).map((e) => '$e').toSet()
+        : const <String>{};
 
     return DailyVerse(
       id: (j['id'] as num?)?.toInt() ?? 0,
@@ -374,12 +436,23 @@ class DailyVerse {
       reference: str(['reference', 'verse', 'citation', 'ref',
                        'verse_reference', 'verseReference', 'address',
                        'book_chapter_verse', 'location']),
+      // L'API renvoie { counts: { likes, prayers }, myReactions: [like, pray] } ;
+      // le cache local garde like_count / is_liked.
       likeCount:   (j['like_count']   as num?)?.toInt() ??
-                   (j['likes_count']  as num?)?.toInt() ?? 0,
+                   (j['likes_count']  as num?)?.toInt() ??
+                   (counts?['likes']  as num?)?.toInt() ?? 0,
       prayerCount: (j['prayer_count'] as num?)?.toInt() ??
-                   (j['prayers_count'] as num?)?.toInt() ?? 0,
-      isLiked:  j['is_liked']  as bool? ?? j['isLiked']  as bool? ?? false,
-      isPrayed: j['is_prayed'] as bool? ?? j['isPrayed'] as bool? ?? false,
+                   (j['prayers_count'] as num?)?.toInt() ??
+                   (counts?['prayers'] as num?)?.toInt() ?? 0,
+      isLiked:  j['is_liked']  as bool? ?? j['isLiked']  as bool? ??
+                reactions.contains('like'),
+      isPrayed: j['is_prayed'] as bool? ?? j['isPrayed'] as bool? ??
+                reactions.contains('pray'),
+      designOfTheDay: j['design_of_the_day'] as String?,
+      effectiveDesignId: j['effective_design_id'] as String?,
+      userStyle: j['user_style'] is Map
+          ? Map<String, dynamic>.from(j['user_style'] as Map)
+          : null,
     );
   }
 
@@ -396,5 +469,8 @@ class DailyVerse {
     prayerCount: prayerCount ?? this.prayerCount,
     isLiked:     isLiked     ?? this.isLiked,
     isPrayed:    isPrayed    ?? this.isPrayed,
+    designOfTheDay:    designOfTheDay,
+    effectiveDesignId: effectiveDesignId,
+    userStyle:         userStyle,
   );
 }

@@ -8,7 +8,6 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
 import 'package:video_player/video_player.dart';
 
 import '../../../core/app_constants.dart';
@@ -27,8 +26,10 @@ import '../../../features/home/providers/home_providers.dart';
 import '../../../services/api_service.dart' show apiServiceProvider;
 import '../../../shared/widgets/guest_gate.dart';
 import '../../../shared/widgets/quality_picker_sheet.dart';
+import '../../../shared/widgets/video_poster.dart';
 import '../../../shared/widgets/youtube_video_player.dart';
 import '../providers/recommendations_provider.dart';
+import '../../repost/testimony_share_sheet.dart';
 
 // ============================================================================
 // Video Player Screen — YouTube-inspired
@@ -100,17 +101,20 @@ class VideoPlayerScreen extends ConsumerStatefulWidget {
 class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
   VideoPlayerController? _videoCtrl;
   ChewieController? _chewieCtrl;
-  bool _isLiked = false;
-  bool _isPraying = false;
   bool _isBookmarked = false;
   VideoTestimony? _testimony;
 
   // ── Qualité ──────────────────────────────────────────────────────────────
   String? _original; // fichier original
-  List<MediaRendition> _renditions = const []; // versions disponibles
+  String? _hls; // flux HLS adaptatif (Bunny Stream) : mode Auto
+  List<MediaRendition> _renditions = const []; // versions disponibles (MP4)
   VideoQuality? _override; // choix ponctuel (session)
   ResolvedMedia? _resolved; // version en cours de lecture
   bool _switching = false; // changement de qualité en cours
+
+  /// Données mobiles : pas de lecture automatique, l'affiche attend un toucher.
+  bool _awaitingTap = false;
+  bool _userStarted = false;
 
   // ── Fin de lecture / suivant ─────────────────────────────────────────────
   bool _endHandled = false; // évite un double déclenchement
@@ -140,10 +144,6 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
   Future<void> _onNetworkChanged(bool? was, bool? now) async {
     if (now == null || was == null || was == now) return;
     if (_videoCtrl == null || _switching || _override != null) return;
-    if (ref.read(playbackPreferencesProvider).videoQuality !=
-        VideoQuality.auto) {
-      return;
-    }
     final next = _resolve();
     if (next == null || next.url == _resolved?.url) return;
     final switched = await _changeQuality(null);
@@ -171,8 +171,6 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
             .whereType<VideoTestimony>()
             .where((t) => t.id == widget.testimonyId)
             .firstOrNull;
-    _isLiked = _testimony?.isLiked ?? false;
-    _isPraying = _testimony?.isPrayed ?? false;
 
     // 2. URL passée directement par l'appelant, sinon celle du témoignage
     final direct = widget.mediaPath;
@@ -180,6 +178,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
         ? direct
         : _testimony?.mediaPath;
     _renditions = _testimony?.renditions ?? const [];
+    _hls = _testimony?.hlsUrl;
 
     // Vidéo YouTube : lue par le lecteur YouTube (build), pas de video_player.
     if (_testimony?.isYouTube ?? false) {
@@ -188,7 +187,9 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     }
 
     // 3. Fallback : récupérer le témoignage complet depuis l'API
-    if ((_original == null || _original!.isEmpty) && _renditions.isEmpty) {
+    if ((_original == null || _original!.isEmpty) &&
+        _renditions.isEmpty &&
+        _hls == null) {
       await _fetchFromApi();
       return;
     }
@@ -202,14 +203,16 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
       final response = await api.get<dynamic>(
         AppConstants.testimonyById(widget.testimonyId),
       );
-      final t = testimonyFromApiJson(response.data);
+      // Page ouverte par l'auteur (Mes publications) : vidéo peut-être pas prête.
+      final t = testimonyFromApiJson(response.data, allowUnready: true);
       if (t is VideoTestimony && mounted) {
         _testimony = t;
-        _isLiked = t.isLiked;
-        _isPraying = t.isPrayed;
+        // État des réactions renvoyé par le serveur (j'aime, je prie, compteurs).
+        ref.read(interactionProvider.notifier).seedFromFeed([t]);
         _original = t.mediaPath;
         _renditions = t.renditions;
-        if (t.isYouTube) {
+        _hls = t.hlsUrl;
+        if (t.isYouTube || !t.isReady) {
           setState(() {});
           return;
         }
@@ -227,6 +230,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
   ResolvedMedia? _resolve({VideoQuality? override}) => resolveVideo(
     original: _original,
     renditions: _renditions,
+    hlsUrl: _hls,
     prefs: ref.read(playbackPreferencesProvider),
     metered: ref.read(isMeteredConnectionProvider).value ?? true,
     override: override ?? _override,
@@ -267,12 +271,26 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     );
   }
 
+  bool get _metered => ref.read(isMeteredConnectionProvider).value ?? true;
+
   Future<void> _startPlayback() async {
     final resolved = _resolve();
     if (resolved == null) {
       if (mounted) setState(() {});
       return;
     }
+
+    // Données mobiles : pas de lecture automatique (fichier local excepté).
+    if (_metered && !resolved.isLocal && !_userStarted) {
+      if (mounted) {
+        setState(() {
+          _awaitingTap = true;
+          _resolved = resolved;
+        });
+      }
+      return;
+    }
+    if (_awaitingTap && mounted) setState(() => _awaitingTap = false);
 
     final ctrl = _createController(resolved.url);
     try {
@@ -299,10 +317,18 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
 
   // ── Changement de qualité (conserve la position et lecture/pause) ────────
 
+  /// Toucher de l'affiche (données mobiles) : la lecture démarre.
+  void _playFromPoster() {
+    _userStarted = true;
+    setState(() => _awaitingTap = false);
+    _startPlayback();
+  }
+
   Future<void> _openQualitySheet() async {
     final picked = await showVideoQualitySheet(
       context,
       original: _original,
+      hlsUrl: _hls,
       renditions: _renditions,
       prefs: ref.read(playbackPreferencesProvider),
       metered: ref.read(isMeteredConnectionProvider).value ?? true,
@@ -320,6 +346,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
         ? resolveVideo(
             original: _original,
             renditions: _renditions,
+            hlsUrl: _hls,
             prefs: ref.read(playbackPreferencesProvider),
             metered: ref.read(isMeteredConnectionProvider).value ?? true,
           )
@@ -564,6 +591,15 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
                     children: [
                       if (youtubeId != null)
                         YouTubeVideoPlayer(videoId: youtubeId)
+                      else if (testimony != null && !testimony.isReady)
+                        _NotReadySurface(status: testimony.videoStatus)
+                      else if (_awaitingTap)
+                        VideoPoster(
+                          thumbnailUrl: testimony?.thumbnailUrl,
+                          durationSeconds: testimony?.durationSeconds ?? 0,
+                          hint: 'Données mobiles · ${_resolved?.label ?? ''}',
+                          onPlay: _playFromPoster,
+                        )
                       else if (_chewieCtrl != null)
                         Chewie(
                           key: ObjectKey(_chewieCtrl),
@@ -584,7 +620,10 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
                           onBack: () => Navigator.of(context).pop(),
                         ),
                       // Retour (le lecteur Chewie n'en a pas)
-                      if (_chewieCtrl != null || youtubeId != null)
+                      if (_chewieCtrl != null ||
+                          youtubeId != null ||
+                          _awaitingTap ||
+                          !(testimony?.isReady ?? true))
                         Positioned(
                           top: 4,
                           left: 4,
@@ -631,7 +670,9 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
             if (youtubeId == null)
               _PlaybackControlsRow(
                 qualityLabel: videoQualityChipLabel(
-                  _override ?? prefs.videoQuality,
+                  _override ??
+                      prefs.videoQualityFor(
+                          metered: ref.watch(isMeteredConnectionProvider).value ?? true),
                   _resolved,
                 ),
                 onQuality: _openQualitySheet,
@@ -655,10 +696,8 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
                   children: [
                     _VideoInfo(
                       testimony: testimony,
-                      isLiked: _isLiked,
-                      isPraying: _isPraying,
-                      onPray: _togglePray,
-                      onLike: _toggleLike,
+                      onPray: () => _togglePray(testimony),
+                      onLike: () => _toggleLike(testimony),
                       onShare: () => _share(testimony),
                       onComment: () => _showCommentsSheet(context),
                     ),
@@ -683,28 +722,20 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
 
   // ── Actions réservées aux membres (mode invité : feuille « compte requis »)
 
-  Future<void> _toggleLike() async {
+  Future<void> _toggleLike(VideoTestimony? t) async {
     if (!await requireAccount(context, ref, reason: 'réagir aux témoignages')) {
       return;
     }
-    if (!mounted) return;
-    final wasLiked = _isLiked;
-    setState(() => _isLiked = !_isLiked);
-    final interactions = ref.read(interactionProvider.notifier);
-    if (!wasLiked) {
-      interactions.setReaction(widget.testimonyId, ReactionType.like);
-    } else {
-      interactions.removeReaction(widget.testimonyId);
-    }
+    if (!mounted || t == null) return;
+    ref.read(interactionProvider.notifier).toggleLike(t);
   }
 
-  Future<void> _togglePray() async {
+  Future<void> _togglePray(VideoTestimony? t) async {
     if (!await requireAccount(context, ref, reason: 'réagir aux témoignages')) {
       return;
     }
-    if (!mounted) return;
-    setState(() => _isPraying = !_isPraying);
-    ref.read(interactionProvider.notifier).togglePray(widget.testimonyId);
+    if (!mounted || t == null) return;
+    ref.read(interactionProvider.notifier).togglePray(t);
   }
 
   Future<void> _toggleSave() async {
@@ -718,8 +749,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
 
   void _share(VideoTestimony? t) {
     if (t == null) return;
-    SharePlus.instance.share(ShareParams(text: '${t.title}\n\n${t.shareLink}'));
-    ref.read(interactionProvider.notifier).recordShare(widget.testimonyId);
+    showTestimonyShareSheet(context, ref, t);
   }
 
   Future<void> _showCommentsSheet(BuildContext context) async {
@@ -771,16 +801,19 @@ Future<VideoQuality?> showVideoQualitySheet(
   required PlaybackPreferences prefs,
   required bool metered,
   required VideoQuality? override,
+  String? hlsUrl,
   String? renditionsStatus,
 }) {
   final options = availableVideoQualities(renditions);
+  final adaptive = hlsUrl != null && hlsUrl.isNotEmpty;
 
   // Qualité cochée : choix en cours, sinon la version réellement lue.
-  var selected = override ?? prefs.videoQuality;
+  var selected = override ?? prefs.videoQualityFor(metered: metered);
   if (!options.contains(selected)) {
     final r = resolveVideo(
       original: original,
       renditions: renditions,
+      hlsUrl: hlsUrl,
       prefs: prefs,
       metered: metered,
       override: override,
@@ -791,27 +824,30 @@ Future<VideoQuality?> showVideoQualitySheet(
     );
   }
 
-  final autoLabel = resolveVideo(
-    original: original,
-    renditions: renditions,
-    prefs: prefs,
-    metered: metered,
-    override: VideoQuality.auto,
-  )?.rendition?.label;
+  // Flux adaptatif : la qualité varie pendant la lecture, pas de libellé fixe.
+  final autoLabel = adaptive
+      ? null
+      : resolveVideo(
+          original: original,
+          renditions: renditions,
+          prefs: prefs,
+          metered: metered,
+          override: VideoQuality.auto,
+        )?.rendition?.label;
 
   const settingsHint =
-      'Qualité par défaut modifiable dans Paramètres › Lecture et données.';
+      'Qualité par défaut modifiable dans Paramètres › Qualité vidéo.';
 
   return showQualityPickerSheet<VideoQuality>(
     context,
     title: 'Qualité de la vidéo',
     options: [
       for (final q in options)
-        QualityOption(value: q, label: q.label, hint: q.hint),
+        QualityOption(value: q, label: q.fullLabel, hint: q.hint),
     ],
     selected: selected,
     currentLabel: autoLabel,
-    footer: renditions.isEmpty
+    footer: renditions.isEmpty && !adaptive
         ? '${singleQualityReason(renditionsStatus, video: true)}\n$settingsHint'
         : 'Ce choix vaut pour cette lecture uniquement.\n$settingsHint',
   );
@@ -1428,8 +1464,6 @@ class _VideoBadge extends StatelessWidget {
 class _VideoInfo extends ConsumerWidget {
   const _VideoInfo({
     required this.testimony,
-    required this.isLiked,
-    required this.isPraying,
     required this.onPray,
     required this.onLike,
     required this.onShare,
@@ -1437,8 +1471,6 @@ class _VideoInfo extends ConsumerWidget {
   });
 
   final VideoTestimony? testimony;
-  final bool isLiked;
-  final bool isPraying;
   final VoidCallback onPray;
   final VoidCallback onLike;
   final VoidCallback onShare;
@@ -1458,10 +1490,12 @@ class _VideoInfo extends ConsumerWidget {
     final author = t.author;
     final isOwnProfile = author.uid == currentUid;
     final verse = t.bibleVerse;
-    // Le compteur du serveur inclut déjà le « J'aime » éventuel de l'utilisateur.
-    final likes = t.stats.likes + (isLiked == t.isLiked ? 0 : (isLiked ? 1 : -1));
-    final prayers =
-        t.stats.prayers + (isPraying == t.isPrayed ? 0 : (isPraying ? 1 : -1));
+    // État et compteurs du serveur (une « j'aime » et une « je prie » au plus par personne).
+    final rx = ref.watch(interactionProvider);
+    final isLiked = rx.likedOf(t);
+    final isPraying = rx.prayedOf(t);
+    final likes = rx.likesOf(t);
+    final prayers = rx.prayersOf(t);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
@@ -1584,6 +1618,47 @@ class _CommentsPreview extends StatelessWidget {
 }
 
 // ============================================================================
+// Vidéo pas encore prête (vue par son auteur depuis « Mes publications »)
+// ============================================================================
+
+class _NotReadySurface extends StatelessWidget {
+  const _NotReadySurface({required this.status});
+  final String? status;
+
+  @override
+  Widget build(BuildContext context) {
+    final failed = status == 'failed';
+    return ColoredBox(
+      color: AppColors.primaryDark,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                failed ? Icons.error_outline_rounded : Icons.hourglass_top_rounded,
+                color: AppColors.surface,
+                size: 36,
+              ),
+              const SizedBox(height: 10),
+              Text(
+                failed
+                    ? 'Le traitement de cette vidéo a échoué.'
+                    : 'Votre témoignage est en cours de traitement. '
+                        'Vous serez notifié dès qu\'il sera en ligne.',
+                textAlign: TextAlign.center,
+                style: AppTextStyles.bodySmall.copyWith(color: AppColors.surface),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================================
 // Related Videos List
 // ============================================================================
 
@@ -1615,6 +1690,7 @@ class _RelatedVideosList extends ConsumerWidget {
             .toList();
 
     if (related.isEmpty) return const SizedBox.shrink();
+    final metered = ref.watch(isMeteredConnectionProvider).value ?? true;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1627,7 +1703,11 @@ class _RelatedVideosList extends ConsumerWidget {
           ),
         ),
         ...related.map(
-          (t) => _RelatedVideoCard(testimony: t, onTap: () => onOpen(t)),
+          (t) => _RelatedVideoCard(
+            testimony: t,
+            metered: metered,
+            onTap: () => onOpen(t),
+          ),
         ),
       ],
     );
@@ -1635,8 +1715,15 @@ class _RelatedVideosList extends ConsumerWidget {
 }
 
 class _RelatedVideoCard extends StatefulWidget {
-  const _RelatedVideoCard({required this.testimony, required this.onTap});
+  const _RelatedVideoCard({
+    required this.testimony,
+    required this.metered,
+    required this.onTap,
+  });
   final VideoTestimony testimony;
+
+  /// Données mobiles : on ne télécharge pas la vidéo pour connaître sa durée.
+  final bool metered;
   final VoidCallback onTap;
 
   @override
@@ -1658,8 +1745,13 @@ class _RelatedVideoCardState extends State<_RelatedVideoCard> {
   void initState() {
     super.initState();
     _secs = widget.testimony.durationSeconds;
-    // YouTube : pas de fichier à sonder, la durée n'est pas connue.
-    if (_secs == 0 && !widget.testimony.isYouTube) _loadDuration();
+    // YouTube : pas de fichier à sonder ; Bunny : durée fournie par le serveur.
+    if (_secs == 0 &&
+        !widget.metered &&
+        !widget.testimony.isYouTube &&
+        widget.testimony.hlsUrl == null) {
+      _loadDuration();
+    }
   }
 
   Future<void> _loadDuration() async {
@@ -1710,14 +1802,10 @@ class _RelatedVideoCardState extends State<_RelatedVideoCard> {
                       child: SizedBox(
                         width: 120,
                         height: 68,
-                        child: testimony.thumbnailUrl.isNotEmpty
-                            ? Image.network(
-                                testimony.thumbnailUrl,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, _, _) =>
-                                    _GradientThumb(gradient: gradient),
-                              )
-                            : _GradientThumb(gradient: gradient),
+                        child: VideoThumbnailImage(
+                          url: testimony.thumbnailUrl,
+                          fallback: _GradientThumb(gradient: gradient),
+                        ),
                       ),
                     ),
                     if (testimony.isYouTube)
@@ -1726,7 +1814,7 @@ class _RelatedVideoCardState extends State<_RelatedVideoCard> {
                         right: 6,
                         child: YouTubeBadge(compact: true),
                       )
-                    else
+                    else if (_secs > 0)
                       Positioned(
                         bottom: 5,
                         right: 6,

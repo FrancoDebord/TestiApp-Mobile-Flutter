@@ -12,11 +12,16 @@ import '../../../core/local_db/database_service.dart';
 import '../../../core/media/youtube.dart';
 import '../../../features/auth/providers/auth_notifier.dart'
     show currentUserProvider;
+import '../../../features/bible/providers/bible_providers.dart'
+    show bibleVerseRefProvider;
 import '../../../features/home/models/testimony_model.dart';
 import '../../../features/home/providers/home_providers.dart';
 import '../../../services/api_service.dart';
 import '../../journal/data/journal_repository.dart' show journalRefreshProvider;
 import '../models/publish_models.dart';
+import '../upload/video_upload_controller.dart' show videoUploadProvider;
+import '../../../shared/models/mention.dart' show MentionRef;
+import '../../prophecies/providers/prophecies_providers.dart' show propheciesListProvider;
 
 // Converts a relative server URL (e.g. "/storage/videos/x.mp4") to absolute.
 String? _absoluteUrl(String? raw) {
@@ -38,6 +43,46 @@ String _uploadErrorMessage(Object e, String fallback) {
   }
   return fallback;
 }
+
+// =============================================================================
+// Événement de rattachement (témoignage officiel publié par un gestionnaire)
+// Backend : docs/fonctionnalites/evenements.md
+// =============================================================================
+
+/// Événement auquel le prochain témoignage publié sera rattaché (`event_id`),
+/// choisi depuis la page de l'événement. null : témoignage ordinaire.
+class PublishEventNotifier extends Notifier<({String id, String title})?> {
+  @override
+  ({String id, String title})? build() => null;
+
+  void attach(String id, String title) => state = (id: id, title: title);
+  void clear() => state = null;
+}
+
+final publishEventProvider =
+    NotifierProvider<PublishEventNotifier, ({String id, String title})?>(
+        PublishEventNotifier.new);
+
+/// Parole prophétique dont le prochain témoignage raconte l'accomplissement
+/// (`prophecy_id`) ; [makePublic] : la parole est montrée avec le témoignage.
+/// Doc serveur : docs/fonctionnalites/paroles-prophetiques.md
+typedef PublishProphecy = ({String id, String title, bool makePublic});
+
+class PublishProphecyNotifier extends Notifier<PublishProphecy?> {
+  @override
+  PublishProphecy? build() => null;
+
+  void attach(String id, String title) => state = (id: id, title: title, makePublic: true);
+  void setPublic(bool value) {
+    final s = state;
+    if (s != null) state = (id: s.id, title: s.title, makePublic: value);
+  }
+
+  void clear() => state = null;
+}
+
+final publishProphecyProvider =
+    NotifierProvider<PublishProphecyNotifier, PublishProphecy?>(PublishProphecyNotifier.new);
 
 // =============================================================================
 // Publish flow state — drives the multi-step stepper
@@ -75,6 +120,10 @@ class PublishNotifier extends Notifier<PublishDraft> {
   // ── Step 2: Content ─────────────────────────────────────────────────────────
 
   void updateBodyText(String value) => state = state.copyWith(bodyText: value);
+
+  /// Mentions « @ » choisies dans la description / transcription (envoyées en `mention_ids`).
+  void updateMentions(List<MentionRef> mentions) =>
+      state = state.copyWith(mentions: List.unmodifiable(mentions));
 
   void updateBibleVerse(String value) =>
       state = state.copyWith(bibleVerse: value);
@@ -196,38 +245,11 @@ class PublishNotifier extends Notifier<PublishDraft> {
         ? extractYouTubeId(state.youtubeUrl)
         : null;
 
-    if (format == TestimonyFormat.video &&
+    // Fichier vidéo : envoyé à Bunny Stream après la construction du corps
+    // (POST /videos/upload-init, voir plus bas), pas par /media/upload.
+    final bunnyVideo = format == TestimonyFormat.video &&
         youtubeId == null &&
-        (state.videoPath ?? '').isNotEmpty &&
-        state.videoRemoteUrl == null) {
-      state = state.copyWith(isUploadingMedia: true);
-      try {
-        final api    = ref.read(apiServiceProvider);
-        final result = await api.upload<Map<String, dynamic>>(
-          AppConstants.uploadMedia,
-          filePath: state.videoPath!,
-          fieldName: 'file',
-          extraFields: {'type': 'video'},
-        );
-        debugPrint('═══ UPLOAD video response keys=${result.data.keys.toList()} data=${result.data}');
-        final rawUrl = result.data['url']
-            ?? result.data['file_url']
-            ?? result.data['media_url']
-            ?? result.data['path']
-            ?? result.data['file_path'];
-        final url = _absoluteUrl(rawUrl as String?);
-        debugPrint('═══ UPLOAD video ✓ url=$url');
-        state = state.copyWith(videoRemoteUrl: url, isUploadingMedia: false);
-      } catch (e) {
-        debugPrint('═══ UPLOAD video ✗ $e');
-        state = state.copyWith(
-          isUploadingMedia: false,
-          status: PublishStatus.draft,
-          uploadError: _uploadErrorMessage(e, "Échec de l'envoi vidéo. Réessaie."),
-        );
-        return;
-      }
-    }
+        (state.videoPath ?? '').isNotEmpty;
 
     // Titre facultatif dans le formulaire : repli sur la description.
     final title    = state.effectiveTitle;
@@ -288,21 +310,73 @@ class PublishNotifier extends Notifier<PublishDraft> {
       'category'    : catSlug.isEmpty ? null : catSlug,
       'category_id' : catId,
       'body_text'   : bodyText,
+      // Mentions « @Nom » choisies : reconnues par le serveur, prévenues à la publication.
+      if (state.mentionIdsIn(bodyText) case final ids when ids.isNotEmpty)
+        'mention_ids': ids,
       'media_url'   : mediaUrl,
       'cover_url'   : state.coverImageRemoteUrl,
       'duration'    : durationSec,
       'bible_verse' : state.bibleVerse.isNotEmpty ? state.bibleVerse : null,
+      // Référence structurée (« Jean 3:16-18 ») choisie dans la Bible ou le verset
+      // du jour : enregistrée dans bible_ref (verseReference) et utilisée par le
+      // serveur pour lier le témoignage au verset, audio et vidéo compris.
+      if (ref.read(bibleVerseRefProvider) case final vRef?)
+        'verse_ref': vRef.displayRef,
       // Administrateurs seulement (403 sinon) : le serveur force le type vidéo,
       // aucun fichier et la miniature YouTube en couverture.
       if (youtubeId != null) 'youtube_url': state.youtubeUrl,
       // Preuves montrées au public (une fois le témoignage publié) si l'auteur l'accepte.
       if (state.proofs.isNotEmpty) 'proofs_public': state.proofsPublic,
+      // Témoignage officiel d'un événement (gestionnaires ; jamais pour le carnet privé).
+      if (ref.read(publishEventProvider) case final ev?
+          when state.visibility != TestimonyVisibility.private)
+        'event_id': ev.id,
+      // Accomplissement d'une parole prophétique (et parole rendue publique ou non).
+      if (ref.read(publishProphecyProvider) case final p?) ...{
+        'prophecy_id': p.id,
+        'prophecy_public': p.makePublic && state.visibility != TestimonyVisibility.private,
+      },
       'visibility'  : switch (state.visibility) {
         TestimonyVisibility.private => 'private',
         TestimonyVisibility.friends => 'followers', // valeur attendue par l'API
         TestimonyVisibility.public  => 'public',
       },
     };
+
+    // ── Vidéo Bunny Stream : upload-init crée le témoignage (mêmes champs que
+    // POST /testimonies, sans media_url) ; compression, envoi TUS reprenable et
+    // upload-complete se poursuivent dans videoUploadProvider, même si l'on
+    // quitte l'écran. La vidéo n'apparaît qu'une fois prête (push video_ready).
+    if (bunnyVideo) {
+      final body = {...postBody}..remove('media_url');
+      final positions = state.proofs.keys.toList()..sort();
+      try {
+        await ref.read(videoUploadProvider.notifier).start(
+              sourcePath: state.videoPath!,
+              title: title,
+              body: body,
+              proofs: [
+                for (final p in positions)
+                  (position: p, path: state.proofs[p]!.path),
+              ],
+            );
+      } on StateError {
+        state = state.copyWith(
+          status: PublishStatus.draft,
+          errorMessage: 'Une autre vidéo est en cours d’envoi. '
+              'Attendez la fin de son envoi (ou annulez-le) avant d’en publier une nouvelle.',
+        );
+        return;
+      }
+      ref.read(publishEventProvider.notifier).clear();
+      ref.read(bibleVerseRefProvider.notifier).clear();
+      if (ref.read(publishProphecyProvider) != null) {
+        ref.read(publishProphecyProvider.notifier).clear();
+        ref.invalidate(propheciesListProvider);
+      }
+      state = state.copyWith(status: PublishStatus.videoUploading);
+      return;
+    }
 
     debugPrint('═══ PUBLISH → POST ${AppConstants.baseUrl}${AppConstants.testimonies}');
     debugPrint('═══ category slug=$catSlug id=$catId (state.categoryId=${state.categoryId}, catMatch=${catMatch?.id})');
@@ -317,6 +391,13 @@ class PublishNotifier extends Notifier<PublishDraft> {
       debugPrint('═══ PUBLISH ✓ id=${result.data['id']}');
       id = result.data['id']?.toString() ?? id;
       created = true;
+      ref.read(publishEventProvider.notifier).clear();
+      // La référence ne doit pas suivre le témoignage suivant.
+      ref.read(bibleVerseRefProvider.notifier).clear();
+      if (ref.read(publishProphecyProvider) != null) {
+        ref.read(publishProphecyProvider.notifier).clear();
+        ref.invalidate(propheciesListProvider);
+      }
     } on DioException catch (e) {
       debugPrint('═══ PUBLISH DioException type=${e.type} status=${e.response?.statusCode} body=${e.response?.data}');
       final isOffline = e.type == DioExceptionType.connectionError ||

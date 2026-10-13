@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/app_constants.dart';
+import '../../../features/auth/providers/auth_notifier.dart'
+    show currentUserProvider;
 import '../../../services/api_service.dart';
 import '../models/notification_models.dart';
 
@@ -23,6 +25,11 @@ AppNotification? notificationFromJson(dynamic raw) {
       testimonyId:          m['testimonyId']?.toString(),
       liveId:               m['liveId']?.toString(),
       message:              m['message']        as String?,
+      prayerRequestId:      m['prayerRequestId']?.toString(),
+      prayerSessionId:      m['prayerSessionId']?.toString(),
+      eventId:              m['eventId']?.toString(),
+      actorId:              m['actorId']?.toString(),
+      dailyVerseId:         m['dailyVerseId']?.toString(),
     );
   } catch (_) {
     return null;
@@ -33,15 +40,30 @@ NotificationType _parseType(String v) => switch (v) {
       'like'                  => NotificationType.like,
       'comment'               => NotificationType.comment,
       'reply'                 => NotificationType.comment,
-      'mention'               => NotificationType.comment,
+      'mention'               => NotificationType.mention,
+      'follow'                => NotificationType.follow,
+      'share'                 => NotificationType.share,
       'testimony_approved'    => NotificationType.approved,
-      'testimony_rejected'    => NotificationType.pendingCorrection,
+      'testimony_rejected'    => NotificationType.rejected,
       'pending_correction'    => NotificationType.pendingCorrection,
       'new_followed_testimony'=> NotificationType.newFollowedTestimony,
       'prayer'                => NotificationType.prayer,
+      // Requêtes et sessions de prière
+      'prayer_encouragement'    => NotificationType.prayer,
+      // « Je prie » sur une de mes requêtes (ouvre la requête : prayerRequestId)
+      'prayer_request_prayed'   => NotificationType.prayer,
+      'prayer_session_started'  => NotificationType.prayer,
+      'prayer_session_reminder' => NotificationType.prayer,
       'organization_verified' => NotificationType.organizationVerified,
       'organization_rejected' => NotificationType.organizationRejected,
+      'account_verified'      => NotificationType.accountVerified,
+      'account_verification_rejected' => NotificationType.accountVerificationRejected,
+      // Administrateurs de compte (système)
+      'account_manager_added'   => NotificationType.accountManagerAdded,
+      'account_manager_removed' => NotificationType.accountManagerRemoved,
       'live_started'          => NotificationType.liveStarted,
+      // Événements : reporté, annulé, sondage d'après l'événement
+      'event_postponed' || 'event_cancelled' || 'event_survey' => NotificationType.event,
       _                       => NotificationType.like,
     };
 
@@ -66,7 +88,13 @@ final notificationFilterProvider =
 
 class NotificationsNotifier extends AsyncNotifier<List<AppNotification>> {
   @override
-  Future<List<AppNotification>> build() => _fetchFromApi();
+  Future<List<AppNotification>> build() async {
+    // Invité : rien à charger (la route exige une connexion). La liste se
+    // recharge d'elle-même à la connexion / déconnexion.
+    final userId = ref.watch(currentUserProvider.select((u) => u?.id));
+    if (userId == null) return const [];
+    return _fetchFromApi();
+  }
 
   Future<List<AppNotification>> _fetchFromApi() async {
     final api      = ref.read(apiServiceProvider);

@@ -12,6 +12,7 @@ import 'admin_moderators_screen.dart';
 import 'admin_settings_screen.dart';
 import 'admin_stats_screen.dart';
 import 'admin_users_screen.dart';
+import 'admin_verifications_screen.dart';
 
 // =============================================================================
 // AdminDashboardScreen
@@ -87,6 +88,14 @@ class AdminDashboardScreen extends ConsumerWidget {
                     color: Color(0xFF184797)),
                 tooltip: 'File de modération',
                 onPressed: () => context.push('/moderation'),
+              ),
+              // Vérification des comptes personnels (docs/fonctionnalites/verification-des-comptes.md)
+              IconButton(
+                icon: const Icon(Icons.how_to_reg_outlined,
+                    color: Color(0xFF184797)),
+                tooltip: 'Vérification des comptes',
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                    builder: (_) => const AdminVerificationsScreen())),
               ),
             ],
           ),

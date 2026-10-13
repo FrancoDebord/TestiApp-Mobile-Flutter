@@ -18,7 +18,7 @@ import '../widgets/auth_widgets.dart';
 // GoRouter redirect keeps the user here until verification completes.
 //
 // Layout (top → bottom):
-//   1. Purple wave header   — shield/envelope icon + "Vérifiez votre e-mail"
+//   1. Wave header (Krea Blue) — shield/envelope icon + "Vérifiez votre e-mail"
 //   2. White card body:
 //      a. Instructional text + masked email address
 //      b. 6-cell OTP input  — each cell is an individual TextField (auto-focus
@@ -195,7 +195,7 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
       backgroundColor: AppColors.surface,
       body: Column(
         children: [
-          // ── Purple wave header ─────────────────────────────────────────────
+          // ── Wave header (Krea Blue) ────────────────────────────────────────────
           AuthWaveHeader(
             child: SafeArea(
               bottom: false,

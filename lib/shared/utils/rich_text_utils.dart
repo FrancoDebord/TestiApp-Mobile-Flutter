@@ -1,4 +1,8 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../models/mention.dart';
 
 // ── Syntaxe de mise en forme (saisie via la barre d'outils de publication) ────
 //
@@ -17,38 +21,56 @@ const _kInlineMarkers = ['**', '__', '~~'];
 ///   ~~strikethrough~~ → TextDecoration.lineThrough
 ///
 /// Child spans inherit [base]; only the affected property is overridden.
-TextSpan buildFormattedSpan(String text, TextStyle base) {
+///
+/// [mentions] : comptes mentionnés (« @Nom », docs serveur fonctionnalites/mentions.md),
+/// rendus en couleur et cliquables via [mentionRecognizer].
+TextSpan buildFormattedSpan(
+  String text,
+  TextStyle base, {
+  List<MentionRef> mentions = const [],
+  GestureRecognizer? Function(MentionRef ref)? mentionRecognizer,
+}) {
   final pattern =
       RegExp(r'\*\*(.+?)\*\*|__(.+?)__|~~(.+?)~~', dotAll: true);
   final matches = pattern.allMatches(text).toList();
-  if (matches.isEmpty) return TextSpan(text: text, style: base);
+  if (matches.isEmpty && mentions.isEmpty) return TextSpan(text: text, style: base);
+
+  /// Morceau de texte, mentions « @Nom » mises en évidence.
+  InlineSpan piece(String t, [TextStyle? style]) {
+    final ranges = mentions.isEmpty ? const <({int start, int end, MentionRef ref})>[] : MentionCodec.ranges(t, mentions);
+    if (ranges.isEmpty) return TextSpan(text: t, style: style);
+    final children = <InlineSpan>[];
+    var last = 0;
+    for (final r in ranges) {
+      if (r.start > last) children.add(TextSpan(text: t.substring(last, r.start)));
+      children.add(TextSpan(
+        text: t.substring(r.start, r.end),
+        style: const TextStyle(color: Color(0xFF184797), fontWeight: FontWeight.w600),
+        recognizer: mentionRecognizer?.call(r.ref),
+      ));
+      last = r.end;
+    }
+    if (last < t.length) children.add(TextSpan(text: t.substring(last)));
+    return TextSpan(style: style, children: children);
+  }
 
   final spans = <InlineSpan>[];
   int last = 0;
   for (final m in matches) {
     if (m.start > last) {
-      spans.add(TextSpan(text: text.substring(last, m.start)));
+      spans.add(piece(text.substring(last, m.start)));
     }
     if (m.group(1) != null) {
-      spans.add(TextSpan(
-        text: m.group(1),
-        style: const TextStyle(fontWeight: FontWeight.w700),
-      ));
+      spans.add(piece(m.group(1)!, const TextStyle(fontWeight: FontWeight.w700)));
     } else if (m.group(2) != null) {
-      spans.add(TextSpan(
-        text: m.group(2),
-        style: const TextStyle(fontStyle: FontStyle.italic),
-      ));
+      spans.add(piece(m.group(2)!, const TextStyle(fontStyle: FontStyle.italic)));
     } else if (m.group(3) != null) {
-      spans.add(TextSpan(
-        text: m.group(3),
-        style: const TextStyle(decoration: TextDecoration.lineThrough),
-      ));
+      spans.add(piece(m.group(3)!, const TextStyle(decoration: TextDecoration.lineThrough)));
     }
     last = m.end;
   }
   if (last < text.length) {
-    spans.add(TextSpan(text: text.substring(last)));
+    spans.add(piece(text.substring(last)));
   }
   return TextSpan(style: base, children: spans);
 }
@@ -137,14 +159,25 @@ List<_Block> _parseBlocks(String text) {
 /// par un SelectableText par paragraphe : chaque SelectableText embarque son
 /// propre Scrollable qui capte le glissement vertical, ce qui empêchait la
 /// page entière de défiler quand le doigt était posé sur le texte.
-Widget buildRichBody(String text, TextStyle base, {bool selectable = true}) {
-  final body = _buildBlocks(text, base);
+Widget buildRichBody(
+  String text,
+  TextStyle base, {
+  bool selectable = true,
+  List<MentionRef> mentions = const [],
+  GestureRecognizer? Function(MentionRef ref)? mentionRecognizer,
+}) {
+  final body = _buildBlocks(text, base, mentions, mentionRecognizer);
   return selectable ? SelectionArea(child: body) : body;
 }
 
-Widget _buildBlocks(String text, TextStyle base) {
-  Widget rich(String t, TextStyle style) =>
-      Text.rich(buildFormattedSpan(t, style));
+Widget _buildBlocks(
+  String text,
+  TextStyle base,
+  List<MentionRef> mentions,
+  GestureRecognizer? Function(MentionRef ref)? mentionRecognizer,
+) {
+  Widget rich(String t, TextStyle style) => Text.rich(buildFormattedSpan(t, style,
+      mentions: mentions, mentionRecognizer: mentionRecognizer));
 
   final blocks = _parseBlocks(text);
   return Column(
@@ -276,6 +309,8 @@ class ProgressiveRichText extends StatefulWidget {
     this.stepChars = 700,
     this.selectable = true,
     this.linkStyle,
+    this.mentions = const [],
+    this.onMentionTap,
     super.key,
   });
 
@@ -286,12 +321,37 @@ class ProgressiveRichText extends StatefulWidget {
   final bool selectable;
   final TextStyle? linkStyle;
 
+  /// Comptes mentionnés (« @Nom ») : en couleur, un appui ouvre le profil (`/users/{id}`).
+  final List<MentionRef> mentions;
+
+  /// Remplace l'ouverture du profil.
+  final ValueChanged<MentionRef>? onMentionTap;
+
   @override
   State<ProgressiveRichText> createState() => _ProgressiveRichTextState();
 }
 
 class _ProgressiveRichTextState extends State<ProgressiveRichText> {
   late int _shown = _safeCut(widget.text, widget.initialChars);
+  final Map<String, TapGestureRecognizer> _recognizers = {};
+
+  @override
+  void dispose() {
+    for (final r in _recognizers.values) {
+      r.dispose();
+    }
+    super.dispose();
+  }
+
+  GestureRecognizer _recognizerFor(MentionRef ref) =>
+      _recognizers.putIfAbsent(ref.id, () => TapGestureRecognizer())
+        ..onTap = () {
+          if (widget.onMentionTap != null) {
+            widget.onMentionTap!(ref);
+          } else {
+            context.push('/users/${ref.id}');
+          }
+        };
 
   @override
   void didUpdateWidget(ProgressiveRichText old) {
@@ -331,7 +391,13 @@ class _ProgressiveRichTextState extends State<ProgressiveRichText> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          buildRichBody(visible, widget.style, selectable: widget.selectable),
+          buildRichBody(
+            visible,
+            widget.style,
+            selectable: widget.selectable,
+            mentions: widget.mentions,
+            mentionRecognizer: widget.mentions.isEmpty ? null : _recognizerFor,
+          ),
           if (!complete || canCollapse)
             GestureDetector(
               behavior: HitTestBehavior.opaque,

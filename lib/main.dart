@@ -11,17 +11,23 @@ import 'package:go_router/go_router.dart';
 import 'core/local_db/database_service.dart';
 import 'core/router/app_router.dart';
 import 'core/router/app_routes.dart';
+import 'features/accounts/account_session.dart' show rootScaffoldMessengerKey;
 import 'features/auth/providers/auth_notifier.dart'
     show AuthStateAuthenticated, authStateProvider, currentUserProvider;
 import 'features/downloads/providers/downloads_provider.dart'
     show downloadsProvider;
+import 'features/daily_verse/screens/daily_verse_screen.dart' show openDailyVerse;
 import 'features/home/providers/home_providers.dart' show feedNotifierProvider;
+import 'features/prophecies/data/prophecy_reminders.dart';
 import 'firebase_options.dart';
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_text_styles.dart' show AppFonts;
+import 'features/daily_verse/design/verse_style_prefs.dart'
+    show currentVerseDesignProvider, verseStylePrefsProvider;
+import 'features/publish/upload/video_upload_controller.dart' show videoUploadProvider;
 import 'l10n/app_localizations.dart';
 import 'services/database_seed_service.dart';
-import 'services/fcm_service.dart';
+import 'services/push_service.dart';
 import 'services/sync_service.dart';
 
 // ── FCM background handler ────────────────────────────────────────────────────
@@ -29,9 +35,12 @@ import 'services/sync_service.dart';
 // Must be a top-level function. Called when a data message arrives while the
 // app is killed or in background. No Riverpod/Navigator available here.
 // The next foreground open triggers a full deltaSync.
+// Parole prophétique modifiée ailleurs : le rappel local est reprogrammé ici,
+// depuis le réglage contenu dans le message (aucun appel réseau).
 @pragma('vm:entry-point')
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage _) async {
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await ProphecyReminders.handlePush(message.data, background: true);
 }
 
 // ── Entry point ───────────────────────────────────────────────────────────────
@@ -71,7 +80,6 @@ class _TemoignagesAppState extends ConsumerState<TemoignagesApp>
     with WidgetsBindingObserver {
 
   Timer? _pollTimer;
-  bool   _fcmInitialized = false;
 
   // ── Lifecycle ────────────────────────────────────────────────────────────
 
@@ -81,6 +89,13 @@ class _TemoignagesAppState extends ConsumerState<TemoignagesApp>
     WidgetsBinding.instance.addObserver(this);
     _triggerSync();
     _startPolling();
+    // Notifications push : l'appareil est enregistré à chaque passage à l'état « connecté »
+    // (démarrage avec une session, connexion e-mail, Google, téléphone, inscription).
+    // fireImmediately : session déjà restaurée avant l'abonnement.
+    ref.listenManual(authStateProvider, (prev, next) {
+      final wasSignedIn = prev?.value is AuthStateAuthenticated;
+      if (next.value is AuthStateAuthenticated && !wasSignedIn) _onSignedIn();
+    }, fireImmediately: true);
   }
 
   @override
@@ -94,6 +109,8 @@ class _TemoignagesAppState extends ConsumerState<TemoignagesApp>
   void didChangeAppLifecycleState(AppLifecycleState appState) {
     switch (appState) {
       case AppLifecycleState.resumed:
+        // Nouveau jour : nouveau design du verset (sauf choix de l'utilisateur).
+        ref.invalidate(currentVerseDesignProvider);
         _triggerSync();
         _startPolling();
       case AppLifecycleState.paused:
@@ -129,12 +146,21 @@ class _TemoignagesAppState extends ConsumerState<TemoignagesApp>
     }());
   }
 
-  // ── FCM init (once, after first successful auth) ──────────────────────────
+  // ── Notifications push (FCM) ──────────────────────────────────────────────
 
-  void _maybeInitFcm() {
-    if (_fcmInitialized) return;
-    _fcmInitialized = true;
-    unawaited(ref.read(fcmServiceProvider).init());
+  /// Connexion réussie ou session restaurée : autorisation et écoute (une fois), puis
+  /// enregistrement du jeton de l'appareil pour ce compte. Jamais bloquant.
+  void _onSignedIn() {
+    final push = ref.read(pushServiceProvider);
+    unawaited(() async {
+      await push.init();
+      await push.registerDevice();
+    }());
+    // Préférences du verset : créées maintenant pour se synchroniser avec le
+    // serveur (changement en attente envoyé, sinon valeurs du serveur).
+    ref.read(verseStylePrefsProvider);
+    // Envoi de vidéo interrompu par la fermeture de l'application : reprise.
+    unawaited(ref.read(videoUploadProvider.notifier).restorePending());
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────
@@ -145,11 +171,6 @@ class _TemoignagesAppState extends ConsumerState<TemoignagesApp>
     final locale = ref.watch(localeProvider);
     // Charge l'index des téléchargements dès le démarrage (lecture hors ligne).
     ref.watch(downloadsProvider);
-
-    // Init FCM as soon as the user is authenticated.
-    ref.listen(authStateProvider, (_, next) {
-      if (next.value is AuthStateAuthenticated) _maybeInitFcm();
-    });
 
     // Handle notification taps → navigate to the right screen.
     ref.listen(fcmNavProvider, (_, intent) {
@@ -172,6 +193,8 @@ class _TemoignagesAppState extends ConsumerState<TemoignagesApp>
         GlobalCupertinoLocalizations.delegate,
       ],
       scrollBehavior: const _AppScrollBehavior(),
+      // Messages hors écran (ex. retour automatique sur son compte).
+      scaffoldMessengerKey: rootScaffoldMessengerKey,
     );
   }
 
@@ -180,11 +203,46 @@ class _TemoignagesAppState extends ConsumerState<TemoignagesApp>
   void _handleFcmNavigation(GoRouter router, FcmNavIntent intent) {
     final testimonyId = intent.testimonyId;
     switch (intent.type) {
+      // Mention hors témoignage (fonctionnalites/mentions.md) : message de prière ou direct.
+      case 'mention' when testimonyId == null && intent.prayerRequestId != null:
+        router.push('/prayer-requests/${intent.prayerRequestId}');
+      case 'mention' when testimonyId == null && intent.liveId != null:
+        router.push('/lives/${intent.liveId}');
+      // Événements (docs serveur fonctionnalites/evenements.md) : reporté, annulé,
+      // sondage d'après l'événement, mention dans un commentaire d'événement.
+      case 'mention' when testimonyId == null && intent.eventId != null:
+        router.push('/events/${intent.eventId}');
+      // Mention sous le verset du jour : page du verset, onglet Commentaires.
+      case 'mention' when testimonyId == null && intent.dailyVerseId != null:
+        final ctx = router.routerDelegate.navigatorKey.currentContext;
+        if (ctx != null) {
+          openDailyVerse(ctx, initialTab: 1);
+        } else {
+          router.pushNamed(AppRoutes.notifications);
+        }
+      // Nouvel abonné : son profil.
+      case 'follow':
+        final actorId = intent.actorId;
+        if (actorId != null) {
+          router.push('/users/$actorId');
+        } else {
+          router.pushNamed(AppRoutes.notifications);
+        }
+      case 'event_postponed':
+      case 'event_cancelled':
+      case 'event_survey':
+        final eventId = intent.eventId;
+        router.push(eventId != null ? '/events/$eventId' : '/events');
       case 'comment':
       case 'reply':
       case 'mention':
       case 'like':
       case 'prayer':
+      // Partage d'un de mes témoignages, nouveau témoignage d'un compte suivi.
+      case 'share':
+      case 'new_followed_testimony':
+      // Mon témoignage vidéo est en ligne (Bunny Stream) : on l'ouvre.
+      case 'video_ready':
         if (testimonyId != null) {
           router.pushNamed(
             AppRoutes.testimonyDetail,
@@ -200,6 +258,26 @@ class _TemoignagesAppState extends ConsumerState<TemoignagesApp>
         } else {
           router.pushNamed(AppRoutes.notifications);
         }
+      // Rappel de prière (notification locale) : la parole prophétique.
+      case 'prophecy_reminder':
+        final prophecyId = intent.prophecyId;
+        router.push(prophecyId != null ? '/prophecies/$prophecyId' : '/prophecies');
+      // Requêtes et sessions de prière (docs serveur fonctionnalites/sessions-de-priere.md).
+      case 'prayer_encouragement':
+      // « Je prie » sur une de mes requêtes : la requête concernée.
+      case 'prayer_request_prayed':
+      // Notification générique d'une requête de prière (`type: prayer_request`, `id`).
+      case 'prayer_request':
+        final requestId = intent.prayerRequestId;
+        router.push(requestId != null ? '/prayer-requests/$requestId' : '/prayer-requests');
+      case 'prayer_session_started':
+      case 'prayer_session_reminder':
+        final sessionId = intent.prayerSessionId;
+        router.push(sessionId != null ? '/prayer-sessions/$sessionId' : '/prayer-sessions');
+      // Administrateurs de compte : écran des comptes que j'administre.
+      case 'account_manager_added':
+      case 'account_manager_removed':
+        router.push('/managers');
       case 'testimony_approved':
       case 'testimony_rejected':
       case 'pending_correction':
@@ -223,21 +301,7 @@ class _TemoignagesAppState extends ConsumerState<TemoignagesApp>
     return ThemeData(
       useMaterial3: true,
       fontFamily: AppFonts.family,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: AppColors.primary,
-        primary:   AppColors.primary,
-        onPrimary: Colors.white,
-        secondary: AppColors.secondary,
-        onSecondary: Colors.white,
-        tertiary:  AppColors.sun,
-        onTertiary: AppColors.primaryDark,
-        error:     AppColors.danger,
-        surface:   AppColors.surface,
-        onSurface: AppColors.textPrimary,
-        onSurfaceVariant: AppColors.textSecondary,
-        outline:   AppColors.inputBorder,
-        outlineVariant: AppColors.border,
-      ),
+      colorScheme: appColorScheme(),
       scaffoldBackgroundColor: AppColors.background,
       dividerColor: AppColors.border,
       appBarTheme: const AppBarTheme(
@@ -298,10 +362,18 @@ class _TemoignagesAppState extends ConsumerState<TemoignagesApp>
         hintStyle: const TextStyle(fontFamily: AppFonts.family, color: AppColors.textSecondary),
       ),
       // Étiquettes : pilule, fond bleu clair une fois choisies.
+      // Puces (filtres : Événements, catégories…) : texte en bleu de la charte. Sans couleur
+      // explicite, le libellé héritait d'un blanc illisible sur fond clair.
       chipTheme: const ChipThemeData(
         shape: StadiumBorder(side: BorderSide(color: AppColors.border)),
+        backgroundColor: AppColors.surface,
         selectedColor: AppColors.primarySoft,
-        labelStyle: TextStyle(fontFamily: AppFonts.family, fontSize: 13, fontWeight: FontWeight.w600),
+        checkmarkColor: AppColors.primary,
+        iconTheme: IconThemeData(color: AppColors.primary, size: 16),
+        labelStyle: TextStyle(
+            fontFamily: AppFonts.family, fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary),
+        secondaryLabelStyle: TextStyle(
+            fontFamily: AppFonts.family, fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary),
       ),
       tabBarTheme: const TabBarThemeData(
         labelColor: AppColors.primary,

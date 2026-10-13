@@ -8,7 +8,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
+import '../../repost/testimony_share_sheet.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -95,12 +95,7 @@ class _CompactTestimonyTileState extends ConsumerState<CompactTestimonyTile> {
         _ => _openDetail(),
       };
 
-  void _share() {
-    SharePlus.instance.share(ShareParams(
-      text: '${_t.title}\n\n${_t.shareLink}',
-    ));
-    ref.read(interactionProvider.notifier).recordShare(_t.id);
-  }
+  void _share() => showTestimonyShareSheet(context, ref, _t);
 
   static String _timeAgo(DateTime dt) {
     final diff = DateTime.now().difference(dt);
@@ -416,10 +411,12 @@ class _ExpandedDetails extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = testimony;
-    final liked = ref.watch(likedIdsProvider).contains(t.id);
-    final prayed = ref.watch(prayedIdsProvider).contains(t.id);
+    // État renvoyé par le serveur (une réaction « j'aime » et une « je prie » au plus).
+    final state = ref.watch(interactionProvider);
+    final liked = state.likedOf(t);
+    final prayed = state.prayedOf(t);
     final saved = ref.watch(savedIdsProvider).contains(t.id);
-    final reaction = ref.watch(reactionsMapProvider)[t.id];
+    final reaction = state.reactionOf(t);
 
     final previewStyle = AppTextStyles.bodyMedium.copyWith(
       color: AppColors.textSecondary,
@@ -494,20 +491,21 @@ class _ExpandedDetails extends ConsumerWidget {
               ref.read(interactionProvider.notifier).toggleSave(t.id);
             },
             currentReaction: reaction,
+            likesCount: state.likesOf(t),
+            prayersCount: state.prayersOf(t),
             onReact: (type) async {
               if (!await ensureMember(
                   context, ref, 'réagir aux témoignages')) {
                 return;
               }
-              final n = ref.read(interactionProvider.notifier);
-              type == null ? n.removeReaction(t.id) : n.setReaction(t.id, type);
+              ref.read(interactionProvider.notifier).react(t, type);
             },
             onPray: () async {
               if (!await ensureMember(
                   context, ref, 'réagir aux témoignages')) {
                 return;
               }
-              ref.read(interactionProvider.notifier).togglePray(t.id);
+              ref.read(interactionProvider.notifier).togglePray(t);
             },
             onComment: () => context.push('/testimony/${t.id}/comments'),
             onShare: onShare,

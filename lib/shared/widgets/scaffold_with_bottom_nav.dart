@@ -5,13 +5,14 @@ import 'package:testi_app/core/router/app_routes.dart';
 import 'package:testi_app/core/theme/app_colors.dart';
 import 'package:testi_app/core/theme/app_text_styles.dart';
 import 'package:testi_app/core/theme/app_tokens.dart';
+import 'package:testi_app/features/accounts/widgets/account_widgets.dart' show ActingAsBanner;
 import 'package:testi_app/l10n/app_localizations.dart';
 import 'package:testi_app/shared/widgets/guest_gate.dart';
 
 /// Persistent shell for the 6 bottom-nav branches.
 ///
 /// Barre blanche (bordure fine en haut) : Accueil · Explorer · [+ Publier]
-/// · Téléchargements · Profil. Publier (index 3) est un bouton rond bleu au
+/// · Événements · Profil (Téléchargements : menu latéral et profil). Publier (index 3) est un bouton rond bleu au
 /// centre, libellé dessous. Onglet actif : icône + libellé bleus sur pastille
 /// bleu clair (radius 12) ; inactif : gris.
 /// Bible (branch 2) remains reachable via the horizontal swipe gesture
@@ -65,67 +66,74 @@ class ScaffoldWithBottomNav extends ConsumerWidget {
         child: navigationShell,
       ),
 
-      // ── Barre du bas : Accueil · Explorer · [+ Publier] · Téléchargements · Profil
-      bottomNavigationBar: DecoratedBox(
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          border: Border(top: BorderSide(color: AppColors.border)),
-        ),
-        child: SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(4, 6, 4, 6),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: _NavIcon(
-                    activeIcon:   Icons.home_rounded,
-                    inactiveIcon: Icons.home_outlined,
-                    label: l10n.navHome,
-                    selected: cur == 0,
-                    onTap: () => _onTabTap(context, 0),
-                  ),
+      // ── Barre du bas : Accueil · Explorer · [+ Publier] · Événements · Profil
+      // Au-dessus : « Vous agissez au nom de X » quand on agit pour un compte administré.
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const ActingAsBanner(),
+          DecoratedBox(
+            decoration: const BoxDecoration(
+              color: AppColors.surface,
+              border: Border(top: BorderSide(color: AppColors.border)),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(4, 6, 4, 6),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: _NavIcon(
+                        activeIcon:   Icons.home_rounded,
+                        inactiveIcon: Icons.home_outlined,
+                        label: l10n.navHome,
+                        selected: cur == 0,
+                        onTap: () => _onTabTap(context, 0),
+                      ),
+                    ),
+                    Expanded(
+                      child: _NavIcon(
+                        activeIcon:   Icons.explore_rounded,
+                        inactiveIcon: Icons.explore_outlined,
+                        label: l10n.navExplore,
+                        selected: cur == 1,
+                        onTap: () => _onTabTap(context, 1),
+                      ),
+                    ),
+                    // Centre : bouton rond « + » (Publier, branche 3)
+                    Expanded(
+                      child: _PublishButton(
+                        label: l10n.navPublish,
+                        selected: cur == 3,
+                        onTap: () => _onPublishTap(context, ref),
+                      ),
+                    ),
+                    Expanded(
+                      child: _NavIcon(
+                        activeIcon:   Icons.event_rounded,
+                        inactiveIcon: Icons.event_outlined,
+                        label: l10n.navEvents,
+                        selected: cur == 4,
+                        onTap: () => _onTabTap(context, 4),
+                      ),
+                    ),
+                    Expanded(
+                      child: _NavIcon(
+                        activeIcon:   Icons.person_rounded,
+                        inactiveIcon: Icons.person_outline_rounded,
+                        label: l10n.navProfile,
+                        selected: cur == 5,
+                        onTap: () => _onTabTap(context, 5),
+                      ),
+                    ),
+                  ],
                 ),
-                Expanded(
-                  child: _NavIcon(
-                    activeIcon:   Icons.explore_rounded,
-                    inactiveIcon: Icons.explore_outlined,
-                    label: l10n.navExplore,
-                    selected: cur == 1,
-                    onTap: () => _onTabTap(context, 1),
-                  ),
-                ),
-                // Centre : bouton rond « + » (Publier, branche 3)
-                Expanded(
-                  child: _PublishButton(
-                    label: l10n.navPublish,
-                    selected: cur == 3,
-                    onTap: () => _onPublishTap(context, ref),
-                  ),
-                ),
-                Expanded(
-                  child: _NavIcon(
-                    activeIcon:   Icons.download_for_offline_rounded,
-                    inactiveIcon: Icons.download_for_offline_outlined,
-                    label: l10n.navDownloads,
-                    selected: cur == 4,
-                    onTap: () => _onTabTap(context, 4),
-                  ),
-                ),
-                Expanded(
-                  child: _NavIcon(
-                    activeIcon:   Icons.person_rounded,
-                    inactiveIcon: Icons.person_outline_rounded,
-                    label: l10n.navProfile,
-                    selected: cur == 5,
-                    onTap: () => _onTabTap(context, 5),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }

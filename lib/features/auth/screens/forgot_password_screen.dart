@@ -15,7 +15,7 @@ import '../widgets/auth_widgets.dart';
 //
 //  INPUT STATE (default)
 //   • Back arrow AppBar (transparent, no elevation)
-//   • Purple wave header — lock icon + "Mot de passe oublié" title + subtitle
+//   • Wave header (Krea Blue) — lock icon + "Mot de passe oublié" title + subtitle
 //   • White card body:
 //       - Instructional paragraph
 //       - Email field with validation
@@ -153,7 +153,7 @@ class _InputBody extends StatelessWidget {
 
     return Column(
       children: [
-        // Purple header.
+        // Header (Krea Blue).
         AuthWaveHeader(
           child: SafeArea(
             bottom: false,

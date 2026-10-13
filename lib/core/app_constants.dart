@@ -2,7 +2,7 @@
 //
 // Central constants for the Témoignages application.
 //
-// API base: https://testi.airid-africa.com/api/v1
+// API base: https://temoignage.as-krea.com/api/v1
 // Auth: Bearer JWT via Laravel Sanctum (token returned by /auth/login)
 // Envelope: { "success": bool, "data": any, "message": string, "errors"?: map }
 //
@@ -78,7 +78,7 @@ abstract final class AppConstants {
   /// Override at build time: --dart-define=API_BASE_URL=https://your-laravel.app/api/v1
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://testi.airid-africa.com/api/v1',
+    defaultValue: 'https://temoignage.as-krea.com/api/v1',
     // defaultValue: 'http://192.168.1.74:8000/api/v1',
     // Dev: http://192.168.0.4:8000/api/v1  (LAN server)
     // Android emulator localhost alias: http://10.0.2.2:8000/api/v1
@@ -92,6 +92,18 @@ abstract final class AppConstants {
   /// Lien public d'un témoignage — même format que `share_url` côté Laravel
   /// (route web `testimonies.show`). Ouvert par l'app via les App Links.
   static String testimonyWebUrl(String id) => '$webBaseUrl/testimonies/$id';
+
+  // ── Connexion Google (google_sign_in 7.x) ─────────────────────────────────
+
+  /// Identifiant client **Web** du projet Firebase (google-services.json → oauth_client,
+  /// client_type 3) : `serverClientId` de GoogleSignIn, audience du jeton vérifiée par l'API
+  /// (GOOGLE_CLIENT_ID côté serveur).
+  static const String googleServerClientId =
+      '566166419345-b78faa624rdlcqeigmublhhbseqvhofr.apps.googleusercontent.com';
+
+  /// Identifiant client iOS (GoogleService-Info.plist → CLIENT_ID), utilisé sur iOS seulement.
+  static const String googleIosClientId =
+      '78564751626-tfc6p4rvivn2pt2hfanpvar336a8nud6.apps.googleusercontent.com';
 
   static const int connectTimeoutMs = 8000;
   static const int receiveTimeoutMs = 20000;
@@ -115,10 +127,14 @@ abstract final class AppConstants {
   static const String authRegister       = '/auth/register';
   static const String authPhone          = '/auth/phone';
   static const String authSocial         = '/auth/social';
+  /// Connexion Google : { id_token } → même réponse que [authLogin] (token Sanctum + utilisateur).
+  static const String authGoogle         = '/auth/google';
   static const String authForgotPassword = '/auth/forgot-password';
   static const String authRefresh        = '/auth/refresh';
   static const String authLogout         = '/auth/logout';
   static const String authMe             = '/auth/me';   // GET only — current user
+  // { current_password, new_password, new_password_confirmation } (comptes e-mail)
+  static const String authChangePassword = '/auth/change-password';
 
   // ── Testimonies ───────────────────────────────────────────────────────────
   // Query params for GET /testimonies: featured, category, status, after, limit
@@ -174,13 +190,28 @@ abstract final class AppConstants {
   static const String community    = '/community';
   static const String followingIds = '/users/me/following-ids';
   static const String myFollowing  = '/users/me/following';     // GET ?q=&page= → « Mes abonnements »
+  static const String myFollowers  = '/users/me/followers';     // GET ?q=&page= → « Mes abonnés » (+ is_following = je le suis en retour)
+  // Comptes à suivre : GET ?limit=10&type=all|organizations|people → [{…profil public, reason, isVerified…}] (invité accepté)
+  static const String userSuggestions = '/users/suggestions';
+  // Mentions « @ » : GET ?q=&limit=8&testimony_id= → [{id, displayName, avatarUrl, initials, isVerified, isFollowing}] (connecté)
+  static const String mentionSearch   = '/users/mention-search';
+  // Autocomplétion des recherches (public) : GET ?q=&scope=all|testimonies|users|events|prayer|bible&limit=
+  // → {query, scope, suggestions:[{text, source, highlight}], results:[{type, id, label, sublabel, route, url, avatar…}]}
+  static const String searchSuggest = '/search/suggest';
+  static const String searchLog     = '/search/log'; // POST { q } : recherche validée, anonyme (recherches populaires)
 
   // Self management
   static const String updateProfile    = '/users/me';          // PUT
   static const String uploadAvatar     = '/users/me/avatar';   // POST multipart
   static const String profileCover     = '/users/me/cover';    // POST multipart « cover » / DELETE
-  static const String updateSettings   = '/users/me/settings'; // PUT
+  static const String updateSettings   = '/users/me/settings'; // GET · PUT (clés snake_case)
+  // Localisation privée (fils classés par zone) : GET · PUT { use_gps, latitude, longitude, home_city } · DELETE
+  static const String myLocation       = '/users/me/location';
   static const String deleteAccount    = '/users/me';          // DELETE
+  // Vérification d'un compte personnel (docs/fonctionnalites/verification-des-comptes.md) :
+  // GET → {status: none|pending|verified|rejected|revoked, canRequest, blockReason, retryAt, reason, request, roles, limits}
+  // POST multipart { full_name, role, role_other?, church, links[]?, message?, documents[] (1 à 3 : jpg/png/webp/pdf, 8 Mo) } → 201 même forme
+  static const String myVerification   = '/users/me/verification';
 
   // ── Notifications ─────────────────────────────────────────────────────────
 
@@ -218,10 +249,44 @@ abstract final class AppConstants {
   static const String verseReact  = '/daily-verse/react';  // POST + DELETE
   static const String verseShare  = '/daily-verse/share';  // POST
 
+  // Page plein écran (docs serveur fonctionnalites/verset-du-jour.md)
+  // GET  /daily-verse/{id}/versions          → { reference, parsed, original, versions: [{code, name, language, available, text, verses}] }
+  // POST /daily-verse/{id}/react  { type, active? }
+  // GET · POST /daily-verse/{id}/comments { body } · DELETE …/comments/{cid} · POST …/comments/{cid}/report { reason }
+  // GET  /daily-verse/{id}/prayer-requests   (création : POST /prayer/requests { …, daily_verse_id })
+  // GET  /daily-verse/{id}/testimonies
+  static String verseVersions(int id) => '/daily-verse/$id/versions';
+  static String verseReactTo(int id) => '/daily-verse/$id/react';
+  static String verseComments(int id) => '/daily-verse/$id/comments';
+  static String verseComment(int id, String commentId) => '/daily-verse/$id/comments/$commentId';
+  static String versePrayerRequests(int id) => '/daily-verse/$id/prayer-requests';
+  static String verseTestimonies(int id) => '/daily-verse/$id/testimonies';
+
+  // Designs du verset (docs serveur fonctionnalites/designs-du-verset.md) :
+  // GET /verse-designs (public, 24 h) → { designs: [{id, name, mood, order, tone}], fonts,
+  //   text_sizes, text_aligns, defaults } ; la ressource du verset ajoute design_of_the_day,
+  //   user_style (connecté, sinon null) et effective_design_id.
+  // GET · PUT /me/verse-style { design_id, design_chosen_on, design_always, font, text_size,
+  //   text_align } (noms d'enum de l'app ; valeur inconnue → 422).
+  static const String verseDesigns = '/verse-designs';
+  static const String myVerseStyle = '/me/verse-style';
+
   // ── Media upload (multipart/form-data) ────────────────────────────────────
 
   static const String uploadMedia  = '/media/upload';
   static const String presignedUrl = '/media/presigned-url';
+
+  // ── Vidéos Bunny Stream (envoi reprenable TUS) ────────────────────────────
+  // POST /videos/upload-init { mêmes champs que POST /testimonies, sans media_url }
+  //   → crée le témoignage (video_status = uploading, invisible publiquement) et la vidéo Bunny :
+  //   { video_id, testimony_id, library_id, bunny_video_id, signature, expiration, tus_endpoint }
+  // POST /videos/{id}/upload-signature → { signature, expiration } (même bunny_video_id)
+  // POST /videos/{id}/upload-complete  → fin de l'envoi, traitement par Bunny
+  // Témoignage vidéo : video { status: uploading|processing|ready|failed, hls_url,
+  //   thumbnail_url, mp4_urls { "240": url, "360": url, … }, duration } ; push « video_ready ».
+  static const String videoUploadInit = '/videos/upload-init';
+  static String videoUploadSignature(String id) => '/videos/$id/upload-signature';
+  static String videoUploadComplete(String id)  => '/videos/$id/upload-complete';
 
   // ── Moderation (role: moderateur | administrateur) ────────────────────────
 
@@ -246,6 +311,14 @@ abstract final class AppConstants {
   static String adminSuspendUser(String id) => '/admin/users/$id/suspend'; // POST
   static String adminActivateUser(String id)=> '/admin/users/$id/activate';// POST
   static String adminUserRole(String id)    => '/admin/users/$id/role';    // PUT
+  // Vérification des comptes personnels : GET ?status=pending|approved|rejected|revoked|all
+  // → {items, pendingCount, currentPage, lastPage, total} ; détail {…, links, message, documents[{index, name, mime, isImage, url}]}
+  static const String adminVerificationRequests = '/admin/verification-requests';
+  static String adminVerificationRequest(String id) => '/admin/verification-requests/$id';
+  static String adminVerificationDocument(String id, int index) => '/admin/verification-requests/$id/documents/$index'; // GET (jeton admin)
+  static String adminVerificationApprove(String id) => '/admin/verification-requests/$id/approve'; // POST
+  static String adminVerificationReject(String id)  => '/admin/verification-requests/$id/reject';  // POST { reason }
+  static String adminRevokeVerification(String userId) => '/admin/users/$userId/revoke-verification'; // POST { reason }
 
   // ── Témoignages en direct (LiveKit) ──────────────────────────────────────
   // Doc backend : docs/fonctionnalites/lives.md
@@ -299,18 +372,106 @@ abstract final class AppConstants {
   static String liveStageSpeaker(String id, String speakerId, String action) =>
       '/lives/$id/stage/$speakerId/$action';
 
-  // ── Prayer ────────────────────────────────────────────────────────────────
-  // GET    /prayer/requests              → [{id, author, body, prayer_count, message_count, ...}]
-  // POST   /prayer/requests             { body, visibility }
-  // POST   /prayer/requests/{id}/pray   → toggle pray
-  // GET    /prayer/sessions             → [{id, host, title, scheduled_at, status, participant_count}]
-  // POST   /prayer/sessions             { title, description, scheduled_at, visibility }
+  // ── Événements chrétiens ─────────────────────────────────────────────────
+  // Backend : docs/fonctionnalites/evenements.md
+  //   GET    /events?scope=upcoming|past|mine|going&type=&q=  → liste paginée (meta.canCreate, meta.types)
+  //   GET    /events/{id}  · /events/{id}/comments · /events/{id}/testimonies
+  //   POST   /events  · PUT/DELETE /events/{id}            (organisation vérifiée / admin, gestionnaires)
+  //   POST   /events/{id}/images (multipart « image ») · DELETE …/images/{imageId} · POST …/images/{imageId}/cover
+  //   POST   /events/{id}/participation { status: going|not_going } · DELETE /events/{id}/participation
+  //   GET    /events/{id}/participants                      (gestionnaires)
+  //   POST   /events/{id}/comments { body } · DELETE …/comments/{commentId}
+  //   POST   /events/{id}/comments/{commentId}/promote { title?, category? } → témoignage officiel
+  // Paroles prophétiques du carnet privé (docs/fonctionnalites/paroles-prophetiques.md)
+  //   GET/POST /prophecies · GET/PUT/DELETE /prophecies/{id}
+  //   GET/POST /prophecies/{id}/prayers { note? } · DELETE …/prayers/{prayerId}
+  //   POST /testimonies { …, prophecy_id, prophecy_public } → parole accomplie
+  static const String prophecies = '/prophecies';
+  static String prophecyById(String id) => '/prophecies/$id';
+  static String prophecyPrayers(String id) => '/prophecies/$id/prayers';
+  static String prophecyPrayer(String id, int prayerId) => '/prophecies/$id/prayers/$prayerId';
+
+  // Mon fil (tous les témoignages, comptes suivis d'abord) : GET /feed → feedReason
+  // following|suggested|repost (+ repostedBy, repostComment, repostedAt pour un partage).
+  static const String personalFeed = '/feed';
+  // Insérés dans Mon fil : GET /feed/inserts → { following|others: { events, prayerSessions,
+  // prayerRequests, prophecies } } (comptes suivis d'abord).
+  static const String personalFeedInserts = '/feed/inserts';
+  // Partage interne « X a partagé » : POST { comment? } · DELETE ; partages d'un compte.
+  static String testimonyRepost(String id) => '/testimonies/$id/repost';
+  static String userReposts(String id) => '/users/$id/reposts';
+
+  static const String events = '/events';
+  static String eventById(String id)          => '/events/$id';
+  static String eventImages(String id)        => '/events/$id/images';
+  static String eventImage(String id, String imageId) => '/events/$id/images/$imageId';
+  static String eventImageCover(String id, String imageId) =>
+      '/events/$id/images/$imageId/cover';
+  static String eventParticipation(String id) => '/events/$id/participation';
+  static String eventParticipants(String id)  => '/events/$id/participants';
+  static String eventComments(String id)      => '/events/$id/comments';
+  static String eventComment(String id, String commentId) =>
+      '/events/$id/comments/$commentId';
+  static String eventCommentPromote(String id, String commentId) =>
+      '/events/$id/comments/$commentId/promote';
+  static String eventTestimonies(String id)   => '/events/$id/testimonies';
+  //   POST   /events/{id}/managers { user_id } · DELETE …/managers/{userId}  (2 co-gestionnaires au plus)
+  //   GET/POST /users/me/managers { user_id } · DELETE …/{userId}          (organisation : 2 gestionnaires)
+  //   GET    /users/me/managed-organizations · DELETE …/{organizationId}  (organisations que je gère)
+  static String eventManagers(String id)      => '/events/$id/managers';
+  static String eventManager(String id, String userId) => '/events/$id/managers/$userId';
+  //   POST   /events/{id}/postpone { date_tbd } | { starts_at, ends_at } + reason? · POST …/cancel { reason? }
+  //   POST   /events/{id}/report { reason, comment? } (une fois) · POST …/review { attended, rating?, body? }
+  //   GET    /events/{id}/reviews · modérateurs : GET /events/moderation?filter= · POST …/hide|restore|dismiss
+  static String eventPostpone(String id)      => '/events/$id/postpone';
+  static String eventCancel(String id)        => '/events/$id/cancel';
+  static String eventReport(String id)        => '/events/$id/report';
+  static String eventReview(String id)        => '/events/$id/review';
+  static String eventReviews(String id)       => '/events/$id/reviews';
+  static String eventModeration(String id, String action) => '/events/$id/$action';
+  static const String myManagers              = '/users/me/managers';
+  // Administrateurs de compte (tous les comptes, 2 au plus) : agir au nom d'un compte
+  // avec l'en-tête X-Act-As (lib/services/acting_as_interceptor.dart).
+  //   GET /users/me/accounts → {accounts: [{id, displayName, username, initials, avatarUrl,
+  //       isOrganization, isVerified, role: owner|manager, since}], actingAs}
+  //   GET /users/me → comme /auth/me, mais suit X-Act-As (acting_as, acting_actor)
+  //   GET /users/me/managers/activity → [{id, actorId, actorName, action, createdAt}]
+  static const String myAccounts              = '/users/me/accounts';
+  static const String me                      = '/users/me';
+  static const String myManagersActivity      = '/users/me/managers/activity';
+  static String myManager(String userId)      => '/users/me/managers/$userId';
+  static const String myManagedOrganizations  = '/users/me/managed-organizations';
+  static String myManagedOrganization(String id) => '/users/me/managed-organizations/$id';
+
+  // ── Requêtes et sessions de prière ────────────────────────────────────────
+  // Docs serveur : fonctionnalites/requetes-de-priere.md, fonctionnalites/sessions-de-priere.md
+  // GET    /prayer/requests?scope=all|feed|following|mine|event&event_id=&status=open|answered&page=
+  //        → [PrayerRequestResource] + meta { currentPage, lastPage, total, canCreate }
+  // POST   /prayer/requests { body, visibility: public|followers|private, is_anonymous, event_id? }
+  // GET · PUT · DELETE /prayer/requests/{id}   (PUT : body, visibility, is_anonymous, testimony_id)
+  // POST   /prayer/requests/{id}/pray { prayed? }    « Je prie » (bascule)
+  // POST · DELETE /prayer/requests/{id}/answered { note? }   exaucée / de nouveau en attente
+  // GET · POST /prayer/requests/{id}/messages { message, bible_reference? } · DELETE …/messages/{messageId}
+  // POST   /prayer/requests/{id}/report { reason, comment? }
+  // GET    /prayer/sessions?scope=upcoming|past|mine|joined|event&event_id=  → [PrayerSessionResource]
+  // POST   /prayer/sessions { title, description?, topics[], starts_at, duration_minutes, visibility, event_id? }
+  // GET · PUT · DELETE /prayer/sessions/{id} · POST …/cancel
+  // POST · DELETE /prayer/sessions/{id}/join          « Je serai là »
+  // POST   /prayer/sessions/{id}/start  (hôte) → { session, live, video } : la salle est un direct (/lives/{id})
 
   static const String prayerRequests = '/prayer/requests';
   static String prayerRequestById(String id)  => '/prayer/requests/$id';
   static String prayerRequestPray(String id)  => '/prayer/requests/$id/pray';
+  static String prayerRequestAnswered(String id) => '/prayer/requests/$id/answered';
+  static String prayerRequestMessages(String id) => '/prayer/requests/$id/messages';
+  static String prayerRequestMessage(String id, String messageId) =>
+      '/prayer/requests/$id/messages/$messageId';
+  static String prayerRequestReport(String id) => '/prayer/requests/$id/report';
   static const String prayerSessions = '/prayer/sessions';
   static String prayerSessionById(String id)  => '/prayer/sessions/$id';
+  static String prayerSessionJoin(String id)  => '/prayer/sessions/$id/join';
+  static String prayerSessionStart(String id) => '/prayer/sessions/$id/start';
+  static String prayerSessionCancel(String id) => '/prayer/sessions/$id/cancel';
 
   // ── FCM device token ─────────────────────────────────────────────────────
   // POST   /devices/token  { token, platform: 'android'|'ios' }

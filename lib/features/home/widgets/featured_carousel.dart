@@ -7,6 +7,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../shared/widgets/app_badge.dart';
 import '../../../shared/widgets/app_logo.dart';
+import '../../../shared/widgets/video_poster.dart' show VideoThumbnailImage;
 import '../models/testimony_model.dart';
 import '../providers/home_providers.dart';
 import 'testimony_card_header.dart' show categoryBadgeTone;
@@ -207,11 +208,10 @@ class _CoverImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (imageUrl != null) {
-      return Image.network(
-        imageUrl!,
-        fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => _Placeholder(gradient: _gradient),
+    if (imageUrl != null && imageUrl!.isNotEmpty) {
+      return VideoThumbnailImage(
+        url: imageUrl,
+        fallback: _Placeholder(gradient: _gradient),
       );
     }
     return _Placeholder(gradient: _gradient);

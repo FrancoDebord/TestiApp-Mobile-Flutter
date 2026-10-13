@@ -10,6 +10,10 @@ import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:testi_app/features/events/models/event_models.dart';
+import 'package:testi_app/features/events/providers/events_providers.dart';
+import 'package:testi_app/features/community/models/suggested_account.dart' show SuggestedAccount;
+import 'package:testi_app/features/community/providers/suggestions_provider.dart' show suggestedAccountsProvider;
 import 'package:testi_app/core/media/playback_preferences.dart';
 import 'package:testi_app/core/providers/categories_provider.dart';
 import 'package:testi_app/features/downloads/providers/downloads_provider.dart';
@@ -21,6 +25,11 @@ import 'package:testi_app/features/home/models/testimony_model.dart';
 import 'package:testi_app/features/home/providers/home_providers.dart';
 import 'package:testi_app/features/home/screens/home_screen.dart';
 import 'package:testi_app/features/home/widgets/compact_testimony_tile.dart';
+import 'package:testi_app/features/live/data/live_repository.dart' show livesIndexProvider;
+import 'package:testi_app/features/live/models/live_models.dart' show LivesIndex;
+import 'package:testi_app/features/prayer/models/prayer_models.dart' show PrayerPage, PrayerRequest, PrayerSession;
+import 'package:testi_app/features/prayer/widgets/upcoming_prayer_sessions_strip.dart' show upcomingPrayerSessionsProvider;
+import 'package:testi_app/features/prayer/providers/prayer_providers.dart' show prayerRequestsPageProvider;
 import 'package:testi_app/features/notifications/providers/notifications_provider.dart';
 import 'package:testi_app/shared/widgets/guest_gate.dart';
 import 'package:testi_app/shared/widgets/scaffold_with_bottom_nav.dart';
@@ -116,6 +125,55 @@ List<Override> get _overrides => [
         CategoryModel(id: '4', name: 'Emploi & Carrière', slug: 'emploi'),
       ]),
       downloadsProvider.overrideWith(_FakeDownloads.new),
+      // Bandeau « Comptes à suivre » : pas d'appel réseau.
+      suggestedAccountsProvider.overrideWith((ref) async => const <SuggestedAccount>[]),
+      // « À la une » du serveur : pas d'appel réseau (repli sur le fil chargé).
+      featuredFromApiProvider.overrideWith((ref) async => const <Testimony>[]),
+      // Bandeau « Sessions de prière à venir » : titre et hôte longs, inscrit, réservé aux abonnés.
+      upcomingPrayerSessionsProvider.overrideWith((ref) async => [
+            PrayerSession.fromJson({
+              'id': 'ps1',
+              'title': 'Veillée de prière pour la nation et pour $_longName',
+              'description': 'Intercession, louange et témoignages. ' * 4,
+              'startsAt': DateTime.now().add(const Duration(days: 2)).toIso8601String(),
+              'durationMinutes': 120,
+              'visibility': 'followers',
+              'phase': 'upcoming',
+              'host': {'id': 'u1', 'displayName': _longName},
+              'participantCount': 1520,
+              'isRegistered': true,
+            }),
+          ]),
+      // Bandeau « Événements à venir » : pas d'appel réseau.
+      upcomingEventsProvider.overrideWith((ref) async => const <ChristianEvent>[]),
+      // Requêtes de prière insérées dans le fil : auteur au nom long, une anonyme.
+      prayerRequestsPageProvider(homePrayerRequests).overrideWith((ref) async => PrayerPage(items: [
+            for (final (i, anonymous) in [(1, false), (2, true)])
+              PrayerRequest.fromJson({
+                'id': 'pr$i',
+                'body': 'Priez pour la guérison de ma mère et pour notre famille. ' * 4,
+                'visibility': 'public',
+                'isAnonymous': anonymous,
+                'author': anonymous ? null : {'id': 'u$i', 'displayName': _longName, 'isVerified': true},
+                'prayerCount': 1520,
+                'messageCount': 37,
+                'event': {'id': 'e1', 'title': 'Croisade $_longName'},
+                'createdAt': DateTime.now().toIso8601String(),
+              }),
+          ])),
+      // Bandeau « En direct » : un direct à l'antenne au titre long (débordement).
+      livesIndexProvider.overrideWith((ref) async => LivesIndex.fromJson({
+            'configured': true,
+            'active': [
+              {
+                'id': 'l1',
+                'title': 'Soirée de louange et de témoignages $_longName',
+                'status': 'live',
+                'host': {'id': 'u1', 'displayName': _longName},
+                'liveStats': {'status': 'live', 'viewers': 1240},
+              },
+            ],
+          })),
       for (final c in TestimonyCategory.values)
         categoryApiProvider(c).overrideWith(
             (ref) async => _items.where((t) => t.category == c).toList()),
@@ -259,12 +317,12 @@ void main() {
           'Accueil',
           'Explorer',
           'Publier',
-          'Téléchargements',
+          'Événements',
           'Profil',
         ]) {
           expect(find.text(label), findsOneWidget, reason: label);
         }
-        await tester.tap(find.text('Téléchargements'));
+        await tester.tap(find.text('Événements'));
         await tester.pumpAndSettle();
         expect(find.text('page 4'), findsOneWidget);
         await tester.tap(find.byIcon(Icons.add_rounded));
