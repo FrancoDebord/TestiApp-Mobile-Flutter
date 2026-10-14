@@ -97,6 +97,8 @@ Future<void> showVerseDesignPicker(
     context: context,
     useRootNavigator: true,
     showDragHandle: true,
+    // Hauteur gérée par la feuille (adaptée à l'écran et à la taille du texte).
+    isScrollControlled: true,
     backgroundColor: AppColors.surface,
     shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xxl))),
@@ -109,6 +111,17 @@ class _PickerSheet extends ConsumerWidget {
 
   final String text;
   final String reference;
+
+  /// Hauteur des onglets : 340 px au taux de texte 1, plus si le texte est
+  /// agrandi, sans dépasser 85 % de l'écran (barre d'onglets comprise).
+  /// Les deux onglets défilent : rien ne déborde sur un petit écran.
+  static double tabsHeight(BuildContext context) {
+    final mq = MediaQuery.of(context);
+    final scale = mq.textScaler.scale(100) / 100;
+    final wanted = 340 + 90 * (scale - 1).clamp(0.0, 1.0);
+    final max = mq.size.height * 0.85 - 120 - mq.padding.vertical;
+    return wanted.clamp(160.0, max < 160 ? 160.0 : max);
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -132,7 +145,7 @@ class _PickerSheet extends ConsumerWidget {
               ],
             ),
             SizedBox(
-              height: 340,
+              height: tabsHeight(context),
               child: TabBarView(
                 children: [
                   _DesignsTab(text: text, reference: reference),
@@ -164,12 +177,14 @@ class _DesignsTab extends ConsumerWidget {
     // Designs actifs côté serveur (GET /verse-designs), dans l'ordre du serveur.
     final designs = ref.watch(availableVerseDesignsProvider);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    // Nom sous la vignette : réglage du téléphone respecté, plafonné à × 1,3.
+    final labelHeight = MediaQuery.textScalerOf(context).clamp(maxScaleFactor: 1.3).scale(12) * 1.4;
+    return ListView(
+      padding: EdgeInsets.zero,
       children: [
         const SizedBox(height: 14),
         SizedBox(
-          height: 186,
+          height: _DesignThumb.height + labelHeight + 6,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -225,6 +240,9 @@ class _DesignThumb extends StatelessWidget {
   final VoidCallback onTap;
 
   static const _size = Size(112, 150);
+
+  /// Hauteur de l'aperçu (cadre compris), sans le nom.
+  static const double height = 150 + 6;
 
   @override
   Widget build(BuildContext context) {
@@ -292,25 +310,28 @@ class _DesignThumb extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 6),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (selected) ...[
-                    const Icon(Icons.check_circle_rounded, size: 14, color: AppColors.primary),
-                    const SizedBox(width: 3),
-                  ],
-                  Flexible(
-                    child: Text(
-                      isDaily ? '${design.name} · du jour' : design.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.labelSmall.copyWith(
-                        color: selected ? AppColors.primary : AppColors.textSecondary,
-                        fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              MediaQuery.withClampedTextScaling(
+                maxScaleFactor: 1.3,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (selected) ...[
+                      const Icon(Icons.check_circle_rounded, size: 14, color: AppColors.primary),
+                      const SizedBox(width: 3),
+                    ],
+                    Flexible(
+                      child: Text(
+                        isDaily ? '${design.name} · du jour' : design.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.labelSmall.copyWith(
+                          color: selected ? AppColors.primary : AppColors.textSecondary,
+                          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),

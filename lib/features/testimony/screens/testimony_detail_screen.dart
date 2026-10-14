@@ -1,6 +1,8 @@
+import 'dart:async';
 import '../../prophecies/widgets/public_prophecy_card.dart';
 import '../testimony_delete.dart';
 import '../../home/widgets/compact_testimony_tile.dart';
+import '../../home/widgets/testimony_labels.dart';
 import '../../home/widgets/testimony_card_header.dart' show openAuthorProfile;
 import '../../community/widgets/follow_button.dart';
 import '../../repost/testimony_share_sheet.dart';
@@ -34,6 +36,7 @@ import '../../../shared/widgets/why_testify_card.dart';
 import '../../../shared/widgets/youtube_video_player.dart';
 import '../../../services/audio_player_service.dart' show audioPlayerProvider;
 import '../providers/recommendations_provider.dart';
+import '../providers/view_tracker.dart';
 import '../providers/tts_provider.dart';
 import '../widgets/testimony_info.dart';
 import '../widgets/tts_listen_card.dart';
@@ -120,6 +123,7 @@ class TestimonyDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
+  Timer? _viewTimer;
   // ── Interactions ──────────────────────────────────────────────────────────
   bool _isBookmarked = false;
 
@@ -146,10 +150,15 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
       _initFromTestimony();
       _loadComments();
     });
+    // Vue comptée après 3 s à l'écran (une fois par session) : POST /testimonies/{id}/view.
+    _viewTimer = Timer(kViewDwell, () {
+      if (mounted) ref.read(testimonyViewTrackerProvider.notifier).record(widget.testimonyId);
+    });
   }
 
   @override
   void dispose() {
+    _viewTimer?.cancel();
     // Quitter l'écran arrête la lecture vocale de ce témoignage.
     final id = widget.testimonyId;
     Future.microtask(() => _tts.stopFor(id));
@@ -450,6 +459,12 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
                       )
                     else if (testimony is VideoTestimony)
                       _VideoPlayerEmbed(testimony: testimony),
+
+                    // « À la une » / « Témoignage approuvé »
+                    TestimonyLabels(
+                      testimony: testimony,
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    ),
 
                     // Titre
                     _TitleText(title: testimony.title),

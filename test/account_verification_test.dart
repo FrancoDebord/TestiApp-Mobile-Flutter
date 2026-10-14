@@ -161,15 +161,17 @@ void main() {
     });
   });
 
-  testWidgets('badge : « Compte vérifié » pour une personne, « Organisation vérifiée » sinon', (tester) async {
+  // Badge « Approuvé » (docs serveur fonctionnalites/badge-approuve.md) : même source
+  // (compte vérifié), nouveau libellé et style propre aux organisations.
+  testWidgets('badge : « Compte approuvé » pour une personne, « Organisation approuvée » sinon', (tester) async {
     await tester.pumpWidget(const MaterialApp(
       home: Row(children: [
         OrganizationBadge(isOrganization: false, isVerified: true),
         OrganizationBadge(isOrganization: true, isVerified: true),
       ]),
     ));
-    expect(find.byTooltip('Compte vérifié'), findsOneWidget);
-    expect(find.byTooltip('Organisation vérifiée'), findsOneWidget);
+    expect(find.byTooltip('Compte approuvé'), findsOneWidget);
+    expect(find.byTooltip('Organisation approuvée'), findsOneWidget);
   });
 
   group('écran', () {

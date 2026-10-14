@@ -20,6 +20,8 @@ import '../../core/app_constants.dart';
 import '../../core/theme/app_colors.dart';
 import '../../services/api_service.dart';
 import 'mention_text.dart';
+import '../models/account_approval.dart';
+import 'approval_badges.dart';
 
 /// Compte proposé après « @ ».
 class MentionCandidate {
@@ -31,6 +33,7 @@ class MentionCandidate {
     this.isVerified = false,
     this.isOrganization = false,
     this.isFollowing = false,
+    this.approvalBadge,
   });
 
   final String id;
@@ -41,6 +44,9 @@ class MentionCandidate {
   final bool isOrganization;
   final bool isFollowing;
 
+  /// Badge « Approuvé » du compte (`approval_badge`).
+  final AccountApprovalBadge? approvalBadge;
+
   factory MentionCandidate.fromJson(Map<String, dynamic> j) => MentionCandidate(
         id: '${j['id'] ?? ''}',
         displayName: '${j['displayName'] ?? j['display_name'] ?? ''}',
@@ -49,6 +55,7 @@ class MentionCandidate {
         isVerified: j['isVerified'] == true || j['is_verified'] == true,
         isOrganization: j['isOrganization'] == true,
         isFollowing: j['isFollowing'] == true,
+        approvalBadge: AccountApprovalBadge.parse(j),
       );
 
   MentionRef get ref => MentionRef(id: id, displayName: displayName);
@@ -434,10 +441,7 @@ class _MentionTile extends StatelessWidget {
                 style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppColors.textPrimary),
               ),
             ),
-            if (candidate.isVerified) ...[
-              const SizedBox(width: 4),
-              const Icon(Icons.verified_rounded, size: 15, color: AppColors.primary, semanticLabel: 'Compte vérifié'),
-            ],
+            if (candidate.approvalBadge case final badge?) AccountApprovalIcon(badge: badge, size: 15),
             const Spacer(),
             if (candidate.isFollowing)
               const Text('Abonné', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),

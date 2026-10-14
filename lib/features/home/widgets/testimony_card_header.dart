@@ -60,6 +60,7 @@ class TestimonyAuthorRow extends StatelessWidget {
                   OrganizationBadge(
                     isOrganization: author.isOrganization,
                     isVerified: author.isVerified,
+                    approvalBadge: author.approvalBadge,
                     size: 13,
                   ),
                 Flexible(
@@ -188,6 +189,7 @@ class TestimonyCardHeader extends StatelessWidget {
                         OrganizationBadge(
                           isOrganization: testimony.author.isOrganization,
                           isVerified: testimony.author.isVerified,
+                          approvalBadge: testimony.author.approvalBadge,
                           size: 15,
                         ),
                       ],

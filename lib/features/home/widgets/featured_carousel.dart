@@ -7,6 +7,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../shared/widgets/app_badge.dart';
 import '../../../shared/widgets/app_logo.dart';
+import '../../../shared/widgets/approval_badges.dart' show FeaturedLabel;
 import '../../../shared/widgets/video_poster.dart' show VideoThumbnailImage;
 import '../models/testimony_model.dart';
 import '../providers/home_providers.dart';
@@ -137,11 +138,20 @@ class _FeaturedCard extends StatelessWidget {
                 ),
               ),
 
-              // Type badge (top-left)
+              // Type badge (top-left) ; « À la une » seulement pour une mise à la
+              // une manuelle (featured_source = manual), jamais pour le complément « recent ».
               Positioned(
                 top: 12,
                 left: 12,
-                child: _TypeBadge(type: testimony.type),
+                right: 12,
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    _TypeBadge(type: testimony.type),
+                    if (testimony.isFeaturedBadge) const FeaturedLabel(compact: true, onDark: true),
+                  ],
+                ),
               ),
 
               // Title + category (bottom)

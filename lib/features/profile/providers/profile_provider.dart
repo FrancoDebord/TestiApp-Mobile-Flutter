@@ -368,20 +368,23 @@ class MyTestimoniesNotifier extends AsyncNotifier<List<UserTestimony>> {
   @override
   Future<List<UserTestimony>> build() => _fetch();
 
+  /// GET /testimonies/my : tous les témoignages de l'auteur, quel que soit leur
+  /// statut (le carnet privé a sa propre liste). Pages de 50, 10 au plus.
   Future<List<UserTestimony>> _fetch() async {
     final userId = ref.read(currentUserProvider)?.id;
     if (userId == null || userId.isEmpty) return [];
     try {
       final api = ref.read(apiServiceProvider);
-      final res = await api.get<dynamic>(AppConstants.userTestimonies(userId));
-      final data = res.data;
-      if (data is List) {
-        return data
-            .whereType<Map<String, dynamic>>()
-            .map(UserTestimony.fromJson)
-            .toList();
+      final all = <UserTestimony>[];
+      for (var page = 1, last = 1; page <= last && page <= 10; page++) {
+        final res = await api.get<dynamic>(AppConstants.myTestimonies, query: {'limit': 50, 'page': page});
+        final data = res.data;
+        if (data is List) {
+          all.addAll(data.whereType<Map<String, dynamic>>().map(UserTestimony.fromJson));
+        }
+        last = parsePageMeta(res.meta).lastPage;
       }
-      return [];
+      return all;
     } catch (e) {
       debugPrint('myTestimonies ✗ $e');
       return [];
@@ -406,27 +409,24 @@ class MyTestimoniesNotifier extends AsyncNotifier<List<UserTestimony>> {
     }
   }
 
-  Future<bool> updateTitle(String id, String newTitle) async {
-    try {
-      final api = ref.read(apiServiceProvider);
-      await api.put<void>(AppConstants.testimonyById(id), data: {'title': newTitle});
-      state = AsyncData(state.value?.map((t) {
-        return t.id == id
-            ? UserTestimony(
-                id: t.id, title: newTitle, type: t.type,
-                status: t.status, createdAt: t.createdAt, category: t.category,
-                durationSeconds: t.durationSeconds, thumbnailUrl: t.thumbnailUrl,
-                mediaPath: t.mediaPath, bodyPreview: t.bodyPreview,
-                rejectionReason: t.rejectionReason, views: t.views,
-                videoStatus: t.videoStatus,
-              )
-            : t;
-      }).toList() ?? []);
-      return true;
-    } catch (e) {
-      debugPrint('updateTitle ✗ $e');
-      return false;
+  /// « Modifier et renvoyer » : PUT /testimonies/{id} avec le contenu modifié. Le
+  /// serveur décide du statut (refusé ou publié → en attente si la modération est
+  /// active ; label « Témoignage approuvé » retiré). Renvoie le témoignage tel que
+  /// le serveur l'a enregistré ; lève [LaravelApiException] en cas de refus.
+  Future<UserTestimony> resubmit(String id, {required String title, required String bodyText}) async {
+    final res = await ref.read(apiServiceProvider).put<Map<String, dynamic>>(
+      AppConstants.testimonyById(id),
+      data: {'title': title, 'body_text': bodyText},
+    );
+    final updated = UserTestimony.fromJson(res.data);
+    state = AsyncData([
+      for (final t in state.value ?? const <UserTestimony>[]) t.id == id ? updated : t,
+    ]);
+    // Repassé en attente : plus visible dans les fils tant qu'il n'est pas validé.
+    if (updated.status != 'published') {
+      ref.read(feedNotifierProvider.notifier).removeTestimony(id);
     }
+    return updated;
   }
 }
 

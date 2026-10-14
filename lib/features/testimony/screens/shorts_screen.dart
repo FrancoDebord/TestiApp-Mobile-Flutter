@@ -20,6 +20,7 @@ import '../../home/models/testimony_model.dart';
 import '../../home/providers/home_providers.dart';
 import '../../../shared/widgets/guest_gate.dart';
 import '../widgets/testimony_info.dart';
+import '../providers/view_tracker.dart';
 import 'video_player_screen.dart' show showVideoQualitySheet, videoQualityChipLabel;
 import '../../../shared/widgets/video_poster.dart';
 
@@ -384,6 +385,7 @@ class _ShortPageState extends ConsumerState<_ShortPage> {
         _isPlaying = widget.isActive;
         if (widget.isActive) {
           controller.play();
+          _countView();
         }
       }
     } catch (e) {
@@ -468,6 +470,7 @@ class _ShortPageState extends ConsumerState<_ShortPage> {
         _endHandled = false;
         // play() repart de zéro si la vidéo était terminée.
         _videoController?.play();
+        if (_videoController != null) _countView();
         setState(() => _isPlaying = true);
       } else {
         _videoController?.pause();
@@ -483,6 +486,9 @@ class _ShortPageState extends ConsumerState<_ShortPage> {
     _videoController?.dispose();
     super.dispose();
   }
+
+  /// Lecture démarrée : vue comptée (une fois par session).
+  void _countView() => ref.read(testimonyViewTrackerProvider.notifier).record(widget.testimony.id);
 
   /// Toucher de l'affiche (données mobiles) : chargement puis lecture.
   void _playFromPoster() {

@@ -70,7 +70,7 @@ class AppDrawer extends ConsumerWidget {
                                   style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w700, fontSize: 16)),
                             ),
                             if (user != null)
-                              OrganizationBadge(isOrganization: user.isOrganization, isVerified: user.isVerified, size: 15),
+                              OrganizationBadge(isOrganization: user.isOrganization, isVerified: user.isVerified, approvalBadge: user.approvalBadge, size: 15),
                           ]),
                           Text(
                               user == null

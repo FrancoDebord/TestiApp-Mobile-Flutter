@@ -29,6 +29,7 @@ import '../../../shared/widgets/quality_picker_sheet.dart';
 import '../../../shared/widgets/video_poster.dart';
 import '../../../shared/widgets/youtube_video_player.dart';
 import '../providers/recommendations_provider.dart';
+import '../providers/view_tracker.dart';
 import '../../repost/testimony_share_sheet.dart';
 
 // ============================================================================
@@ -313,6 +314,8 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
       _chewieCtrl = chewie;
       _resolved = resolved;
     });
+    // Lecture démarrée : vue comptée (une fois par session).
+    ref.read(testimonyViewTrackerProvider.notifier).record(widget.testimonyId);
   }
 
   // ── Changement de qualité (conserve la position et lecture/pause) ────────

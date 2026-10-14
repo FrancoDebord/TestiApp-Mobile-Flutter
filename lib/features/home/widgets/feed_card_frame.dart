@@ -22,6 +22,7 @@ import '../models/testimony_model.dart';
 import '../providers/home_providers.dart';
 import 'testimony_action_bar.dart';
 import 'testimony_card_header.dart';
+import 'testimony_labels.dart';
 
 class FeedCardFrame extends ConsumerWidget {
   const FeedCardFrame({
@@ -125,6 +126,12 @@ class FeedCardFrame extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // ── « À la une » / « Témoignage approuvé » ─────
+                          TestimonyLabels(
+                            testimony: t,
+                            compact: true,
+                            padding: const EdgeInsets.only(bottom: 6),
+                          ),
                           // ── Titre ──────────────────────────────────────
                           Text(
                             t.title,

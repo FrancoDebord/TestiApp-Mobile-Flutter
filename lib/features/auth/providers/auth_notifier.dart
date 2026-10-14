@@ -518,6 +518,21 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
   }
 
   /// Met à jour l'utilisateur courant (ex. après édition du profil) et le cache.
+  /// Recharge le profil connecté (GET /auth/me), par exemple après l'attribution ou le
+  /// retrait du badge « Approuvé ». Publie toujours le nouvel utilisateur : UserModel
+  /// se compare par identifiant, un simple changement de badge passerait inaperçu.
+  Future<void> refreshCurrentUser() async {
+    if (state.value is! AuthStateAuthenticated) return;
+    try {
+      final response = await _api.get<Map<String, dynamic>>(AppConstants.authMe);
+      final user = UserModel.fromJson(Map<String, dynamic>.from(response.data));
+      await _cacheUser(user);
+      state = AsyncValue.data(AuthStateAuthenticated(user));
+    } catch (e) {
+      debugPrint('refreshCurrentUser ✗ $e');
+    }
+  }
+
   Future<void> updateCurrentUser(UserModel user) async {
     final current = state.value;
     if (current is! AuthStateAuthenticated) return;

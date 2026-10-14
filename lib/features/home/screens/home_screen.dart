@@ -34,6 +34,7 @@ import '../providers/home_providers.dart';
 import '../widgets/category_chips_row.dart';
 import '../widgets/daily_verse_banner.dart';
 import '../widgets/featured_carousel.dart';
+import '../widgets/feed_filter_bar.dart';
 import '../widgets/pill_tabs.dart';
 import '../widgets/skeleton_card.dart';
 import '../widgets/testimony_feed_item.dart';
@@ -369,11 +370,12 @@ class _FeedHeader extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final layout = ref.watch(feedLayoutProvider);
+    final sort = ref.watch(feedQueryProvider.select((q) => q.sort));
     final header = Row(
       children: [
         Expanded(
           child: Text(
-            'Pour vous',
+            sort.label,
             style: AppTextStyles.h3,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -392,6 +394,11 @@ class _FeedHeader extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         header,
+        // « Approuvés » et tri (Pour vous, Récents, Populaires, Plus vus).
+        const Padding(
+          padding: EdgeInsets.only(top: 8),
+          child: FeedFilterBar(),
+        ),
         NearbyFeedBanner(place: ref.watch(homeFeedPlaceProvider), padding: const EdgeInsets.only(top: 8)),
       ],
     );

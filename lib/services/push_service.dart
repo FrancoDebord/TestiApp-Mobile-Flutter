@@ -30,7 +30,8 @@ import '../features/home/providers/home_providers.dart';
 import '../features/notifications/providers/notifications_provider.dart';
 import '../features/prophecies/data/prophecy_reminders.dart';
 import '../features/prophecies/providers/prophecies_providers.dart';
-import '../features/auth/providers/auth_notifier.dart' show currentUserProvider;
+import '../features/auth/providers/auth_notifier.dart' show authStateProvider, currentUserProvider;
+import '../features/profile/providers/account_verification_provider.dart' show accountVerificationProvider;
 import '../features/profile/providers/profile_provider.dart'
     show myTestimoniesNotifierProvider, userSettingsProvider;
 import 'api_service.dart';
@@ -207,6 +208,19 @@ class PushService {
     }
   }
 
+  /// Recharge ce que le push [type] a changé (toucher d'une notification, main.dart).
+  void refreshFor(String? type) => refreshForPush(_r, type);
+
+  /// Types qui changent le badge « Approuvé » du compte connecté.
+  static const accountBadgeTypes = {
+    'account_verified',
+    'organization_verified',
+    'account_verification_rejected',
+    'organization_rejected',
+    // Badge retiré, quel que soit le chemin (docs serveur fonctionnalites/badge-approuve.md).
+    'account_approval_revoked',
+  };
+
   /// Toucher d'une notification : ouvre l'écran correspondant (main.dart, _handleFcmNavigation).
   /// `type: prayer_request` + `id` ouvre aussi la requête de prière.
   void handleNavigation(Map<String, dynamic> data) {
@@ -296,10 +310,9 @@ class PushService {
       return;
     }
 
-    // Vidéo en ligne (Bunny Stream) : « Mes publications » rechargé.
-    if (message.data['type'] == 'video_ready') {
-      _r.invalidate(myTestimoniesNotifierProvider);
-    }
+    // Vidéo en ligne, témoignage approuvé ou refusé : « Mes publications » rechargé ;
+    // badge « Approuvé » attribué ou retiré : profil rechargé.
+    refreshForPush(_r, message.data['type'] as String?);
 
     // 1. Refresh local data immediately.
     await _deltaSync();
@@ -323,7 +336,14 @@ class PushService {
       'live_started'
           || 'new_followed_testimony'
           // Mon témoignage vidéo est en ligne.
-          || 'video_ready'              => true,
+          || 'video_ready'
+          // Badge « Approuvé » attribué ou retiré, témoignage renvoyé en modération.
+          || 'account_verified'
+          || 'organization_verified'
+          || 'account_verification_rejected'
+          || 'organization_rejected'
+          || 'account_approval_revoked'
+          || 'testimony_resubmitted'    => true,
       'testimony_approved'
           || 'testimony_rejected'
           || 'pending_correction'       => settings.pushApproval,
@@ -406,6 +426,20 @@ class PushService {
   void _log(String step, Object error, [StackTrace? stack]) {
     debugPrint('Push ✗ $step : $error');
     if (kDebugMode && stack != null) debugPrint('$stack');
+  }
+}
+
+// ── Rafraîchissements liés à un push ─────────────────────────────────────────
+
+/// Recharge ce qu'un push de type [type] a changé (reçu au premier plan ou touché).
+void refreshForPush(Ref ref, String? type) {
+  switch (type) {
+    case 'video_ready' || 'testimony_approved' || 'testimony_rejected':
+      ref.invalidate(myTestimoniesNotifierProvider);
+    case final t? when PushService.accountBadgeTypes.contains(t):
+      // Badge « Approuvé » attribué ou retiré (docs serveur fonctionnalites/badge-approuve.md).
+      unawaited(ref.read(authStateProvider.notifier).refreshCurrentUser());
+      ref.invalidate(accountVerificationProvider);
   }
 }
 

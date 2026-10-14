@@ -1,7 +1,8 @@
+import 'dart:async' show unawaited;
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:flutter/foundation.dart' show debugPrint, immutable;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -13,6 +14,7 @@ import '../../../services/api_service.dart';
 import '../../location/location_providers.dart' show homeFeedPlaceProvider, nearbyLabelsProvider;
 import '../../location/user_location.dart' show FeedPlace, parseNearbyLabels;
 import '../models/testimony_model.dart';
+import '../../../shared/models/account_approval.dart';
 import '../../../shared/models/mention.dart' show MentionRef;
 import '../../repost/repost.dart' show RepostInfo;
 
@@ -118,6 +120,8 @@ Testimony _applyStatsDelta(
       isFeatured: t.isFeatured, isLiked: t.isLiked,
       isPrayed: t.isPrayed, isSaved: t.isSaved,
       shareUrl: t.shareUrl, proofs: t.proofs,
+      mentions: t.mentions, repost: t.repost, myReaction: t.myReaction,
+      canDelete: t.canDelete, badges: t.badges, featuredSource: t.featuredSource,
     );
   }
   if (t is AudioTestimony) {
@@ -131,6 +135,8 @@ Testimony _applyStatsDelta(
       isFeatured: t.isFeatured, isLiked: t.isLiked,
       isPrayed: t.isPrayed, isSaved: t.isSaved,
       shareUrl: t.shareUrl, proofs: t.proofs,
+      mentions: t.mentions, repost: t.repost, myReaction: t.myReaction,
+      canDelete: t.canDelete, badges: t.badges, featuredSource: t.featuredSource,
     );
   }
   if (t is VideoTestimony) {
@@ -144,6 +150,8 @@ Testimony _applyStatsDelta(
       isFeatured: t.isFeatured, isLiked: t.isLiked,
       isPrayed: t.isPrayed, isSaved: t.isSaved,
       shareUrl: t.shareUrl, proofs: t.proofs,
+      mentions: t.mentions, repost: t.repost, myReaction: t.myReaction,
+      canDelete: t.canDelete, badges: t.badges, featuredSource: t.featuredSource,
     );
   }
   return t;
@@ -241,7 +249,17 @@ Testimony? testimonyFromApiJson(dynamic raw, {bool allowUnready = false}) {
               as String?) == 'organization',
       isVerified: (userMap['isVerified'] ?? userMap['is_verified'] ??
               userMap['organization_verified']) as bool? ?? false,
+      // Badge « Approuvé » du compte (docs serveur fonctionnalites/badge-approuve.md).
+      approvalBadge: AccountApprovalBadge.parse(userMap),
     );
+    // Badges du témoignage : "verified" (label « Témoignage approuvé »), "featured"
+    // (à la une manuelle). Sans tableau badges : repli sur isVerified pour le label,
+    // aucun badge « À la une ».
+    final rawBadges = m['badges'];
+    final badges = rawBadges is List
+        ? {for (final b in rawBadges) '$b'}
+        : {if (m['isVerified'] == true || m['is_verified'] == true) 'verified'};
+    final featuredSource = (m['featured_source'] ?? m['featuredSource']) as String?;
     final renditions = MediaRendition.parseList(
         m['renditions'] ?? m['mediaRenditions'] ?? m['media_renditions'],
         absUrl: _absUrl);
@@ -291,6 +309,7 @@ Testimony? testimonyFromApiJson(dynamic raw, {bool allowUnready = false}) {
           isFeatured: isFeatured, isLiked: isLiked, isPrayed: isPrayed, isSaved: isSaved,
           shareUrl: shareUrl, proofs: proofs, mentions: mentions,
           repost: repost, myReaction: myReaction, canDelete: canDelete,
+          badges: badges, featuredSource: featuredSource,
         );
       case 'video':
         final bunny = youtubeId == null ? parseBunnyVideo(m) : null;
@@ -320,6 +339,7 @@ Testimony? testimonyFromApiJson(dynamic raw, {bool allowUnready = false}) {
           isFeatured: isFeatured, isLiked: isLiked, isPrayed: isPrayed, isSaved: isSaved,
           shareUrl: shareUrl, proofs: proofs, mentions: mentions,
           repost: repost, myReaction: myReaction, canDelete: canDelete,
+          badges: badges, featuredSource: featuredSource,
         );
       default:
         final body = (m['bodyText'] ?? m['body_text']) as String? ?? '';
@@ -332,6 +352,7 @@ Testimony? testimonyFromApiJson(dynamic raw, {bool allowUnready = false}) {
           isFeatured: isFeatured, isLiked: isLiked, isPrayed: isPrayed, isSaved: isSaved,
           shareUrl: shareUrl, proofs: proofs, mentions: mentions,
           repost: repost, myReaction: myReaction, canDelete: canDelete,
+          badges: badges, featuredSource: featuredSource,
         );
     }
   } catch (_) {
@@ -353,7 +374,62 @@ Testimony? testimonyFromApiJson(dynamic raw, {bool allowUnready = false}) {
   return (currentPage: c, lastPage: last < c ? c : last);
 }
 
+// ============================================================================
+// Tri et filtre du fil (docs serveur fonctionnalites/gestion-des-temoignages.md)
+// ============================================================================
+
+/// Tri du fil : `?sort=` de GET /testimonies.
+enum FeedSort {
+  forYou('for_you', 'Pour vous'),
+  recent('recent', 'Récents'),
+  popular('popular', 'Populaires'),
+  mostViewed('most_viewed', 'Plus vus');
+
+  const FeedSort(this.apiValue, this.label);
+
+  final String apiValue;
+  final String label;
+}
+
+/// Tri choisi et filtre « Approuvés » (`?verified=1` : label « Témoignage approuvé »).
+@immutable
+class FeedQuery {
+  const FeedQuery({this.sort = FeedSort.forYou, this.verifiedOnly = false});
+
+  final FeedSort sort;
+  final bool verifiedOnly;
+
+  /// Paramètres de GET /testimonies pour la page [page].
+  Map<String, dynamic> toQuery({required int page, int limit = AppConstants.defaultPageSize}) => {
+        'sort': sort.apiValue,
+        'limit': limit,
+        'page': page,
+        if (verifiedOnly) 'verified': 1,
+      };
+
+  FeedQuery copyWith({FeedSort? sort, bool? verifiedOnly}) =>
+      FeedQuery(sort: sort ?? this.sort, verifiedOnly: verifiedOnly ?? this.verifiedOnly);
+
+  @override
+  bool operator ==(Object other) =>
+      other is FeedQuery && other.sort == sort && other.verifiedOnly == verifiedOnly;
+
+  @override
+  int get hashCode => Object.hash(sort, verifiedOnly);
+}
+
+class FeedQueryNotifier extends Notifier<FeedQuery> {
+  @override
+  FeedQuery build() => const FeedQuery();
+
+  void setSort(FeedSort sort) => state = state.copyWith(sort: sort);
+  void setVerifiedOnly(bool value) => state = state.copyWith(verifiedOnly: value);
+}
+
+final feedQueryProvider = NotifierProvider<FeedQueryNotifier, FeedQuery>(FeedQueryNotifier.new);
+
 /// Fil « Pour vous » : GET /testimonies?sort=for_you&limit=20&page=N.
+/// Tri et filtre « Approuvés » : [feedQueryProvider] (le fil se recharge à chaque changement).
 /// Le serveur mélange récents et plus vus pour un nouveau compte, puis classe
 /// selon les centres d'intérêt et les comptes suivis.
 class FeedNotifier extends Notifier<List<Testimony>> {
@@ -364,6 +440,15 @@ class FeedNotifier extends Notifier<List<Testimony>> {
   @override
   List<Testimony> build() {
     Future.microtask(_loadFromApi);
+    // Nouveau tri ou filtre : rechargement depuis la première page.
+    ref.listen(feedQueryProvider, (prev, next) {
+      if (prev == next) return;
+      _page = 0;
+      _lastPage = 1;
+      state = const [];
+      ref.read(feedIsLoadingProvider.notifier).start();
+      unawaited(_loadFromApi());
+    });
     return const [];
   }
 
@@ -375,7 +460,7 @@ class FeedNotifier extends Notifier<List<Testimony>> {
   Future<LaravelResponse<List<dynamic>>> _fetchPage(int page) =>
       ref.read(apiServiceProvider).get<List<dynamic>>(
         AppConstants.testimonies,
-        query: AppConstants.forYouFeedQuery(page: page),
+        query: ref.read(feedQueryProvider).toQuery(page: page),
       );
 
   Future<void> _loadFromApi({bool silent = false}) async {
@@ -549,6 +634,7 @@ class _FeedLoadingNotifier extends Notifier<bool> {
   @override
   bool build() => true;
   void done() => state = false;
+  void start() => state = true;
 }
 
 final feedIsLoadingProvider =
@@ -574,11 +660,15 @@ final feedProvider = Provider<List<Testimony>>((ref) {
   final all      = ref.watch(feedNotifierProvider);
   final selected = ref.watch(selectedCategoryProvider);
   final type     = ref.watch(selectedFeedTypeProvider);
-  if (selected == null && type == null) return all;
+  // « Approuvés » : envoyé au serveur (?verified=1) ; filtré aussi ici, au cas où
+  // la réponse viendrait du cache local ou d'un serveur qui ignore le paramètre.
+  final verifiedOnly = ref.watch(feedQueryProvider.select((q) => q.verifiedOnly));
+  if (selected == null && type == null && !verifiedOnly) return all;
   return all
       .where((t) =>
           (selected == null || t.category == selected) &&
-          (type == null || t.type == type))
+          (type == null || t.type == type) &&
+          (!verifiedOnly || t.hasApprovedLabel))
       .toList();
 });
 

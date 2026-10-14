@@ -278,8 +278,32 @@ class _TemoignagesAppState extends ConsumerState<TemoignagesApp>
       case 'account_manager_added':
       case 'account_manager_removed':
         router.push('/managers');
+      // Témoignage publié : on l'ouvre. Refusé : « Mes publications » (motif,
+      // « Modifier et renvoyer »). docs serveur fonctionnalites/gestion-des-temoignages.md
       case 'testimony_approved':
+        ref.read(pushServiceProvider).refreshFor(intent.type);
+        if (testimonyId != null) {
+          router.pushNamed(AppRoutes.testimonyDetail, pathParameters: {'id': testimonyId});
+        } else {
+          router.push('${AppPaths.profilePath}/my-testimonies');
+        }
       case 'testimony_rejected':
+        ref.read(pushServiceProvider).refreshFor(intent.type);
+        router.push('${AppPaths.profilePath}/my-testimonies');
+      // Modérateurs : témoignage modifié par son auteur et renvoyé en modération.
+      case 'testimony_resubmitted':
+        router.push(AppPaths.moderation);
+      // Badge « Approuvé » attribué ou retiré (docs serveur fonctionnalites/badge-approuve.md).
+      case 'account_verified':
+      case 'organization_verified':
+      case 'organization_rejected':
+      case 'account_approval_revoked':
+        ref.read(pushServiceProvider).refreshFor(intent.type);
+        router.go(AppPaths.profilePath);
+      case 'account_verification_rejected':
+        ref.read(pushServiceProvider).refreshFor(intent.type);
+        router.go(AppPaths.profilePath);
+        router.pushNamed(AppRoutes.accountVerification);
       case 'pending_correction':
         router.pushNamed(AppRoutes.notifications);
       default:

@@ -29,6 +29,11 @@ enum NotificationType {
   // (types account_manager_added / account_manager_removed, système).
   accountManagerAdded,
   accountManagerRemoved,
+  // Modérateurs : témoignage modifié par son auteur et renvoyé en modération
+  // (type testimony_resubmitted, docs serveur fonctionnalites/gestion-des-temoignages.md).
+  resubmitted,
+  // Badge « Approuvé » retiré (type account_approval_revoked), distinct d'un refus de demande.
+  approvalRevoked,
 }
 
 extension NotificationTypeLabel on NotificationType {
@@ -44,6 +49,10 @@ extension NotificationTypeLabel on NotificationType {
         return 'Approuvé';
       case NotificationType.newFollowedTestimony:
         return 'Nouveau témoignage';
+      case NotificationType.resubmitted:
+        return 'Renvoyé en modération';
+      case NotificationType.approvalRevoked:
+        return 'Badge retiré';
       case NotificationType.pendingCorrection:
         return 'Correction requise';
       case NotificationType.organizationVerified:
@@ -197,6 +206,10 @@ class AppNotification {
         return 'Votre témoignage « $testimonyTitle » a été approuvé';
       case NotificationType.newFollowedTestimony:
         return '$actorName a partagé un nouveau témoignage « $testimonyTitle »';
+      case NotificationType.approvalRevoked:
+        return _serverMessageOr('Le badge « Approuvé » a été retiré de votre compte');
+      case NotificationType.resubmitted:
+        return _serverMessageOr('Un témoignage a été modifié et renvoyé en modération');
       case NotificationType.pendingCorrection:
         return 'Votre témoignage « $testimonyTitle » nécessite des corrections';
       case NotificationType.organizationVerified:
@@ -250,6 +263,10 @@ class AppNotification {
         return 'Témoignage approuvé';
       case NotificationType.newFollowedTestimony:
         return 'Nouveau témoignage';
+      case NotificationType.resubmitted:
+        return 'Renvoyé en modération';
+      case NotificationType.approvalRevoked:
+        return 'Badge retiré';
       case NotificationType.pendingCorrection:
         return 'Correction requise';
       case NotificationType.organizationVerified:

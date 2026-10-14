@@ -5,6 +5,7 @@ library;
 import '../../repost/repost.dart';
 import '../../../core/app_constants.dart';
 import 'media_rendition.dart';
+import '../../../shared/models/account_approval.dart';
 import '../../../shared/models/mention.dart';
 
 export 'media_rendition.dart';
@@ -52,6 +53,7 @@ class TestimonyAuthor {
     this.avatarUrl,
     this.isOrganization = false,
     this.isVerified = false,
+    this.approvalBadge,
   });
 
   final String uid;
@@ -61,8 +63,11 @@ class TestimonyAuthor {
   /// Compte organisation (église, ministère, association…).
   final bool isOrganization;
 
-  /// Organisation vérifiée par un administrateur (badge).
+  /// Compte vérifié par un administrateur (ancien champ, gardé).
   final bool isVerified;
+
+  /// Badge « Approuvé » du compte (`approval_badge`) : style de la pastille.
+  final AccountApprovalBadge? approvalBadge;
 }
 
 // ── Stats ────────────────────────────────────────────────────────────────────
@@ -179,6 +184,8 @@ sealed class Testimony {
     this.repost,
     this.myReaction,
     this.canDelete = false,
+    this.badges = const {},
+    this.featuredSource,
   });
 
   final String id;
@@ -213,6 +220,20 @@ sealed class Testimony {
   /// L'auteur ou un administrateur peut le supprimer (`canDelete`) ; jamais un modérateur.
   final bool canDelete;
 
+  /// Badges d'affichage (`badges`) : "verified" (label « Témoignage approuvé »,
+  /// attribué par un administrateur), "featured" (mise à la une manuelle).
+  /// docs serveur fonctionnalites/gestion-des-temoignages.md
+  final Set<String> badges;
+
+  /// Origine dans « À la une » : manual, recent (complément automatique) ou null.
+  final String? featuredSource;
+
+  /// Label « Témoignage approuvé ».
+  bool get hasApprovedLabel => badges.contains('verified');
+
+  /// Badge « À la une » : mise à la une manuelle seulement (jamais « recent »).
+  bool get isFeaturedBadge => badges.contains('featured');
+
   /// Lien à partager : `share_url` du serveur, sinon même format que le
   /// backend (APP_URL/testimonies/{id}) pour les témoignages en cache local.
   String get shareLink => (shareUrl?.isNotEmpty ?? false)
@@ -246,6 +267,8 @@ final class TextTestimony extends Testimony {
     super.repost,
     super.myReaction,
     super.canDelete,
+    super.badges,
+    super.featuredSource,
   });
 
   final String preview;
@@ -285,6 +308,8 @@ final class AudioTestimony extends Testimony {
     super.repost,
     super.myReaction,
     super.canDelete,
+    super.badges,
+    super.featuredSource,
   });
 
   final int     durationSeconds;
@@ -341,6 +366,8 @@ final class VideoTestimony extends Testimony {
     super.repost,
     super.myReaction,
     super.canDelete,
+    super.badges,
+    super.featuredSource,
   });
 
   final int     durationSeconds;

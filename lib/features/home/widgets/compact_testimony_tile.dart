@@ -375,6 +375,7 @@ class _TitleBlock extends StatelessWidget {
             OrganizationBadge(
               isOrganization: t.author.isOrganization,
               isVerified: t.author.isVerified,
+              approvalBadge: t.author.approvalBadge,
               size: 13,
             ),
             Flexible(

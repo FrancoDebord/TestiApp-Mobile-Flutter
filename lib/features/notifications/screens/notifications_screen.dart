@@ -184,6 +184,10 @@ class _NotificationTile extends ConsumerWidget {
           (Icons.auto_stories_rounded, AppColors.primary, AppColors.primarySoft),
         NotificationType.pendingCorrection =>
           (Icons.edit_note_rounded, AppColors.secondaryDark, AppColors.secondarySoft),
+        NotificationType.resubmitted =>
+          (Icons.replay_rounded, AppColors.primary, AppColors.primarySoft),
+        NotificationType.approvalRevoked =>
+          (Icons.remove_moderator_rounded, AppColors.danger, AppColors.dangerSoft),
         NotificationType.organizationVerified =>
           (Icons.verified_rounded, AppColors.success, AppColors.successSoft),
         NotificationType.organizationRejected =>

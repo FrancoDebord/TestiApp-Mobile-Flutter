@@ -125,6 +125,7 @@ class TestimonyAuthorRow extends StatelessWidget {
                       OrganizationBadge(
                         isOrganization: author.isOrganization,
                         isVerified: author.isVerified,
+                        approvalBadge: author.approvalBadge,
                         size: 15,
                       ),
                     ],

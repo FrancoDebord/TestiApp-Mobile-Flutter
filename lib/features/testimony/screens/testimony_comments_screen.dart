@@ -7,6 +7,7 @@ import '../../../features/auth/providers/auth_notifier.dart'
     show currentUserProvider;
 import '../../../shared/models/comment_model.dart';
 import '../../../shared/widgets/guest_gate.dart';
+import '../../../shared/widgets/approval_badges.dart';
 import '../providers/comments_provider.dart';
 
 // =============================================================================
@@ -155,14 +156,25 @@ class _CommentTile extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        comment.user?.displayName ?? 'Anonyme',
-                        style: const TextStyle(
-                          fontFamily: AppFonts.family,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
-                          color: AppColors.textPrimary,
-                        ),
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              comment.user?.displayName ?? 'Anonyme',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontFamily: AppFonts.family,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ),
+                          // Badge « Approuvé » de l'auteur du commentaire.
+                          if (comment.user?.approvalBadge case final badge?)
+                            AccountApprovalIcon(badge: badge, size: 13),
+                        ],
                       ),
                       const SizedBox(height: 4),
                       Text(

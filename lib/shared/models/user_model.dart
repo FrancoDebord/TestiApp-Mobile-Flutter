@@ -1,5 +1,9 @@
 // lib/shared/models/user_model.dart — Dart pur, sans génération de code.
 
+import 'account_approval.dart';
+
+export 'account_approval.dart' show AccountApprovalBadge;
+
 enum UserRole {
   visiteur,
   utilisateur,
@@ -96,6 +100,8 @@ class UserModel {
     this.organizationWebsite,
     this.isVerified = false,
     this.verificationStatus,
+    this.approvalBadge,
+    this.approvedAt,
   });
 
   final String  id;
@@ -137,6 +143,16 @@ class UserModel {
   /// Badge vérifié accordé par un administrateur.
   final bool isVerified;
   final VerificationStatus? verificationStatus;
+
+  /// Badge « Approuvé » (`approval_badge`, docs serveur fonctionnalites/badge-approuve.md) :
+  /// style de la pastille ; null sans badge.
+  final AccountApprovalBadge? approvalBadge;
+
+  /// Compte approuvé (pastille à côté du nom).
+  bool get isApproved => approvalBadge != null;
+
+  /// Date d'attribution du badge (`approved_at`) ; null sans badge.
+  final DateTime? approvedAt;
 
   // ── JSON ─────────────────────────────────────────────────────────────────────
 
@@ -187,6 +203,8 @@ class UserModel {
                         j['verification_status'] == 'verified',
       verificationStatus:
           VerificationStatus.fromJson(j['verification_status'] as String?),
+      approvalBadge: AccountApprovalBadge.parse(j),
+      approvedAt: DateTime.tryParse('${j['approved_at'] ?? ''}'),
     );
   }
 
@@ -209,6 +227,9 @@ class UserModel {
     'is_verified': isVerified,
     if (verificationStatus != null)
       'verification_status': verificationStatus!.toJson(),
+    'is_approved': approvalBadge != null,
+    'approval_badge': approvalBadge?.apiValue,
+    if (approvedAt != null) 'approved_at': approvedAt!.toIso8601String(),
   };
 
   static String? _str(dynamic v) {
@@ -236,6 +257,7 @@ class UserModel {
     String? organizationWebsite, bool? isVerified,
     VerificationStatus? verificationStatus,
     String? coverUrl, bool clearCoverUrl = false,
+    AccountApprovalBadge? approvalBadge, bool clearApprovalBadge = false,
   }) => UserModel(
     id:              id              ?? this.id,
     displayName:     displayName     ?? this.displayName,
@@ -264,6 +286,8 @@ class UserModel {
     organizationWebsite: organizationWebsite ?? this.organizationWebsite,
     isVerified:          isVerified          ?? this.isVerified,
     verificationStatus:  verificationStatus  ?? this.verificationStatus,
+    approvalBadge:       clearApprovalBadge ? null : (approvalBadge ?? this.approvalBadge),
+    approvedAt:          clearApprovalBadge ? null : approvedAt,
   );
 
   @override bool operator ==(Object other) =>

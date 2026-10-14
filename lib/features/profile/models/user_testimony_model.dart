@@ -18,6 +18,8 @@ class UserTestimony {
     this.rejectionReason,
     this.views = 0,
     this.videoStatus,
+    this.bodyText = '',
+    this.hasApprovedLabel = false,
   });
 
   final String  id;
@@ -36,6 +38,13 @@ class UserTestimony {
   /// Vidéo Bunny Stream : uploading | processing | ready | failed (`null` sinon).
   final String? videoStatus;
 
+  /// Texte complet (description, transcription) : prérempli dans « Modifier ».
+  final String bodyText;
+
+  /// Label « Témoignage approuvé » (badges contient "verified") : perdu si
+  /// l'auteur modifie le témoignage.
+  final bool hasApprovedLabel;
+
   /// Vidéo en cours d'envoi ou de traitement (badge « En traitement »).
   bool get isVideoProcessing =>
       videoStatus == 'uploading' || videoStatus == 'processing';
@@ -43,10 +52,12 @@ class UserTestimony {
   /// Traitement de la vidéo échoué (badge « Échec »).
   bool get isVideoFailed => videoStatus == 'failed';
 
+  /// Statut de modération (docs serveur fonctionnalites/gestion-des-temoignages.md) :
+  /// pending → En attente, approved → Publié, rejected → Refusé.
   String get statusLabel => switch (status) {
         'pending'   => 'En attente',
         'published' => 'Publié',
-        'rejected'  => 'Rejeté',
+        'rejected'  => 'Refusé',
         _           => status,
       };
 
@@ -107,6 +118,10 @@ class UserTestimony {
       thumbnailUrl: thumbnailUrl, mediaPath: mediaPath,
       bodyPreview: bodyPreview, rejectionReason: rejection,
       views: views, videoStatus: videoStatus,
+      bodyText: body,
+      hasApprovedLabel: m['badges'] is List
+          ? (m['badges'] as List).contains('verified')
+          : (m['isVerified'] == true || m['is_verified'] == true),
     );
   }
 }

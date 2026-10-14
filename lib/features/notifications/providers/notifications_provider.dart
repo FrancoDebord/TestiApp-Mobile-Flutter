@@ -45,6 +45,7 @@ NotificationType _parseType(String v) => switch (v) {
       'share'                 => NotificationType.share,
       'testimony_approved'    => NotificationType.approved,
       'testimony_rejected'    => NotificationType.rejected,
+      'testimony_resubmitted' => NotificationType.resubmitted,
       'pending_correction'    => NotificationType.pendingCorrection,
       'new_followed_testimony'=> NotificationType.newFollowedTestimony,
       'prayer'                => NotificationType.prayer,
@@ -58,6 +59,7 @@ NotificationType _parseType(String v) => switch (v) {
       'organization_rejected' => NotificationType.organizationRejected,
       'account_verified'      => NotificationType.accountVerified,
       'account_verification_rejected' => NotificationType.accountVerificationRejected,
+      'account_approval_revoked' => NotificationType.approvalRevoked,
       // Administrateurs de compte (système)
       'account_manager_added'   => NotificationType.accountManagerAdded,
       'account_manager_removed' => NotificationType.accountManagerRemoved,

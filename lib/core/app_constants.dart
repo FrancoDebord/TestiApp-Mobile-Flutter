@@ -149,6 +149,13 @@ abstract final class AppConstants {
       {'sort': 'for_you', 'limit': limit, 'page': page};
 
   static String testimonyById(String id)          => '/testimonies/$id';
+  // Gestion des témoignages (docs serveur fonctionnalites/gestion-des-temoignages.md) :
+  //   GET  /testimonies/my ?status=all|pending|approved|rejected&limit=&page= (auteur : tous ses statuts)
+  //   POST /testimonies/{id}/view { device_id?, watched_seconds? } (public) : vue dédoublonnée 30 min
+  //   GET  /testimonies ?verified=1&featured=1&sort=recent|popular|most_viewed|for_you
+  //   PUT  /testimonies/{id} : « Modifier et renvoyer » (refusé ou publié → pending, label retiré)
+  static const String myTestimonies = '/testimonies/my';
+  static String testimonyView(String id) => '/testimonies/$id/view';
   // Suggestions liées à un témoignage (intérêts, comptes suivis, déjà vus en fin).
   static String testimonyRecommendations(String id) => '/testimonies/$id/recommendations'; // GET ?limit=
   // Preuves privées (auteur + modération) : POST multipart « file » (+ position 1|2),

@@ -11,6 +11,7 @@ import '../../../shared/widgets/why_testify_card.dart';
 import '../../publish/screens/video_upload_screen.dart' show VideoUploadPanel;
 import '../../publish/upload/video_upload_controller.dart' show videoUploadProvider;
 import '../../publish/upload/video_upload_models.dart' show VideoUploadPhase;
+import '../../../services/api_service.dart' show LaravelApiException;
 import '../models/user_testimony_model.dart';
 import '../providers/profile_provider.dart';
 
@@ -103,7 +104,7 @@ class _MyTestimoniesScreenState extends ConsumerState<MyTestimoniesScreen>
               ),
             ),
             Tab(text: 'Publiés (${published.length})'),
-            Tab(text: 'Rejetés (${rejected.length})'),
+            Tab(text: 'Refusés (${rejected.length})'),
           ],
         ),
       ),
@@ -241,7 +242,7 @@ class _MyTestimonyCard extends ConsumerWidget {
                 _CardMenu(
                   testimony: testimony,
                   onView: () => context.push('/testimony/${testimony.id}'),
-                  onEdit: () => _showEditDialog(context, ref),
+                  onEdit: () => editAndResubmit(context, ref, testimony),
                   onDelete: () => _confirmDelete(context, ref),
                 ),
               ],
@@ -330,56 +331,27 @@ class _MyTestimonyCard extends ConsumerWidget {
                 ),
               ),
             ],
+
+            // Refusé : corriger puis renvoyer en modération (PUT /testimonies/{id}).
+            if (testimony.status == 'rejected') ...[
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  key: const ValueKey('resubmit-button'),
+                  onPressed: () => editAndResubmit(context, ref, testimony),
+                  icon: const Icon(Icons.edit_note_rounded, size: 18),
+                  label: const Text('Modifier et renvoyer'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    side: const BorderSide(color: AppColors.primary),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
-      ),
-    );
-  }
-
-  void _showEditDialog(BuildContext context, WidgetRef ref) {
-    final ctrl = TextEditingController(text: testimony.title);
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          'Modifier le titre',
-          style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600),
-        ),
-        content: TextField(
-          controller: ctrl,
-          maxLength: 200,
-          decoration: InputDecoration(
-            hintText: 'Titre du témoignage',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Annuler'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
-            onPressed: () async {
-              final newTitle = ctrl.text.trim();
-              Navigator.of(ctx).pop();
-              if (newTitle.isEmpty || newTitle == testimony.title) return;
-              final ok = await ref
-                  .read(myTestimoniesNotifierProvider.notifier)
-                  .updateTitle(testimony.id, newTitle);
-              if (!ok && context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text('Impossible de modifier. Réessaie.')),
-                );
-              }
-            },
-            child: const Text('Enregistrer'),
-          ),
-        ],
       ),
     );
   }
@@ -487,7 +459,7 @@ class _StatusBadge extends StatelessWidget {
     final (label, bg, fg) = switch (status) {
       'pending'   => ('En attente', AppColors.sunSoft, AppColors.sunText),
       'published' => ('Publié',     AppColors.successSoft, AppColors.success),
-      'rejected'  => ('Rejeté',     AppColors.dangerSoft, AppColors.danger),
+      'rejected'  => ('Refusé',     AppColors.dangerSoft, AppColors.danger),
       _           => (status,       AppColors.border,         AppColors.textSecondary),
     };
     return Container(
@@ -635,7 +607,7 @@ class _CardMenu extends StatelessWidget {
           child: Row(children: [
             Icon(Icons.edit_outlined, size: 18),
             SizedBox(width: 10),
-            Text('Modifier le titre'),
+            Text('Modifier'),
           ]),
         ),
         const PopupMenuItem(
@@ -674,8 +646,8 @@ class _EmptyState extends StatelessWidget {
         ),
       'rejected'  => (
           Icons.block_rounded,
-          'Aucun témoignage rejeté',
-          'Bonne nouvelle ! Aucun de vos\ntémoignages n\'a été rejeté.',
+          'Aucun témoignage refusé',
+          'Bonne nouvelle ! Aucun de vos\ntémoignages n\'a été refusé.',
         ),
       _           => (
           Icons.auto_stories_outlined,
@@ -788,3 +760,154 @@ Color _statusColor(String status) => switch (status) {
       'rejected'  => AppColors.danger,
       _           => AppColors.textSecondary,
     };
+
+// =============================================================================
+// « Modifier et renvoyer » (docs serveur fonctionnalites/gestion-des-temoignages.md)
+// =============================================================================
+
+/// Message de confirmation avant de modifier un témoignage déjà publié.
+String publishedEditWarning(UserTestimony t) {
+  const base = 'Votre témoignage repassera en modération et ne sera plus visible '
+      'jusqu\'à sa validation. Continuer ?';
+  return t.hasApprovedLabel
+      ? '$base\n\nIl perdra aussi son label Témoignage approuvé.'
+      : base;
+}
+
+/// Modifie le titre et le texte, puis enregistre (PUT /testimonies/{id}). Le
+/// serveur renvoie le statut : refusé ou publié → « Renvoyé en modération ».
+Future<void> editAndResubmit(BuildContext context, WidgetRef ref, UserTestimony t) async {
+  final edited = await showModalBottomSheet<({String title, String body})>(
+    context: context,
+    isScrollControlled: true,
+    useRootNavigator: true,
+    showDragHandle: true,
+    backgroundColor: AppColors.surface,
+    builder: (_) => _EditTestimonySheet(testimony: t),
+  );
+  if (edited == null || !context.mounted) return;
+
+  // Déjà publié : il repassera en modération (et perdra son label).
+  if (t.status == 'published') {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Modifier un témoignage publié ?'),
+        content: Text(publishedEditWarning(t)),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Annuler')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Continuer'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !context.mounted) return;
+  }
+
+  final messenger = ScaffoldMessenger.of(context);
+  try {
+    final updated = await ref
+        .read(myTestimoniesNotifierProvider.notifier)
+        .resubmit(t.id, title: edited.title, bodyText: edited.body);
+    final resent = updated.status == 'pending' && t.status != 'pending';
+    messenger.showSnackBar(SnackBar(
+      content: Text(resent ? 'Renvoyé en modération' : 'Modifications enregistrées'),
+      behavior: SnackBarBehavior.floating,
+    ));
+  } on LaravelApiException catch (e) {
+    messenger.showSnackBar(SnackBar(content: Text(e.displayMessage)));
+  } catch (_) {
+    messenger.showSnackBar(const SnackBar(content: Text('Impossible d\'enregistrer. Réessayez.')));
+  }
+}
+
+class _EditTestimonySheet extends StatefulWidget {
+  const _EditTestimonySheet({required this.testimony});
+  final UserTestimony testimony;
+
+  @override
+  State<_EditTestimonySheet> createState() => _EditTestimonySheetState();
+}
+
+class _EditTestimonySheetState extends State<_EditTestimonySheet> {
+  late final _title = TextEditingController(text: widget.testimony.title);
+  late final _body = TextEditingController(text: widget.testimony.bodyText);
+  final _form = GlobalKey<FormState>();
+
+  @override
+  void dispose() {
+    _title.dispose();
+    _body.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = widget.testimony;
+    final rejected = t.status == 'rejected';
+    final bodyLabel = switch (t.type) {
+      'audio' => 'Transcription',
+      'video' => 'Description',
+      _ => 'Témoignage',
+    };
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          child: Form(
+            key: _form,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(rejected ? 'Modifier et renvoyer' : 'Modifier le témoignage', style: AppTextStyles.h4),
+                if (rejected && (t.rejectionReason ?? '').isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text('Motif du refus : ${t.rejectionReason}',
+                      style: AppTextStyles.bodySmall.copyWith(color: AppColors.danger)),
+                ],
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: _title,
+                  maxLength: 200,
+                  decoration: const InputDecoration(labelText: 'Titre'),
+                  validator: (v) => (v ?? '').trim().isEmpty ? 'Le titre est obligatoire.' : null,
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _body,
+                  minLines: 4,
+                  maxLines: 10,
+                  maxLength: 5000,
+                  decoration: InputDecoration(labelText: bodyLabel, alignLabelWithHint: true),
+                  validator: (v) => t.type == 'text' && (v ?? '').trim().isEmpty
+                      ? 'Le texte du témoignage est obligatoire.'
+                      : null,
+                ),
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  key: const ValueKey('resubmit-save'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    minimumSize: const Size.fromHeight(48),
+                  ),
+                  onPressed: () {
+                    if (!(_form.currentState?.validate() ?? false)) return;
+                    Navigator.of(context).pop((title: _title.text.trim(), body: _body.text.trim()));
+                  },
+                  icon: Icon(rejected ? Icons.send_rounded : Icons.save_outlined),
+                  label: Text(rejected ? 'Renvoyer en modération' : 'Enregistrer'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

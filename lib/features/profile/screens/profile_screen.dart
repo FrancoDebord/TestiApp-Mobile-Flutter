@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart' show DateFormat;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/router/app_routes.dart';
@@ -25,6 +26,7 @@ import '../../../shared/widgets/guest_gate.dart' show isGuestProvider;
 import '../../../shared/widgets/organization_badge.dart';
 import '../../../shared/widgets/profile_cover.dart';
 import '../models/profile_models.dart';
+import '../providers/account_verification_provider.dart' show accountVerificationProvider;
 import '../providers/profile_provider.dart';
 import '../widgets/profile_menu.dart';
 import '../../events/widgets/organizer_events_section.dart';
@@ -317,12 +319,21 @@ class _ProfileHeaderState extends ConsumerState<_ProfileHeader> {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            if (user != null && user.isVerified) ...[
+            if (user != null && (user.isApproved || user.isOrganization)) ...[
               const SizedBox(width: 6),
-              OrganizationBadge(isOrganization: user.isOrganization, isVerified: true, size: 18),
+              OrganizationBadge(
+                isOrganization: user.isOrganization,
+                isVerified: user.isVerified,
+                approvalBadge: user.approvalBadge,
+                size: 18,
+              ),
             ],
           ],
         ),
+        // Badge « Approuvé » (docs serveur fonctionnalites/badge-approuve.md) : date
+        // d'approbation lue dans GET /users/me/verification (verifiedAt).
+        if (user != null && user.isApproved)
+          _ApprovedSince(badge: user.approvalBadge!, approvedAt: user.approvedAt),
         if (user != null && isOrg) _OrganizationHeaderInfo(user: user),
         if (profile.extras.title.isNotEmpty) ...[
           const SizedBox(height: 6),
@@ -572,10 +583,10 @@ class _SpaceMenu extends ConsumerWidget {
             // Compte personnel : badge « Compte vérifié » (docs/fonctionnalites/verification-des-comptes.md).
             if (me != null && !me.isOrganization)
               ProfileMenuTile(
-                icon: me.isVerified ? Icons.verified_rounded : Icons.verified_outlined,
-                title: me.isVerified ? 'Compte vérifié' : 'Faire vérifier mon compte',
+                icon: me.isApproved ? Icons.verified_rounded : Icons.verified_outlined,
+                title: me.isApproved ? 'Compte approuvé' : 'Faire vérifier mon compte',
                 subtitle: switch (me.verificationStatus) {
-                  _ when me.isVerified => 'Le badge apparaît à côté de votre nom',
+                  _ when me.isApproved => 'Le badge apparaît à côté de votre nom',
                   VerificationStatus.pending => 'Demande en cours d’examen',
                   VerificationStatus.rejected => 'Demande refusée : voir le motif',
                   _ => 'Pasteur, chantre, personnalité publique…',
@@ -934,6 +945,38 @@ class _EmptyMyTestimonies extends StatelessWidget {
             onPressed: () => context.go('/publish'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// « Compte approuvé · depuis le 12 mars 2026 » sous le nom (date si disponible).
+class _ApprovedSince extends ConsumerWidget {
+  const _ApprovedSince({required this.badge, this.approvedAt});
+
+  final AccountApprovalBadge badge;
+
+  /// `approved_at` du profil ; à défaut, `verifiedAt` de GET /users/me/verification.
+  final DateTime? approvedAt;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // GET /users/me/verification n'est appelé que si le profil n'a pas approved_at.
+    final verifiedAt = approvedAt ?? ref.watch(accountVerificationProvider).value?.verifiedAt;
+    final label = badge == AccountApprovalBadge.organization ? 'Organisation approuvée' : 'Compte approuvé';
+    final text = verifiedAt == null
+        ? label
+        : '$label · depuis le ${DateFormat('d MMMM y', 'fr').format(verifiedAt.toLocal())}';
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Text(
+        text,
+        key: const ValueKey('profile-approved-since'),
+        textAlign: TextAlign.center,
+        style: AppTextStyles.bodySmall.copyWith(
+          color: badge == AccountApprovalBadge.organization ? AppColors.secondaryDark : AppColors.primary,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
