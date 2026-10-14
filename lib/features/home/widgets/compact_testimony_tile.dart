@@ -16,22 +16,33 @@ import '../../../core/theme/app_tokens.dart';
 import '../../../shared/utils/rich_text_utils.dart';
 import '../../../shared/widgets/organization_badge.dart';
 import '../../../shared/widgets/youtube_video_player.dart' show YouTubeBadge;
+import '../../../shared/widgets/video_status_views.dart';
+import '../../publish/upload/video_resend.dart' show resendVideoAction;
+import '../../testimony/providers/testimony_refresh.dart'
+    show LatestTestimony, freshTestimoniesProvider;
 import '../../testimony/screens/shorts_screen.dart';
 import '../../testimony/screens/video_player_screen.dart' show VideoPlayerScreen;
 import '../models/testimony_model.dart';
 import '../providers/home_providers.dart';
 import 'feed_card_frame.dart' show ensureMember;
 import 'testimony_action_bar.dart';
+import '../../../core/media/video_source.dart' show mediaHttpHeaders;
 
 /// Ouvre le lecteur plein écran (Shorts) sur [testimony], dans l'ordre des
 /// vidéos du fil principal — même comportement que la grande carte vidéo.
 /// Une vidéo YouTube s'ouvre dans le lecteur vidéo (lecteur YouTube) : le
 /// défilement vertical des Shorts n'accepte que les fichiers du serveur.
+/// Vidéo en traitement ou en échec : page du témoignage (état, re-vérification,
+/// « Renvoyer la vidéo »), jamais le lecteur.
 void openVideoTestimony(
   BuildContext context,
   WidgetRef ref,
   VideoTestimony testimony,
 ) {
+  if (!testimony.isReady) {
+    context.push('/testimony/${testimony.id}');
+    return;
+  }
   if (testimony.isYouTube) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -46,7 +57,7 @@ void openVideoTestimony(
   var allVideos = ref
       .read(feedNotifierProvider)
       .whereType<VideoTestimony>()
-      .where((v) => !v.isYouTube)
+      .where((v) => !v.isYouTube && v.isReady)
       .toList();
   var startIndex = allVideos.indexWhere((v) => v.id == testimony.id);
   if (startIndex < 0) {
@@ -83,7 +94,14 @@ class _CompactTestimonyTileState extends ConsumerState<CompactTestimonyTile> {
 
   late bool _expanded = widget.initiallyExpanded;
 
-  Testimony get _t => widget.testimony;
+  /// Version rechargée (vidéo devenue prête ou en échec), sinon celle reçue
+  /// (lecture ponctuelle pour les actions ; build() s'y abonne).
+  Testimony get _t {
+    final fresh = ref.read(freshTestimoniesProvider)[widget.testimony.id];
+    return fresh != null && fresh.runtimeType == widget.testimony.runtimeType
+        ? fresh
+        : widget.testimony;
+  }
 
   void _toggle() => setState(() => _expanded = !_expanded);
 
@@ -115,8 +133,9 @@ class _CompactTestimonyTileState extends ConsumerState<CompactTestimonyTile> {
 
   @override
   Widget build(BuildContext context) {
-    final t = _t;
-    final hasPlay = t is AudioTestimony || t is VideoTestimony;
+    final t = ref.latest(widget.testimony);
+    // Vidéo en traitement ou en échec : pas de bouton lecture.
+    final hasPlay = t is AudioTestimony || (t is VideoTestimony && t.isReady);
 
     return DecoratedBox(
       decoration: AppShadows.cardDecoration,
@@ -228,9 +247,15 @@ class _Thumbnail extends StatelessWidget {
               fallbackIcon: Icons.videocam_rounded,
             ),
             Container(color: Colors.black.withAlpha(50)),
-            const Center(
-              child: Icon(Icons.play_arrow_rounded,
-                  color: Colors.white, size: 26),
+            Center(
+              child: Icon(
+                  v.isReady
+                      ? Icons.play_arrow_rounded
+                      : v.isFailed
+                          ? Icons.error_outline_rounded
+                          : Icons.hourglass_top_rounded,
+                  color: Colors.white,
+                  size: v.isReady ? 26 : 22),
             ),
             if (v.isYouTube)
               const Positioned(
@@ -238,7 +263,7 @@ class _Thumbnail extends StatelessWidget {
                 bottom: 3,
                 child: YouTubeBadge(compact: true),
               )
-            else if (v.durationSeconds > 0)
+            else if (v.isReady && v.durationSeconds > 0)
               Positioned(
                 right: 3,
                 bottom: 3,
@@ -284,6 +309,8 @@ class _NetworkOrFallback extends StatelessWidget {
     }
     return CachedNetworkImage(
       imageUrl: u,
+      // Miniature Bunny : refusée sans Referer.
+      httpHeaders: mediaHttpHeaders(u),
       fit: BoxFit.cover,
       placeholder: (_, _) => _IconSquare(icon: fallbackIcon),
       errorWidget: (_, _, _) => _IconSquare(icon: fallbackIcon),
@@ -529,13 +556,29 @@ class _ExpandedDetails extends ConsumerWidget {
   }
 }
 
-class _VideoPreview extends StatelessWidget {
+class _VideoPreview extends ConsumerWidget {
   const _VideoPreview({required this.testimony, required this.onPlay});
   final VideoTestimony testimony;
   final VoidCallback onPlay;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (!testimony.isReady) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: AspectRatio(
+          aspectRatio: 16 / 9,
+          child: VideoNotReadySurface(
+            state: testimony.processingState,
+            thumbnailUrl: testimony.thumbnailUrl,
+            onResend: testimony.isFailed
+                ? resendVideoAction(context, ref,
+                    testimonyId: testimony.id, authorId: testimony.author.uid)
+                : null,
+          ),
+        ),
+      );
+    }
     return Semantics(
       button: true,
       label: 'Lire la vidéo',
@@ -558,6 +601,13 @@ class _VideoPreview extends StatelessWidget {
                     right: 8,
                     bottom: 8,
                     child: YouTubeBadge(),
+                  )
+                else
+                  Positioned(
+                    right: 8,
+                    bottom: 8,
+                    child: VideoDurationBadge(
+                        seconds: testimony.durationSeconds),
                   ),
                 Center(
                   child: Container(

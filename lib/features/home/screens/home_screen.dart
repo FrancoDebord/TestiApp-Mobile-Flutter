@@ -370,7 +370,7 @@ class _FeedHeader extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final layout = ref.watch(feedLayoutProvider);
-    final sort = ref.watch(feedQueryProvider.select((q) => q.sort));
+    final sort = ref.watch(feedQueryProvider.select((q) => q.effectiveSort));
     final header = Row(
       children: [
         Expanded(

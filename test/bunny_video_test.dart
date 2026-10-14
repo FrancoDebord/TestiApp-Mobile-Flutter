@@ -132,12 +132,12 @@ void main() {
       expect(t.isReady, isTrue);
     });
 
-    test('Vidéo pas prête : ignorée des listes, gardée pour son auteur', () {
+    test('Vidéo pas prête : gardée, son état est affiché', () {
       final raw = _testimony({'status': 'processing', 'hls_url': _hls});
-      expect(testimonyFromApiJson(raw), isNull);
-      final own = testimonyFromApiJson(raw, allowUnready: true) as VideoTestimony;
-      expect(own.isReady, isFalse);
-      expect(own.videoStatus, 'processing');
+      final t = testimonyFromApiJson(raw) as VideoTestimony;
+      expect(t.isReady, isFalse);
+      expect(t.isProcessing, isTrue);
+      expect(t.videoStatus, 'processing');
     });
 
     test('Ancien format à plat lu en secours', () {

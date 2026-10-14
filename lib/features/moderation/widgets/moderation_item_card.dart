@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/media/video_source.dart';
 import '../models/moderation_models.dart';
 import 'testimony_type_badge.dart';
 
@@ -125,6 +126,9 @@ class ModerationItemCard extends StatelessWidget {
                         children: [
                           _CategoryChip(label: item.category),
                           TestimonyTypeBadge(type: item.type),
+                          if (item.type == TestimonyType.video &&
+                              item.videoState != VideoProcessingState.ready)
+                            _VideoStateChip(state: item.videoState),
                         ],
                       ),
                     ),
@@ -297,6 +301,34 @@ class _ActionButton extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// « Vidéo en cours de traitement » / « La vidéo n'a pas pu être traitée ».
+class _VideoStateChip extends StatelessWidget {
+  const _VideoStateChip({required this.state});
+  final VideoProcessingState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final failed = state == VideoProcessingState.failed;
+    final color = failed ? const Color(0xFFD92D20) : const Color(0xFF1570EF);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withAlpha(20),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        failed ? VideoStatusText.failed : VideoStatusText.processing,
+        style: TextStyle(
+          fontFamily: 'Plus Jakarta Sans',
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: color,
         ),
       ),
     );

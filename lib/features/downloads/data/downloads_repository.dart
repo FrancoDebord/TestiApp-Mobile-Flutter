@@ -15,6 +15,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../home/models/testimony_model.dart';
 import '../models/download_models.dart';
+import '../../../core/media/video_source.dart' show mediaHttpHeaders;
 
 typedef BaseDirResolver = Future<Directory> Function();
 
@@ -116,6 +117,8 @@ class DownloadsRepository {
       await _dio.download(
         url,
         part,
+        // Bunny Stream refuse les requêtes sans Referer.
+        options: Options(headers: mediaHttpHeaders(url)),
         cancelToken: cancelToken,
         onReceiveProgress: onProgress,
         deleteOnError: true,

@@ -2,6 +2,8 @@
 // Moderation domain models
 // =============================================================================
 
+import '../../../core/media/video_source.dart';
+
 enum ModerationStatus { pending, inReview, approved, rejected }
 
 enum TestimonyType { text, audio, video }
@@ -57,6 +59,9 @@ class ModerationItem {
     this.contentPreview,
     this.rejectionReason,
     this.moderatorNote,
+    this.videoStatus,
+    this.thumbnailUrl,
+    this.durationSeconds = 0,
   });
 
   final String id;
@@ -69,6 +74,18 @@ class ModerationItem {
   final String? contentPreview;
   final RejectionReason? rejectionReason;
   final String? moderatorNote;
+
+  /// Vidéo Bunny Stream (`video.status`) : processing, ready, failed ;
+  /// `null` hors vidéo ou ancienne vidéo (lisible).
+  final String? videoStatus;
+
+  /// Miniature (`video.thumbnail_url`, sinon couverture).
+  final String? thumbnailUrl;
+
+  /// Durée de la vidéo en secondes (0 si inconnue).
+  final int durationSeconds;
+
+  VideoProcessingState get videoState => VideoProcessingState.parse(videoStatus);
 
   String get truncatedTitle =>
       title.length > 60 ? '${title.substring(0, 60)}…' : title;
@@ -95,6 +112,9 @@ class ModerationItem {
     contentPreview: contentPreview ?? this.contentPreview,
     rejectionReason: rejectionReason ?? this.rejectionReason,
     moderatorNote:  moderatorNote  ?? this.moderatorNote,
+    videoStatus:    videoStatus,
+    thumbnailUrl:   thumbnailUrl,
+    durationSeconds: durationSeconds,
   );
 }
 

@@ -48,15 +48,23 @@ class FeedFilterBar extends ConsumerWidget {
         PopupMenuButton<FeedSort>(
           key: const ValueKey('feed-sort'),
           tooltip: 'Trier les témoignages',
-          initialValue: query.sort,
+          initialValue: query.effectiveSort,
           onSelected: notifier.setSort,
           itemBuilder: (_) => [
             for (final s in FeedSort.values)
-              CheckedPopupMenuItem(value: s, checked: s == query.sort, child: Text(s.label)),
+              CheckedPopupMenuItem(
+                value: s,
+                checked: s == query.effectiveSort,
+                // « Pour vous » ne se combine pas avec « Approuvés » (non filtré côté serveur).
+                enabled: !(query.verifiedOnly && s == FeedSort.forYou),
+                child: Text(s == FeedSort.forYou && query.verifiedOnly
+                    ? '${s.label} (sans « Approuvés »)'
+                    : s.label),
+              ),
           ],
           child: Semantics(
             button: true,
-            label: 'Tri : ${query.sort.label}',
+            label: 'Tri : ${query.effectiveSort.label}',
             excludeSemantics: true,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
@@ -72,7 +80,7 @@ class FeedFilterBar extends ConsumerWidget {
                   const SizedBox(width: 6),
                   Flexible(
                     child: Text(
-                      'Tri : ${query.sort.label}',
+                      'Tri : ${query.effectiveSort.label}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.labelMedium.copyWith(fontWeight: FontWeight.w600),

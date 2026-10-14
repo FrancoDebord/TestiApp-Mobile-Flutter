@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:testi_app/core/theme/app_colors.dart';
 import 'package:testi_app/core/theme/app_text_styles.dart';
+import '../../core/media/video_source.dart' show mediaHttpHeaders;
 
 // ── Enums & models ─────────────────────────────────────────────────────────────
 
@@ -216,6 +217,7 @@ class _MediaHeader extends StatelessWidget {
             child: testimony.thumbnailUrl != null
                 ? CachedNetworkImage(
                     imageUrl: testimony.thumbnailUrl!,
+                    httpHeaders: mediaHttpHeaders(testimony.thumbnailUrl),
                     fit: BoxFit.cover,
                     placeholder: (_, _) => _GradientPlaceholder(
                         gradient: testimony.category.gradient),

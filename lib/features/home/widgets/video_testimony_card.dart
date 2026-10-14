@@ -5,15 +5,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_player/video_player.dart' show VideoPlayerController;
 
 import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_text_styles.dart';
-import '../../../core/theme/app_tokens.dart';
 import '../../../core/media/playback_preferences.dart'
     show isMeteredConnectionProvider;
 import '../../../shared/widgets/video_poster.dart' show VideoThumbnailImage;
+import '../../../shared/widgets/video_status_views.dart';
+import '../../publish/upload/video_resend.dart' show resendVideoAction;
+import '../../testimony/providers/testimony_refresh.dart' show LatestTestimony;
 import '../../../shared/widgets/youtube_video_player.dart' show YouTubeBadge;
 import '../models/testimony_model.dart';
 import 'compact_testimony_tile.dart' show openVideoTestimony;
 import 'feed_card_frame.dart';
+import '../../../core/media/video_source.dart' show networkVideoController;
 
 class VideoTestimonyCard extends ConsumerWidget {
   const VideoTestimonyCard({required this.testimony, super.key});
@@ -22,6 +24,8 @@ class VideoTestimonyCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Version rechargée après video_ready / video_failed, si elle existe.
+    final testimony = ref.latest(this.testimony);
     // Shorts dans l'ordre des vidéos du fil (lecteur YouTube pour un lien YouTube).
     void onPlayTap() => openVideoTestimony(context, ref, testimony);
 
@@ -29,7 +33,22 @@ class VideoTestimonyCard extends ConsumerWidget {
 
     return FeedCardFrame(
       testimony: testimony,
-      media: _VideoThumbnail(testimony: testimony, onPlayTap: onPlayTap),
+      media: testimony.isReady
+          ? _VideoThumbnail(testimony: testimony, onPlayTap: onPlayTap)
+          // En traitement : badge, pas de lecture. En échec : message et,
+          // pour l'auteur, « Renvoyer la vidéo ».
+          : AspectRatio(
+              aspectRatio: 16 / 9,
+              child: VideoNotReadySurface(
+                state: testimony.processingState,
+                thumbnailUrl: testimony.thumbnailUrl,
+                onResend: testimony.isFailed
+                    ? resendVideoAction(context, ref,
+                        testimonyId: testimony.id,
+                        authorId: testimony.author.uid)
+                    : null,
+              ),
+            ),
       preview: verse.isEmpty
           ? null
           : Text(
@@ -140,11 +159,13 @@ class _SmartDurationBadgeState extends ConsumerState<_SmartDurationBadge> {
   Future<void> _loadDuration() async {
     // Économie de données : la version la plus légère suffit pour connaître la durée.
     final renditions = widget.testimony.renditions;
-    final path = renditions.isNotEmpty ? renditions.first.url : widget.testimony.mediaPath;
+    final path = renditions.isNotEmpty
+        ? renditions.first.url
+        : widget.testimony.mp4Url ?? widget.testimony.mediaPath;
     if (path == null || path.isEmpty) return;
     try {
       final ctrl = path.startsWith('http')
-          ? VideoPlayerController.networkUrl(Uri.parse(path))
+          ? networkVideoController(path)
           : VideoPlayerController.file(File(path));
       await ctrl.initialize();
       final secs = ctrl.value.duration.inSeconds;
@@ -153,27 +174,15 @@ class _SmartDurationBadgeState extends ConsumerState<_SmartDurationBadge> {
     } catch (_) {}
   }
 
-  static String _fmt(int s) =>
-      '${(s ~/ 60).toString().padLeft(2, '0')}:${(s % 60).toString().padLeft(2, '0')}';
+  @override
+  void didUpdateWidget(_SmartDurationBadge old) {
+    super.didUpdateWidget(old);
+    // Durée connue après rechargement (vidéo devenue prête).
+    if (widget.testimony.durationSeconds > 0) {
+      _secs = widget.testimony.durationSeconds;
+    }
+  }
 
   @override
-  Widget build(BuildContext context) {
-    if (_secs <= 0) return const SizedBox.shrink();
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-      decoration: BoxDecoration(
-        color: Colors.black.withAlpha(150),
-        borderRadius: BorderRadius.circular(AppRadius.xs),
-      ),
-      child: Text(
-        _fmt(_secs),
-        style: TextStyle(
-          fontFamily: AppFonts.family,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: Colors.white,
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => VideoDurationBadge(seconds: _secs);
 }

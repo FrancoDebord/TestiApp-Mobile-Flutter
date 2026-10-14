@@ -4,6 +4,7 @@ library;
 
 import '../../repost/repost.dart';
 import '../../../core/app_constants.dart';
+import '../../../core/media/video_source.dart';
 import 'media_rendition.dart';
 import '../../../shared/models/account_approval.dart';
 import '../../../shared/models/mention.dart';
@@ -355,6 +356,7 @@ final class VideoTestimony extends Testimony {
     this.bibleVerseRef,
     this.youtubeId,
     this.hlsUrl,
+    this.mp4Url,
     this.videoStatus,
     super.isFeatured,
     super.isLiked,
@@ -389,16 +391,64 @@ final class VideoTestimony extends Testimony {
 
   bool get isYouTube => youtubeId != null && youtubeId!.isNotEmpty;
 
-  /// Flux HLS adaptatif (Bunny Stream) : lu en mode Auto. Les versions MP4
-  /// (`mp4_urls`) sont dans [renditions].
+  /// Flux HLS adaptatif (Bunny Stream, `video.playback_url`) : lu en mode
+  /// Auto. Les versions MP4 (`mp4_urls`) sont dans [renditions].
   final String? hlsUrl;
+
+  /// MP4 de secours (`video.mp4_url`), lu si le lecteur ne parvient pas à
+  /// ouvrir le flux HLS. Peut être `null`.
+  final String? mp4Url;
 
   /// État de la vidéo Bunny : uploading, processing, ready, failed
   /// (`null` pour une ancienne vidéo ou un lien YouTube : toujours lisible).
   final String? videoStatus;
 
-  /// Lisible et visible publiquement (vidéo prête, ou sans suivi d'état).
-  bool get isReady => videoStatus == null || videoStatus == 'ready';
+  /// État de traitement normalisé (processing, ready, failed).
+  VideoProcessingState get processingState =>
+      VideoProcessingState.parse(videoStatus);
+
+  /// Lisible (vidéo prête, ou sans suivi d'état).
+  bool get isReady => processingState == VideoProcessingState.ready;
+
+  /// Encodage en cours : ni lecture ni bouton lecture.
+  bool get isProcessing => processingState == VideoProcessingState.processing;
+
+  /// Encodage en échec : « La vidéo n'a pas pu être traitée ».
+  bool get isFailed => processingState == VideoProcessingState.failed;
+
+  /// Sources de lecture sans préférence de qualité : HLS, puis MP4 de secours,
+  /// puis ancien `mediaUrl`.
+  List<String> get playbackUrls => videoPlaybackChain(
+        playbackUrl: hlsUrl,
+        mp4Url: mp4Url,
+        legacyUrl: mediaPath,
+      );
+
+  /// Copie avec un nouvel état de vidéo (rechargement après video_ready…).
+  VideoTestimony withVideo({
+    required String? videoStatus,
+    String? hlsUrl,
+    String? mp4Url,
+    String? thumbnailUrl,
+    int? durationSeconds,
+  }) =>
+      VideoTestimony(
+        id: id, author: author, title: title, category: category,
+        createdAt: createdAt, stats: stats,
+        durationSeconds: durationSeconds ?? this.durationSeconds,
+        thumbnailUrl: thumbnailUrl ?? this.thumbnailUrl,
+        mediaPath: mediaPath, renditions: renditions,
+        renditionsStatus: renditionsStatus,
+        bibleVerse: bibleVerse, bibleVerseRef: bibleVerseRef,
+        youtubeId: youtubeId,
+        hlsUrl: hlsUrl ?? this.hlsUrl,
+        mp4Url: mp4Url ?? this.mp4Url,
+        videoStatus: videoStatus,
+        isFeatured: isFeatured, isLiked: isLiked, isPrayed: isPrayed,
+        isSaved: isSaved, shareUrl: shareUrl, proofs: proofs,
+        mentions: mentions, repost: repost, myReaction: myReaction,
+        canDelete: canDelete, badges: badges, featuredSource: featuredSource,
+      );
 
   String get formattedDuration {
     final m = durationSeconds ~/ 60;

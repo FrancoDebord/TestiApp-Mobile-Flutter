@@ -14,6 +14,7 @@ import '../../../services/api_service.dart';
 import '../../location/location_providers.dart' show homeFeedPlaceProvider, nearbyLabelsProvider;
 import '../../location/user_location.dart' show FeedPlace, parseNearbyLabels;
 import '../models/testimony_model.dart';
+import '../../../core/media/video_source.dart' show isHlsUrl;
 import '../../../shared/models/account_approval.dart';
 import '../../../shared/models/mention.dart' show MentionRef;
 import '../../repost/repost.dart' show RepostInfo;
@@ -146,7 +147,8 @@ Testimony _applyStatsDelta(
       durationSeconds: t.durationSeconds, thumbnailUrl: t.thumbnailUrl,
       mediaPath: t.mediaPath, renditions: t.renditions, renditionsStatus: t.renditionsStatus,
       bibleVerse: t.bibleVerse, bibleVerseRef: t.bibleVerseRef,
-      youtubeId: t.youtubeId, hlsUrl: t.hlsUrl, videoStatus: t.videoStatus,
+      youtubeId: t.youtubeId, hlsUrl: t.hlsUrl, mp4Url: t.mp4Url,
+      videoStatus: t.videoStatus,
       isFeatured: t.isFeatured, isLiked: t.isLiked,
       isPrayed: t.isPrayed, isSaved: t.isSaved,
       shareUrl: t.shareUrl, proofs: t.proofs,
@@ -182,13 +184,18 @@ String? _validYouTubeId(dynamic raw) {
   return RegExp(r'^[A-Za-z0-9_-]{11}$').hasMatch(v) ? v : null;
 }
 
-/// Vidéo Bunny Stream d'un témoignage. Format cible : objet imbriqué
-/// `video: { status, hls_url, thumbnail_url, mp4_urls: {"240": url, …}, duration }`
-/// (`null` sans vidéo) ; l'ancien format à plat (`hls_url`, `mp4_urls`,
-/// `thumbnail_url`, `video_status` sur le témoignage) est lu en secours.
+/// Vidéo Bunny Stream d'un témoignage. Format actuel : objet imbriqué
+/// `video: { status, playback_url, mp4_url, thumbnail_url, duration }`
+/// (+ anciens `hls_url` et `mp4_urls: {"240": url, …}`, `null` sans vidéo).
+/// Replis : `hls_url` pour la lecture HLS, la plus haute version de `mp4_urls`
+/// pour le MP4 de secours, l'ancien format à plat (`hls_url`, `mp4_urls`,
+/// `thumbnail_url`, `video_status` sur le témoignage), et enfin `mediaUrl`
+/// quand il contient la playlist `.m3u8`. Un champ absent ou null ne fait
+/// jamais échouer la lecture du témoignage.
 typedef BunnyVideo = ({
   String? status,
   String? hlsUrl,
+  String? mp4Url,
   String? thumbnailUrl,
   List<MediaRendition> mp4,
   int duration,
@@ -197,44 +204,49 @@ typedef BunnyVideo = ({
 BunnyVideo? parseBunnyVideo(Map<String, dynamic> m) {
   final nested = m['video'];
   final v = nested is Map ? Map<String, dynamic>.from(nested) : m;
-  String? str(List<String> keys) {
+  String? str(Map<String, dynamic> from, List<String> keys) {
     for (final k in keys) {
-      final x = v[k]?.toString();
-      if (x != null && x.isNotEmpty) return x;
+      final x = from[k];
+      if (x is String && x.trim().isNotEmpty) return x.trim();
     }
     return null;
   }
 
-  final hls = str(['hls_url', 'hlsUrl']);
+  final legacyMedia = str(m, ['mediaUrl', 'media_url']);
+  final hls = str(v, ['playback_url', 'playbackUrl', 'hls_url', 'hlsUrl']) ??
+      (isHlsUrl(legacyMedia) ? legacyMedia : null);
   final status = nested is Map
-      ? str(['status'])
-      : str(['video_status', 'videoStatus']);
-  if (hls == null && status == null) return null;
+      ? str(v, ['status'])
+      : str(m, ['video_status', 'videoStatus']);
+  if (nested is! Map && hls == null && status == null) return null;
 
   final mp4 = <MediaRendition>[];
   final raw = v['mp4_urls'] ?? v['mp4Urls'];
   if (raw is Map) {
     raw.forEach((k, url) {
       final h = int.tryParse(RegExp(r'\d+').stringMatch(k.toString()) ?? '') ?? 0;
-      final u = _absUrl(url?.toString());
+      final u = url is String ? _absUrl(url.trim()) : null;
       if (h > 0 && u != null && u.isNotEmpty) {
         mp4.add(MediaRendition(url: u, label: '${h}p', height: h));
       }
     });
     mp4.sort((a, b) => a.rank.compareTo(b.rank));
   }
+  final mp4Url = str(v, ['mp4_url', 'mp4Url']);
   return (
     status: status,
     hlsUrl: _absUrl(hls),
-    thumbnailUrl: _absUrl(str(['thumbnail_url', 'thumbnailUrl'])),
+    mp4Url: _absUrl(mp4Url) ?? (mp4.isNotEmpty ? mp4.last.url : null),
+    thumbnailUrl: _absUrl(str(v, ['thumbnail_url', 'thumbnailUrl'])),
     mp4: mp4,
-    duration: nested is Map ? _parseInt(v['duration']) : 0,
+    duration: _parseInt(v['duration']),
   );
 }
 
-/// [allowUnready] : garder une vidéo Bunny pas encore prête (page du
-/// témoignage ouverte par son auteur) ; sinon elle est ignorée (`null`).
-Testimony? testimonyFromApiJson(dynamic raw, {bool allowUnready = false}) {
+/// Une vidéo Bunny pas encore prête (processing, failed) est gardée : son état
+/// est affiché (badge, message, « Renvoyer la vidéo »). Le serveur ne la
+/// renvoie qu'à son auteur et à la modération (listes publiques : `ready`).
+Testimony? testimonyFromApiJson(dynamic raw) {
   try {
     final m        = raw as Map<String, dynamic>;
     final userMap  = m['user']  as Map<String, dynamic>? ?? {};
@@ -313,28 +325,25 @@ Testimony? testimonyFromApiJson(dynamic raw, {bool allowUnready = false}) {
         );
       case 'video':
         final bunny = youtubeId == null ? parseBunnyVideo(m) : null;
-        // Vidéo pas encore prête (envoi, traitement, échec) : seulement dans
-        // « Mes publications », jamais dans les fils et listes publics.
-        if (bunny != null &&
-            bunny.status != null &&
-            bunny.status != 'ready' &&
-            !allowUnready) {
-          return null;
-        }
         final duration = _parseInt(m['duration'] ?? m['duration_seconds']);
+        final cover = (m['coverUrl'] ?? m['cover_url']);
+        final media = (m['mediaUrl'] ?? m['media_url']);
         return VideoTestimony(
           id: id, author: author, title: title,
           category: category, createdAt: createdAt, stats: stats,
           durationSeconds: (bunny?.duration ?? 0) > 0 ? bunny!.duration : duration,
           thumbnailUrl:    bunny?.thumbnailUrl ??
-              (m['coverUrl'] ?? m['cover_url']) as String? ??
+              (cover is String && cover.isNotEmpty ? _absUrl(cover) : null) ??
               (youtubeId != null ? youTubeThumbnailUrl(youtubeId) : ''),
-          mediaPath:       _absUrl((m['mediaUrl'] ?? m['media_url']) as String?),
+          // Ancien fichier (/storage/media/…mp4), sinon le MP4 de secours.
+          mediaPath:       _absUrl(media is String && media.isNotEmpty ? media : null) ??
+              bunny?.mp4Url,
           renditions:      (bunny?.mp4.isNotEmpty ?? false) ? bunny!.mp4 : renditions,
           renditionsStatus: m['renditionsStatus'] as String?,
           bibleVerse: bibleVerse, bibleVerseRef: bibleVerseRef,
           youtubeId: youtubeId,
           hlsUrl: bunny?.hlsUrl,
+          mp4Url: bunny?.mp4Url,
           videoStatus: bunny?.status,
           isFeatured: isFeatured, isLiked: isLiked, isPrayed: isPrayed, isSaved: isSaved,
           shareUrl: shareUrl, proofs: proofs, mentions: mentions,
@@ -392,6 +401,10 @@ enum FeedSort {
 }
 
 /// Tri choisi et filtre « Approuvés » (`?verified=1` : label « Témoignage approuvé »).
+///
+/// Le fil « Pour vous » (sort=for_you) est calculé à part par le serveur
+/// (Recommendations::feed) et ignore `verified` : avec « Approuvés », le tri
+/// effectif est donc « Récents ».
 @immutable
 class FeedQuery {
   const FeedQuery({this.sort = FeedSort.forYou, this.verifiedOnly = false});
@@ -399,9 +412,13 @@ class FeedQuery {
   final FeedSort sort;
   final bool verifiedOnly;
 
+  /// Tri réellement appliqué (« Pour vous » n'est pas filtrable côté serveur).
+  FeedSort get effectiveSort =>
+      verifiedOnly && sort == FeedSort.forYou ? FeedSort.recent : sort;
+
   /// Paramètres de GET /testimonies pour la page [page].
   Map<String, dynamic> toQuery({required int page, int limit = AppConstants.defaultPageSize}) => {
-        'sort': sort.apiValue,
+        'sort': effectiveSort.apiValue,
         'limit': limit,
         'page': page,
         if (verifiedOnly) 'verified': 1,
@@ -423,7 +440,12 @@ class FeedQueryNotifier extends Notifier<FeedQuery> {
   FeedQuery build() => const FeedQuery();
 
   void setSort(FeedSort sort) => state = state.copyWith(sort: sort);
-  void setVerifiedOnly(bool value) => state = state.copyWith(verifiedOnly: value);
+
+  /// « Approuvés » activé depuis « Pour vous » : passage explicite à « Récents ».
+  void setVerifiedOnly(bool value) => state = state.copyWith(
+        verifiedOnly: value,
+        sort: value && state.sort == FeedSort.forYou ? FeedSort.recent : null,
+      );
 }
 
 final feedQueryProvider = NotifierProvider<FeedQueryNotifier, FeedQuery>(FeedQueryNotifier.new);
@@ -433,6 +455,11 @@ final feedQueryProvider = NotifierProvider<FeedQueryNotifier, FeedQuery>(FeedQue
 /// Le serveur mélange récents et plus vus pour un nouveau compte, puis classe
 /// selon les centres d'intérêt et les comptes suivis.
 class FeedNotifier extends Notifier<List<Testimony>> {
+  /// Vidéos de l'auteur en cours de traitement, gardées en tête du fil (les
+  /// listes du serveur ne contiennent que des vidéos prêtes) jusqu'à la fin
+  /// de l'encodage.
+  final Map<String, Testimony> _ownProcessing = {};
+
   int  _page     = 0;
   int  _lastPage = 1;
   bool _loadingMore = false;
@@ -474,7 +501,10 @@ class FeedNotifier extends Notifier<List<Testimony>> {
       _page     = meta.currentPage;
       _lastPage = meta.lastPage;
       _readPlace(response.meta);
-      state = items;
+      final ids = {for (final t in items) t.id};
+      _ownProcessing.removeWhere((id, t) =>
+          ids.contains(id) || t is! VideoTestimony || !t.isProcessing);
+      state = [..._ownProcessing.values, ...items];
       // Synchronise l'état liked/prayed depuis le serveur.
       ref.read(interactionProvider.notifier).seedFromFeed(items);
     } catch (_) {
@@ -618,7 +648,31 @@ class FeedNotifier extends Notifier<List<Testimony>> {
   }
 
   void removeTestimony(String id) {
+    _ownProcessing.remove(id);
     state = state.where((t) => t.id != id).toList();
+  }
+
+  /// Remplace un témoignage déjà affiché (vidéo prête ou en échec…). Sans
+  /// effet s'il n'est pas dans le fil.
+  void replaceTestimony(Testimony testimony) {
+    if (_ownProcessing.containsKey(testimony.id)) {
+      _ownProcessing[testimony.id] = testimony;
+    }
+    if (!state.any((t) => t.id == testimony.id)) return;
+    state = [for (final t in state) t.id == testimony.id ? testimony : t];
+  }
+
+  /// Vidéo de l'auteur affichée « en traitement » en tête du fil dès la fin
+  /// de l'envoi (gardée aux rechargements tant que l'encodage dure).
+  void showOwnProcessing(Testimony testimony) {
+    if (testimony is VideoTestimony && testimony.isProcessing) {
+      _ownProcessing[testimony.id] = testimony;
+    }
+    if (state.any((t) => t.id == testimony.id)) {
+      replaceTestimony(testimony);
+    } else {
+      addTestimony(testimony);
+    }
   }
 
   /// Rafraîchit le feed depuis l'API sans afficher l'état de chargement (appelé en arrière-plan).

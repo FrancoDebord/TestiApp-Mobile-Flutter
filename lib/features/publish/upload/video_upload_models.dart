@@ -54,6 +54,7 @@ class VideoUploadJob {
     this.expiration,
     this.tusEndpoint,
     this.uploadDone = false,
+    this.replacesTestimonyId,
   });
 
   /// Fichier choisi ou filmé par l'utilisateur.
@@ -83,6 +84,10 @@ class VideoUploadJob {
 
   /// Envoi TUS terminé (il reste upload-complete).
   bool uploadDone;
+
+  /// « Renvoyer la vidéo » : témoignage en échec, supprimé une fois ce nouvel
+  /// envoi terminé (upload-init crée toujours un nouveau témoignage).
+  final String? replacesTestimonyId;
 
   bool get isInitialized => videoId != null && tusEndpoint != null;
 
@@ -159,6 +164,7 @@ class VideoUploadJob {
         'expiration': expiration,
         'tus_endpoint': tusEndpoint,
         'upload_done': uploadDone,
+        'replaces_testimony_id': replacesTestimonyId,
       };
 
   factory VideoUploadJob.fromJson(Map<String, dynamic> j) => VideoUploadJob(
@@ -179,6 +185,7 @@ class VideoUploadJob {
         expiration: parseExpiration(j['expiration']),
         tusEndpoint: j['tus_endpoint'] as String?,
         uploadDone: j['upload_done'] as bool? ?? false,
+        replacesTestimonyId: j['replaces_testimony_id'] as String?,
       );
 }
 

@@ -60,8 +60,25 @@ class VideoUploadScreen extends ConsumerWidget {
               VideoUploadPanel(state: upload),
               if (upload.phase == VideoUploadPhase.done) ...[
                 const SizedBox(height: AppSpacing.xl),
+                // Témoignage affiché « en traitement », sans attendre l'encodage.
+                if (upload.testimonyId case final id?) ...[
+                  AppButton(
+                    key: const ValueKey('open-uploaded-testimony'),
+                    label: 'Voir mon témoignage',
+                    fullWidth: true,
+                    leadingIcon: Icons.play_circle_outline_rounded,
+                    onPressed: () {
+                      ref.read(videoUploadProvider.notifier).dismiss();
+                      context.go('/testimony/$id');
+                    },
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                ],
                 AppButton(
                   label: 'Voir mes publications',
+                  variant: upload.testimonyId == null
+                      ? AppButtonVariant.primary
+                      : AppButtonVariant.outline,
                   fullWidth: true,
                   leadingIcon: Icons.video_library_outlined,
                   onPressed: () {

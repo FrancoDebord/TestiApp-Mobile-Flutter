@@ -19,8 +19,9 @@ class ShortsTabScreen extends ConsumerWidget {
     final videos = ref
         .watch(feedNotifierProvider)
         .whereType<VideoTestimony>()
-        // Vidéos YouTube : lecteur YouTube (hors défilement des Shorts).
-        .where((v) => !v.isYouTube)
+        // Vidéos YouTube : lecteur YouTube (hors défilement des Shorts) ;
+        // vidéos en traitement ou en échec : rien à lire.
+        .where((v) => !v.isYouTube && v.isReady)
         .toList();
 
     if (videos.isEmpty) {

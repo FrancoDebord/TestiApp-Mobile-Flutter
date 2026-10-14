@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/media/video_source.dart';
 import '../../../shared/widgets/testimony_proofs_card.dart';
+import '../../../shared/widgets/video_poster.dart';
+import '../../../shared/widgets/video_status_views.dart';
+import '../../testimony/screens/video_player_screen.dart';
 import '../models/moderation_models.dart';
 import '../providers/moderation_provider.dart';
 import '../widgets/review_bottom_sheet.dart';
@@ -281,11 +285,28 @@ class _ContentSection extends StatelessWidget {
         );
 
       case TestimonyType.video:
-        return _MediaPlaceholder(
-          icon: Icons.play_circle_fill_rounded,
-          label: 'Témoignage vidéo',
-          sublabel: 'Appuyer pour visionner',
-          color: const Color(0xFF12B76A),
+        // En traitement : badge, pas de lecture ; en échec : message (le
+        // renvoi est réservé à l'auteur) ; prête : miniature, durée, lecture.
+        final ready = item.videoState == VideoProcessingState.ready;
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: AspectRatio(
+            aspectRatio: 16 / 9,
+            child: ready
+                ? VideoPoster(
+                    thumbnailUrl: item.thumbnailUrl,
+                    durationSeconds: item.durationSeconds,
+                    onPlay: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => VideoPlayerScreen(testimonyId: item.id),
+                      ),
+                    ),
+                  )
+                : VideoNotReadySurface(
+                    state: item.videoState,
+                    thumbnailUrl: item.thumbnailUrl,
+                  ),
+          ),
         );
     }
   }

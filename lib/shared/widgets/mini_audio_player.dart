@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:testi_app/core/theme/app_colors.dart';
 import 'package:testi_app/core/theme/app_text_styles.dart';
+import '../../core/media/video_source.dart' show mediaHttpHeaders;
 
 // ── State model ────────────────────────────────────────────────────────────────
 
@@ -360,7 +361,8 @@ class _Artwork extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         image: thumbnailUrl != null
             ? DecorationImage(
-                image: NetworkImage(thumbnailUrl!),
+                image: NetworkImage(thumbnailUrl!,
+                    headers: mediaHttpHeaders(thumbnailUrl)),
                 fit: BoxFit.cover,
               )
             : null,

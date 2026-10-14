@@ -11,7 +11,10 @@
 //      métadonnées filetype et title. La signature est renouvelée
 //      (POST /videos/{id}/upload-signature) avant chaque démarrage ou reprise
 //      si elle expire dans moins de 5 minutes, ou si Bunny la refuse ;
-//   4. POST /videos/{id}/upload-complete : Bunny encode, push « video_ready ».
+//   4. POST /videos/{id}/upload-complete : Bunny encode, push « video_ready »
+//      (ou « video_failed »). Le témoignage renvoyé est aussitôt affiché
+//      « en traitement » (fil, détail, « Mes témoignages ») : inutile
+//      d'attendre l'encodage, l'utilisateur peut quitter l'écran.
 //
 // Reprise automatique : nouvelles tentatives de tusc, puis attente du réseau
 // (connectivity_plus), du retour au premier plan (AppLifecycleListener) ou d'un
@@ -35,8 +38,12 @@ import 'package:video_compress/video_compress.dart' as vc;
 
 import '../../../core/app_constants.dart';
 import '../../../services/api_service.dart';
+import '../../home/providers/home_providers.dart'
+    show feedNotifierProvider, testimonyFromApiJson;
 import '../../profile/providers/profile_provider.dart'
     show myTestimoniesNotifierProvider;
+import '../../testimony/providers/testimony_refresh.dart'
+    show testimonyReloaderProvider;
 import 'video_upload_models.dart';
 
 /// Client TUS dont l'empreinte (clé du cache persistant) est la vidéo Bunny :
@@ -122,6 +129,7 @@ class VideoUploadController extends Notifier<VideoUploadState?> {
     required String title,
     required Map<String, dynamic> body,
     List<PendingProof> proofs = const [],
+    String? replacesTestimonyId,
   }) async {
     if (_job != null) {
       throw StateError('Un envoi de vidéo est déjà en cours.');
@@ -131,6 +139,7 @@ class VideoUploadController extends Notifier<VideoUploadState?> {
       title: title,
       body: body,
       proofs: proofs,
+      replacesTestimonyId: replacesTestimonyId,
     );
     _cancelled = false;
     _autoRetries = 0;
@@ -226,12 +235,14 @@ class VideoUploadController extends Notifier<VideoUploadState?> {
       if (job.compressedPath == null) await _compress(job);
       if (!job.isInitialized) await _init(job);
       if (!job.uploadDone) await _upload(job);
-      await _complete(job);
+      final created = await _complete(job);
       if (_cancelled) return;
       await _clear(job, keepState: true);
       state = state!.copyWith(
           phase: VideoUploadPhase.done, progress: 1, error: null);
       ref.invalidate(myTestimoniesNotifierProvider);
+      _showProcessing(job, created);
+      await _removeReplaced(job);
     } on _Cancelled {
       // Annulation : cancel() a déjà nettoyé.
     } on _NetworkInterruption {
@@ -470,16 +481,53 @@ class VideoUploadController extends Notifier<VideoUploadState?> {
 
   // 4. Fin de l'envoi ────────────────────────────────────────────────────────
 
-  Future<void> _complete(VideoUploadJob job) async {
+  /// Témoignage renvoyé par upload-complete (état « processing »), si lisible.
+  Future<Map<String, dynamic>?> _complete(VideoUploadJob job) async {
     _setPhase(VideoUploadPhase.finalizing, 1);
     try {
-      await ref.read(apiServiceProvider).post<Map<String, dynamic>>(
+      final res = await ref.read(apiServiceProvider).post<dynamic>(
             AppConstants.videoUploadComplete(job.videoId!),
           );
+      final data = res.data;
+      return data is Map ? Map<String, dynamic>.from(data) : null;
     } on DioException catch (e) {
       throw _classifyDio(e);
     } on LaravelApiException catch (e) {
       throw _UploadFailure(e.displayMessage);
+    }
+  }
+
+  /// Envoi terminé : le témoignage est affiché tout de suite « en
+  /// traitement » (en tête du fil de l'auteur, détail, « Mes témoignages »),
+  /// sans attendre l'encodage.
+  void _showProcessing(VideoUploadJob job, Map<String, dynamic>? created) {
+    final reloader = ref.read(testimonyReloaderProvider);
+    final t = created == null ? null : testimonyFromApiJson(created);
+    if (t != null) {
+      reloader.apply(t);
+      ref.read(feedNotifierProvider.notifier).showOwnProcessing(t);
+    } else if (job.testimonyId != null) {
+      unawaited(reloader.reload(job.testimonyId!).then((t) {
+        if (t != null) {
+          ref.read(feedNotifierProvider.notifier).showOwnProcessing(t);
+        }
+      }));
+    }
+  }
+
+  /// « Renvoyer la vidéo » : le témoignage en échec est supprimé une fois le
+  /// nouvel envoi terminé. Un échec est seulement journalisé.
+  Future<void> _removeReplaced(VideoUploadJob job) async {
+    final old = job.replacesTestimonyId;
+    if (old == null || old == job.testimonyId) return;
+    try {
+      await ref
+          .read(apiServiceProvider)
+          .delete<void>(AppConstants.testimonyById(old));
+      ref.read(feedNotifierProvider.notifier).removeTestimony(old);
+      ref.invalidate(myTestimoniesNotifierProvider);
+    } catch (e) {
+      debugPrint('VideoUpload ✗ suppression du témoignage en échec : $e');
     }
   }
 

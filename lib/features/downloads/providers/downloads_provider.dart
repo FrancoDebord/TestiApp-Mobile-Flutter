@@ -14,6 +14,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/media/media_quality.dart';
+import '../../../core/media/video_source.dart' show isHlsUrl;
 import '../../../core/media/playback_preferences.dart';
 import '../../home/models/testimony_model.dart';
 import '../data/downloads_repository.dart';
@@ -263,8 +264,11 @@ class DownloadsNotifier extends Notifier<DownloadsState> {
           ref.read(playbackPreferencesProvider).copyWith(offlineMode: false);
       final metered = ref.read(isMeteredConnectionProvider).value ?? true;
       final resolved = switch (t) {
+        // Vidéo pas encore prête : rien à télécharger. mediaUrl contient
+        // désormais la playlist HLS : on télécharge le MP4 de secours.
+        VideoTestimony v when !v.isReady => null,
         VideoTestimony v => resolveVideo(
-            original: v.mediaPath,
+            original: isHlsUrl(v.mediaPath) ? v.mp4Url : v.mediaPath,
             renditions: v.renditions,
             prefs: prefs,
             metered: metered,

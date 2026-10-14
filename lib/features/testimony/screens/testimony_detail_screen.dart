@@ -35,7 +35,10 @@ import '../../../shared/widgets/video_poster.dart';
 import '../../../shared/widgets/why_testify_card.dart';
 import '../../../shared/widgets/youtube_video_player.dart';
 import '../../../services/audio_player_service.dart' show audioPlayerProvider;
+import '../../../shared/widgets/video_status_views.dart';
+import '../../publish/upload/video_resend.dart' show resendVideoAction;
 import '../providers/recommendations_provider.dart';
+import '../providers/testimony_refresh.dart';
 import '../providers/view_tracker.dart';
 import '../providers/tts_provider.dart';
 import '../widgets/testimony_info.dart';
@@ -142,6 +145,9 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
   late final TtsController _tts;
   bool _autoReadHandled = false;
 
+  /// Vidéo en traitement : état relu toutes les 30 s, 10 fois au plus.
+  VideoStatusPoller? _videoPoller;
+
   @override
   void initState() {
     super.initState();
@@ -158,6 +164,7 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
 
   @override
   void dispose() {
+    _videoPoller?.stop();
     _viewTimer?.cancel();
     // Quitter l'écran arrête la lecture vocale de ce témoignage.
     final id = widget.testimonyId;
@@ -199,7 +206,7 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
         AppConstants.testimonyById(widget.testimonyId),
       );
       // L'auteur peut ouvrir son témoignage vidéo encore en traitement.
-      final t = testimonyFromApiJson(response.data, allowUnready: true);
+      final t = testimonyFromApiJson(response.data);
       if (t != null && mounted && proofsOnly) {
         setState(() => _proofs = t.proofs);
         return;
@@ -365,12 +372,28 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
     return user != null && (user.id == t.author.uid || user.canModerate);
   }
 
+  /// Vidéo encore en traitement à l'ouverture : re-vérification périodique
+  /// (arrêtée dès qu'elle est prête ou en échec, ou après 10 essais). Un push
+  /// video_ready / video_failed met aussi l'écran à jour entre-temps.
+  void _watchProcessingVideo(Testimony t) {
+    if (_videoPoller != null || t is! VideoTestimony || !t.isProcessing) return;
+    final reloader = ref.read(testimonyReloaderProvider);
+    _videoPoller = VideoStatusPoller(check: () async {
+      final fresh = await reloader.reload(widget.testimonyId);
+      if (fresh != null && mounted) setState(() => _singleTestimony = fresh);
+      return fresh is! VideoTestimony || !fresh.isProcessing;
+    })..start();
+  }
+
   @override
   Widget build(BuildContext context) {
     final feed = ref.watch(feedNotifierProvider);
+    // Version rechargée (push vidéo, re-vérification) d'abord.
     final testimony =
+        ref.watch(freshTestimoniesProvider)[widget.testimonyId] ??
         feed.where((t) => t.id == widget.testimonyId).firstOrNull ??
         _singleTestimony;
+    if (testimony != null) _watchProcessingVideo(testimony);
 
     if (testimony == null) {
       return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -1085,16 +1108,14 @@ class _AudioPlayerEmbedState extends ConsumerState<_AudioPlayerEmbed> {
 // Embedded Video Player (inline preview, opens full player on tap)
 // ============================================================================
 
-class _VideoPlayerEmbed extends StatelessWidget {
+class _VideoPlayerEmbed extends ConsumerWidget {
   const _VideoPlayerEmbed({required this.testimony});
 
   final VideoTestimony testimony;
 
   @override
-  Widget build(BuildContext context) {
-    final ready = testimony.isReady;
-    final failed = testimony.videoStatus == 'failed';
-    final media = ready
+  Widget build(BuildContext context, WidgetRef ref) {
+    final media = testimony.isReady
         // Miniature + durée : rien n'est téléchargé avant le toucher.
         ? VideoPoster(
             thumbnailUrl: testimony.thumbnailUrl,
@@ -1109,36 +1130,15 @@ class _VideoPlayerEmbed extends StatelessWidget {
               ),
             ),
           )
-        // Vidéo en traitement ou en échec (visible par son auteur seulement).
-        : ColoredBox(
-            color: AppColors.primaryDark,
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      failed
-                          ? Icons.error_outline_rounded
-                          : Icons.hourglass_top_rounded,
-                      color: AppColors.surface,
-                      size: 32,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      failed
-                          ? 'Le traitement de la vidéo a échoué.'
-                          : 'Vidéo en cours de traitement. Vous serez notifié '
-                              'dès qu\'elle sera en ligne.',
-                      textAlign: TextAlign.center,
-                      style: AppTextStyles.bodySmall
-                          .copyWith(color: AppColors.surface),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+        // En traitement : badge, pas de lecture. En échec : message et, pour
+        // l'auteur, « Renvoyer la vidéo » (visibles par l'auteur et la modération).
+        : VideoNotReadySurface(
+            state: testimony.processingState,
+            thumbnailUrl: testimony.thumbnailUrl,
+            onResend: testimony.isFailed
+                ? resendVideoAction(context, ref,
+                    testimonyId: testimony.id, authorId: testimony.author.uid)
+                : null,
           );
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),

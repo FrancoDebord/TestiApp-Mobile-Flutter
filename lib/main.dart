@@ -28,6 +28,8 @@ import 'features/publish/upload/video_upload_controller.dart' show videoUploadPr
 import 'l10n/app_localizations.dart';
 import 'services/database_seed_service.dart';
 import 'services/push_service.dart';
+import 'features/testimony/providers/testimony_refresh.dart'
+    show kVideoPushTypes, rememberVideoPush, testimonyReloaderProvider;
 import 'services/sync_service.dart';
 
 // ── FCM background handler ────────────────────────────────────────────────────
@@ -37,10 +39,13 @@ import 'services/sync_service.dart';
 // The next foreground open triggers a full deltaSync.
 // Parole prophétique modifiée ailleurs : le rappel local est reprogrammé ici,
 // depuis le réglage contenu dans le message (aucun appel réseau).
+// Vidéo prête ou en échec : le témoignage est noté, puis rechargé au retour
+// au premier plan (TestimonyReloader.reloadPending).
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await ProphecyReminders.handlePush(message.data, background: true);
+  await rememberVideoPush(message.data);
 }
 
 // ── Entry point ───────────────────────────────────────────────────────────────
@@ -111,6 +116,8 @@ class _TemoignagesAppState extends ConsumerState<TemoignagesApp>
       case AppLifecycleState.resumed:
         // Nouveau jour : nouveau design du verset (sauf choix de l'utilisateur).
         ref.invalidate(currentVerseDesignProvider);
+        // Vidéos prêtes ou en échec pendant que l'application était en arrière-plan.
+        unawaited(ref.read(testimonyReloaderProvider).reloadPending());
         _triggerSync();
         _startPolling();
       case AppLifecycleState.paused:
@@ -161,6 +168,8 @@ class _TemoignagesAppState extends ConsumerState<TemoignagesApp>
     ref.read(verseStylePrefsProvider);
     // Envoi de vidéo interrompu par la fermeture de l'application : reprise.
     unawaited(ref.read(videoUploadProvider.notifier).restorePending());
+    // Push vidéo reçus application fermée : témoignages rechargés.
+    unawaited(ref.read(testimonyReloaderProvider).reloadPending());
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────
@@ -241,8 +250,14 @@ class _TemoignagesAppState extends ConsumerState<TemoignagesApp>
       // Partage d'un de mes témoignages, nouveau témoignage d'un compte suivi.
       case 'share':
       case 'new_followed_testimony':
-      // Mon témoignage vidéo est en ligne (Bunny Stream) : on l'ouvre.
+      // Mon témoignage vidéo est en ligne (Bunny Stream), ou son encodage a
+      // échoué : rechargé partout, puis ouvert (« Renvoyer la vidéo » si échec).
       case 'video_ready':
+      case 'video_failed':
+        if (kVideoPushTypes.contains(intent.type)) {
+          ref.read(pushServiceProvider)
+              .refreshFor(intent.type, testimonyId: testimonyId);
+        }
         if (testimonyId != null) {
           router.pushNamed(
             AppRoutes.testimonyDetail,

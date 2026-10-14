@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/app_tokens.dart';
+import '../../core/media/video_source.dart' show mediaHttpHeaders;
 
 /// « 04:05 », « 1:02:30 » (format des autres durées de l'app) ; vide si inconnue.
 String formatVideoDuration(int seconds) {
@@ -49,6 +50,8 @@ class VideoThumbnailImage extends StatelessWidget {
     }
     return CachedNetworkImage(
       imageUrl: u,
+      // Bunny Stream refuse les requêtes sans Referer.
+      httpHeaders: mediaHttpHeaders(u),
       fit: fit,
       fadeInDuration: const Duration(milliseconds: 150),
       placeholder: (_, _) => const ColoredBox(color: AppColors.primaryDark),

@@ -34,6 +34,8 @@ import '../features/auth/providers/auth_notifier.dart' show authStateProvider, c
 import '../features/profile/providers/account_verification_provider.dart' show accountVerificationProvider;
 import '../features/profile/providers/profile_provider.dart'
     show myTestimoniesNotifierProvider, userSettingsProvider;
+import '../features/testimony/providers/testimony_refresh.dart'
+    show kVideoPushTypes, testimonyReloaderProvider, videoPushTestimonyId;
 import 'api_service.dart';
 import 'sync_service.dart';
 
@@ -95,8 +97,10 @@ class FcmNavIntent {
     }
     return FcmNavIntent(
       type:        type,
-      // `video_ready` : `testimony_id`, ou `id` à défaut.
-      testimonyId: str('testimony_id') ?? (type == 'video_ready' ? str('id') : null),
+      // `video_ready` / `video_failed` : `testimony_id`, ou `id` à défaut.
+      testimonyId: kVideoPushTypes.contains(type)
+          ? videoPushTestimonyId(data)
+          : str('testimony_id'),
       liveId:      str('live_id'),
       prophecyId:  str('prophecy_id'),
       // `type: prayer_request` + `id` : la requête de prière elle-même.
@@ -209,7 +213,8 @@ class PushService {
   }
 
   /// Recharge ce que le push [type] a changé (toucher d'une notification, main.dart).
-  void refreshFor(String? type) => refreshForPush(_r, type);
+  void refreshFor(String? type, {String? testimonyId}) =>
+      refreshForPush(_r, type, testimonyId: testimonyId);
 
   /// Types qui changent le badge « Approuvé » du compte connecté.
   static const accountBadgeTypes = {
@@ -310,9 +315,14 @@ class PushService {
       return;
     }
 
-    // Vidéo en ligne, témoignage approuvé ou refusé : « Mes publications » rechargé ;
+    // Vidéo prête ou en échec : témoignage rechargé dans les écrans ouverts ;
+    // témoignage approuvé ou refusé : « Mes publications » rechargé ;
     // badge « Approuvé » attribué ou retiré : profil rechargé.
-    refreshForPush(_r, message.data['type'] as String?);
+    final type = message.data['type']?.toString();
+    refreshForPush(_r, type,
+        testimonyId: kVideoPushTypes.contains(type)
+            ? videoPushTestimonyId(message.data)
+            : null);
 
     // 1. Refresh local data immediately.
     await _deltaSync();
@@ -335,8 +345,9 @@ class PushService {
       // toujours affichées.
       'live_started'
           || 'new_followed_testimony'
-          // Mon témoignage vidéo est en ligne.
+          // Mon témoignage vidéo est en ligne, ou n'a pas pu être traité.
           || 'video_ready'
+          || 'video_failed'
           // Badge « Approuvé » attribué ou retiré, témoignage renvoyé en modération.
           || 'account_verified'
           || 'organization_verified'
@@ -432,9 +443,17 @@ class PushService {
 // ── Rafraîchissements liés à un push ─────────────────────────────────────────
 
 /// Recharge ce qu'un push de type [type] a changé (reçu au premier plan ou touché).
-void refreshForPush(Ref ref, String? type) {
+/// Vidéo prête ou en échec : le témoignage [testimonyId] est relu et mis à jour
+/// partout (détail, fil, « Mes témoignages », modération).
+void refreshForPush(Ref ref, String? type, {String? testimonyId}) {
   switch (type) {
-    case 'video_ready' || 'testimony_approved' || 'testimony_rejected':
+    case 'video_ready' || 'video_failed':
+      if (testimonyId != null) {
+        unawaited(ref.read(testimonyReloaderProvider).reload(testimonyId));
+      } else {
+        ref.invalidate(myTestimoniesNotifierProvider);
+      }
+    case 'testimony_approved' || 'testimony_rejected':
       ref.invalidate(myTestimoniesNotifierProvider);
     case final t? when PushService.accountBadgeTypes.contains(t):
       // Badge « Approuvé » attribué ou retiré (docs serveur fonctionnalites/badge-approuve.md).

@@ -19,6 +19,10 @@ import '../providers/tts_provider.dart';
 import '../widgets/testimony_info.dart';
 import '../../../core/media/media_quality.dart';
 import '../../../core/media/playback_preferences.dart';
+import '../../../core/media/video_source.dart';
+import '../../../shared/widgets/video_status_views.dart';
+import '../../publish/upload/video_resend.dart' show resendVideoAction;
+import '../providers/testimony_refresh.dart' show freshTestimoniesProvider;
 import '../../../features/auth/providers/auth_notifier.dart'
     show currentUserProvider;
 import '../../../features/home/models/testimony_model.dart';
@@ -138,6 +142,24 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
       isMeteredConnectionProvider,
       (prev, next) => _onNetworkChanged(prev?.value, next.value),
     );
+    // Vidéo rechargée (push video_ready / video_failed) : nouvel état affiché,
+    // lecture démarrée si elle vient d'être prête.
+    ref.listenManual<Testimony?>(
+      freshTestimoniesProvider.select((m) => m[widget.testimonyId]),
+      (_, next) => _onTestimonyReloaded(next),
+    );
+  }
+
+  void _onTestimonyReloaded(Testimony? t) {
+    if (t is! VideoTestimony || !mounted) return;
+    final wasReady = _testimony?.isReady ?? true;
+    setState(() {
+      _testimony = t;
+      _original = t.mediaPath;
+      _renditions = t.renditions;
+      _hls = t.hlsUrl;
+    });
+    if (!wasReady && t.isReady && _videoCtrl == null) _startPlayback();
   }
 
   /// Wi-Fi ⇄ données mobiles : en mode Auto (pas de choix manuel), on relit
@@ -205,7 +227,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
         AppConstants.testimonyById(widget.testimonyId),
       );
       // Page ouverte par l'auteur (Mes publications) : vidéo peut-être pas prête.
-      final t = testimonyFromApiJson(response.data, allowUnready: true);
+      final t = testimonyFromApiJson(response.data);
       if (t is VideoTestimony && mounted) {
         _testimony = t;
         // État des réactions renvoyé par le serveur (j'aime, je prie, compteurs).
@@ -243,7 +265,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     final bool isNetwork =
         source.startsWith('http://') || source.startsWith('https://');
     if (kIsWeb || isNetwork) {
-      return VideoPlayerController.networkUrl(Uri.parse(source));
+      return networkVideoController(source);
     }
     // Fichier local (vidéo téléchargée).
     return VideoPlayerController.file(File(localFilePath(source)));
@@ -274,7 +296,20 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
 
   bool get _metered => ref.read(isMeteredConnectionProvider).value ?? true;
 
+  /// Libellé de la source réellement lue après un repli.
+  String _labelFor(String url) {
+    if (url == _hls) return kAdaptiveLabel;
+    for (final r in _renditions) {
+      if (r.url == url) return r.label;
+    }
+    return url == _testimony?.mp4Url ? 'MP4' : 'Originale';
+  }
+
   Future<void> _startPlayback() async {
+    if (!(_testimony?.isReady ?? true)) {
+      if (mounted) setState(() {});
+      return;
+    }
     final resolved = _resolve();
     if (resolved == null) {
       if (mounted) setState(() {});
@@ -293,14 +328,22 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     }
     if (_awaitingTap && mounted) setState(() => _awaitingTap = false);
 
-    final ctrl = _createController(resolved.url);
-    try {
-      await ctrl.initialize();
-    } catch (_) {
-      await ctrl.dispose();
+    // Source choisie (HLS en Auto), puis, si le lecteur ne s'initialise
+    // pas, le MP4 de secours et l'ancien fichier (/storage/media/…mp4).
+    final played = await initializeFirstPlayable(
+      videoPlaybackChain(
+        primary: resolved.url,
+        playbackUrl: _hls,
+        mp4Url: _testimony?.mp4Url,
+        legacyUrl: _original,
+      ),
+      _createController,
+    );
+    if (played == null) {
       if (mounted) setState(() {});
       return;
     }
+    final ctrl = played.controller;
     if (!mounted) {
       await ctrl.dispose();
       return;
@@ -312,7 +355,9 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     setState(() {
       _videoCtrl = ctrl;
       _chewieCtrl = chewie;
-      _resolved = resolved;
+      _resolved = played.url == resolved.url
+          ? resolved
+          : ResolvedMedia(url: played.url, label: _labelFor(played.url));
     });
     // Lecture démarrée : vue comptée (une fois par session).
     ref.read(testimonyViewTrackerProvider.notifier).record(widget.testimonyId);
@@ -563,7 +608,9 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
   @override
   Widget build(BuildContext context) {
     final feed = ref.watch(feedNotifierProvider);
+    final fresh = ref.watch(freshTestimoniesProvider)[widget.testimonyId];
     final testimony =
+        (fresh is VideoTestimony ? fresh : null) ??
         feed
             .whereType<VideoTestimony>()
             .where((t) => t.id == widget.testimonyId)
@@ -595,7 +642,15 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
                       if (youtubeId != null)
                         YouTubeVideoPlayer(videoId: youtubeId)
                       else if (testimony != null && !testimony.isReady)
-                        _NotReadySurface(status: testimony.videoStatus)
+                        VideoNotReadySurface(
+                          state: testimony.processingState,
+                          thumbnailUrl: testimony.thumbnailUrl,
+                          onResend: testimony.isFailed
+                              ? resendVideoAction(context, ref,
+                                  testimonyId: testimony.id,
+                                  authorId: testimony.author.uid)
+                              : null,
+                        )
                       else if (_awaitingTap)
                         VideoPoster(
                           thumbnailUrl: testimony?.thumbnailUrl,
@@ -1621,47 +1676,6 @@ class _CommentsPreview extends StatelessWidget {
 }
 
 // ============================================================================
-// Vidéo pas encore prête (vue par son auteur depuis « Mes publications »)
-// ============================================================================
-
-class _NotReadySurface extends StatelessWidget {
-  const _NotReadySurface({required this.status});
-  final String? status;
-
-  @override
-  Widget build(BuildContext context) {
-    final failed = status == 'failed';
-    return ColoredBox(
-      color: AppColors.primaryDark,
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                failed ? Icons.error_outline_rounded : Icons.hourglass_top_rounded,
-                color: AppColors.surface,
-                size: 36,
-              ),
-              const SizedBox(height: 10),
-              Text(
-                failed
-                    ? 'Le traitement de cette vidéo a échoué.'
-                    : 'Votre témoignage est en cours de traitement. '
-                        'Vous serez notifié dès qu\'il sera en ligne.',
-                textAlign: TextAlign.center,
-                style: AppTextStyles.bodySmall.copyWith(color: AppColors.surface),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ============================================================================
 // Related Videos List
 // ============================================================================
 
@@ -1762,7 +1776,7 @@ class _RelatedVideoCardState extends State<_RelatedVideoCard> {
     if (path == null || path.isEmpty) return;
     try {
       final ctrl = path.startsWith('http')
-          ? VideoPlayerController.networkUrl(Uri.parse(path))
+          ? networkVideoController(path)
           : VideoPlayerController.file(File(path));
       await ctrl.initialize();
       final secs = ctrl.value.duration.inSeconds;

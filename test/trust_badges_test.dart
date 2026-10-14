@@ -258,6 +258,9 @@ void main() {
       );
       expect(FeedSort.popular.apiValue, 'popular');
       expect(FeedSort.recent.apiValue, 'recent');
+      // « Pour vous » ignore verified côté serveur : jamais combinés.
+      expect(const FeedQuery(verifiedOnly: true).toQuery(page: 1)['sort'], 'recent');
+      expect(const FeedQuery(verifiedOnly: true).effectiveSort, FeedSort.recent);
     });
 
     testWidgets('puce « Approuvés » et menu de tri : rechargement avec les bons paramètres', (tester) async {
@@ -284,6 +287,9 @@ void main() {
       await tester.tap(find.text('Approuvés'));
       await tester.pumpAndSettle();
       expect(api.gets.last.$2?['verified'], 1);
+      // Depuis « Pour vous » : passage à « Récents » (seul tri filtré par le serveur).
+      expect(api.gets.last.$2?['sort'], 'recent');
+      expect(find.text('Tri : Récents'), findsOneWidget);
       // Repli local : seul le témoignage avec le label reste, même si le serveur ignore le filtre.
       expect(find.text('1 témoignages'), findsOneWidget);
       final chip = tester.widget<FilterChip>(find.byKey(const ValueKey('feed-filter-verified')));
@@ -296,6 +302,13 @@ void main() {
       expect(api.gets.last.$2?['sort'], 'most_viewed');
       expect(api.gets.last.$2?['verified'], 1);
       expect(find.text('Tri : Plus vus'), findsOneWidget);
+
+      // « Pour vous » indisponible tant que « Approuvés » est actif.
+      await tester.tap(find.byKey(const ValueKey('feed-sort')));
+      await tester.pumpAndSettle();
+      final forYou = tester.widget<CheckedPopupMenuItem<FeedSort>>(
+          find.widgetWithText(CheckedPopupMenuItem<FeedSort>, 'Pour vous (sans « Approuvés »)'));
+      expect(forYou.enabled, isFalse);
     });
   });
 

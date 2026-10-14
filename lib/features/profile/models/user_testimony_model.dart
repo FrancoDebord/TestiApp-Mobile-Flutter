@@ -3,6 +3,8 @@
 // Lightweight model for the "Mes témoignages" screen.
 // Independent of the sealed Testimony hierarchy — avoids touching the feed model.
 
+import '../../../core/media/video_source.dart';
+
 class UserTestimony {
   const UserTestimony({
     required this.id,
@@ -45,12 +47,14 @@ class UserTestimony {
   /// l'auteur modifie le témoignage.
   final bool hasApprovedLabel;
 
-  /// Vidéo en cours d'envoi ou de traitement (badge « En traitement »).
-  bool get isVideoProcessing =>
-      videoStatus == 'uploading' || videoStatus == 'processing';
+  /// État de traitement de la vidéo (ready sans suivi d'état).
+  VideoProcessingState get videoState => VideoProcessingState.parse(videoStatus);
 
-  /// Traitement de la vidéo échoué (badge « Échec »).
-  bool get isVideoFailed => videoStatus == 'failed';
+  /// Vidéo en cours d'envoi ou de traitement (« Vidéo en cours de traitement »).
+  bool get isVideoProcessing => videoState == VideoProcessingState.processing;
+
+  /// Traitement de la vidéo échoué (« La vidéo n'a pas pu être traitée »).
+  bool get isVideoFailed => videoState == VideoProcessingState.failed;
 
   /// Statut de modération (docs serveur fonctionnalites/gestion-des-temoignages.md) :
   /// pending → En attente, approved → Publié, rejected → Refusé.
@@ -87,17 +91,22 @@ class UserTestimony {
         : ((catRaw ?? '') as String);
 
     // Vidéo Bunny Stream : objet « video » (ancien format à plat en secours).
+    // Champs absents ou null tolérés.
     final video        = m['video'] is Map ? m['video'] as Map : null;
-    final durRaw          = video?['duration'] ?? m['duration'] ?? m['duration_seconds'];
-    final durationSeconds = durRaw is int
-        ? durRaw
-        : int.tryParse(durRaw?.toString() ?? '') ?? 0;
+    String? str(Object? v) => v is String && v.isNotEmpty ? v : null;
+    int toInt(Object? v) =>
+        v is num ? v.toInt() : int.tryParse(v?.toString() ?? '') ?? 0;
+    final videoDuration   = toInt(video?['duration']);
+    final durationSeconds = videoDuration > 0
+        ? videoDuration
+        : toInt(m['duration'] ?? m['duration_seconds']);
 
-    final videoStatus  = (video?['status'] ?? m['video_status'] ?? m['videoStatus'])
-        ?.toString();
-    final videoThumb   = (video?['thumbnail_url'] ?? m['thumbnail_url']) as String?;
-    final thumbnailUrl = videoThumb ?? (m['coverUrl'] ?? m['cover_url']) as String?;
-    final mediaPath    = (m['mediaUrl'] ?? m['media_url']) as String?;
+    final videoStatus  = str(video?['status']) ??
+        str(m['video_status']) ?? str(m['videoStatus']);
+    final videoThumb   = str(video?['thumbnail_url']) ?? str(m['thumbnail_url']);
+    final thumbnailUrl = videoThumb ?? str(m['coverUrl']) ?? str(m['cover_url']);
+    final mediaPath    = str(m['mediaUrl']) ?? str(m['media_url']) ??
+        str(video?['mp4_url']);
 
     final body        = (m['bodyText'] ?? m['body_text'] ?? '') as String;
     final bodyPreview = body.isNotEmpty

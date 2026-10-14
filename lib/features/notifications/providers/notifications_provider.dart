@@ -48,6 +48,9 @@ NotificationType _parseType(String v) => switch (v) {
       'testimony_resubmitted' => NotificationType.resubmitted,
       'pending_correction'    => NotificationType.pendingCorrection,
       'new_followed_testimony'=> NotificationType.newFollowedTestimony,
+      // Vidéo Bunny en ligne / encodage en échec (« Renvoyer la vidéo »).
+      'video_ready'           => NotificationType.approved,
+      'video_failed'          => NotificationType.rejected,
       'prayer'                => NotificationType.prayer,
       // Requêtes et sessions de prière
       'prayer_encouragement'    => NotificationType.prayer,

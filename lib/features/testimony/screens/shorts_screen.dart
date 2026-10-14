@@ -10,6 +10,7 @@ import 'package:video_player/video_player.dart';
 import '../../../core/local_db/daos/comment_dao.dart';
 import '../../../core/local_db/database_service.dart';
 import '../../../core/media/media_quality.dart';
+import '../../../core/media/video_source.dart' show networkVideoController, videoPlaybackChain;
 import '../../../core/media/playback_preferences.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -347,7 +348,7 @@ class _ShortPageState extends ConsumerState<_ShortPage> {
 
   VideoPlayerController _createController(String path) {
     if (kIsWeb || path.startsWith('http://') || path.startsWith('https://')) {
-      return VideoPlayerController.networkUrl(Uri.parse(path));
+      return networkVideoController(path);
     }
     // Fichier local (vidéo téléchargée).
     return VideoPlayerController.file(File(localFilePath(path)));
@@ -372,26 +373,40 @@ class _ShortPageState extends ConsumerState<_ShortPage> {
       return;
     }
 
-    final controller = _createController(path);
-    _videoController = controller;
-    _currentUrl = path;
-
-    try {
-      await controller.initialize();
-      await controller.setLooping(widget.loop);
-      controller.addListener(_onTick);
-      if (mounted) {
-        setState(() => _controllerReady = true);
-        _isPlaying = widget.isActive;
-        if (widget.isActive) {
-          controller.play();
-          _countView();
+    // Version choisie (HLS en Auto), puis, si le lecteur ne s'initialise pas,
+    // le MP4 de secours et l'ancien fichier (/storage/media/…mp4).
+    final t = widget.testimony;
+    final chain = videoPlaybackChain(
+      primary: path,
+      playbackUrl: t.hlsUrl,
+      mp4Url: t.mp4Url,
+      legacyUrl: t.mediaPath,
+    );
+    for (final url in chain) {
+      final controller = _createController(url);
+      _videoController = controller;
+      _currentUrl = url;
+      try {
+        await controller.initialize();
+        await controller.setLooping(widget.loop);
+        controller.addListener(_onTick);
+        if (mounted) {
+          setState(() => _controllerReady = true);
+          _isPlaying = widget.isActive;
+          if (widget.isActive) {
+            controller.play();
+            _countView();
+          }
         }
+        return;
+      } catch (e) {
+        debugPrint('⚡ _initVideo FAIL path=$url error=$e');
+        if (_videoController == controller) _videoController = null;
+        await controller.dispose();
+        if (!mounted) return;
       }
-    } catch (e) {
-      debugPrint('⚡ _initVideo FAIL path=$path error=$e');
-      if (mounted) setState(() => _controllerReady = false);
     }
+    if (mounted) setState(() => _controllerReady = false);
   }
 
   /// Changement de qualité : nouveau lecteur à la même position.

@@ -10,10 +10,17 @@ import '../models/moderation_models.dart';
 // JSON helpers
 // =============================================================================
 
+/// Exposée pour les tests (`moderationItemFromJson`).
+ModerationItem? moderationItemFromJson(dynamic raw) => _fromJson(raw);
+
 ModerationItem? _fromJson(dynamic raw) {
   try {
     final m    = raw as Map<String, dynamic>;
     final user = m['user'] as Map<String, dynamic>? ?? {};
+    // Vidéo Bunny Stream : objet « video » (champs absents ou null tolérés).
+    final video = m['video'] is Map ? m['video'] as Map : null;
+    String? str(Object? v) => v is String && v.isNotEmpty ? v : null;
+    final duration = video?['duration'] ?? m['duration'];
     return ModerationItem(
       id: m['id'] as String,
       author: ModerationAuthor(
@@ -26,8 +33,14 @@ ModerationItem? _fromJson(dynamic raw) {
       category:       _categoryLabel(m['category']),
       type:           _parseType(m['type']   as String? ?? 'text'),
       status:         _parseStatus(m['status'] as String? ?? 'pending'),
-      submittedAt:    DateTime.tryParse(m['created_at'] as String? ?? '') ?? DateTime.now(),
-      contentPreview: m['body_text'] as String?,
+      submittedAt:    DateTime.tryParse(
+              (m['created_at'] ?? m['createdAt']) as String? ?? '') ??
+          DateTime.now(),
+      contentPreview: (m['body_text'] ?? m['bodyText']) as String?,
+      videoStatus: str(video?['status']) ?? str(m['video_status']),
+      thumbnailUrl: str(video?['thumbnail_url']) ??
+          str(m['coverUrl']) ?? str(m['cover_url']),
+      durationSeconds: duration is num ? duration.toInt() : 0,
     );
   } catch (_) {
     return null;

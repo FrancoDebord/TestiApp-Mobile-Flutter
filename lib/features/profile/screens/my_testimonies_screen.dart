@@ -6,7 +6,10 @@ import 'package:intl/intl.dart';
 import '../../../core/router/app_routes.dart' show AppPaths;
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
-import '../../../shared/widgets/video_poster.dart' show VideoThumbnailImage;
+import '../../../core/media/video_source.dart' show VideoStatusText;
+import '../../../shared/widgets/video_poster.dart'
+    show VideoThumbnailImage, formatVideoDuration;
+import '../../publish/upload/video_resend.dart' show resendFailedVideo;
 import '../../../shared/widgets/why_testify_card.dart';
 import '../../publish/screens/video_upload_screen.dart' show VideoUploadPanel;
 import '../../publish/upload/video_upload_controller.dart' show videoUploadProvider;
@@ -212,7 +215,7 @@ class _MyTestimonyCard extends ConsumerWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _TypeIcon(type: testimony.type, thumbnailUrl: testimony.thumbnailUrl),
+                _TypeIcon(testimony: testimony),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -241,6 +244,7 @@ class _MyTestimonyCard extends ConsumerWidget {
                 const SizedBox(width: 8),
                 _CardMenu(
                   testimony: testimony,
+                  // Vidéo en traitement : le détail re-vérifie son état.
                   onView: () => context.push('/testimony/${testimony.id}'),
                   onEdit: () => editAndResubmit(context, ref, testimony),
                   onDelete: () => _confirmDelete(context, ref),
@@ -250,26 +254,75 @@ class _MyTestimonyCard extends ConsumerWidget {
 
             // ── Status + rejection reason ───────────────────────────────────
             const SizedBox(height: 10),
-            Row(
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 _StatusBadge(status: testimony.status),
                 // Vidéo pas encore en ligne : visible ici seulement.
-                if (testimony.isVideoProcessing || testimony.isVideoFailed) ...[
-                  const SizedBox(width: 6),
+                if (testimony.isVideoProcessing || testimony.isVideoFailed)
                   _VideoStatusBadge(failed: testimony.isVideoFailed),
-                ],
-                if (testimony.type != 'text' && testimony.durationSeconds > 0) ...[
-                  const SizedBox(width: 8),
-                  Icon(Icons.schedule_rounded,
-                      size: 12, color: AppColors.textSecondary),
-                  const SizedBox(width: 3),
-                  Text(
-                    _fmtDuration(testimony.durationSeconds),
-                    style: AppTextStyles.bodySmall,
+                // Vidéo : durée affichée sur la vignette.
+                if (testimony.type == 'audio' && testimony.durationSeconds > 0)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.schedule_rounded,
+                          size: 12, color: AppColors.textSecondary),
+                      const SizedBox(width: 3),
+                      Text(
+                        _fmtDuration(testimony.durationSeconds),
+                        style: AppTextStyles.bodySmall,
+                      ),
+                    ],
                   ),
-                ],
               ],
             ),
+
+            // Encodage en échec : nouvel envoi (upload-init, TUS, upload-complete).
+            if (testimony.type == 'video' && testimony.isVideoFailed) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                decoration: BoxDecoration(
+                  color: AppColors.dangerSoft,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.danger.withAlpha(60)),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.error_outline_rounded,
+                        size: 14, color: AppColors.danger),
+                    SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        VideoStatusText.failed,
+                        style: TextStyle(
+                          fontFamily: AppFonts.family,
+                          fontSize: 11,
+                          color: AppColors.danger,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: FilledButton.icon(
+                  key: const ValueKey('resend-video-button'),
+                  onPressed: () => resendFailedVideo(context, ref, testimony.id),
+                  icon: const Icon(Icons.upload_rounded, size: 18),
+                  label: const Text(VideoStatusText.resend),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+              ),
+            ],
 
             if (testimony.status == 'pending') ...[
               const SizedBox(height: 8),
@@ -415,25 +468,64 @@ class _MyTestimonyCard extends ConsumerWidget {
 // =============================================================================
 
 class _TypeIcon extends StatelessWidget {
-  const _TypeIcon({required this.type, this.thumbnailUrl});
-  final String  type;
-  final String? thumbnailUrl;
+  const _TypeIcon({required this.testimony});
+  final UserTestimony testimony;
+
+  String get type => testimony.type;
 
   @override
   Widget build(BuildContext context) {
-    if (type == 'video' && thumbnailUrl != null && thumbnailUrl!.isNotEmpty) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(10),
-        child: SizedBox(
-          width: 52, height: 52,
-          child: VideoThumbnailImage(
-            url: thumbnailUrl,
-            fallback: _iconContainer(),
-          ),
+    if (type != 'video') return _iconContainer();
+    final t = testimony;
+    final duration = formatVideoDuration(t.durationSeconds);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: SizedBox(
+        width: 52, height: 52,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Pas de miniature tant que l'encodage n'a pas abouti.
+            VideoThumbnailImage(
+              url: t.isVideoFailed ? null : t.thumbnailUrl,
+              fallback: _iconContainer(),
+            ),
+            if (t.isVideoProcessing || t.isVideoFailed)
+              ColoredBox(
+                color: Colors.black.withAlpha(90),
+                child: Icon(
+                  t.isVideoFailed
+                      ? Icons.error_outline_rounded
+                      : Icons.hourglass_top_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              )
+            else if (duration.isNotEmpty)
+              Positioned(
+                right: 2,
+                bottom: 2,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withAlpha(160),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                  child: Text(
+                    duration,
+                    style: const TextStyle(
+                      fontFamily: AppFonts.family,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
-      );
-    }
-    return _iconContainer();
+      ),
+    );
   }
 
   Widget _iconContainer() {
@@ -481,7 +573,7 @@ class _StatusBadge extends StatelessWidget {
   }
 }
 
-/// « En traitement » (envoi ou encodage Bunny) ou « Échec » d'une vidéo.
+/// « Vidéo en cours de traitement » (envoi ou encodage Bunny) ou « Échec ».
 class _VideoStatusBadge extends StatelessWidget {
   const _VideoStatusBadge({required this.failed});
   final bool failed;
@@ -490,7 +582,8 @@ class _VideoStatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final (label, icon, bg, fg) = failed
         ? ('Échec', Icons.error_outline_rounded, AppColors.dangerSoft, AppColors.danger)
-        : ('En traitement', Icons.hourglass_top_rounded, AppColors.infoSoft, AppColors.info);
+        : (VideoStatusText.processing, Icons.hourglass_top_rounded,
+            AppColors.infoSoft, AppColors.info);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
@@ -593,7 +686,7 @@ class _CardMenu extends StatelessWidget {
         }
       },
       itemBuilder: (_) => [
-        if (testimony.status == 'published')
+        if (testimony.status == 'published' || testimony.type == 'video')
           const PopupMenuItem(
             value: 'view',
             child: Row(children: [
