@@ -1,3 +1,4 @@
+import 'core/media/media_http.dart';
 import 'dart:async';
 
 import 'package:firebase_core/firebase_core.dart';
@@ -52,6 +53,10 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Médias : ancien domaine redirigé, Referer exigé par Bunny (lib/core/media/media_http.dart).
+  MediaHttpOverrides.install();
+  // Noms de mois / jours FR et EN (dates formatées selon la langue).
+  await initLocaleFormatting();
 
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
@@ -110,6 +115,15 @@ class _TemoignagesAppState extends ConsumerState<TemoignagesApp>
     super.dispose();
   }
 
+  /// Langue du téléphone modifiée : « Langue du système » suit le changement.
+  @override
+  void didChangeLocales(List<Locale>? locales) {
+    ref.invalidate(systemLocalesProvider);
+    if (ref.read(appLanguageProvider) == AppLanguage.system) {
+      unawaited(syncLocaleToServer(ref.read));
+    }
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState appState) {
     switch (appState) {
@@ -166,6 +180,8 @@ class _TemoignagesAppState extends ConsumerState<TemoignagesApp>
     // Préférences du verset : créées maintenant pour se synchroniser avec le
     // serveur (changement en attente envoyé, sinon valeurs du serveur).
     ref.read(verseStylePrefsProvider);
+    // Langue des notifications et e-mails : celle de l'application.
+    unawaited(syncLocaleToServer(ref.read));
     // Envoi de vidéo interrompu par la fermeture de l'application : reprise.
     unawaited(ref.read(videoUploadProvider.notifier).restorePending());
     // Push vidéo reçus application fermée : témoignages rechargés.
@@ -182,19 +198,21 @@ class _TemoignagesAppState extends ConsumerState<TemoignagesApp>
     ref.watch(downloadsProvider);
 
     // Handle notification taps → navigate to the right screen.
+    // App lancée par le toucher : attendre que le routeur ait quitté le splash
+    // (sinon la page s'empilerait sur le splash, remplacé ensuite par l'accueil).
     ref.listen(fcmNavProvider, (_, intent) {
       if (intent == null) return;
-      _handleFcmNavigation(router, intent);
       ref.read(fcmNavProvider.notifier).clear();
+      _whenPastSplash(router, () => _handleFcmNavigation(router, intent));
     });
 
     return MaterialApp.router(
-      title: 'Témoignages',
+      onGenerateTitle: (context) => context.l10n.commonAppName,
       debugShowCheckedModeBanner: false,
       theme: _buildTheme(),
       routerConfig: router,
       locale: locale,
-      supportedLocales: const [Locale('fr'), Locale('en')],
+      supportedLocales: L10n.supported,
       localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
@@ -208,6 +226,23 @@ class _TemoignagesAppState extends ConsumerState<TemoignagesApp>
   }
 
   // ── FCM navigation routing ────────────────────────────────────────────────
+
+  /// Exécute [action] dès que l'écran courant n'est plus le splash.
+  void _whenPastSplash(GoRouter router, VoidCallback action) {
+    bool onSplash() =>
+        router.routerDelegate.currentConfiguration.uri.path == AppPaths.splash;
+    if (!onSplash()) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => action());
+      return;
+    }
+    late VoidCallback listener;
+    listener = () {
+      if (onSplash()) return;
+      router.routerDelegate.removeListener(listener);
+      WidgetsBinding.instance.addPostFrameCallback((_) => action());
+    };
+    router.routerDelegate.addListener(listener);
+  }
 
   void _handleFcmNavigation(GoRouter router, FcmNavIntent intent) {
     final testimonyId = intent.testimonyId;

@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/app_constants.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../services/api_service.dart';
 import '../../../shared/models/user_model.dart';
 import '../models/account_models.dart';
@@ -34,8 +35,8 @@ class AccountsRepository {
     } on DioException catch (e) {
       throw AccountsFailure(
         e.type == DioExceptionType.connectionError || e.type == DioExceptionType.connectionTimeout
-            ? 'Connexion impossible. Vérifiez votre réseau.'
-            : 'Une erreur est survenue. Réessayez.',
+            ? L10n.current.accountsConnectionFailed
+            : L10n.current.commonErrorGeneric,
         statusCode: e.response?.statusCode ?? 0,
       );
     }
@@ -51,7 +52,7 @@ class AccountsRepository {
   Future<UserModel> me() => _guard(() async {
         final res = await _api.get<dynamic>(AppConstants.me);
         final data = res.data;
-        if (data is! Map) throw const AccountsFailure('Réponse inattendue du serveur.');
+        if (data is! Map) throw AccountsFailure(L10n.current.accountsUnexpectedResponse);
         final map = Map<String, dynamic>.from(data);
         // Certaines réponses enveloppent le compte dans `user`.
         final user = map['user'] is Map ? Map<String, dynamic>.from(map['user'] as Map) : map;

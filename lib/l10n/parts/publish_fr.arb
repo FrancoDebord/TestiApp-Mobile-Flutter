@@ -1,0 +1,439 @@
+{
+  "@@locale": "fr",
+  "journalOfflineUpdateFailed": "La copie hors ligne n'a pas pu être mise à jour.",
+  "journalConnectionFailed": "Connexion impossible. Vérifiez votre accès à Internet.",
+  "journalServerError": "Erreur du serveur ({status}).",
+  "@journalServerError": {
+    "placeholders": {
+      "status": {
+        "type": "int"
+      }
+    }
+  },
+  "journalTypeText": "Texte",
+  "journalTypeAudio": "Audio",
+  "journalTypeVideo": "Vidéo",
+  "journalUntitled": "Sans titre",
+  "journalSharedSnack": "Témoignage partagé : il sera visible après validation par un modérateur.",
+  "journalMovedBackSnack": "Rangé dans votre carnet privé 🔒",
+  "journalDeleteTitle": "Supprimer ce témoignage ?",
+  "journalDeleteBody": "Il sera définitivement effacé de votre carnet.",
+  "journalDeletedSnack": "Témoignage supprimé.",
+  "journalMyJournal": "Mon carnet",
+  "journalUnshare": "Ne plus partager · ranger dans mon carnet",
+  "journalOfflineAvailableOnPhone": "Disponible hors ligne sur ce téléphone",
+  "journalStatusPrivate": "Privé · visible par vous seul",
+  "journalStatusPending": "Partagé · en attente de validation",
+  "journalStatusShared": "Partagé",
+  "journalAudioError": "Impossible de lire l'enregistrement audio.",
+  "journalVideoError": "Impossible de lire la vidéo.",
+  "journalShareSheetBody": "Il quittera votre carnet privé et sera relu par un modérateur avant d'être visible par tous. Vous pourrez toujours le reprendre.",
+  "journalCategory": "Catégorie",
+  "publishCertifyReal": "Je certifie que ce témoignage est réel",
+  "journalCertifySubtitle": "Les faits sont authentiques et vécus personnellement.",
+  "journalNewPrivateTitle": "Nouveau témoignage privé",
+  "journalNewPrivateHint": "Gardé pour vous seul. Vous pourrez le partager plus tard.",
+  "journalNewWrite": "Écrire",
+  "journalNewWriteHint": "Un texte, avec mise en forme",
+  "journalNewRecordVoice": "Enregistrer ma voix",
+  "journalNewRecordVoiceHint": "Un audio",
+  "journalNewFilm": "Filmer",
+  "journalNewFilmHint": "Une vidéo",
+  "journalTitle": "Mon carnet privé",
+  "journalNewEntry": "Nouveau témoignage",
+  "journalSearchHint": "Rechercher dans mon carnet…",
+  "journalFilterAll": "Tous",
+  "journalNoMatch": "Aucun témoignage ne correspond.",
+  "journalEmpty": "Votre carnet est vide.\nNotez ce que Dieu a fait pour vous, pour ne jamais l'oublier.",
+  "journalFirstEntry": "Mon premier témoignage",
+  "journalNoDate": "Sans date",
+  "journalOfflineBanner": "Hors ligne : copie enregistrée sur ce téléphone.",
+  "journalOfflineBannerDate": "Hors ligne : copie du {date}.",
+  "@journalOfflineBannerDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "journalHeaderTitle": "Ce que Dieu a fait pour moi",
+  "journalHeaderCount": "{count, plural, =1{1 témoignage · visible par vous seul} other{{count} témoignages · visibles par vous seul}}",
+  "@journalHeaderCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "journalHeaderEmpty": "Visible uniquement par vous · sans modération",
+  "journalProphecies": "Paroles prophétiques",
+  "journalPropheciesHint": "Gardez-les, priez, témoignez de leur accomplissement.",
+  "journalOfflineAskTitle": "Garder aussi une copie sur ce téléphone ?",
+  "journalOfflineAskBody": "Votre carnet est toujours sauvegardé en ligne : même si vous perdez ou changez de téléphone, vous le retrouvez en vous connectant.\n\nUne copie sur ce téléphone vous permet en plus de le relire et d'écouter vos audios et vidéos sans connexion. Elle utilise de l'espace de stockage.\n\nVous pourrez changer d'avis à tout moment.",
+  "journalOfflineAskNo": "Non merci",
+  "journalOfflineAskYes": "Oui, garder une copie",
+  "journalOfflineAvailable": "Disponible hors ligne",
+  "journalOfflineKeep": "Garder hors ligne",
+  "journalOfflineRemoveTitle": "Retirer la copie de ce téléphone ?",
+  "journalOfflineRemoveBody": "Les fichiers enregistrés sur ce téléphone seront effacés. Votre carnet reste intact en ligne : rien n'est supprimé de votre compte.",
+  "journalOfflineTitle": "Hors ligne",
+  "journalOfflineSheetIntro": "Votre carnet est toujours sauvegardé en ligne. La copie sur ce téléphone sert à le relire sans connexion.",
+  "journalOfflineEnabledHint": "Textes, audios et vidéos gardés sur ce téléphone",
+  "journalOfflineOnlineOnly": "Seulement en ligne",
+  "journalOfflineUpdating": "Mise à jour de la copie…",
+  "journalOfflineDownloading": "Téléchargement des audios et vidéos : {done} / {total}",
+  "@journalOfflineDownloading": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "journalOfflineSpaceUsed": "Espace utilisé : {size}",
+  "@journalOfflineSpaceUsed": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "journalOfflineUpdatedAt": "Mise à jour le {day}/{month}/{year} à {hour}h{minute}",
+  "@journalOfflineUpdatedAt": {
+    "placeholders": {
+      "day": {
+        "type": "String"
+      },
+      "month": {
+        "type": "String"
+      },
+      "year": {
+        "type": "String"
+      },
+      "hour": {
+        "type": "String"
+      },
+      "minute": {
+        "type": "String"
+      }
+    }
+  },
+  "journalOfflineMediaFailed": "{count, plural, =1{1 fichier audio/vidéo non téléchargé (réessayé à la prochaine mise à jour)} other{{count} fichiers audio/vidéo non téléchargés (réessayé à la prochaine mise à jour)}}",
+  "@journalOfflineMediaFailed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "journalOfflineUpdateNow": "Mettre à jour maintenant",
+  "publishFormatText": "Témoignage Écrit",
+  "publishFormatAudio": "Témoignage Audio",
+  "publishFormatVideo": "Témoignage Vidéo",
+  "publishFormatTextHint": "Racontez avec vos mots",
+  "publishFormatAudioHint": "Enregistrez votre voix",
+  "publishFormatVideoHint": "Filmez votre histoire",
+  "publishStatusDraft": "Brouillon",
+  "publishStatusSubmitted": "Soumis",
+  "publishStatusInReview": "En validation",
+  "publishStatusPublished": "Publié",
+  "publishStatusOffline": "Hors ligne",
+  "publishStatusJournal": "Dans mon carnet",
+  "publishStatusVideoUploading": "Envoi de la vidéo",
+  "publishProofBadFormat": "Format non accepté : image (JPG, PNG, WebP) ou PDF uniquement.",
+  "publishProofTooBig": "Fichier trop lourd : 10 Mo au maximum.",
+  "publishDefaultTitle": "Mon témoignage",
+  "publishServerTooSlow": "Le serveur a mis trop de temps à répondre.",
+  "publishCoverUploadFailed": "Échec de l'envoi de l'image de couverture. Réessaie.",
+  "publishAudioUploadFailed": "Échec de l'envoi audio. Réessaie.",
+  "publishAnotherVideoUploading": "Une autre vidéo est en cours d’envoi. Attendez la fin de son envoi (ou annulez-le) avant d’en publier une nouvelle.",
+  "publishServerErrorRetry": "Erreur serveur ({code}). Réessaie plus tard.",
+  "@publishServerErrorRetry": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "publishUnknownCode": "inconnue",
+  "publishListenToMyTestimony": "Écoutez mon témoignage…",
+  "uploadPhaseCompressing": "Compression de la vidéo…",
+  "uploadPhasePreparing": "Préparation de l’envoi…",
+  "uploadPhaseUploading": "Envoi de la vidéo…",
+  "uploadPhaseWaitingNetwork": "Connexion perdue : l’envoi reprendra automatiquement.",
+  "uploadPhaseFinalizing": "Finalisation…",
+  "uploadPhaseDone": "Vidéo envoyée",
+  "uploadPhaseFailed": "L’envoi a échoué",
+  "uploadAlreadyRunning": "Un envoi de vidéo est déjà en cours.",
+  "uploadInterrupted": "L’envoi de votre vidéo a été interrompu.",
+  "uploadUnexpectedError": "Une erreur inattendue est survenue.",
+  "uploadConnectionUnstable": "La connexion est trop instable pour envoyer la vidéo. Vérifiez votre réseau puis réessayez : l’envoi reprendra là où il s’était arrêté.",
+  "uploadCompressionFailed": "La compression de la vidéo a échoué. Réessayez, ou choisissez une autre vidéo.",
+  "uploadUnexpectedResponse": "Réponse inattendue du serveur.",
+  "uploadFileMissing": "Le fichier vidéo est introuvable sur l’appareil. Annulez puis publiez-le à nouveau.",
+  "uploadAuthorizationRefused": "L’autorisation d’envoi a été refusée. Réessayez dans quelques instants.",
+  "uploadServerRefused": "Le serveur vidéo a refusé l’envoi (erreur {code}).",
+  "@uploadServerRefused": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "uploadResendBusy": "Une vidéo est déjà en cours d’envoi. Attendez la fin de son envoi (ou annulez-le) avant d’en renvoyer une autre.",
+  "uploadResendHint": "Choisissez à nouveau la vidéo de votre témoignage. Le titre, la catégorie et le texte sont conservés.",
+  "uploadResendGallery": "Choisir dans la galerie",
+  "uploadResendFetchFailed": "Impossible de récupérer le témoignage. Vérifiez votre connexion.",
+  "uploadResendAlreadyUploading": "Une vidéo est déjà en cours d’envoi.",
+  "uploadProcessingMessage": "Votre témoignage est en cours de traitement. Vous serez notifié dès qu'il sera en ligne.",
+  "uploadScreenTitle": "Publication de la vidéo",
+  "uploadSeeTestimony": "Voir mon témoignage",
+  "uploadSeeMyPublications": "Voir mes publications",
+  "uploadBackHome": "Retour à l’accueil",
+  "uploadCanLeave": "Vous pouvez quitter cet écran : l’envoi continue et reprend tout seul après une coupure de réseau.",
+  "uploadNothing": "Aucun envoi de vidéo en cours.",
+  "uploadCancelTitle": "Annuler la publication ?",
+  "uploadCancelBody": "L’envoi de la vidéo sera arrêté et le témoignage ne sera pas publié.",
+  "uploadContinue": "Continuer l’envoi",
+  "uploadCancelPublication": "Annuler la publication",
+  "uploadPercent": "{percent} %",
+  "@uploadPercent": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "uploadProofFailed": "La preuve {position} n’a pas pu être envoyée.",
+  "@uploadProofFailed": {
+    "placeholders": {
+      "position": {
+        "type": "int"
+      }
+    }
+  },
+  "uploadProofsFailed": "Les preuves n’ont pas pu être envoyées.",
+  "uploadGiveUp": "Abandonner",
+  "uploadStepCompression": "Compression",
+  "uploadStepUpload": "Envoi",
+  "uploadStepFinalize": "Finalisation",
+  "publishCameraPermissionsRequired": "Les permissions caméra et microphone sont requises.\n\nActivez-les dans les réglages de l'application.",
+  "publishCameraDetectFailed": "Impossible de détecter les caméras : {error}",
+  "@publishCameraDetectFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "publishNoCamera": "Aucune caméra disponible sur cet appareil.",
+  "publishCameraError": "Erreur caméra : {error}",
+  "@publishCameraError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "publishVideoRecorded": "Vidéo enregistrée !",
+  "publishDuration": "Durée : {duration}",
+  "@publishDuration": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "publishTapToStop": "Appuyez pour arrêter",
+  "publishTapToRecord": "Appuyez pour enregistrer",
+  "publishRetake": "Reprendre",
+  "publishUse": "Utiliser",
+  "publishCameraInitializing": "Initialisation de la caméra…",
+  "publishCategoryHealing": "Guérison",
+  "publishCategoryDeliverance": "Délivrance",
+  "publishCategoryConversion": "Conversion",
+  "publishCategoryMarriage": "Mariage",
+  "publishCategoryFamily": "Famille",
+  "publishCategoryFinances": "Finances",
+  "publishCategoryMiracles": "Miracles",
+  "publishCategoryProtection": "Protection",
+  "publishCategoryMinistry": "Ministère",
+  "publishCategorySalvation": "Salut",
+  "publishShortPermissionsRequired": "Accès à la caméra et au microphone requis.\nVeuillez autoriser ces permissions dans les paramètres.",
+  "publishShortCameraInitError": "Erreur d'initialisation de la caméra: {error}",
+  "@publishShortCameraInitError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "publishShortGenericError": "Une erreur s'est produite.",
+  "publishShortRecorded": "Court Témoignage enregistré !",
+  "publishShortDuration": "{count, plural, =0{Durée: 0 seconde} =1{Durée: 1 seconde} other{Durée: {count} secondes}}",
+  "@publishShortDuration": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "publishShortTitle": "Short Témoignage",
+  "publishImportTitle": "Importer une image / document",
+  "publishImportHint": "Le fichier accompagne un témoignage écrit : une image devient la couverture, un document (PDF ou image) est joint comme preuve.",
+  "publishImportCover": "Image de couverture",
+  "publishImportCoverHint": "Photo de la galerie",
+  "publishImportProof": "Document ou preuve",
+  "publishImportProofHint": "PDF, JPG, PNG ou WebP · 10 Mo max.",
+  "publishShareTitle": "Partager un témoignage",
+  "publishWhichForm": "Quelle forme prend votre témoignage ?",
+  "publishRecordVideo": "Enregistrer une vidéo",
+  "publishRecordAudio": "Enregistrer un audio",
+  "publishWriteText": "Écrire un texte",
+  "publishOtherWays": "Autres façons de partager",
+  "publishShortHint": "60 secondes · Impact immédiat",
+  "publishJournalOption": "Carnet privé",
+  "publishJournalOptionHint": "Garder un témoignage pour moi, sans le publier",
+  "publishCreateEvent": "Créer un événement",
+  "publishCreateEventHint": "Croisade, conférence, camp… avec participation et direct",
+  "publishLiveHint": "Témoignage en direct, en temps réel",
+  "publishYouTubeLink": "Lien YouTube",
+  "publishYouTubeHint": "Publier une vidéo déjà sur YouTube (administrateurs)",
+  "publishStatusLabel": "Statut :",
+  "publishEventTestimony": "Témoignage de l'événement",
+  "publishEventDetach": "Ne pas rattacher à l'événement",
+  "publishProphecyFulfillment": "Accomplissement de la parole",
+  "publishProphecyDetach": "Ne pas rattacher à la parole",
+  "publishProphecyMakePublic": "Publier aussi la parole prophétique",
+  "publishProphecyMakePublicHint": "Elle sera montrée avec votre témoignage, une fois celui-ci publié.",
+  "publishStepOf": "Étape {step} sur 3 · {name}",
+  "@publishStepOf": {
+    "placeholders": {
+      "step": {
+        "type": "int"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "publishStepDetails": "Détails",
+  "publishStepContent": "Contenu",
+  "publishStepPublication": "Publication",
+  "publishTitleOptional": "Titre (optionnel)",
+  "publishTitleHint": "Ex : Dieu a changé ma vie",
+  "publishDescription": "Description",
+  "publishDescriptionOptional": "Description (optionnel)",
+  "publishTranscriptHint": "Sert aussi de transcription pour l'accessibilité.",
+  "publishBodyHint": "Racontez votre témoignage… (@ pour mentionner)",
+  "publishCategoryOptional": "Catégorie (optionnel)",
+  "publishCoverOptional": "Image de couverture (optionnel)",
+  "publishYourTestimony": "Votre témoignage",
+  "publishNoDescription": "Aucune description.",
+  "publishVerseOptional": "Verset biblique (optionnel)",
+  "publishVerseHint": "Ex. : Jean 3:16 ou sélectionnez dans la Bible",
+  "publishMicPermissionDenied": "Permission microphone refusée.",
+  "publishImportFromFiles": "Importer depuis les fichiers",
+  "publishVideoFile": "Fichier vidéo",
+  "publishYouTubeInvalid": "Lien YouTube non reconnu (youtube.com/watch?v=…, youtu.be/…, /shorts/…).",
+  "publishYouTubeNote": "La vidéo reste hébergée sur YouTube et sera lue avec le lecteur YouTube. Sa miniature sert d'image de couverture.",
+  "publishProofsLabel": "Preuves du témoignage (facultatif)",
+  "publishProofsHint": "Joignez jusqu'à 2 justificatifs (image ou PDF, 10 Mo au maximum). Par défaut, seuls vous et l'équipe de modération pouvez les voir ; vous pouvez choisir de les publier.",
+  "publishProofsPublic": "Publier aussi mes preuves pour confirmer le témoignage",
+  "publishProofsPublicHint": "Une fois le témoignage publié, tout le monde pourra les voir. Masquez d'abord les informations personnelles. L'équipe de modération peut retirer cet affichage.",
+  "publishProofFromGallery": "Image de la galerie",
+  "publishProofFromFiles": "Document PDF ou image (fichiers)",
+  "publishProofAdd": "Ajouter la preuve {position}",
+  "@publishProofAdd": {
+    "placeholders": {
+      "position": {
+        "type": "int"
+      }
+    }
+  },
+  "publishProofItem": "Preuve {position} · {size}",
+  "@publishProofItem": {
+    "placeholders": {
+      "position": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "publishProofRemove": "Retirer la preuve {position}",
+  "@publishProofRemove": {
+    "placeholders": {
+      "position": {
+        "type": "int"
+      }
+    }
+  },
+  "publishProofUploadFailed": "La preuve {position} n'a pas pu être envoyée",
+  "@publishProofUploadFailed": {
+    "placeholders": {
+      "position": {
+        "type": "int"
+      }
+    }
+  },
+  "publishSessionExpired": "Session expirée. Reconnecte-toi.",
+  "publishSavedOffline": "Hors ligne — témoignage enregistré localement. Il sera envoyé à la prochaine connexion.",
+  "publishSavedToJournal": "Enregistré dans votre carnet privé 🔒",
+  "publishSubmitted": "Témoignage soumis ! Il sera visible après modération.",
+  "publishVisibility": "Visibilité",
+  "publishWhoCanSee": "Qui peut voir votre témoignage ?",
+  "publishVisibilityPublic": "Public",
+  "publishVisibilityPublicHint": "Visible par tous les utilisateurs",
+  "publishVisibilityFriends": "Amis",
+  "publishVisibilityFriendsHint": "Visible uniquement par vos abonnés",
+  "publishVisibilityPrivateHint": "Gardé pour vous seul, sans modération. Vous pourrez le partager plus tard.",
+  "publishCertifyBody": "Je confirme que les faits relatés dans ce témoignage sont authentiques et vécus personnellement.",
+  "publishConsentRequired": "La confirmation est requise pour publier.",
+  "publishCategoryRequired": "Pour publier, choisissez une catégorie (étape 1).",
+  "publishJournalInfo": "Ce témoignage sera rangé dans votre carnet privé : vous seul pourrez le voir, il ne sera ni publié ni relu par les modérateurs.\n\nVous pourrez le partager quand vous le souhaitez, depuis votre carnet.",
+  "publishChooseCategory": "Choisir une catégorie",
+  "publishChange": "Changer",
+  "publishTapToAddCover": "Appuyez pour ajouter\nune image de couverture",
+  "publishFormatHeading": "Titre (# texte)",
+  "publishFormatBold": "Gras (**texte**)",
+  "publishFormatItalic": "Italique (__texte__)",
+  "publishFormatStrike": "Barré (~~texte~~)",
+  "publishFormatQuote": "Citation (> texte)",
+  "publishFormatBullets": "Liste à puces (- texte)",
+  "publishFormatNumbered": "Liste numérotée (1. texte)",
+  "publishRecordingDone": "Enregistrement terminé ✓",
+  "publishFilmVideo": "Filmer une vidéo",
+  "publishPickFromGallery": "Choisir depuis la galerie",
+  "publishTrimVideo": "Couper la vidéo",
+  "publishThumbnail": "Miniature",
+  "publishThumbnailCustom": "Perso.",
+  "publishOr": "ou",
+  "publishSizeKb": "{size} Ko",
+  "@publishSizeKb": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "publishSizeMb": "{size} Mo",
+  "@publishSizeMb": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "publishSizeGb": "{size} Go",
+  "@publishSizeGb": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  }
+}

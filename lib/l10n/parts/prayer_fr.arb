@@ -1,0 +1,479 @@
+{
+  "@@locale": "fr",
+  "prayerVisibilityPublic": "Tout le monde",
+  "prayerVisibilityFollowers": "Mes abonnés",
+  "prayerVisibilityPrivate": "Moi seul",
+  "prayerReportInappropriate": "Contenu inapproprié",
+  "prayerReportHate": "Propos haineux",
+  "prayerReportSpam": "Publicité ou spam",
+  "prayerReportOther": "Autre raison",
+  "prayerDefaultUser": "Utilisateur",
+  "prayerDefaultEvent": "Événement",
+  "prayerPhaseUpcoming": "À venir",
+  "prayerPhaseLive": "En cours",
+  "prayerPhaseEnded": "Terminée",
+  "prayerPhaseCancelled": "Annulée",
+  "prayerSessionDefaultTitle": "Session de prière",
+  "prayerErrorServer": "Erreur du serveur ({status}).",
+  "@prayerErrorServer": {
+    "placeholders": {
+      "status": {
+        "type": "int"
+      }
+    }
+  },
+  "prayerErrorConnection": "Connexion impossible. Vérifiez votre accès à Internet.",
+  "prayerErrorRoomNotOpened": "La salle n'a pas pu être ouverte.",
+  "prayerAnswered": "Exaucée",
+  "prayerReasonPray": "prier pour cette requête",
+  "prayerRequestLabel": "Requête de prière",
+  "prayerAnonymousLower": "anonyme",
+  "prayerPrayCount": "Je prie · {count}",
+  "@prayerPrayCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prayerHiddenByModeration": "Retirée par la modération.",
+  "prayerRegistered": "Inscrit",
+  "prayerFollowersPill": "Abonnés",
+  "prayerSessionWhen": "{date} · {minutes} min",
+  "@prayerSessionWhen": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "prayerHostedBy": "Animée par {name}",
+  "@prayerHostedBy": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "prayerRegisteredCount": "{count, plural, =0{0 inscrit} =1{1 inscrit} other{{count} inscrits}}",
+  "@prayerRegisteredCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prayerSectionTitle": "Prière",
+  "prayerRequestCount": "{count, plural, =0{0 requête} =1{1 requête} other{{count} requêtes}}",
+  "@prayerRequestCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prayerReasonEntrust": "confier une requête de prière",
+  "prayerEntrustRequest": "Confier une requête",
+  "prayerScheduleSession": "Programmer une session",
+  "prayerUpcomingSessions": "Sessions de prière à venir",
+  "prayerSeeAll": "Tout voir",
+  "prayerTabAll": "Toutes",
+  "prayerTabMine": "Mes requêtes",
+  "prayerFilterAnswered": "Exaucées",
+  "prayerEmptyMine": "Vous n'avez pas encore confié de requête.\nLa communauté priera avec vous — vous pouvez rester anonyme.",
+  "prayerEmptyAnswered": "Aucune requête exaucée pour le moment.",
+  "prayerEmptyAll": "Aucune requête de prière pour le moment.\nSoyez le premier à confier un besoin.",
+  "prayerLoadRequestsError": "Impossible de charger les requêtes.",
+  "prayerVerseJames": "« Priez les uns pour les autres, afin que vous soyez guéris. La prière agissante du juste a une grande efficacité. »",
+  "prayerVerseJamesRef": "Jacques 5:16",
+  "prayerSessionMustBeFuture": "La session doit être programmée dans le futur.",
+  "prayerSessionUpdated": "Session mise à jour.",
+  "prayerSessionScheduled": "Session de prière programmée.",
+  "prayerEditSession": "Modifier la session",
+  "prayerSessionNotFound": "Session introuvable.",
+  "prayerSessionFormIntro": "À l'heure prévue, vous ouvrez la salle (caméra ou micro) : les inscrits rejoignent, commentent et peuvent prendre la parole à tour de rôle.",
+  "prayerSessionLinkedToEvent": "Session rattachée à l'événement.",
+  "prayerSessionTitleLabel": "Titre *",
+  "prayerSessionTitleHint": "Ex. : Veillée de prière pour les familles",
+  "prayerSessionTitleRequired": "Donnez un titre à la session.",
+  "prayerSessionDescriptionLabel": "Présentation",
+  "prayerSessionTopics": "Sujets de prière",
+  "prayerTopicsMax": "10 sujets au plus",
+  "prayerAddTopicHint": "Ajouter un sujet",
+  "prayerAddTopicTooltip": "Ajouter le sujet",
+  "prayerWhen": "Quand ?",
+  "prayerDuration": "Durée",
+  "prayerDurationMinutes": "{minutes} min",
+  "@prayerDurationMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "prayerDurationHours": "{hours} h",
+  "@prayerDurationHours": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "prayerDurationHoursMinutes": "{hours} h {minutes}",
+  "@prayerDurationHoursMinutes": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "prayerReminderInfo": "Les inscrits reçoivent un rappel 15 minutes avant.",
+  "prayerWhoCanSee": "Qui peut la voir ?",
+  "prayerScheduleTheSession": "Programmer la session",
+  "prayerSessionsTabUpcoming": "À venir",
+  "prayerSessionsTabJoined": "Mes inscriptions",
+  "prayerSessionsTabHosting": "Que j'anime",
+  "prayerSessionsTabPast": "Passées",
+  "prayerReasonSchedule": "programmer une session de prière",
+  "prayerSchedule": "Programmer",
+  "prayerSessionsEmptyJoined": "Vous n'êtes inscrit à aucune session.\nTouchez « Je serai là » sur une session à venir.",
+  "prayerSessionsEmptyHosting": "Vous n'animez aucune session.\nProgrammez un temps de prière : les inscrits seront prévenus.",
+  "prayerSessionsEmptyPast": "Aucune session passée.",
+  "prayerSessionsEmpty": "Aucune session de prière programmée pour le moment.",
+  "prayerLoadSessionsError": "Impossible de charger les sessions.",
+  "prayerHintPublic": "Visible de tous, même sans compte.",
+  "prayerHintFollowers": "Visible des personnes qui vous suivent.",
+  "prayerHintPrivate": "Visible de vous seul (carnet de prière personnel).",
+  "prayerRequestPublished": "Votre requête est publiée. Que Dieu vous réponde !",
+  "prayerRequestLinkedToEvent": "Rattachée à l'événement : elle apparaîtra sur sa page.",
+  "prayerYourRequest": "Votre requête",
+  "prayerRequestEmptyError": "Écrivez votre requête de prière.",
+  "prayerRequestTooShort": "Votre requête est trop courte (10 caractères au moins).",
+  "prayerRequestHint": "Pour quoi souhaitez-vous que l'on prie ? (@ pour mentionner)",
+  "prayerRequestHelperPrivate": "Évitez les informations trop personnelles. Requête privée : personne n'est prévenu des mentions.",
+  "prayerRequestHelper": "Évitez les informations trop personnelles (adresse, téléphone…). Les personnes mentionnées qui peuvent voir la requête sont prévenues.",
+  "prayerPostAnonymously": "Publier anonymement",
+  "prayerPostAnonymouslyDesc": "Votre nom est masqué pour les autres. Il reste visible de vous et de l'équipe de modération.",
+  "prayerPublishMyRequest": "Publier ma requête",
+  "prayerAnsweredDialogTitle": "Elle est exaucée !",
+  "prayerAnsweredNoteHint": "Ce que Dieu a fait (facultatif)",
+  "prayerAnsweredSuccess": "Gloire à Dieu ! Pensez à témoigner de cet exaucement.",
+  "prayerDeleteRequestTitle": "Supprimer la requête ?",
+  "prayerDeleteRequestBody": "La requête et ses messages d'encouragement seront supprimés.",
+  "prayerRequestDeleted": "Requête supprimée.",
+  "prayerReasonReport": "signaler un contenu",
+  "prayerReportSaved": "Signalement enregistré. Merci pour votre vigilance.",
+  "prayerReasonEncourage": "encourager cette personne",
+  "prayerEncouragementThanks": "Merci pour votre encouragement !",
+  "prayerRequestReopened": "Requête remise en attente.",
+  "prayerEncouragementsCount": "Encouragements ({count})",
+  "@prayerEncouragementsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prayerLeaveEncouragement": "Laisser un encouragement",
+  "prayerLoadRequestError": "Impossible de charger la requête.",
+  "prayerHiddenNotice": "{reason} Elle n'est plus visible des autres.",
+  "@prayerHiddenNotice": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "prayerAnsweredGlory": "Exaucée — gloire à Dieu !",
+  "prayerReadTestimony": "Lire le témoignage",
+  "prayerPeoplePraying": "{count, plural, =0{Soyez le premier à prier} =1{1 personne prie} other{{count} personnes prient}}",
+  "@prayerPeoplePraying": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prayerShareTitle": "Requête de prière de {name}",
+  "@prayerShareTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "prayerTestifyAnswer": "Témoignez de cet exaucement",
+  "prayerGodAnswered": "Dieu a répondu ?",
+  "prayerTestifyAnswerDesc": "Racontez ce que Dieu a fait : votre témoignage fortifiera ceux qui prient encore.",
+  "prayerMarkAnsweredDesc": "Marquez la requête exaucée : ceux qui ont prié avec vous le verront.",
+  "prayerItIsAnswered": "Elle est exaucée",
+  "prayerTestify": "Témoigner",
+  "prayerSetPending": "Remettre en attente",
+  "prayerNoMessages": "Aucun message pour le moment. Un verset, une parole d'encouragement peuvent fortifier.",
+  "prayerDeleteMessage": "Supprimer le message",
+  "prayerMessagesUnavailable": "Messages indisponibles.",
+  "prayerMessageHintMention": "Je prie avec vous… (@ pour mentionner)",
+  "prayerMessageLabel": "Message d'encouragement",
+  "prayerVerseLabel": "Verset (facultatif)",
+  "prayerVerseHint": "Ex. : Philippiens 4:6-7",
+  "prayerReportTitle": "Signaler la requête",
+  "prayerReportInfo": "Au 3e signalement, la requête est retirée en attendant la modération.",
+  "prayerReportDetailsHint": "Précisions (facultatif)",
+  "prayerReportSend": "Envoyer le signalement",
+  "prayerReasonRegister": "vous inscrire à la session",
+  "prayerRegistrationRemoved": "Inscription retirée.",
+  "prayerRegistrationSaved": "Inscription enregistrée : vous serez prévenu à l'ouverture de la salle.",
+  "prayerCancelSessionTitle": "Annuler la session ?",
+  "prayerCancelSessionBody": "Elle restera visible comme « Annulée » ; la salle sera fermée.",
+  "prayerCancelSession": "Annuler la session",
+  "prayerSessionCancelled": "Session annulée.",
+  "prayerDeleteSessionTitle": "Supprimer la session ?",
+  "prayerDeleteSessionBody": "La session sera supprimée et sa salle fermée si elle est ouverte.",
+  "prayerSessionDeleted": "Session supprimée.",
+  "prayerLoadSessionError": "Impossible de charger la session.",
+  "prayerFollowersOnly": "· Réservée aux abonnés",
+  "prayerSessionWasCancelled": "Cette session a été annulée.",
+  "prayerReturnToRoom": "Retourner dans la salle",
+  "prayerOpenRoom": "Ouvrir la salle",
+  "prayerOpenRoomInfo": "Vous arrivez dans le studio : passez à l'antenne pour commencer. Les inscrits sont prévenus.",
+  "prayerCanOpenRoomFrom": "Vous pourrez ouvrir la salle à partir du {date}.",
+  "@prayerCanOpenRoomFrom": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "prayerSessionEnded": "Cette session est terminée.",
+  "prayerJoinRoom": "Rejoindre la salle",
+  "prayerJoinRoomInfo": "Commentez et demandez à prendre la parole depuis la salle.",
+  "prayerRoomWillOpenNotified": "La salle s'ouvrira à l'heure prévue : vous serez prévenu.",
+  "prayerRoomWillOpen": "La salle s'ouvrira à l'heure prévue.",
+  "prayerIWillBeThere": "Je serai là",
+  "prayerTapAgainToUnregister": "Toucher à nouveau pour retirer l'inscription.",
+  "prayerRoomTitle": "La salle de prière",
+  "testimonyDeleteTitle": "Supprimer ce témoignage ?",
+  "testimonyDeleteMineBody": "Cette action est irréversible. Le témoignage sera définitivement supprimé.",
+  "testimonyDeleteOtherBody": "Ce témoignage de {name} sera définitivement supprimé, avec ses commentaires et ses réactions.",
+  "@testimonyDeleteOtherBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "testimonyDeleteError": "Impossible de supprimer. Réessayez.",
+  "testimonyDeleted": "Témoignage supprimé.",
+  "shortsEmptyTitle": "Aucun Short disponible",
+  "shortsEmptyBody": "Publiez une vidéo courte pour commencer.",
+  "reportReasonInappropriate": "Contenu inapproprié",
+  "reportReasonFalseTestimony": "Faux témoignage",
+  "reportReasonHate": "Discours haineux",
+  "reportReasonSpam": "Spam ou publicité",
+  "reportReasonOther": "Autre raison",
+  "reportGuestReason": "signaler un contenu",
+  "reportSent": "Signalement envoyé. Merci pour votre contribution.",
+  "reportError": "Une erreur est survenue. Veuillez réessayer.",
+  "reportTitle": "Signaler ce témoignage",
+  "reportIntro": "Votre signalement est anonyme et sera examiné par notre équipe de modération.",
+  "reportReasonTitle": "Raison du signalement",
+  "reportReasonSubtitle": "Sélectionnez la raison qui correspond le mieux",
+  "reportDetailsTitle": "Détails supplémentaires (optionnel)",
+  "reportDetailsHint": "Décrivez le problème avec plus de précision…",
+  "reportSubmit": "Envoyer le signalement",
+  "testimonyTtsUnavailable": "La lecture vocale n'est pas disponible sur cet appareil (aucune voix installée pour cette langue).",
+  "testimonyTtsReading": "Lecture en cours",
+  "testimonyTtsPaused": "En pause",
+  "testimonyTtsReadAloud": "Lecture vocale du texte",
+  "testimonyTtsPause": "Pause",
+  "testimonyTtsListen": "Écouter",
+  "testimonyTtsListenTitle": "Écouter ce témoignage",
+  "testimonyTtsStop": "Arrêter",
+  "testimonyTtsOptions": "Options de lecture",
+  "testimonyTtsAutoRead": "Lecture automatique",
+  "testimonyAgoJustNow": "à l'instant",
+  "testimonyAgoMinutes": "il y a {count} min",
+  "@testimonyAgoMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "testimonyAgoHours": "{count, plural, =1{il y a 1 heure} other{il y a {count} heures}}",
+  "@testimonyAgoHours": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "testimonyAgoDays": "{count, plural, =1{il y a 1 jour} other{il y a {count} jours}}",
+  "@testimonyAgoDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "testimonyAgoMonths": "il y a {count} mois",
+  "@testimonyAgoMonths": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "testimonyAgoYears": "{count, plural, =1{il y a 1 an} other{il y a {count} ans}}",
+  "@testimonyAgoYears": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "testimonyViews": "{count, plural, =0{{formatted} vue} =1{{formatted} vue} other{{formatted} vues}}",
+  "@testimonyViews": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "formatted": {
+        "type": "String"
+      }
+    }
+  },
+  "testimonyLikeSemantic": "J'aime",
+  "testimonyPraySemantic": "Je prie",
+  "testimonyShareSemantic": "Partager",
+  "testimonyCommentsSemantic": "Commentaires",
+  "testimonyWordOfGod": "Parole de Dieu",
+  "testimonyOffline": "Hors ligne",
+  "commentsTitleCount": "Commentaires ({count})",
+  "@commentsTitleCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "commentsReplies": "{count, plural, =1{1 réponse} other{{count} réponses}}",
+  "@commentsReplies": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "commentsDeleteTitle": "Supprimer ce commentaire ?",
+  "commentsDeleteIrreversible": "Cette action est irréversible.",
+  "commentsJustNow": "À l'instant",
+  "commentsEmptyTitle": "Aucun commentaire",
+  "commentsEmptyBody": "Soyez le premier à réagir !",
+  "commentsLoadError": "Impossible de charger les commentaires",
+  "commentsAgoHoursShort": "il y a {count}h",
+  "@commentsAgoHoursShort": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "commentsAgoDaysShort": "il y a {count}j",
+  "@commentsAgoDaysShort": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "commentsDeletePermanent": "Le commentaire sera définitivement supprimé.",
+  "testimonyDeleteTooltip": "Supprimer le témoignage",
+  "playerQualityAdjusted": "Qualité ajustée : {label} ({network})",
+  "@playerQualityAdjusted": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "network": {
+        "type": "String"
+      }
+    }
+  },
+  "playerNetworkMobile": "données mobiles",
+  "playerNetworkWifi": "Wi-Fi",
+  "playerQualityOriginal": "Originale",
+  "playerQualityLoadError": "Impossible de charger cette qualité.",
+  "playerMobileDataHint": "Données mobiles · {label}",
+  "@playerMobileDataHint": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "playerQualityAuto": "Auto",
+  "playerQualityAutoWith": "Auto · {label}",
+  "@playerQualityAutoWith": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "playerQualitiesPreparing": "Les autres qualités sont en préparation : réessayez dans quelques minutes.",
+  "playerSingleQualityVideo": "Une seule qualité est disponible pour cette vidéo.",
+  "playerSingleQualityAudio": "Une seule qualité est disponible pour cet audio.",
+  "playerVideoQualitySettingsHint": "Qualité par défaut modifiable dans Paramètres › Qualité vidéo.",
+  "playerVideoQualityTitle": "Qualité de la vidéo",
+  "playerQualityThisPlaybackOnly": "Ce choix vaut pour cette lecture uniquement.\n{settingsHint}",
+  "@playerQualityThisPlaybackOnly": {
+    "placeholders": {
+      "settingsHint": {
+        "type": "String"
+      }
+    }
+  },
+  "playerRemoveFromFavorites": "Retirer des favoris",
+  "playerAutoplay": "Lecture auto",
+  "playerQualitySwitching": "Changement de qualité…",
+  "playerUpNextIn": "Suivant dans {seconds} s",
+  "@playerUpNextIn": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "playerCommentsCount": "{count, plural, =0{{formatted} commentaire} =1{{formatted} commentaire} other{{formatted} commentaires}}",
+  "@playerCommentsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "formatted": {
+        "type": "String"
+      }
+    }
+  },
+  "playerRelatedVideos": "Vidéos similaires",
+  "commentsAddHintDots": "Ajouter un commentaire...",
+  "shortsMobileDataTapToPlay": "Données mobiles · touchez pour lire",
+  "shortsSaved": "Sauvegardé",
+  "shortsSharedFromApp": "Partagé depuis l'application Témoignages ✝️",
+  "shortsMe": "Moi",
+  "shortsAgoMinutes": "il y a {count}min",
+  "@shortsAgoMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
+}

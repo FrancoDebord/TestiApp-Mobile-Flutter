@@ -7,6 +7,7 @@ import '../providers/moderation_provider.dart';
 import '../widgets/moderation_item_card.dart';
 import '../widgets/moderation_stat_card.dart';
 import '../widgets/review_bottom_sheet.dart';
+import '../../../l10n/app_localizations.dart';
 
 // =============================================================================
 // ModerationScreen  — Moderator Dashboard
@@ -45,12 +46,12 @@ class ModerationScreen extends ConsumerWidget {
             automaticallyImplyLeading: false,
             title: Row(
               children: [
-                const Flexible(
+                Flexible(
                   child: Text(
-                    'Modération',
+                    context.l10n.moderationTitle,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontFamily: 'Plus Jakarta Sans',
                       fontWeight: FontWeight.w600,
                       fontSize: 20,
@@ -66,7 +67,7 @@ class ModerationScreen extends ConsumerWidget {
               IconButton(
                 icon: const Icon(Icons.filter_list_rounded,
                     color: Color(0xFF184797)),
-                tooltip: 'Filtres avancés',
+                tooltip: context.l10n.moderationAdvancedFilters,
                 onPressed: () {},
               ),
             ],
@@ -130,7 +131,7 @@ class ModerationScreen extends ConsumerWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Approuvé : ${item.truncatedTitle}',
+              context.l10n.moderationApprovedItem(item.truncatedTitle),
               style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13),
             ),
             backgroundColor: const Color(0xFF12B76A),
@@ -144,7 +145,7 @@ class ModerationScreen extends ConsumerWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erreur : $e',
+            content: Text(context.l10n.moderationError('$e'),
                 style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13)),
             backgroundColor: const Color(0xFFD92D20),
             behavior: SnackBarBehavior.floating,
@@ -178,8 +179,8 @@ class ModerationScreen extends ConsumerWidget {
             } catch (_) {}
           }
           final msg = action == ReviewAction.reject
-              ? 'Témoignage rejeté'
-              : 'Demande de modification envoyée';
+              ? L10n.current.moderationRejectedSnack
+              : L10n.current.moderationEditRequestedSnack;
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -219,28 +220,28 @@ class _StatsRow extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             ModerationStatCard(
-              label: 'En attente',
+              label: context.l10n.modStatusPending,
               count: stats.pending,
               color: const Color(0xFFF79009),
               icon: Icons.hourglass_top_rounded,
             ),
             const SizedBox(width: 10),
             ModerationStatCard(
-              label: 'Approuvés\naujourd\'hui',
+              label: context.l10n.moderationStatApprovedToday,
               count: stats.approvedToday,
               color: const Color(0xFF12B76A),
               icon: Icons.check_circle_outline_rounded,
             ),
             const SizedBox(width: 10),
             ModerationStatCard(
-              label: 'Rejetés',
+              label: context.l10n.moderationStatRejected,
               count: stats.rejectedToday,
               color: const Color(0xFFD92D20),
               icon: Icons.cancel_outlined,
             ),
             const SizedBox(width: 10),
             ModerationStatCard(
-              label: 'Total ce mois',
+              label: context.l10n.moderationStatTotalMonth,
               count: stats.totalThisMonth,
               color: const Color(0xFF184797),
               icon: Icons.bar_chart_rounded,
@@ -273,9 +274,9 @@ class _FilterTabBar extends ConsumerWidget {
           children: ModerationFilterTab.values.map((tab) {
             final selected = tab == current;
             final label = switch (tab) {
-              ModerationFilterTab.pending => 'En attente',
-              ModerationFilterTab.inReview => 'En révision',
-              ModerationFilterTab.all => 'Tous',
+              ModerationFilterTab.pending => context.l10n.modStatusPending,
+              ModerationFilterTab.inReview => context.l10n.modStatusInReview,
+              ModerationFilterTab.all => context.l10n.moderationTabAll,
             };
             return Expanded(
               child: GestureDetector(
@@ -375,9 +376,9 @@ class _EmptyState extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Aucun témoignage à modérer',
-            style: TextStyle(
+          Text(
+            context.l10n.moderationEmptyTitle,
+            style: const TextStyle(
               fontFamily: 'Plus Jakarta Sans',
               fontWeight: FontWeight.w600,
               fontSize: 16,
@@ -385,9 +386,9 @@ class _EmptyState extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          const Text(
-            'Tout est à jour !',
-            style: TextStyle(
+          Text(
+            context.l10n.moderationEmptyDesc,
+            style: const TextStyle(
               fontFamily: 'Plus Jakarta Sans',
               fontSize: 13,
               color: Color(0xFF667085),

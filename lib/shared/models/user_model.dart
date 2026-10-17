@@ -1,5 +1,6 @@
 // lib/shared/models/user_model.dart — Dart pur, sans génération de code.
 
+import '../../l10n/app_localizations.dart';
 import 'account_approval.dart';
 
 export 'account_approval.dart' show AccountApprovalBadge;
@@ -32,17 +33,26 @@ enum AccountType {
 
 /// Type d'organisation (valeurs API en anglais, libellés en français).
 enum OrganizationType {
-  church('church', 'Église'),
-  ministry('ministry', 'Ministère'),
-  association('association', 'Association'),
-  ngo('ngo', 'ONG'),
-  media('media', 'Média chrétien'),
-  other('other', 'Autre');
+  church('church'),
+  ministry('ministry'),
+  association('association'),
+  ngo('ngo'),
+  media('media'),
+  other('other');
 
-  const OrganizationType(this.apiValue, this.label);
+  const OrganizationType(this.apiValue);
 
   final String apiValue;
-  final String label;
+
+  /// Libellé dans la langue affichée.
+  String get label => switch (this) {
+        church => L10n.current.sharedOrgTypeChurch,
+        ministry => L10n.current.sharedOrgTypeMinistry,
+        association => L10n.current.sharedOrgTypeAssociation,
+        ngo => L10n.current.sharedOrgTypeNgo,
+        media => L10n.current.sharedOrgTypeMedia,
+        other => L10n.current.sharedOrgTypeOther,
+      };
 
   static OrganizationType? fromJson(String? v) {
     if (v == null || v.isEmpty) return null;
@@ -79,6 +89,7 @@ class UserModel {
     this.phone = '',
     this.phoneCountry,
     this.isPhoneVerified = false,
+    this.hasConversionTestimony = false,
     this.avatarUrl,
     this.coverUrl,
     this.country = '',
@@ -114,6 +125,10 @@ class UserModel {
 
   /// Numéro confirmé par SMS (connexion par téléphone) : non modifiable dans le profil.
   final bool isPhoneVerified;
+
+  /// Témoignage de conversion publié (`has_conversion_testimony` de GET /me et
+  /// GET /users/{id} ; docs serveur fonctionnalites/temoignage-de-conversion.md).
+  final bool hasConversionTestimony;
   final String? avatarUrl;
 
   /// Photo de couverture du profil (bandeau), null si aucune.
@@ -179,6 +194,7 @@ class UserModel {
       phone:            j['phone']            as String? ?? '',
       phoneCountry:     _str(j['phone_country']),
       isPhoneVerified:  _bool(j['is_phone_verified']),
+      hasConversionTestimony: _bool(j['has_conversion_testimony']),
       avatarUrl:        j['avatar_url']       as String?,
       coverUrl:         _str(j['cover_url']),
       country:          j['country']          as String? ?? '',
@@ -212,6 +228,7 @@ class UserModel {
     'id': id, 'display_name': displayName, 'email': email, 'phone': phone,
     if (phoneCountry != null) 'phone_country': phoneCountry,
     'is_phone_verified': isPhoneVerified,
+    'has_conversion_testimony': hasConversionTestimony,
     if (avatarUrl != null) 'avatar_url': avatarUrl,
     if (coverUrl != null) 'cover_url': coverUrl,
     'country': country, 'bio': bio, 'has_password': hasPassword, 'role': role.toJson(), 'is_email_verified': isEmailVerified,
@@ -265,6 +282,7 @@ class UserModel {
     phone:           phone           ?? this.phone,
     phoneCountry:    phoneCountry    ?? this.phoneCountry,
     isPhoneVerified: isPhoneVerified ?? this.isPhoneVerified,
+    hasConversionTestimony: hasConversionTestimony,
     avatarUrl:       avatarUrl       ?? this.avatarUrl,
     coverUrl:        clearCoverUrl ? null : (coverUrl ?? this.coverUrl),
     country:         country         ?? this.country,
@@ -295,7 +313,7 @@ class UserModel {
 
   @override int get hashCode => id.hashCode;
 
-  @override String toString() => 'UserModel($id, $displayName)';
+  @override String toString() => 'UserModel($id, $displayName)'; // i18n-ignore
 
   // ── Helpers ───────────────────────────────────────────────────────────────────
 

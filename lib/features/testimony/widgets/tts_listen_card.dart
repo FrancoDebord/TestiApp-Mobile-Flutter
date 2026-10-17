@@ -41,7 +41,7 @@ Future<void> startTestimonyReading(
   WidgetRef ref,
   TextTestimony t,
 ) async {
-  final l10n = AppLocalizations.of(context);
+  final l10n = context.l10n;
   final messenger = ScaffoldMessenger.maybeOf(context);
   // Un seul son à la fois : mettre en pause un témoignage audio en cours.
   if (ref.exists(audioPlayerProvider) &&
@@ -60,11 +60,7 @@ Future<void> startTestimonyReading(
       SnackBar(
         behavior: SnackBarBehavior.floating,
         content: Text(
-          l10n.isFr
-              ? 'La lecture vocale n\'est pas disponible sur cet appareil '
-                  '(aucune voix installée pour cette langue).'
-              : 'Text-to-speech is not available on this device '
-                  '(no voice installed for this language).',
+          l10n.testimonyTtsUnavailable,
         ),
       ),
     );
@@ -78,7 +74,7 @@ class TtsListenCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context);
+    final l10n = context.l10n;
     final fr = l10n.isFr;
     final tts = ref.watch(ttsControllerProvider);
     final mine = tts.isFor(testimony.id);
@@ -87,10 +83,10 @@ class TtsListenCard extends ConsumerWidget {
     final controller = ref.read(ttsControllerProvider.notifier);
 
     final subtitle = playing
-        ? (fr ? 'Lecture en cours' : 'Reading')
+        ? l10n.testimonyTtsReading
         : paused
-            ? (fr ? 'En pause' : 'Paused')
-            : (fr ? 'Lecture vocale du texte' : 'Read aloud');
+            ? l10n.testimonyTtsPaused
+            : l10n.testimonyTtsReadAloud;
     final counter =
         mine && tts.chunks.isNotEmpty ? ' · ${tts.index + 1}/${tts.chunks.length}' : '';
 
@@ -107,9 +103,7 @@ class TtsListenCard extends ConsumerWidget {
               // Bulle lecture / pause
               Semantics(
                 button: true,
-                label: playing
-                    ? (fr ? 'Pause' : 'Pause')
-                    : (fr ? 'Écouter' : 'Listen'),
+                label: playing ? l10n.testimonyTtsPause : l10n.testimonyTtsListen,
                 child: InkWell(
                   key: const ValueKey('tts-play'),
                   customBorder: const CircleBorder(),
@@ -143,7 +137,7 @@ class TtsListenCard extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      fr ? 'Écouter ce témoignage' : 'Listen to this testimony',
+                      l10n.testimonyTtsListenTitle,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.labelMedium.copyWith(
@@ -185,7 +179,7 @@ class TtsListenCard extends ConsumerWidget {
               if (mine)
                 IconButton(
                   key: const ValueKey('tts-stop'),
-                  tooltip: fr ? 'Arrêter' : 'Stop',
+                  tooltip: l10n.testimonyTtsStop,
                   visualDensity: VisualDensity.compact,
                   onPressed: controller.stop,
                   icon: const Icon(Icons.stop_rounded,
@@ -193,7 +187,7 @@ class TtsListenCard extends ConsumerWidget {
                 ),
               PopupMenuButton<String>(
                 key: const ValueKey('tts-menu'),
-                tooltip: fr ? 'Options de lecture' : 'Reading options',
+                tooltip: l10n.testimonyTtsOptions,
                 icon: const Icon(Icons.more_vert_rounded,
                     color: AppColors.textSecondary),
                 onSelected: (v) {
@@ -204,7 +198,7 @@ class TtsListenCard extends ConsumerWidget {
                     value: 'auto',
                     checked: tts.autoRead,
                     child: Text(
-                      fr ? 'Lecture automatique' : 'Auto-read',
+                      l10n.testimonyTtsAutoRead,
                       style: AppTextStyles.bodyMedium,
                     ),
                   ),

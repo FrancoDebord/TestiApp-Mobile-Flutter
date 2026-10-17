@@ -16,6 +16,7 @@ import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:video_player/video_player.dart';
 
 import '../app_constants.dart';
+import '../../l10n/app_localizations.dart';
 
 /// État de traitement d'une vidéo (`video.status`).
 enum VideoProcessingState {
@@ -40,9 +41,9 @@ enum VideoProcessingState {
 
 /// Libellés affichés (fil, détail, « Mes témoignages », modération).
 abstract final class VideoStatusText {
-  static const processing = 'Vidéo en cours de traitement';
-  static const failed = 'La vidéo n’a pas pu être traitée';
-  static const resend = 'Renvoyer la vidéo';
+  static String get processing => L10n.current.mediaVideoProcessing;
+  static String get failed => L10n.current.mediaVideoFailed;
+  static String get resend => L10n.current.mediaVideoResend;
 }
 
 bool _isUsable(String? url) => url != null && url.trim().isNotEmpty;
@@ -67,7 +68,7 @@ bool isBunnyCdnUrl(String? url) {
 /// interdit de le fixer). Vide pour les autres hôtes.
 Map<String, String> mediaHttpHeaders(String? url) {
   if (kIsWeb || !isBunnyCdnUrl(url)) return const {};
-  return {'Referer': '${AppConstants.webBaseUrl}/'};
+  return {'Referer': '${AppConstants.webBaseUrl}/'}; // i18n-ignore
 }
 
 /// Lecteur réseau ; une playlist `.m3u8` est signalée comme HLS (Android :

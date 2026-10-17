@@ -11,6 +11,7 @@ import '../../../features/downloads/widgets/download_tile.dart';
 import '../../../features/home/models/testimony_model.dart';
 import '../../../features/home/providers/home_providers.dart';
 import '../../../features/home/widgets/testimony_feed_item.dart';
+import '../../../l10n/app_localizations.dart';
 
 class SavedTestimoniesScreen extends ConsumerWidget {
   const SavedTestimoniesScreen({super.key});
@@ -19,6 +20,7 @@ class SavedTestimoniesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final savedIds = ref.watch(savedIdsProvider);
     final allFeed  = ref.watch(feedNotifierProvider);
+    final l10n = context.l10n;
 
     // Tab 1 — all saved testimonies (in feed order)
     final savedList = allFeed.where((t) => savedIds.contains(t.id)).toList();
@@ -29,7 +31,7 @@ class SavedTestimoniesScreen extends ConsumerWidget {
         backgroundColor: AppColors.background,
         appBar: AppBar(
           title: Text(
-            'Témoignages sauvegardés',
+            l10n.profileSaved,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: AppTextStyles.h4.copyWith(
@@ -52,9 +54,9 @@ class SavedTestimoniesScreen extends ConsumerWidget {
             unselectedLabelColor: AppColors.textSecondary,
             indicatorColor: AppColors.primary,
             indicatorWeight: 2.5,
-            tabs: const [
-              Tab(text: 'Sauvegardés'),
-              Tab(text: 'Hors ligne'),
+            tabs: [
+              Tab(text: l10n.profileSavedTab),
+              Tab(text: l10n.profileOfflineTab),
             ],
           ),
         ),
@@ -92,14 +94,14 @@ class _SavedTab extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               Text(
-                'Aucun témoignage sauvegardé',
+                context.l10n.profileNoSaved,
                 style: AppTextStyles.h4.copyWith(
                   color: AppColors.textSecondary,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
-                'Appuyez sur le signet dans un témoignage\npour le retrouver ici.',
+                context.l10n.profileNoSavedHint,
                 style: AppTextStyles.bodySmall,
                 textAlign: TextAlign.center,
               ),
@@ -148,7 +150,7 @@ class _OfflineTab extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
               Text(
-                'Aucun témoignage disponible hors ligne',
+                context.l10n.profileNoOffline,
                 style: AppTextStyles.h4.copyWith(
                   color: AppColors.textSecondary,
                 ),
@@ -157,10 +159,8 @@ class _OfflineTab extends ConsumerWidget {
               const SizedBox(height: 8),
               Text(
                 s.supported
-                    ? 'Appuyez sur l’icône de téléchargement d’un témoignage\n'
-                        'pour le lire sans connexion.'
-                    : 'Les téléchargements sont disponibles sur l’application '
-                        'mobile.',
+                    ? context.l10n.profileNoOfflineHint
+                    : context.l10n.profileDownloadsMobileOnly,
                 style: AppTextStyles.bodySmall,
                 textAlign: TextAlign.center,
               ),
@@ -169,7 +169,7 @@ class _OfflineTab extends ConsumerWidget {
                 TextButton.icon(
                   onPressed: () => _openDownloads(context),
                   icon: const Icon(Icons.download_rounded),
-                  label: const Text('Mes téléchargements'),
+                  label: Text(context.l10n.profileDownloads),
                 ),
               ],
             ],
@@ -188,7 +188,7 @@ class _OfflineTab extends ConsumerWidget {
           onPressed: () => _openDownloads(context),
           icon: const Icon(Icons.download_rounded),
           label: Text(
-            'Gérer dans Mes téléchargements',
+            context.l10n.profileManageDownloads,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),

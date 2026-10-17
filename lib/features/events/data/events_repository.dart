@@ -7,6 +7,7 @@ import '../../../services/api_service.dart';
 import '../../home/models/testimony_model.dart';
 import '../../home/providers/home_providers.dart' show testimonyFromApiJson;
 import '../models/event_models.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Erreur lisible d'une action sur un événement.
 /// Codes : 403 droits · 404 introuvable · 409 déjà fait · 422 validation · 429 trop rapide.
@@ -62,9 +63,9 @@ class EventsRepository {
         if (msg != null) throw EventFailure(msg, statusCode: status);
       }
       if (status >= 500) {
-        throw EventFailure('Erreur du serveur ($status).', statusCode: status);
+        throw EventFailure(L10n.current.eventsServerError(status), statusCode: status);
       }
-      throw const EventFailure('Connexion impossible. Vérifiez votre accès à Internet.');
+      throw EventFailure(L10n.current.eventsConnectionError);
     }
   }
 
@@ -218,7 +219,7 @@ class EventsRepository {
             if (category != null && category.isNotEmpty) 'category': category,
           },
         );
-        return ('${_asMap(res.data)['id']}', res.message ?? 'Témoignage enregistré.');
+        return ('${_asMap(res.data)['id']}', res.message ?? L10n.current.eventsTestimonySaved);
       });
 }
 
@@ -290,7 +291,7 @@ extension EventLifecycleApi on EventsRepository {
           'reason': reason.apiValue,
           if (comment != null && comment.trim().isNotEmpty) 'comment': comment.trim(),
         });
-        return res.message ?? 'Merci. Votre signalement sera examiné par la modération.';
+        return res.message ?? L10n.current.eventsReportThanks;
       });
 
   /// Répond au sondage (modifiable 30 jours) ; renvoie l'événement à jour.

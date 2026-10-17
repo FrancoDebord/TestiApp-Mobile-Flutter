@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../services/api_service.dart' show LaravelApiException;
 import '../../auth/providers/auth_notifier.dart' show currentUserProvider;
 import '../data/community_repository.dart';
+import '../../../l10n/app_localizations.dart';
 
 class FollowState {
   const FollowState({this.following = const {}, this.pending = const {}, this.loaded = false});
@@ -60,8 +61,8 @@ class FollowNotifier extends Notifier<FollowState> {
   /// (rétabli en cas d'erreur). Renvoie le nouveau nombre d'abonnés, ou lève [FollowFailure].
   Future<int?> toggle(String userId) async {
     final me = ref.read(currentUserProvider)?.id;
-    if (me == null) throw const FollowFailure('Connectez-vous pour suivre ce compte.');
-    if (me == userId) throw const FollowFailure('Vous ne pouvez pas vous suivre vous-même.');
+    if (me == null) throw FollowFailure(L10n.current.communityFollowSignIn);
+    if (me == userId) throw FollowFailure(L10n.current.communityFollowSelf);
     if (state.pending.contains(userId)) return null;
 
     final wasFollowing = state.isFollowing(userId);
@@ -77,7 +78,7 @@ class FollowNotifier extends Notifier<FollowState> {
       throw FollowFailure(e.message);
     } catch (_) {
       remember(userId, wasFollowing);
-      throw const FollowFailure('Action impossible. Vérifiez votre connexion.');
+      throw FollowFailure(L10n.current.communityFollowFailed);
     } finally {
       state = state.copyWith(pending: {...state.pending}..remove(userId));
     }

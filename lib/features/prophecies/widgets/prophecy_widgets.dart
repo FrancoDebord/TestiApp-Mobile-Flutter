@@ -7,18 +7,15 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../models/prophecy.dart';
+import '../../../l10n/app_localizations.dart';
 
-const _months = [
-  'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
-  'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
-];
-
-/// « 5 octobre 2026 ».
-String prophecyDay(DateTime d) => '${d.day} ${_months[d.month - 1]} ${d.year}';
+/// « 5 octobre 2026 » / « October 5, 2026 ».
+String prophecyDay(DateTime d) => formatDateLong(d);
 
 /// « 5 oct. 2026 à 14:30 » (sans l'heure si elle n'a pas été notée).
-String prophecyReceived(DateTime d, String? time) =>
-    time == null || time.isEmpty ? prophecyDay(d) : '${prophecyDay(d)} à $time';
+String prophecyReceived(DateTime d, String? time) => time == null || time.isEmpty
+    ? prophecyDay(d)
+    : L10n.current.prophecyDayAtTime(prophecyDay(d), time);
 
 String _two(int n) => n.toString().padLeft(2, '0');
 
@@ -28,10 +25,11 @@ String formatClock(Duration d) => '${_two(d.inMinutes)}:${_two(d.inSeconds % 60)
 String prayedAgo(DateTime d) {
   final now = DateTime.now();
   final days = DateTime(now.year, now.month, now.day).difference(DateTime(d.year, d.month, d.day)).inDays;
-  if (days <= 0) return "aujourd'hui";
-  if (days == 1) return 'hier';
-  if (days < 30) return 'il y a $days jours';
-  return 'le ${prophecyDay(d)}';
+  final l10n = L10n.current;
+  if (days <= 0) return l10n.prophecyToday;
+  if (days == 1) return l10n.prophecyYesterday;
+  if (days < 30) return l10n.homeDaysAgoLong(days);
+  return l10n.prophecyOnDate(prophecyDay(d));
 }
 
 /// Pastille d'état : En attente · Échéance passée · Accomplie.
@@ -43,10 +41,10 @@ class ProphecyStatusChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = prophecy;
     final (IconData icon, String label, Color bg, Color fg) = p.fulfilled
-        ? (Icons.verified_rounded, 'Accomplie', AppColors.successSoft, AppColors.success)
+        ? (Icons.verified_rounded, context.l10n.prophecyStatusFulfilled, AppColors.successSoft, AppColors.success)
         : p.isOverdue
-            ? (Icons.hourglass_bottom_rounded, 'Échéance passée', AppColors.secondarySoft, AppColors.secondaryDark)
-            : (Icons.hourglass_top_rounded, 'En attente', AppColors.primarySoft, AppColors.primary);
+            ? (Icons.hourglass_bottom_rounded, context.l10n.prophecyStatusOverdue, AppColors.secondarySoft, AppColors.secondaryDark)
+            : (Icons.hourglass_top_rounded, context.l10n.prophecyStatusPending, AppColors.primarySoft, AppColors.primary);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(6)),
@@ -125,10 +123,11 @@ class ProphecyCard extends StatelessWidget {
                 children: [
                   _Meta(Icons.event_note_rounded, prophecyReceived(p.receivedOn, p.receivedTime)),
                   if (p.givenBy != null) _Meta(Icons.person_outline_rounded, p.givenBy!),
-                  if (p.dueOn != null && !p.fulfilled) _Meta(Icons.flag_outlined, 'Échéance : ${prophecyDay(p.dueOn!)}'),
-                  if (p.fulfilledOn != null) _Meta(Icons.verified_outlined, 'Accomplie le ${prophecyDay(p.fulfilledOn!)}'),
-                  _Meta(Icons.volunteer_activism_outlined,
-                      p.prayerCount == 0 ? 'Pas encore priée' : 'Priée ${p.prayerCount} fois'),
+                  if (p.dueOn != null && !p.fulfilled)
+                    _Meta(Icons.flag_outlined, context.l10n.prophecyDueOn(prophecyDay(p.dueOn!))),
+                  if (p.fulfilledOn != null)
+                    _Meta(Icons.verified_outlined, context.l10n.prophecyFulfilledOn(prophecyDay(p.fulfilledOn!))),
+                  _Meta(Icons.volunteer_activism_outlined, context.l10n.prophecyPrayedCount(p.prayerCount)),
                 ],
               ),
             ],
@@ -239,14 +238,14 @@ class _ProphecyAudioPlayerState extends State<ProphecyAudioPlayer> {
       child: Row(
         children: [
           IconButton(
-            tooltip: _playing ? 'Pause' : 'Écouter',
+            tooltip: _playing ? context.l10n.prophecyAudioPause : context.l10n.prophecyAudioListen,
             onPressed: _error ? null : () => _playing ? _player.pause() : _player.play(),
             icon: Icon(_playing ? Icons.pause_circle_filled_rounded : Icons.play_circle_filled_rounded,
                 size: 40, color: fg),
           ),
           Expanded(
             child: _error
-                ? Text('Audio indisponible', style: TextStyle(color: sub))
+                ? Text(context.l10n.prophecyAudioUnavailable, style: TextStyle(color: sub))
                 : Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -277,7 +276,7 @@ class _ProphecyAudioPlayerState extends State<ProphecyAudioPlayer> {
           ),
           if (widget.onDelete != null)
             IconButton(
-              tooltip: "Supprimer l'enregistrement",
+              tooltip: context.l10n.prophecyDeleteRecording,
               onPressed: widget.onDelete,
               icon: Icon(Icons.delete_outline_rounded, color: sub),
             ),

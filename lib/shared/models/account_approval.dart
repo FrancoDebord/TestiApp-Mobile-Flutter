@@ -10,6 +10,8 @@
 // (verification_status = verified) : pour un objet qui n'expose pas encore
 // approval_badge, on retombe sur is_verified / verification_status.
 
+import '../../l10n/app_localizations.dart';
+
 /// Style de la pastille « Approuvé ».
 enum AccountApprovalBadge {
   personal,
@@ -19,7 +21,8 @@ enum AccountApprovalBadge {
   String get apiValue => this == personal ? 'approved_personal' : 'approved_organization';
 
   /// Libellé de l'info-bulle et de l'accessibilité.
-  String get label => this == personal ? 'Compte approuvé' : 'Organisation approuvée';
+  String get label =>
+      this == personal ? L10n.current.sharedApprovedAccount : L10n.current.sharedApprovedOrganization;
 
   static AccountApprovalBadge? fromApi(Object? value) => switch (value) {
         'approved_personal' => personal,

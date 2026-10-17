@@ -18,6 +18,7 @@ import '../../../shared/widgets/app_button.dart';
 import '../../home/widgets/pill_tabs.dart';
 import '../models/explore_models.dart';
 import '../providers/explore_providers.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Onglets de type en pilule (appliqués immédiatement).
 class ExploreTypeTabs extends ConsumerWidget {
@@ -108,7 +109,7 @@ class _ExploreFiltersPanelState extends ConsumerState<ExploreFiltersPanel> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Filtres',
+                          context.l10n.exploreFilters,
                           style: AppTextStyles.h4,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -147,7 +148,7 @@ class _ExploreFiltersPanelState extends ConsumerState<ExploreFiltersPanel> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          _FieldLabel('Type'),
+                          _FieldLabel(context.l10n.exploreFilterType),
                           _Dropdown<ExploreTypeFilter>(
                             value: _type,
                             items: [
@@ -157,17 +158,17 @@ class _ExploreFiltersPanelState extends ConsumerState<ExploreFiltersPanel> {
                             onChanged: (v) => setState(() => _type = v),
                           ),
                           const SizedBox(height: AppSpacing.md),
-                          _FieldLabel('Catégorie'),
+                          _FieldLabel(context.l10n.exploreFilterCategory),
                           _Dropdown<String?>(
                             value: categoryValue,
                             items: [
-                              (null, 'Toutes les catégories'),
+                              (null, context.l10n.exploreFilterAllCategories),
                               for (final c in categories) (c.slug, c.name),
                             ],
                             onChanged: (v) => setState(() => _category = v),
                           ),
                           const SizedBox(height: AppSpacing.md),
-                          _FieldLabel('Popularité'),
+                          _FieldLabel(context.l10n.exploreFilterPopularity),
                           _Dropdown<ExploreSortOrder>(
                             value: _sort,
                             items: [
@@ -178,7 +179,7 @@ class _ExploreFiltersPanelState extends ConsumerState<ExploreFiltersPanel> {
                           ),
                           const SizedBox(height: AppSpacing.lg),
                           AppButton(
-                            label: 'Appliquer les filtres',
+                            label: context.l10n.exploreApplyFilters,
                             variant: AppButtonVariant.accent,
                             fullWidth: true,
                             onPressed: _apply,
@@ -192,7 +193,7 @@ class _ExploreFiltersPanelState extends ConsumerState<ExploreFiltersPanel> {
                                 minimumSize: const Size(44, 44),
                               ),
                               child: Text(
-                                'Réinitialiser',
+                                context.l10n.commonReset,
                                 style: AppTextStyles.labelMedium.copyWith(
                                   color: AppColors.primary,
                                   decoration: TextDecoration.underline,

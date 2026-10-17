@@ -11,6 +11,7 @@ import '../data/prophecies_repository.dart';
 import '../models/prophecy.dart';
 import '../providers/prophecies_providers.dart';
 import '../widgets/prophecy_widgets.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Paroles prophétiques du carnet privé : en attente / accomplies.
 /// Elles sont visibles de vous seul ; quand l'une s'accomplit, vous en témoignez.
@@ -29,15 +30,15 @@ class PropheciesScreen extends ConsumerWidget {
       child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
-          title: const Text('Paroles prophétiques'),
+          title: Text(context.l10n.prophecyListTitle),
           backgroundColor: AppColors.surface,
           foregroundColor: AppColors.textPrimary,
           surfaceTintColor: AppColors.surface,
           elevation: 0,
           bottom: TabBar(
             tabs: [
-              Tab(text: 'En attente (${waiting.length})'),
-              Tab(text: 'Accomplies (${fulfilled.length})'),
+              Tab(text: context.l10n.prophecyTabPending(waiting.length)),
+              Tab(text: context.l10n.prophecyTabFulfilled(fulfilled.length)),
             ],
           ),
         ),
@@ -46,11 +47,11 @@ class PropheciesScreen extends ConsumerWidget {
           backgroundColor: AppColors.secondary,
           foregroundColor: Colors.white,
           icon: const Icon(Icons.add_rounded),
-          label: const Text('Nouvelle parole'),
+          label: Text(context.l10n.prophecyNew),
         ),
         body: switch (async) {
           AsyncValue(:final error?) when async.value == null => _Error(
-              message: error is ProphecyFailure ? error.message : 'Impossible de charger vos paroles.',
+              message: error is ProphecyFailure ? error.message : context.l10n.prophecyLoadError,
               onRetry: () => ref.invalidate(propheciesListProvider),
             ),
           AsyncValue(value: null) => const Center(child: CircularProgressIndicator()),
@@ -89,7 +90,7 @@ class _List extends ConsumerWidget {
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    'Visibles de vous seul. Gardez-les, priez, puis témoignez de leur accomplissement.',
+                    context.l10n.prophecyPrivateNotice,
                     style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
                   ),
                 ),
@@ -107,10 +108,8 @@ class _List extends ConsumerWidget {
                   const SizedBox(height: 12),
                   Text(
                     fulfilledTab
-                        ? 'Aucune parole accomplie pour le moment. Quand une parole s\'accomplit, '
-                            'ouvrez-la et touchez « Elle s\'est accomplie ».'
-                        : 'Une parole reçue lors d\'un culte, d\'une prière, d\'un rêve ? '
-                            'Notez-la ici (texte ou audio) pour la garder et prier dessus.',
+                        ? context.l10n.prophecyEmptyFulfilled
+                        : context.l10n.prophecyEmptyPending,
                     textAlign: TextAlign.center,
                     style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
                   ),
@@ -145,7 +144,7 @@ class _Error extends StatelessWidget {
             const Icon(Icons.wifi_off_rounded, size: 48, color: AppColors.textSecondary),
             const SizedBox(height: 12),
             Text(message, textAlign: TextAlign.center),
-            TextButton(onPressed: onRetry, child: const Text('Réessayer')),
+            TextButton(onPressed: onRetry, child: Text(context.l10n.commonRetry)),
           ],
         ),
       ),

@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../l10n/app_localizations.dart';
 
 // ─── Durée max d'enregistrement ────────────────────────────────────────────
 const int _kMaxSeconds = 300; // 5 minutes
@@ -87,10 +88,7 @@ class _VideoCameraScreenState extends State<VideoCameraScreen>
       final mic = await Permission.microphone.request();
 
       if (!cam.isGranted || !mic.isGranted) {
-        _setError(
-          'Les permissions caméra et microphone sont requises.\n\n'
-          'Activez-les dans les réglages de l\'application.',
-        );
+        _setError(L10n.current.publishCameraPermissionsRequired);
         return;
       }
     }
@@ -98,12 +96,12 @@ class _VideoCameraScreenState extends State<VideoCameraScreen>
     try {
       _cameras = await availableCameras();
     } catch (e) {
-      _setError('Impossible de détecter les caméras : $e');
+      _setError(L10n.current.publishCameraDetectFailed('$e'));
       return;
     }
 
     if (_cameras.isEmpty) {
-      _setError('Aucune caméra disponible sur cet appareil.');
+      _setError(L10n.current.publishNoCamera);
       return;
     }
 
@@ -135,7 +133,7 @@ class _VideoCameraScreenState extends State<VideoCameraScreen>
       }
       if (mounted) setState(() => _initialized = true);
     } on CameraException catch (e) {
-      _setError('Erreur caméra : ${e.description ?? e.code}');
+      _setError(L10n.current.publishCameraError(e.description ?? e.code));
     }
   }
 
@@ -444,9 +442,9 @@ class _RecordedConfirmView extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-            const Text(
-              'Vidéo enregistrée !',
-              style: TextStyle(
+            Text(
+              context.l10n.publishVideoRecorded,
+              style: const TextStyle(
                 color: Colors.white,
                 fontFamily: AppFonts.family,
                 fontWeight: FontWeight.w600,
@@ -455,7 +453,7 @@ class _RecordedConfirmView extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Durée : $duration',
+              context.l10n.publishDuration(duration),
               style: const TextStyle(
                 color: Colors.white70,
                 fontFamily: AppFonts.family,
@@ -681,7 +679,7 @@ class _RecordControls extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            isRecording ? 'Appuyez pour arrêter' : 'Appuyez pour enregistrer',
+            isRecording ? context.l10n.publishTapToStop : context.l10n.publishTapToRecord,
             style: const TextStyle(
               color: Colors.white60,
               fontFamily: AppFonts.family,
@@ -715,14 +713,14 @@ class _PostRecordControls extends StatelessWidget {
           // Reprendre
           _ActionButton(
             icon: Icons.replay_rounded,
-            label: 'Reprendre',
+            label: context.l10n.publishRetake,
             color: Colors.white70,
             onTap: onRetake,
           ),
           // Utiliser
           _ActionButton(
             icon: Icons.check_rounded,
-            label: 'Utiliser',
+            label: context.l10n.publishUse,
             color: AppColors.secondary,
             filled: true,
             onTap: onUse,
@@ -740,17 +738,17 @@ class _LoadingView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return Scaffold(
       backgroundColor: Colors.black,
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircularProgressIndicator(color: Colors.white70),
-            SizedBox(height: 16),
+            const CircularProgressIndicator(color: Colors.white70),
+            const SizedBox(height: 16),
             Text(
-              'Initialisation de la caméra…',
-              style: TextStyle(
+              context.l10n.publishCameraInitializing,
+              style: const TextStyle(
                 color: Colors.white70,
                 fontFamily: AppFonts.family,
                 fontSize: 14,
@@ -799,9 +797,9 @@ class _ErrorView extends StatelessWidget {
                   onPressed: () => Navigator.pop(context),
                   icon: const Icon(Icons.arrow_back_rounded,
                       color: Colors.white70),
-                  label: const Text(
-                    'Retour',
-                    style: TextStyle(
+                  label: Text(
+                    context.l10n.commonBack,
+                    style: const TextStyle(
                       color: Colors.white70,
                       fontFamily: AppFonts.family,
                     ),

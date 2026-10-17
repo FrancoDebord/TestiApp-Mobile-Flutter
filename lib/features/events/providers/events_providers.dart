@@ -141,6 +141,16 @@ final upcomingEventsProvider = FutureProvider.autoDispose<List<ChristianEvent>>(
   (ref) async => (await ref.watch(eventsRepositoryProvider).list()).items,
 );
 
+/// Événements passés (bande « Revivre les événements » de l'accueil) : ceux qui
+/// ont des témoignages d'abord, du plus récent au plus ancien.
+final pastEventsHomeProvider = FutureProvider.autoDispose<List<ChristianEvent>>((ref) async {
+  final items = (await ref.watch(eventsRepositoryProvider).list(scope: EventScope.past, limit: 12)).items;
+  return [
+    ...items.where((e) => e.testimonyCount > 0),
+    ...items.where((e) => e.testimonyCount == 0),
+  ];
+});
+
 /// Événements à venir des comptes suivis (« Mon fil ») ; vide pour un invité.
 final followingEventsProvider = FutureProvider.autoDispose<List<ChristianEvent>>(
   (ref) async {

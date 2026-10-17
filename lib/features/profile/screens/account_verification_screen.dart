@@ -15,6 +15,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../features/auth/providers/auth_notifier.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../services/api_service.dart';
 import '../../../shared/models/user_model.dart';
 import '../../../shared/widgets/app_button.dart';
@@ -33,9 +34,9 @@ class AccountVerificationScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text(
-          'Vérification du compte',
-          style: TextStyle(
+        title: Text(
+          context.l10n.profileVerifTitle,
+          style: const TextStyle(
             fontFamily: AppFonts.family,
             fontWeight: FontWeight.w600,
             fontSize: 17,
@@ -50,20 +51,19 @@ class AccountVerificationScreen extends ConsumerWidget {
       body: SafeArea(
         top: false,
         child: user?.isOrganization ?? false
-            ? const _Message(
+            ? _Message(
                 icon: Icons.apartment_rounded,
-                title: 'Compte organisation',
-                text: 'Les organisations sont vérifiées à partir des informations de leur profil. '
-                    'Modifiez votre profil pour compléter ou corriger ces informations.',
+                title: context.l10n.profileVerifOrgTitle,
+                text: context.l10n.profileVerifOrgBody,
               )
             : async.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => _Message(
                   icon: Icons.cloud_off_rounded,
-                  title: 'Chargement impossible',
-                  text: e is LaravelApiException ? e.message : 'Impossible de joindre le serveur. Réessayez.',
+                  title: context.l10n.profileVerifLoadFailedTitle,
+                  text: e is LaravelApiException ? e.message : context.l10n.profileVerifLoadFailedBody,
                   action: AppButton(
-                    label: 'Réessayer',
+                    label: context.l10n.commonRetry,
                     variant: AppButtonVariant.outline,
                     onPressed: () => ref.invalidate(accountVerificationProvider),
                   ),
@@ -106,31 +106,31 @@ class VerificationStatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final (icon, color, bg, title, text) = switch (state.status) {
       AccountVerificationStatus.verified => (
           Icons.verified_rounded,
           AppColors.success,
           AppColors.successSoft,
-          'Votre compte est vérifié',
-          'Le badge « Compte vérifié » apparaît à côté de votre nom sur votre profil, '
-              'vos témoignages et vos commentaires.',
+          l10n.profileVerifVerifiedTitle,
+          l10n.profileVerifVerifiedBody,
         ),
       AccountVerificationStatus.pending => (
           Icons.hourglass_top_rounded,
           AppColors.sunText,
           AppColors.sunSoft,
-          'Demande en cours d’examen',
-          'Notre équipe vérifie vos informations. Vous serez prévenu dans vos notifications.',
+          l10n.profileVerifUnderReview,
+          l10n.profileVerifPendingBody,
         ),
       AccountVerificationStatus.rejected || AccountVerificationStatus.revoked => (
           Icons.gpp_bad_rounded,
           AppColors.danger,
           AppColors.dangerSoft,
-          state.status == AccountVerificationStatus.revoked ? 'Vérification retirée' : 'Demande refusée',
+          state.status == AccountVerificationStatus.revoked ? l10n.profileVerifRevokedTitle : l10n.profileVerifRefusedTitle,
           [
-            if (state.reason?.trim().isNotEmpty ?? false) 'Motif : ${state.reason!.trim()}',
+            if (state.reason?.trim().isNotEmpty ?? false) l10n.profileVerifReason(state.reason!.trim()),
             if (state.canRequest)
-              'Vous pouvez envoyer une nouvelle demande.'
+              l10n.profileVerifCanRequestAgain
             else if (state.blockReason != null)
               state.blockReason!,
           ].join('\n'),
@@ -139,10 +139,8 @@ class VerificationStatusCard extends StatelessWidget {
           Icons.verified_outlined,
           AppColors.primary,
           AppColors.primarySoft,
-          'Faire vérifier mon compte',
-          'Pasteurs, évangélistes, chantres, responsables de ministère, personnalités publiques : '
-              'le badge aide la communauté à reconnaître votre compte officiel. '
-              'Il ne donne pas de droits supplémentaires.',
+          l10n.profileVerifRequestTitle,
+          l10n.profileVerifRequestBody,
         ),
     };
 
@@ -207,14 +205,15 @@ class _RequestSummary extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Votre demande',
-              style: TextStyle(
+          Text(context.l10n.profileVerifYourRequest,
+              style: const TextStyle(
                   fontFamily: AppFonts.family, fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.textPrimary)),
           const SizedBox(height: AppSpacing.md),
-          row('Nom complet', request.fullName),
-          row('Fonction', request.roleLabel),
-          row('Église ou ministère', request.church),
-          row('Pièces justificatives', '${request.documentCount} (privées)'),
+          row(context.l10n.profileVerifSummaryFullName, request.fullName),
+          row(context.l10n.profileVerifSummaryRole, request.roleLabel),
+          row(context.l10n.profileVerifSummaryChurch, request.church),
+          row(context.l10n.profileVerifSummaryDocuments,
+              context.l10n.profileVerifDocumentsPrivateCount(request.documentCount)),
         ],
       ),
     );
@@ -285,7 +284,7 @@ class _VerificationRequestFormState extends ConsumerState<VerificationRequestFor
       return;
     }
     if (_documentsFull) {
-      _snack('${widget.state.maxDocuments} pièces justificatives au plus.');
+      _snack(context.l10n.profileVerifDocMax(widget.state.maxDocuments));
       return;
     }
     setState(() {
@@ -332,7 +331,7 @@ class _VerificationRequestFormState extends ConsumerState<VerificationRequestFor
     );
     setState(() {
       _errors = errors;
-      _error = errors.isEmpty ? null : 'Merci de corriger les champs signalés.';
+      _error = errors.isEmpty ? null : context.l10n.profileVerifFixFields;
     });
     if (errors.isNotEmpty) return;
 
@@ -357,14 +356,14 @@ class _VerificationRequestFormState extends ConsumerState<VerificationRequestFor
       setState(() {
         _sending = false;
         _errors = fieldErrors;
-        _error = fieldErrors.isEmpty ? e.message : 'Merci de corriger les champs signalés.';
+        _error = fieldErrors.isEmpty ? e.message : context.l10n.profileVerifFixFields;
       });
       return;
     } catch (_) {
       if (!mounted) return;
       setState(() {
         _sending = false;
-        _error = 'Impossible d’envoyer la demande. Vérifiez votre connexion et réessayez.';
+        _error = context.l10n.profileVerifSendFailed;
       });
       return;
     }
@@ -377,13 +376,14 @@ class _VerificationRequestFormState extends ConsumerState<VerificationRequestFor
     }
     if (!mounted) return;
     setState(() => _sending = false);
-    _snack('Demande envoyée. Vous serez prévenu dans vos notifications.');
+    _snack(context.l10n.profileVerifSent);
     ref.invalidate(accountVerificationProvider);
   }
 
   @override
   Widget build(BuildContext context) {
     final state = widget.state;
+    final l10n = context.l10n;
     const sectionStyle = TextStyle(
         fontFamily: AppFonts.family, fontWeight: FontWeight.w600, fontSize: 14, color: AppColors.textPrimary);
     const hintStyle =
@@ -397,8 +397,8 @@ class _VerificationRequestFormState extends ConsumerState<VerificationRequestFor
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           AppTextField(
-            label: 'Nom complet *',
-            helperText: 'Tel qu’il figure sur votre pièce d’identité',
+            label: l10n.profileVerifFullNameLabel,
+            helperText: l10n.profileVerifFullNameHelper,
             controller: _nameCtrl,
             errorText: _errors['full_name'],
             maxLength: 150,
@@ -406,7 +406,7 @@ class _VerificationRequestFormState extends ConsumerState<VerificationRequestFor
             textInputAction: TextInputAction.next,
           ),
           const SizedBox(height: AppSpacing.lg),
-          const Text('Fonction *', style: sectionStyle),
+          Text(l10n.profileVerifRoleLabel, style: sectionStyle),
           const SizedBox(height: AppSpacing.sm),
           Wrap(
             spacing: AppSpacing.sm,
@@ -431,7 +431,7 @@ class _VerificationRequestFormState extends ConsumerState<VerificationRequestFor
           if (_role == 'other') ...[
             const SizedBox(height: AppSpacing.md),
             AppTextField(
-              label: 'Précisez votre fonction *',
+              label: l10n.profileVerifRoleOtherLabel,
               controller: _roleOtherCtrl,
               errorText: _errors['role_other'],
               maxLength: 100,
@@ -439,17 +439,17 @@ class _VerificationRequestFormState extends ConsumerState<VerificationRequestFor
           ],
           const SizedBox(height: AppSpacing.lg),
           AppTextField(
-            label: 'Église ou ministère de rattachement *',
-            hint: 'Église de la Grâce, Cotonou',
+            label: l10n.profileVerifChurchLabel,
+            hint: l10n.profileVerifChurchHint,
             controller: _churchCtrl,
             errorText: _errors['church'],
             maxLength: 150,
             textInputAction: TextInputAction.next,
           ),
           const SizedBox(height: AppSpacing.lg),
-          const Text('Liens publics (facultatif)', style: sectionStyle),
+          Text(l10n.profileVerifLinksLabel, style: sectionStyle),
           const SizedBox(height: 2),
-          const Text('Site, page Facebook, chaîne YouTube… qui montrent votre ministère.', style: hintStyle),
+          Text(l10n.profileVerifLinksHint, style: hintStyle),
           const SizedBox(height: AppSpacing.sm),
           for (var i = 0; i < _linkCtrls.length; i++) ...[
             AppTextField(
@@ -466,15 +466,14 @@ class _VerificationRequestFormState extends ConsumerState<VerificationRequestFor
               child: TextButton.icon(
                 onPressed: () => setState(() => _linkCtrls.add(TextEditingController())),
                 icon: const Icon(Icons.add_link_rounded, size: 18),
-                label: const Text('Ajouter un lien'),
+                label: Text(l10n.profileVerifAddLink),
               ),
             ),
           const SizedBox(height: AppSpacing.md),
-          const Text('Pièces justificatives *', style: sectionStyle),
+          Text(l10n.profileVerifDocumentsLabel, style: sectionStyle),
           const SizedBox(height: 2),
           Text(
-            'Photo de votre pièce d’identité et/ou lettre de votre église : JPG, PNG, WebP ou PDF, '
-            '${state.maxDocumentKb ~/ 1024} Mo au plus chacune, ${state.maxDocuments} au plus.',
+            l10n.profileVerifDocumentsHint(state.maxDocumentKb ~/ 1024, state.maxDocuments),
             style: hintStyle,
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -493,13 +492,13 @@ class _VerificationRequestFormState extends ConsumerState<VerificationRequestFor
                   OutlinedButton.icon(
                     onPressed: _sending ? null : _takePhoto,
                     icon: const Icon(Icons.photo_camera_outlined, size: 18),
-                    label: const Text('Prendre une photo'),
+                    label: Text(l10n.profileVerifTakePhoto),
                   ),
                 OutlinedButton.icon(
                   key: const ValueKey('pick-document'),
                   onPressed: _sending ? null : _pickFile,
                   icon: const Icon(Icons.attach_file_rounded, size: 18),
-                  label: const Text('Choisir un fichier'),
+                  label: Text(l10n.profileVerifPickFile),
                 ),
               ],
             ),
@@ -508,18 +507,17 @@ class _VerificationRequestFormState extends ConsumerState<VerificationRequestFor
             Text(_errors['documents']!, style: errorStyle),
           ],
           const SizedBox(height: AppSpacing.sm),
-          const Row(
+          Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Padding(
+              const Padding(
                 padding: EdgeInsets.only(top: 1),
                 child: Icon(Icons.lock_outline_rounded, size: 16, color: AppColors.textSecondary),
               ),
-              SizedBox(width: 6),
+              const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  'Ces pièces restent privées : seuls les administrateurs chargés de la vérification '
-                  'peuvent les consulter. Elles ne sont jamais publiées.',
+                  l10n.profileVerifDocumentsPrivate,
                   style: hintStyle,
                 ),
               ),
@@ -527,8 +525,8 @@ class _VerificationRequestFormState extends ConsumerState<VerificationRequestFor
           ),
           const SizedBox(height: AppSpacing.lg),
           AppTextField(
-            label: 'Message (facultatif)',
-            hint: 'Toute information utile à notre équipe',
+            label: l10n.profileVerifMessageLabel,
+            hint: l10n.profileVerifMessageHint,
             controller: _messageCtrl,
             maxLines: 4,
             minLines: 2,
@@ -541,7 +539,7 @@ class _VerificationRequestFormState extends ConsumerState<VerificationRequestFor
           const SizedBox(height: AppSpacing.xl),
           AppButton(
             key: const ValueKey('verification-submit'),
-            label: 'Envoyer la demande',
+            label: l10n.profileVerifSubmit,
             size: AppButtonSize.large,
             fullWidth: true,
             isLoading: _sending,
@@ -561,7 +559,9 @@ class _DocumentTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final kb = (document.size / 1024).ceil();
-    final size = kb >= 1024 ? '${(kb / 1024).toStringAsFixed(1)} Mo' : '$kb Ko';
+    final size = kb >= 1024
+        ? context.l10n.profileFileSizeMb((kb / 1024).toStringAsFixed(1))
+        : context.l10n.profileFileSizeKb(kb);
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
@@ -589,7 +589,7 @@ class _DocumentTile extends StatelessWidget {
             ),
           ),
           IconButton(
-            tooltip: 'Retirer',
+            tooltip: context.l10n.commonRemove,
             onPressed: onRemove,
             icon: const Icon(Icons.close_rounded, size: 20),
           ),

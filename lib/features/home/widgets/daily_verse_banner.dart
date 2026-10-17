@@ -14,6 +14,7 @@ import '../../daily_verse/design/verse_style_prefs.dart';
 import '../../daily_verse/screens/daily_verse_screen.dart' show openDailyVerse;
 import '../models/testimony_model.dart';
 import '../providers/home_providers.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Carte repliable du verset du jour : le verset dans le design du jour (ou
 /// celui choisi dans le sélecteur du plein écran). Un tap sur le verset ouvre la
@@ -40,9 +41,9 @@ class DailyVerseBanner extends ConsumerWidget {
 
     // Pendant le chargement ou en erreur, utiliser le fallback silencieusement
     final verse = verseAsync.value ?? const DailyVerse(
-      text: '« Car je connais les projets que j\'ai formés sur vous, dit l\'Éternel, '
-          'projets de paix et non de malheur, afin de vous donner un avenir et de l\'espérance. »',
-      reference: 'Jérémie 29 : 11',
+      text: '« Car je connais les projets que j\'ai formés sur vous, dit l\'Éternel, ' // i18n-ignore
+          'projets de paix et non de malheur, afin de vous donner un avenir et de l\'espérance. »', // i18n-ignore
+      reference: 'Jérémie 29 : 11', // i18n-ignore
     );
 
     return AnimatedCrossFade(
@@ -88,7 +89,7 @@ class _CollapsedBanner extends ConsumerWidget {
             const SizedBox(width: 8),
             Flexible(
               child: Text(
-                'Verset du jour · ',
+                context.l10n.homeVerseOfTheDayPrefix,
                 style: AppTextStyles.labelSmall
                     .copyWith(color: AppColors.primary),
                 maxLines: 1,
@@ -109,11 +110,11 @@ class _CollapsedBanner extends ConsumerWidget {
               behavior: HitTestBehavior.opaque,
               onTap: () =>
                   ref.read(verseBannerExpandedProvider.notifier).update(true),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 6),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
                 child: Icon(Icons.keyboard_arrow_down_rounded,
                     color: AppColors.primary, size: 20,
-                    semanticLabel: 'Déplier le verset'),
+                    semanticLabel: context.l10n.homeVerseExpand),
               ),
             ),
           ],
@@ -171,9 +172,10 @@ class _ExpandedBanner extends ConsumerWidget {
         }
 
         final label = verseLabelStyle(Colors.black);
-        final header = math.max(40.0, lineHeight('Verset du jour', label));
+        final l10n = context.l10n;
+        final header = math.max(40.0, lineHeight(l10n.verseOfTheDay, label));
         final referenceHeight = lineHeight('— ${verse.reference}', verseReferenceStyle(Colors.black));
-        final readMore = truncated ? 4 + lineHeight('Lire en entier', label) : 0.0;
+        final readMore = truncated ? 4 + lineHeight(l10n.verseReadInFull, label) : 0.0;
         final actions = 12 + math.max(19.0, lineHeight('128', label));
         final height = _pad.vertical +
             header +
@@ -189,8 +191,8 @@ class _ExpandedBanner extends ConsumerWidget {
 
         return Semantics(
           container: true,
-          label: 'Verset du jour, ${verse.reference}, ${verse.text}',
-          hint: 'Touchez pour ouvrir en plein écran',
+          label: l10n.homeVerseSemantics(verse.reference, verse.text),
+          hint: l10n.homeVerseOpenHint,
           child: DecoratedBox(
             decoration: BoxDecoration(borderRadius: AppRadius.cardRadius, boxShadow: AppShadows.card),
             child: VerseCanvas(
@@ -213,7 +215,7 @@ class _ExpandedBanner extends ConsumerWidget {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              'Verset du jour',
+                              l10n.verseOfTheDay,
                               style: verseLabelStyle(r.ink),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -221,13 +223,13 @@ class _ExpandedBanner extends ConsumerWidget {
                           ),
                           IconButton(
                             visualDensity: VisualDensity.compact,
-                            tooltip: 'Ouvrir en plein écran',
+                            tooltip: l10n.homeVerseOpenFullScreen,
                             onPressed: () => openDailyVerse(context),
                             icon: Icon(Icons.open_in_full_rounded, color: r.ink, size: 18),
                           ),
                           IconButton(
                             visualDensity: VisualDensity.compact,
-                            tooltip: 'Replier le verset',
+                            tooltip: l10n.homeVerseCollapse,
                             onPressed: () =>
                                 ref.read(verseBannerExpandedProvider.notifier).update(false),
                             icon: Icon(Icons.keyboard_arrow_up_rounded, color: r.ink, size: 22),
@@ -264,7 +266,7 @@ class _ExpandedBanner extends ConsumerWidget {
                                   Padding(
                                     padding: const EdgeInsets.only(top: 4),
                                     child: Text(
-                                      'Lire en entier',
+                                      l10n.verseReadInFull,
                                       style: verseLabelStyle(r.ink).copyWith(
                                         decoration: TextDecoration.underline,
                                         decorationColor: r.ink,
@@ -284,7 +286,7 @@ class _ExpandedBanner extends ConsumerWidget {
                             icon: verse.isLiked
                                 ? Icons.favorite_rounded
                                 : Icons.favorite_border_rounded,
-                            label: verse.likeCount > 0 ? '${verse.likeCount}' : 'J\'aime',
+                            label: verse.likeCount > 0 ? '${verse.likeCount}' : l10n.detailLike,
                             active: verse.isLiked,
                             ink: r.ink,
                             accent: r.accent,
@@ -295,7 +297,7 @@ class _ExpandedBanner extends ConsumerWidget {
                             icon: verse.isPrayed
                                 ? Icons.volunteer_activism
                                 : Icons.volunteer_activism_outlined,
-                            label: verse.prayerCount > 0 ? '${verse.prayerCount}' : 'Prier',
+                            label: verse.prayerCount > 0 ? '${verse.prayerCount}' : l10n.prayerPray,
                             active: verse.isPrayed,
                             ink: r.ink,
                             accent: r.accent,
@@ -305,7 +307,7 @@ class _ExpandedBanner extends ConsumerWidget {
                           Flexible(child: _InteractionButton(
                             icon: Icons.share_outlined,
                             label: '',
-                            semanticLabel: 'Partager le verset',
+                            semanticLabel: l10n.verseShare,
                             active: false,
                             ink: r.ink,
                             accent: r.accent,

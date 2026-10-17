@@ -13,6 +13,7 @@ import '../../../services/api_service.dart';
 import '../../../shared/models/user_model.dart';
 import '../models/profile_models.dart';
 import '../models/user_testimony_model.dart';
+import '../../../l10n/app_localizations.dart';
 
 // ── Clés de stockage ──────────────────────────────────────────────────────
 
@@ -98,8 +99,11 @@ class ProfileExtrasNotifier extends AsyncNotifier<ProfileExtras> {
     final title  = await _storage.read(key: _kTitle)      ?? '';
     final avatar = await _storage.read(key: _kAvatarPath);
 
-    // 1er lancement : initialiser prénom/nom depuis le displayName auth
-    if (fn.isEmpty && ln.isEmpty) {
+    // 1er lancement, ou nom changé ailleurs (site, autre appareil) : prénom/nom
+    // repris du nom du serveur, qui fait foi.
+    final serverName = (me?.displayName ?? '').trim();
+    final localName = '${fn.trim()} ${ln.trim()}'.trim();
+    if ((fn.isEmpty && ln.isEmpty) || (serverName.isNotEmpty && serverName != localName)) {
       final displayName = ref.read(currentUserProvider)?.displayName ?? '';
       final parts = displayName.trim().split(' ');
       final firstName = parts.isNotEmpty ? parts.first : '';
@@ -203,17 +207,56 @@ class ProfileExtrasNotifier extends AsyncNotifier<ProfileExtras> {
     }
   }
 
-  /// Enregistre le profil (localement puis PUT /users/me).
-  ///
-  /// Pour un compte organisation, [organization] est inclus dans la **même**
-  /// requête ; celle-ci est alors attendue et l'utilisateur connecté est mis
-  /// à jour après succès. Retourne `false` si la synchronisation serveur a
-  /// échoué (compte organisation uniquement ; sinon envoi en arrière-plan).
-  Future<bool> save(
+  /// Enregistre le profil : photo choisie ([newAvatarPath], POST /users/me/avatar),
+  /// puis PUT /users/me (champs organisation compris, dans la **même** requête),
+  /// puis mémorisation locale. L'utilisateur connecté est mis à jour avec la
+  /// réponse du serveur. Retourne `null` si tout est enregistré, sinon le
+  /// message d'erreur du serveur (validation, réseau…) : rien n'est alors
+  /// mémorisé, l'écran reste ouvert pour corriger et réessayer.
+  Future<String?> save(
     ProfileExtras extras, {
     OrganizationProfileUpdate? organization,
+    String? newAvatarPath,
   }) async {
-    // Persistance locale immédiate (profil de la personne seulement).
+    try {
+      if (newAvatarPath != null && newAvatarPath.isNotEmpty) {
+        await uploadAvatar(newAvatarPath);
+      }
+      final res = await _syncProfileToApi(extras, organization: organization);
+      final current = ref.read(currentUserProvider);
+      if (current != null) {
+        final server = res.data;
+        // Base : l'utilisateur renvoyé par le serveur (s'il est exploitable),
+        // puis les champs organisation saisis (un serveur plus ancien peut
+        // les ignorer).
+        final base = server is Map<String, dynamic> && server['id'] is String
+            ? server
+            : {
+                ...current.toJson(),
+                'display_name': extras.displayName,
+                'country': extras.country.isNotEmpty ? extras.country : null,
+                'bio': extras.bio.isNotEmpty ? extras.bio : null,
+              };
+        await ref.read(authStateProvider.notifier).updateCurrentUser(
+              UserModel.fromJson({
+                ...base,
+                if (organization != null) ...{
+                  ...organization.toJson(),
+                  'account_type': AccountType.organization.toJson(),
+                },
+              }),
+            );
+      }
+    } on LaravelApiException catch (e) {
+      debugPrint('profile save ✗ $e');
+      return e.displayMessage;
+    } catch (e) {
+      debugPrint('profile save ✗ $e');
+      return L10n.current.profileSaveFailed;
+    }
+
+    // Persistance locale (profil de la personne seulement) : champs que le
+    // serveur ne garde pas (prénom/nom séparés, genre, titre, e-mail saisi).
     if (!_actingForOther) {
       await Future.wait([
         _storage.write(key: _kFirstName,  value: extras.firstName),
@@ -230,49 +273,8 @@ class ProfileExtrasNotifier extends AsyncNotifier<ProfileExtras> {
         _storage.write(key: 'local_display_name', value: extras.displayName),
       ]);
     }
-
-    // Mettre à jour le displayName en mémoire dans l'état d'auth
-    await ref
-        .read(authStateProvider.notifier)
-        .updateDisplayName(extras.displayName);
-
     state = AsyncValue.data(extras);
-
-    // Synchronisation API (PUT /users/me) — une seule requête.
-    if (organization == null) {
-      // Compte personne : envoi en arrière-plan, erreurs ignorées.
-      () async {
-        try {
-          await _syncProfileToApi(extras);
-        } catch (_) {}
-      }();
-      return true;
-    }
-
-    try {
-      final res = await _syncProfileToApi(extras, organization: organization);
-      final current = ref.read(currentUserProvider);
-      if (current != null) {
-        final server = res.data;
-        // Base : l'utilisateur renvoyé par le serveur (s'il est exploitable),
-        // puis les champs organisation saisis (un serveur plus ancien peut
-        // les ignorer).
-        final base = server is Map<String, dynamic> && server['id'] is String
-            ? server
-            : current.toJson();
-        await ref.read(authStateProvider.notifier).updateCurrentUser(
-              UserModel.fromJson({
-                ...base,
-                ...organization.toJson(),
-                'account_type': AccountType.organization.toJson(),
-              }),
-            );
-      }
-      return true;
-    } catch (e) {
-      debugPrint('profile save ✗ $e');
-      return false;
-    }
+    return null;
   }
 
   /// PUT /users/me avec le profil (+ champs organisation éventuels).

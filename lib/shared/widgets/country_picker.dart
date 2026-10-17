@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../core/data/countries.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../l10n/app_localizations.dart';
 
 const _kBorder = AppColors.inputBorder;
 const _kFocus = AppColors.primary;
@@ -102,7 +103,7 @@ class _CountrySheetState extends State<_CountrySheet> {
                 textInputAction: TextInputAction.search,
                 decoration: countryFieldDecoration(
                   prefix: Icons.search_rounded,
-                  hint: widget.withDial ? 'Rechercher un pays ou un indicatif' : 'Rechercher un pays',
+                  hint: widget.withDial ? context.l10n.sharedCountrySearchWithDial : context.l10n.sharedCountrySearch,
                 ),
               ),
             ),
@@ -110,7 +111,7 @@ class _CountrySheetState extends State<_CountrySheet> {
               child: results.isEmpty
                   ? Center(
                       child: Text(
-                        widget.withDial ? 'Aucun pays ni indicatif ne correspond.' : 'Aucun pays ne correspond à votre recherche.',
+                        widget.withDial ? context.l10n.sharedCountryNoMatchWithDial : context.l10n.sharedCountryNoMatch,
                         style: const TextStyle(color: AppColors.textSecondary),
                       ),
                     )
@@ -121,7 +122,7 @@ class _CountrySheetState extends State<_CountrySheet> {
                         final selected = c.code == widget.selectedCode;
                         return ListTile(
                           leading: Text(c.flag, style: const TextStyle(fontSize: 22)),
-                          title: Text(c.name,
+                          title: Text(c.displayName,
                               style: TextStyle(fontWeight: selected ? FontWeight.w700 : FontWeight.w400)),
                           trailing: widget.withDial
                               ? Text(c.dialLabel, style: const TextStyle(color: AppColors.textSecondary))
@@ -149,15 +150,15 @@ class CountryPickerField extends FormField<Country> {
     required ValueChanged<Country?> onChanged,
     bool required = true,
     super.enabled = true,
-    String label = 'Pays',
+    String? label,
   }) : super(
-          validator: (v) => required && v == null ? 'Veuillez sélectionner votre pays' : null,
+          validator: (v) => required && v == null ? L10n.current.authSelectCountryErr : null,
           builder: (field) {
             final value = field.value;
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _Label(label),
+                _Label(label ?? field.context.l10n.authCountryLabel),
                 InkWell(
                   borderRadius: BorderRadius.circular(10),
                   onTap: !enabled
@@ -172,7 +173,7 @@ class CountryPickerField extends FormField<Country> {
                     isEmpty: value == null,
                     decoration: countryFieldDecoration(
                       prefix: value == null ? Icons.public_rounded : null,
-                      hint: 'Sélectionnez votre pays',
+                      hint: field.context.l10n.authSelectCountry,
                       errorText: field.errorText,
                     ).copyWith(
                       prefix: value == null
@@ -185,7 +186,7 @@ class CountryPickerField extends FormField<Country> {
                     ),
                     child: value == null
                         ? null
-                        : Text(value.name, style: const TextStyle(fontFamily: AppFonts.family, fontSize: 15, color: _kText)),
+                        : Text(value.displayName, style: const TextStyle(fontFamily: AppFonts.family, fontSize: 15, color: _kText)),
                   ),
                 ),
               ],
@@ -223,11 +224,11 @@ class PhoneNumberField extends StatelessWidget {
   /// Contrôle simple avant envoi (le serveur vérifie le format exact) ; null si correct.
   static String? check(Country? dial, String? value, {required bool required}) {
     final text = (value ?? '').trim();
-    if (text.isEmpty) return required ? 'Le numéro de téléphone est obligatoire.' : null;
-    if (dial == null) return 'Choisissez l\'indicatif du pays.';
-    if (RegExp(r'[^0-9 .\-()+/]').hasMatch(text)) return 'Numéro de téléphone invalide.';
+    if (text.isEmpty) return required ? L10n.current.sharedPhoneRequired : null;
+    if (dial == null) return L10n.current.sharedPhoneDialRequired;
+    if (RegExp(r'[^0-9 .\-()+/]').hasMatch(text)) return L10n.current.sharedPhoneInvalid;
     final digits = text.replaceAll(RegExp(r'\D'), '');
-    if (digits.length < 4 || digits.length > 15) return 'Numéro de téléphone invalide.';
+    if (digits.length < 4 || digits.length > 15) return L10n.current.sharedPhoneInvalid;
     return null;
   }
 
@@ -245,7 +246,7 @@ class PhoneNumberField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _Label(required ? 'Téléphone *' : 'Téléphone', note: requiredNote),
+        _Label(required ? context.l10n.sharedPhoneLabelRequired : context.l10n.editPhoneLabel, note: requiredNote),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -266,10 +267,10 @@ class PhoneNumberField extends StatelessWidget {
                     suffixIconConstraints: const BoxConstraints(minWidth: 28),
                   ),
                   child: Semantics(
-                    label: 'Indicatif du pays',
+                    label: context.l10n.sharedPhoneDialSemantics,
                     value: dial?.dialLabel,
                     child: Text(
-                      dial == null ? 'Indicatif' : '${dial!.flag} ${dial!.dialLabel}',
+                      dial == null ? context.l10n.sharedPhoneDial : '${dial!.flag} ${dial!.dialLabel}',
                       style: TextStyle(fontFamily: AppFonts.family, fontSize: 15, color: dial == null ? _kHint : _kText),
                     ),
                   ),
@@ -288,16 +289,16 @@ class PhoneNumberField extends StatelessWidget {
                 buildCounter: (_, {required currentLength, required isFocused, maxLength}) => null,
                 validator: _validate,
                 style: const TextStyle(fontFamily: AppFonts.family, fontSize: 15, color: _kText),
-                decoration: countryFieldDecoration(hint: 'Numéro'),
+                decoration: countryFieldDecoration(hint: context.l10n.sharedPhoneNumberHint),
               ),
             ),
           ],
         ),
-        const Padding(
-          padding: EdgeInsets.only(top: 6),
+        Padding(
+          padding: const EdgeInsets.only(top: 6),
           child: Text(
-            'Sert uniquement à vérifier votre compte : il n\'est jamais affiché publiquement.',
-            style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: AppColors.textSecondary),
+            context.l10n.sharedPhonePrivacyNote,
+            style: const TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: AppColors.textSecondary),
           ),
         ),
       ],

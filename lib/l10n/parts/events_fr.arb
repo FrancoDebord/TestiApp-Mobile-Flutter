@@ -1,0 +1,600 @@
+{
+  "@@locale": "fr",
+  "eventsTypeCrusade": "Croisade d'évangélisation",
+  "eventsTypeConference": "Conférence",
+  "eventsTypeSeminar": "Séminaire",
+  "eventsTypeCamp": "Camp",
+  "eventsTypeTour": "Tournée",
+  "eventsTypeWorship": "Concert de louange",
+  "eventsTypeRetreat": "Retraite spirituelle",
+  "eventsTypeOther": "Autre événement",
+  "eventsStatusDraft": "Brouillon",
+  "eventsStatusPublished": "Publié",
+  "eventsStatusPostponedTbc": "Reporté — date à confirmer",
+  "eventsStatusCancelled": "Annulé",
+  "eventsAttendanceYes": "Oui, il a eu lieu",
+  "eventsAttendanceNo": "Non, il n'a pas eu lieu",
+  "eventsAttendanceAbsent": "Je n'y étais pas",
+  "eventsReportNotChristian": "Pas un événement chrétien",
+  "eventsReportFake": "Événement faux / n'existe pas",
+  "eventsReportInappropriate": "Contenu inapproprié",
+  "eventsReportScam": "Arnaque / demande d'argent",
+  "eventsReportOther": "Autre",
+  "eventsSurveyConfirmedPercent": "{percent} % confirment qu'il a eu lieu",
+  "@eventsSurveyConfirmedPercent": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "eventsReviewCount": "{count, plural, =1{1 avis} other{{count} avis}}",
+  "@eventsReviewCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "eventsDefaultTitle": "Événement",
+  "eventsPhaseOngoing": "En cours",
+  "eventsPhasePast": "Terminé",
+  "eventsPhaseUpcoming": "À venir",
+  "eventsServerError": "Erreur du serveur ({status}).",
+  "@eventsServerError": {
+    "placeholders": {
+      "status": {
+        "type": "int"
+      }
+    }
+  },
+  "eventsConnectionError": "Connexion impossible. Vérifiez votre accès à Internet.",
+  "eventsTestimonySaved": "Témoignage enregistré.",
+  "eventsReportThanks": "Merci. Votre signalement sera examiné par la modération.",
+  "eventsTabUpcoming": "À venir",
+  "eventsTabOngoing": "En cours",
+  "eventsTabGoing": "J'y participe",
+  "eventsTabPast": "Passés",
+  "eventsTabMine": "Mes événements",
+  "eventsSearchHint": "Rechercher : titre, ville, lieu…",
+  "eventsCreate": "Créer un événement",
+  "eventsLayoutCards": "Affichage : cartes",
+  "eventsLayoutCompact": "Affichage : liste compacte",
+  "eventsAllTypes": "Tous",
+  "eventsEmptyUpcoming": "Aucun événement à venir pour le moment.",
+  "eventsEmptyGoing": "Vous n'avez encore répondu « Je participe » à aucun événement.",
+  "eventsEmptyOngoing": "Aucun événement en cours en ce moment.",
+  "eventsEmptyPast": "Aucun événement passé.",
+  "eventsEmptyMine": "Vous n'avez pas encore créé d'événement.\nCroisade, conférence, camp… lancez-vous !",
+  "eventsEmptyFollowing": "Aucun événement à venir des comptes que vous suivez.",
+  "eventsLoadError": "Impossible de charger les événements.",
+  "eventsDateTbd": "Date à préciser",
+  "eventsDateTbc": "Date à confirmer",
+  "eventsLiveBadge": "EN DIRECT",
+  "eventsImageOf": "Image {index} sur {total}",
+  "@eventsImageOf": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "eventsFlagPostponed": "Reporté",
+  "eventsFlagUnconfirmed": "Non confirmé",
+  "eventsFlagHidden": "Masqué",
+  "eventsOriginalDate": "Date initiale : {date}",
+  "@eventsOriginalDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "eventsManagerSearchError": "Recherche impossible. Vérifiez votre connexion.",
+  "eventsManagerSearchHint": "Nom ou adresse e-mail",
+  "eventsManagerTypeTwoLetters": "Tapez au moins deux lettres du nom de la personne.",
+  "eventsManagerNoAccount": "Aucun compte personnel trouvé.",
+  "eventsManagerAdd": "Ajouter un co-gestionnaire",
+  "eventsManagerAdded": "{name} peut maintenant gérer l'événement.",
+  "@eventsManagerAdded": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "eventsManagerLeft": "Vous ne gérez plus cet événement.",
+  "eventsManagerRemoved": "Co-gestionnaire retiré.",
+  "eventsManagersTitle": "Co-gestionnaires ({count}/{max})",
+  "@eventsManagersTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "eventsManagersHelp": "Ils modifient la page, enregistrent les témoignages et lancent le direct. Seul l'organisateur les désigne et peut supprimer l'événement.",
+  "eventsOrganizer": "Organisateur",
+  "eventsCoManager": "Co-gestionnaire",
+  "eventsManagerRemoveMe": "Me retirer",
+  "eventsManagersMax": "Deux co-gestionnaires au plus",
+  "eventsUpcomingAndOngoing": "Événements à venir et en cours",
+  "eventsPastEvents": "Événements passés",
+  "eventsUpcomingTitle": "Événements à venir",
+  "eventsSeeAll": "Tout voir",
+  "eventsOsmAttribution": "© contributeurs OpenStreetMap",
+  "eventsPlacePin": "Lieu de l'événement",
+  "eventsLocationServiceOff": "La localisation est désactivée. Activez-la dans les réglages du téléphone, ou touchez la carte pour placer le repère.",
+  "eventsLocationDenied": "Accès à la position refusé. Touchez la carte pour placer le repère.",
+  "eventsLocationBlockedWeb": "Accès à la position bloqué : autorisez la localisation pour ce site dans les réglages du navigateur, ou touchez la carte.",
+  "eventsLocationDeniedForever": "Accès à la position refusé. Autorisez-le dans les réglages de l'application, ou touchez la carte pour placer le repère.",
+  "eventsLocationNotFound": "Position introuvable pour le moment. Touchez la carte pour placer le repère.",
+  "eventsPinOnPosition": "Repère placé sur votre position.",
+  "eventsEnterAddressFirst": "Saisissez d'abord le lieu, l'adresse ou la ville.",
+  "eventsAddressNotFound": "Adresse introuvable sur la carte : touchez la carte pour placer le repère.",
+  "eventsAddressFound": "Adresse trouvée : ajustez le repère si besoin.",
+  "eventsAddressSearchFailed": "Recherche impossible pour le moment : touchez la carte pour placer le repère.",
+  "eventsMyPosition": "Ma position",
+  "eventsSearchAddress": "Chercher l'adresse",
+  "eventsClearPin": "Effacer le repère",
+  "eventsMapPickerSemantics": "Carte : touchez pour placer le repère du lieu de l'événement",
+  "eventsNoPin": "Aucun repère placé. Touchez la carte pour indiquer le lieu.",
+  "eventsPinPlaced": "Repère placé",
+  "eventsDirectionsFailed": "Impossible d'ouvrir l'itinéraire sur cet appareil.",
+  "eventsAddressCopied": "Adresse copiée.",
+  "eventsPlace": "Lieu",
+  "eventsPlaceMap": "Carte du lieu de l'événement",
+  "eventsDirections": "Itinéraire",
+  "eventsCopyAddress": "Copier l'adresse",
+  "eventsReasonLabel": "Motif : {reason}",
+  "@eventsReasonLabel": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "eventsHiddenByModeration": "Masqué par la modération",
+  "eventsHiddenText": "L'événement n'apparaît plus au public.",
+  "eventsCancelledTitle": "Événement annulé",
+  "eventsCancelledText": "Les réponses ne sont plus possibles.",
+  "eventsPostponedTitle": "Événement reporté",
+  "eventsNewDate": "Nouvelle date : {date}.",
+  "@eventsNewDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "eventsGoingKept": "Votre réponse « Je participe » est conservée.",
+  "eventsUnconfirmedText": "La majorité des personnes qui ont répondu au sondage disent que cet événement n'a pas eu lieu. La modération vérifie.",
+  "eventsPostponeChooseDates": "Choisissez les nouvelles dates, ou « Date à confirmer ».",
+  "eventsEndAfterStart": "La fin doit être après le début.",
+  "eventsLabeledValue": "{label} : {value}",
+  "@eventsLabeledValue": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "eventsPostponeTitle": "Reporter l'événement",
+  "eventsPostponeHelp": "Les personnes qui participent sont prévenues. La date initiale reste affichée, barrée.",
+  "eventsPostponeTbdHelp": "La nouvelle date sera annoncée plus tard.",
+  "eventsNewStart": "Nouveau début",
+  "eventsNewEnd": "Nouvelle fin",
+  "eventsReasonOptional": "Motif (facultatif)",
+  "eventsPostpone": "Reporter",
+  "eventsCancelConfirmTitle": "Annuler l'événement ?",
+  "eventsCancelConfirmText": "La page reste visible avec la mention « Annulé ». Les personnes qui participent sont prévenues.",
+  "eventsCancelEvent": "Annuler l'événement",
+  "eventsReportChooseReason": "Choisissez la raison du signalement.",
+  "eventsReportTitle": "Signaler l'événement",
+  "eventsReportHelp": "Votre signalement est anonyme pour l'organisateur et examiné par la modération.",
+  "eventsCommentOptional": "Commentaire (facultatif)",
+  "eventsReportSend": "Envoyer le signalement",
+  "eventsSurveyTellUs": "Dites-nous si l'événement a eu lieu.",
+  "eventsSurveyGiveRating": "Donnez une note de 1 à 5.",
+  "eventsSurveyThanks": "Merci pour votre avis !",
+  "eventsSurveyTitle": "Votre avis",
+  "eventsSurveyNoReviews": "Aucun avis pour le moment.",
+  "eventsSurveyManagersExcluded": "Les organisateurs et gestionnaires ne répondent pas au sondage de leur propre événement.",
+  "eventsSurveyQuestion": "L'événement a-t-il eu lieu ?",
+  "eventsSurveyYourRating": "Votre note",
+  "eventsSurveyBodyOptional": "Votre avis (facultatif)",
+  "eventsSurveySend": "Envoyer mon avis",
+  "eventsSurveyYourAnswer": "Votre réponse : {answer}",
+  "@eventsSurveyYourAnswer": {
+    "placeholders": {
+      "answer": {
+        "type": "String"
+      }
+    }
+  },
+  "eventsSurveyEdit": "Modifier mon avis",
+  "eventsSurveyEditableUntil": "Modifiable jusqu'au {date}.",
+  "@eventsSurveyEditableUntil": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "eventsSurveyLoginToReview": "Se connecter pour donner son avis",
+  "eventsRatingOutOf5": "{rating} sur 5",
+  "@eventsRatingOutOf5": {
+    "placeholders": {
+      "rating": {
+        "type": "int"
+      }
+    }
+  },
+  "eventsModHidden": "Événement masqué.",
+  "eventsModRestored": "Événement rétabli.",
+  "eventsModDismissed": "Signalements classés.",
+  "eventsModeration": "Modération",
+  "eventsModReportCount": "{count, plural, =0{0 signalement} =1{1 signalement} other{{count} signalements}}",
+  "@eventsModReportCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "eventsModPending": "{count} à traiter",
+  "@eventsModPending": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "eventsModReliability": "Fiabilité de l'organisateur ({events})",
+  "@eventsModReliability": {
+    "placeholders": {
+      "events": {
+        "type": "String"
+      }
+    }
+  },
+  "eventsModEventCount": "{count, plural, =0{0 événement} =1{1 événement} other{{count} événements}}",
+  "@eventsModEventCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "eventsModConfirmed": "Confirmés",
+  "eventsModUnconfirmed": "Non confirmés",
+  "eventsModReported": "Signalés",
+  "eventsModRestore": "Rétablir",
+  "eventsModHide": "Masquer",
+  "eventsModDismiss": "Rejeter les signalements",
+  "eventsFormMaxImages": "Six images au plus.",
+  "eventsFormDatesRequired": "Indiquez les dates de début et de fin.",
+  "eventsFormUploadingImages": "Envoi des images {current}/{total}…",
+  "@eventsFormUploadingImages": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "eventsFormImagesFailed": "Événement enregistré, mais {count} image(s) n'ont pas pu être envoyées.",
+  "@eventsFormImagesFailed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "eventsFormUpdated": "Événement mis à jour.",
+  "eventsFormCreated": "Événement créé !",
+  "eventsFormEditTitle": "Modifier l'événement",
+  "eventsFormNewTitle": "Nouvel événement",
+  "eventsFormSaving": "Enregistrement…",
+  "eventsFormSaveChanges": "Enregistrer les modifications",
+  "eventsFormSaveDraft": "Enregistrer le brouillon",
+  "eventsFormPublish": "Publier l'événement",
+  "eventsFormCoverImages": "Images de couverture",
+  "eventsFormCoverImagesHelp": "Jusqu'à 6 images, affichées en carrousel. La première sert de vignette.",
+  "eventsFormInfo": "Informations",
+  "eventsFormTitleLabel": "Titre *",
+  "eventsFormTitleHint": "Ex. : Croisade de guérison 2026",
+  "eventsFormTitleRequired": "Donnez un titre à l'événement.",
+  "eventsFormTypeLabel": "Type d'événement *",
+  "eventsFormDescription": "Description",
+  "eventsFormDescriptionHint": "Programme, thème, public attendu, informations pratiques…",
+  "eventsFormDates": "Dates",
+  "eventsFormStart": "Début *",
+  "eventsFormEnd": "Fin *",
+  "eventsFormPlaceHint": "Ex. : Stade de l'Amitié, église…",
+  "eventsFormAddress": "Adresse",
+  "eventsFormAddressHint": "Rue, quartier, point de repère…",
+  "eventsFormCity": "Ville",
+  "eventsFormCountry": "Pays",
+  "eventsFormMapPosition": "Position sur la carte",
+  "eventsFormMapPositionHelp": "Facultatif : touchez la carte pour placer le repère du lieu. Les participants pourront lancer l'itinéraire.",
+  "eventsFormGuests": "Invités principaux",
+  "eventsFormGuestsHelp": "Facultatif : orateurs, chantres, groupes…",
+  "eventsFormAddGuest": "Ajouter un invité",
+  "eventsFormPublication": "Publication",
+  "eventsFormDraftHelp": "Brouillon : visible de vous seul, à publier plus tard.",
+  "eventsFormPublishedHelp": "Visible de tous : chacun peut répondre « Je participe ».",
+  "eventsFormCancelledHelp": "Reste visible avec la mention « Annulé » ; plus de participation.",
+  "eventsFormPostponedHelp": "Reporté, date à confirmer : modifiez les dates pour le reprogrammer.",
+  "eventsFormCommentsOpen": "Commentaires ouverts",
+  "eventsFormCommentsOpenHelp": "Les participants partagent ce qu'ils ont vécu.",
+  "eventsFormPickDateTime": "Choisir la date et l'heure",
+  "eventsFormGuestName": "Nom",
+  "eventsFormGuestRole": "Rôle",
+  "eventsFormGuestRoleHint": "Orateur…",
+  "eventsFormRemoveGuest": "Retirer l'invité",
+  "eventsFormOptions": "Options",
+  "eventsFormMakeFirst": "Mettre en premier",
+  "eventsFormThumbnail": "Vignette",
+  "eventsFormOnBehalfOf": "Au nom de qui créer l'événement ?",
+  "eventsFormPublishedAs": "L'événement sera publié au nom de ce compte.",
+  "exploreTypeAll": "Tout",
+  "exploreTypeText": "Texte",
+  "exploreTypeAudio": "Audio",
+  "exploreTypeVideo": "Vidéo",
+  "exploreTabAll": "Tous",
+  "exploreTabTexts": "Textes",
+  "exploreTabAudios": "Audios",
+  "exploreTabVideos": "Vidéos",
+  "exploreTypeAllTypes": "Tous les types",
+  "exploreSortRecent": "Récent",
+  "exploreSortPopular": "Populaire",
+  "exploreSortLiked": "Plus aimés",
+  "exploreSortRecommended": "Recommandé",
+  "exploreSortNewest": "Plus récents",
+  "exploreSortMostViewed": "Plus vus",
+  "exploreSortMostPrayed": "Plus priés",
+  "exploreSearchFiltersTitle": "Recherche & filtres",
+  "exploreTestimonyCount": "{count, plural, =0{0 témoignage} =1{1 témoignage} other{{count} témoignages}}",
+  "@exploreTestimonyCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "exploreCategoryTestimonyCount": "{count, plural, =1{1 témoignage} other{{count} témoignages}}",
+  "@exploreCategoryTestimonyCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "exploreCategoriesSubtitle": "Parcourez par thème",
+  "exploreTrendingSubtitle": "Les plus consultés en ce moment",
+  "exploreMostPrayedSubtitle": "Témoignages qui touchent le cœur",
+  "exploreRecentSubtitle": "Derniers témoignages publiés",
+  "exploreStatViews": "vues",
+  "exploreStatPrayers": "prières",
+  "exploreNoTestimony": "Aucun témoignage",
+  "exploreNoTestimonyFound": "Aucun témoignage trouvé",
+  "exploreNoTestimonyFoundHint": "Essayez un autre mot-clé ou\nparcourez les rubriques.",
+  "exploreSortTooltip": "Trier : {sort}",
+  "@exploreSortTooltip": {
+    "placeholders": {
+      "sort": {
+        "type": "String"
+      }
+    }
+  },
+  "exploreSortBy": "Trier par",
+  "exploreCategoryEmpty": "Aucun témoignage pour l'instant",
+  "exploreCategoryEmptyHint": "Soyez le premier à partager\ndans cette rubrique.",
+  "exploreTrendingCategories": "Catégories tendance",
+  "exploreFilters": "Filtres",
+  "exploreFilterType": "Type",
+  "exploreFilterCategory": "Catégorie",
+  "exploreFilterAllCategories": "Toutes les catégories",
+  "exploreFilterPopularity": "Popularité",
+  "exploreApplyFilters": "Appliquer les filtres",
+  "exploreMicUnavailable": "Microphone non disponible",
+  "exploreSearchHintDots": "Rechercher un témoignage...",
+  "exploreClear": "Effacer",
+  "exploreSpeakNow": "Parlez maintenant…",
+  "locationNoZone": "Aucune zone connue : vos fils restent classés selon vos goûts.",
+  "locationSourceGps": "position de l’appareil",
+  "locationSourceProfile": "ville et pays du profil",
+  "locationSourcePhone": "indicatif du téléphone",
+  "locationSourceLanguage": "langue de l’appareil",
+  "locationSourceDefault": "profil",
+  "locationDeniedCity": "Accès à la position refusé. Autorisez-le dans les réglages de l'application, ou indiquez votre ville.",
+  "locationUnavailableCity": "Position indisponible pour le moment. Réessayez, ou indiquez votre ville.",
+  "locationOpenSettings": "Réglages",
+  "locationActionFailed": "Action impossible pour le moment. Réessayez.",
+  "locationTitle": "Localisation",
+  "locationSaved": "Position enregistrée.",
+  "locationCleared": "Position effacée.",
+  "locationUseGpsTitle": "Utiliser ma position pour personnaliser mes fils",
+  "locationUseGpsSubtitle": "Les témoignages, prières et événements proches de vous d’abord. Position arrondie (environ 1 km), jamais montrée aux autres.",
+  "locationUpdated": "Position mise à jour.",
+  "locationUpdate": "Mettre à jour ma position",
+  "locationHomeCityTitle": "Ma ville (sans position)",
+  "locationHomeCityHelp": "Utilisée quand la position est désactivée ; le pays est celui de votre profil.",
+  "locationHomeCityHint": "Ex. Cotonou",
+  "locationCitySaved": "Ville enregistrée.",
+  "locationErased": "Votre position a été supprimée.",
+  "locationErase": "Supprimer ma position",
+  "locationNearbySemantics": "Près de chez vous : {place}. Réglage de localisation",
+  "@locationNearbySemantics": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      }
+    }
+  },
+  "locationNearbyChip": "Près de chez vous · {place}",
+  "@locationNearbyChip": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      }
+    }
+  },
+  "locationPrompt": "Activez votre position pour des témoignages proches de vous",
+  "locationEnable": "Activer",
+  "eventsPostponedNotified": "Événement reporté. Les participants sont prévenus.",
+  "eventsCancelledNotified": "Événement annulé. Les participants sont prévenus.",
+  "eventsAlreadyReportedThanks": "Vous avez déjà signalé cet événement. Merci.",
+  "eventsReasonParticipate": "indiquer votre participation",
+  "eventsReasonReport": "signaler un événement",
+  "eventsReasonSurvey": "donner votre avis",
+  "eventsReasonComment": "partager ce que vous avez vécu",
+  "eventsDeleteConfirmTitle": "Supprimer l'événement ?",
+  "eventsDeleteConfirmText": "La page, les images, les réponses et les commentaires seront supprimés. Les témoignages déjà enregistrés restent publiés.",
+  "eventsDeleted": "Événement supprimé.",
+  "eventsDetailLoadError": "Impossible de charger l'événement.",
+  "eventsAbout": "À propos de l'événement",
+  "eventsTellExperience": "Raconter ce que j'ai vécu",
+  "eventsMoreOptions": "Plus d'options",
+  "eventsAlreadyReported": "Déjà signalé",
+  "eventsDateRangeDays": "Du {start} au {end}",
+  "@eventsDateRangeDays": {
+    "placeholders": {
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "eventsReliableOrganizer": "Organisateur fiable",
+  "eventsVerifiedOrganization": "Organisation vérifiée",
+  "eventsLiveOnAir": "L'événement est en direct",
+  "eventsLivePreparing": "Direct en préparation",
+  "eventsOpenStudio": "Ouvrir le studio",
+  "eventsJoinBroadcast": "Rejoignez la diffusion maintenant",
+  "eventsLivePrivateUntilOnAir": "Visible de vous seul jusqu'au passage à l'antenne",
+  "eventsIsCancelled": "Cet événement est annulé",
+  "eventsIsOver": "Cet événement est terminé",
+  "eventsYouAreGoing": "Vous participez à cet événement 🙌",
+  "eventsYouAreNotGoing": "Vous ne participez pas",
+  "eventsAreYouGoing": "Allez-vous participer ?",
+  "eventsBeFirstToAnswer": "Soyez le premier à répondre.",
+  "eventsGoingCount": "{count, plural, =1{1 personne participe} other{{count} personnes participent}}",
+  "@eventsGoingCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "eventsGoing": "Je participe",
+  "eventsNotGoing": "Je ne participe pas",
+  "eventsTapAgainToRemove": "Touchez de nouveau votre réponse pour la retirer.",
+  "eventsParticipantsCount": "Participants ({count})",
+  "@eventsParticipantsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "eventsManageDraft": "Gestion · brouillon (invisible du public)",
+  "eventsManagePage": "Gestion de la page",
+  "eventsManageHelp": "Enregistrez un commentaire comme témoignage avec « Enregistrer comme témoignage » dans l'onglet Commentaires.",
+  "eventsNoParticipants": "Personne n'a encore répondu « Je participe ».",
+  "eventsRespondedOn": "Réponse le {date}",
+  "@eventsRespondedOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "eventsReadMore": "Lire la suite",
+  "eventsTabTestimonies": "Témoignages ({count})",
+  "@eventsTabTestimonies": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "eventsTabComments": "Commentaires ({count})",
+  "@eventsTabComments": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "eventsNoTestimoniesManager": "Aucun témoignage enregistré. Publiez-en un, ou enregistrez un commentaire de participant.",
+  "eventsNoTestimoniesPublic": "Les témoignages de cet événement seront publiés ici par les organisateurs.",
+  "eventsTestimoniesLoadError": "Impossible de charger les témoignages.",
+  "eventsCommentPrompt": "Racontez ce que Dieu a fait pour vous…",
+  "eventsCommentsClosed": "Les commentaires sont fermés pour cet événement.",
+  "eventsNoComments": "Aucun commentaire pour le moment. Partagez le premier témoignage !",
+  "eventsMoreComments": "Voir plus de commentaires",
+  "eventsCommentsLoadError": "Impossible de charger les commentaires.",
+  "eventsCommentThanks": "Merci pour votre témoignage !",
+  "eventsComposerHelp": "Racontez ce que vous avez vécu pendant l'événement. Les organisateurs pourront l'enregistrer comme témoignage officiel.",
+  "eventsComposerHint": "Ex. : pendant la prière, j'ai été guéri… (@ pour mentionner)",
+  "eventsDeleteCommentTitle": "Supprimer ce commentaire ?",
+  "eventsCommentDeleted": "Commentaire supprimé.",
+  "eventsSavedAsTestimony": "Enregistré comme témoignage",
+  "eventsSaveAsTestimony": "Enregistrer comme témoignage",
+  "eventsPromoteHelp": "Le témoignage de {name} sera publié sous son nom, rattaché à l'événement.",
+  "@eventsPromoteHelp": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "eventsPromoteTitleHint": "Ex. : Guéri pendant la croisade",
+  "eventsAgoMinutes": "{count} min",
+  "@eventsAgoMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "eventsAgoHours": "{count} h",
+  "@eventsAgoHours": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "eventsAgoDays": "{count} j",
+  "@eventsAgoDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "eventsParticipantCount": "{count, plural, =1{1 participant} other{{count} participants}}",
+  "@eventsParticipantCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
+}

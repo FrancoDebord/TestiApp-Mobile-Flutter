@@ -16,6 +16,7 @@ import '../models/prophecy.dart';
 import '../providers/prophecies_providers.dart';
 import '../widgets/prophecy_widgets.dart';
 import 'prophecy_reminder_sheet.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Une parole prophétique : la parole (texte / audio), le journal de prière,
 /// le rappel, la proclamation en plein écran et l'accomplissement (témoigner).
@@ -57,19 +58,21 @@ class _ProphecyDetailScreenState extends ConsumerState<ProphecyDetailScreen> {
   }
 
   Future<void> _pray() async {
+    final saved = context.l10n.prophecyPrayerSaved;
     final note = await showDialog<String>(
       context: context,
       builder: (_) => const _PrayDialog(),
     );
     if (note == null) return;
     unawaited(HapticFeedback.mediumImpact());
-    await _run(() => _repo.pray(_id, note: note), 'Prière enregistrée. Dieu veille sur sa parole pour l\'accomplir.');
+    await _run(() => _repo.pray(_id, note: note), saved);
   }
 
   Future<void> _reminder(Prophecy p) async {
+    final l10n = context.l10n;
     final r = await showReminderSheet(context, current: p.reminder);
     if (r == null) return;
-    await _run(() => _repo.setReminder(_id, r.value), r.value == null ? 'Rappel supprimé.' : 'Rappel : ${r.value!.label}.');
+    await _run(() => _repo.setReminder(_id, r.value), r.value == null ? l10n.prophecyReminderRemoved : l10n.prophecyReminderSet(r.value!.label));
   }
 
   void _testify(Prophecy p) {
@@ -88,18 +91,18 @@ class _ProphecyDetailScreenState extends ConsumerState<ProphecyDetailScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 18, 20, 6),
-              child: Text('Gloire à Dieu ! La parole s\'est accomplie',
+              child: Text(context.l10n.prophecyFulfilledSheetTitle,
                   style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w800)),
             ),
             ListTile(
               leading: const Icon(Icons.campaign_rounded, color: AppColors.primary),
-              title: const Text('Témoigner de son accomplissement'),
-              subtitle: const Text('Publiez votre témoignage ; vous choisirez de montrer la parole avec lui.'),
+              title: Text(context.l10n.prophecyTestify),
+              subtitle: Text(context.l10n.prophecyTestifySubtitle),
               onTap: () => Navigator.pop(context, 'testify'),
             ),
             ListTile(
               leading: const Icon(Icons.verified_outlined, color: AppColors.success),
-              title: const Text('Marquer accomplie, sans témoigner pour l\'instant'),
+              title: Text(context.l10n.prophecyMarkFulfilledOnly),
               onTap: () => Navigator.pop(context, 'mark'),
             ),
             const SizedBox(height: 8),
@@ -109,32 +112,32 @@ class _ProphecyDetailScreenState extends ConsumerState<ProphecyDetailScreen> {
     );
     if (!mounted) return;
     if (choice == 'testify') _testify(p);
-    if (choice == 'mark') await _run(() => _repo.setFulfilled(_id, true), 'Parole marquée comme accomplie.');
+    if (choice == 'mark') await _run(() => _repo.setFulfilled(_id, true), context.l10n.prophecyMarkedFulfilled);
   }
 
   Future<void> _delete() async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Supprimer cette parole ?'),
-        content: const Text('La parole et son journal de prière seront supprimés. '
-            'Un témoignage déjà publié reste publié.'),
+        title: Text(context.l10n.prophecyDeleteTitle),
+        content: Text(context.l10n.prophecyDeleteBody),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(context.l10n.commonCancel)),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
-            child: const Text('Supprimer'),
+            child: Text(context.l10n.commonDelete),
           ),
         ],
       ),
     );
-    if (ok != true) return;
+    if (ok != true || !mounted) return;
+    final deleted = context.l10n.prophecyDeleted;
     try {
       await _repo.delete(_id);
       await ProphecyReminders.cancel(_id);
       ref.invalidate(propheciesListProvider);
-      _snack('Parole supprimée.');
+      _snack(deleted);
       if (mounted) context.pop();
     } on ProphecyFailure catch (e) {
       _snack(e.message);
@@ -148,7 +151,7 @@ class _ProphecyDetailScreenState extends ConsumerState<ProphecyDetailScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Parole prophétique'),
+        title: Text(context.l10n.prophecyDetailTitle),
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.textPrimary,
         surfaceTintColor: AppColors.surface,
@@ -156,20 +159,21 @@ class _ProphecyDetailScreenState extends ConsumerState<ProphecyDetailScreen> {
         actions: [
           if (p != null)
             PopupMenuButton<String>(
-              tooltip: 'Options',
+              tooltip: context.l10n.prophecyOptions,
               onSelected: (a) async {
+                final backToPending = context.l10n.prophecyBackToPending;
                 if (a == 'edit') {
                   await context.push('/prophecies/${p.id}/edit');
                   ref.invalidate(prophecyProvider(_id));
                 }
-                if (a == 'waiting') await _run(() => _repo.setFulfilled(_id, false), 'Parole remise en attente.');
+                if (a == 'waiting') await _run(() => _repo.setFulfilled(_id, false), backToPending);
                 if (a == 'delete') await _delete();
               },
               itemBuilder: (_) => [
-                const PopupMenuItem(value: 'edit', child: Text('Modifier')),
+                PopupMenuItem(value: 'edit', child: Text(context.l10n.commonEdit)),
                 if (p.fulfilled && p.testimonyId == null)
-                  const PopupMenuItem(value: 'waiting', child: Text('Remettre en attente')),
-                const PopupMenuItem(value: 'delete', child: Text('Supprimer')),
+                  PopupMenuItem(value: 'waiting', child: Text(context.l10n.prophecyMarkPending)),
+                PopupMenuItem(value: 'delete', child: Text(context.l10n.commonDelete)),
               ],
             ),
         ],
@@ -182,8 +186,8 @@ class _ProphecyDetailScreenState extends ConsumerState<ProphecyDetailScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(error is ProphecyFailure ? error.message : 'Parole introuvable.', textAlign: TextAlign.center),
-                  TextButton(onPressed: () => ref.invalidate(prophecyProvider(_id)), child: const Text('Réessayer')),
+                  Text(error is ProphecyFailure ? error.message : context.l10n.prophecyNotFound, textAlign: TextAlign.center),
+                  TextButton(onPressed: () => ref.invalidate(prophecyProvider(_id)), child: Text(context.l10n.commonRetry)),
                 ],
               ),
             ),
@@ -208,11 +212,11 @@ class _ProphecyDetailScreenState extends ConsumerState<ProphecyDetailScreen> {
           Text(p.displayTitle(prophecyDay),
               style: AppTextStyles.h3.copyWith(color: AppColors.primary, fontWeight: FontWeight.w800)),
           const SizedBox(height: 10),
-          _InfoLine(Icons.event_note_rounded, 'Reçue le ${prophecyReceived(p.receivedOn, p.receivedTime)}'),
-          if (p.givenBy != null) _InfoLine(Icons.person_outline_rounded, 'Donnée par ${p.givenBy}'),
-          if (p.dueOn != null) _InfoLine(Icons.flag_outlined, 'Échéance : ${prophecyDay(p.dueOn!)}'),
+          _InfoLine(Icons.event_note_rounded, context.l10n.prophecyReceivedOn(prophecyReceived(p.receivedOn, p.receivedTime))),
+          if (p.givenBy != null) _InfoLine(Icons.person_outline_rounded, context.l10n.prophecyGivenByCap(p.givenBy!)),
+          if (p.dueOn != null) _InfoLine(Icons.flag_outlined, context.l10n.prophecyDueOn(prophecyDay(p.dueOn!))),
           if (p.fulfilledOn != null)
-            _InfoLine(Icons.verified_rounded, 'Accomplie le ${prophecyDay(p.fulfilledOn!)}', color: AppColors.success),
+            _InfoLine(Icons.verified_rounded, context.l10n.prophecyFulfilledOn(prophecyDay(p.fulfilledOn!)), color: AppColors.success),
           const SizedBox(height: 14),
 
           // ── La parole ─────────────────────────────────────────────────────
@@ -243,7 +247,7 @@ class _ProphecyDetailScreenState extends ConsumerState<ProphecyDetailScreen> {
                   onPressed: _busy ? null : _pray,
                   style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48), backgroundColor: AppColors.primary),
                   icon: const Icon(Icons.volunteer_activism_rounded),
-                  label: const Text("J'ai prié"),
+                  label: Text(context.l10n.prophecyIPrayed),
                 ),
               ),
               const SizedBox(width: 10),
@@ -255,7 +259,7 @@ class _ProphecyDetailScreenState extends ConsumerState<ProphecyDetailScreen> {
                   )),
                   style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
                   icon: const Icon(Icons.record_voice_over_rounded),
-                  label: const Text('Proclamer'),
+                  label: Text(context.l10n.prophecyProclaim),
                 ),
               ),
             ],
@@ -266,21 +270,21 @@ class _ProphecyDetailScreenState extends ConsumerState<ProphecyDetailScreen> {
               onPressed: _busy ? null : () => _fulfilled(p),
               style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48), backgroundColor: AppColors.success),
               icon: const Icon(Icons.celebration_rounded),
-              label: const Text("Elle s'est accomplie"),
+              label: Text(context.l10n.prophecyItIsFulfilled),
             )
           else if (p.testimonyId != null)
             OutlinedButton.icon(
               onPressed: () => context.push('/testimony/${p.testimonyId}'),
               style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
               icon: const Icon(Icons.auto_awesome_rounded),
-              label: Text(p.isPublic ? 'Voir mon témoignage (parole publiée)' : 'Voir mon témoignage'),
+              label: Text(p.isPublic ? context.l10n.prophecyViewMyTestimonyPublic : context.l10n.prophecyViewMyTestimony),
             )
           else
             FilledButton.icon(
               onPressed: () => _testify(p),
               style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48), backgroundColor: AppColors.secondary),
               icon: const Icon(Icons.campaign_rounded),
-              label: const Text('Témoigner de son accomplissement'),
+              label: Text(context.l10n.prophecyTestify),
             ),
           const SizedBox(height: 18),
 
@@ -293,8 +297,8 @@ class _ProphecyDetailScreenState extends ConsumerState<ProphecyDetailScreen> {
                   borderRadius: AppRadius.cardRadius, side: const BorderSide(color: AppColors.border)),
               child: ListTile(
                 leading: const Icon(Icons.notifications_active_outlined, color: AppColors.primary),
-                title: Text(p.reminder?.label ?? 'Aucun rappel de prière'),
-                subtitle: const Text('Notification sur ce téléphone'),
+                title: Text(p.reminder?.label ?? context.l10n.prophecyNoReminder),
+                subtitle: Text(context.l10n.prophecyNotificationOnPhone),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: _busy ? null : () => _reminder(p),
               ),
@@ -302,16 +306,19 @@ class _ProphecyDetailScreenState extends ConsumerState<ProphecyDetailScreen> {
           const SizedBox(height: 22),
 
           // ── Journal de prière ──────────────────────────────────────────────
-          Text('Journal de prière', style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w800)),
+          Text(context.l10n.prophecyPrayerJournal, style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w800)),
           const SizedBox(height: 4),
           Text(
             p.prayerCount == 0
-                ? 'Pas encore de prière enregistrée.'
-                : 'Priée ${p.prayerCount} fois${p.lastPrayedAt != null ? ' · dernière fois ${prayedAgo(p.lastPrayedAt!)}' : ''}',
+                ? context.l10n.prophecyNoPrayerYet
+                : context.l10n.prophecyPrayedCount(p.prayerCount) +
+                    (p.lastPrayedAt != null
+                        ? context.l10n.prophecyLastPrayed(prayedAgo(p.lastPrayedAt!))
+                        : ''),
             style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: 10),
-          _PrayerJournal(prophecyId: p.id, onDelete: (pr) => _run(() => _repo.deletePrayer(_id, pr.id), 'Prière retirée du journal.')),
+          _PrayerJournal(prophecyId: p.id, onDelete: (pr) => _run(() => _repo.deletePrayer(_id, pr.id), context.l10n.prophecyPrayerRemoved)),
         ],
       ),
     );
@@ -380,7 +387,7 @@ class _PrayerJournal extends ConsumerWidget {
                   ),
                 ),
                 IconButton(
-                  tooltip: 'Retirer du journal',
+                  tooltip: context.l10n.prophecyRemoveFromJournal,
                   visualDensity: VisualDensity.compact,
                   onPressed: () => onDelete(pr),
                   icon: const Icon(Icons.close_rounded, size: 18, color: AppColors.textSecondary),
@@ -413,21 +420,21 @@ class _PrayDialogState extends State<_PrayDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text("J'ai prié pour cette parole"),
+      title: Text(context.l10n.prophecyPrayedForWord),
       content: TextField(
         controller: _note,
         maxLength: 1000,
         minLines: 2,
         maxLines: 5,
         textCapitalization: TextCapitalization.sentences,
-        decoration: const InputDecoration(
-          labelText: 'Note (facultative)',
-          hintText: 'Ce que Dieu vous a mis à cœur…',
+        decoration: InputDecoration(
+          labelText: context.l10n.prophecyNoteLabel,
+          hintText: context.l10n.prophecyNoteHint,
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
-        FilledButton(onPressed: () => Navigator.pop(context, _note.text), child: const Text('Enregistrer')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(context.l10n.commonCancel)),
+        FilledButton(onPressed: () => Navigator.pop(context, _note.text), child: Text(context.l10n.commonSave)),
       ],
     );
   }
@@ -452,7 +459,7 @@ class ProclaimScreen extends StatelessWidget {
               Align(
                 alignment: Alignment.topRight,
                 child: IconButton(
-                  tooltip: 'Fermer',
+                  tooltip: context.l10n.commonClose,
                   onPressed: () => Navigator.pop(context),
                   icon: const Icon(Icons.close_rounded, color: Colors.white70),
                 ),

@@ -7,6 +7,8 @@
 
 import 'dart:typed_data';
 
+import '../../../l10n/app_localizations.dart';
+
 enum AccountVerificationStatus {
   none,
   pending,
@@ -23,19 +25,33 @@ enum AccountVerificationStatus {
       };
 }
 
-/// Fonction déclarée (valeurs de l'API, libellés français).
+/// Fonction déclarée (valeurs de l'API ; libellé du serveur, sinon traduit).
 class VerificationRoleOption {
-  const VerificationRoleOption(this.value, this.label);
+  const VerificationRoleOption(this.value, [this._label]);
   final String value;
-  final String label;
+  final String? _label;
+
+  String get label {
+    if (_label != null) return _label;
+    final l = L10n.current;
+    return switch (value) {
+      'pastor' => l.profileRolePastor,
+      'evangelist' => l.profileRoleEvangelist,
+      'singer' => l.profileRoleSinger,
+      'ministry_leader' => l.profileRoleMinistryLeader,
+      'public_figure' => l.profileRolePublicFigure,
+      'other' => l.profileRoleOther,
+      _ => value,
+    };
+  }
 
   static const defaults = <VerificationRoleOption>[
-    VerificationRoleOption('pastor', 'Pasteur'),
-    VerificationRoleOption('evangelist', 'Évangéliste'),
-    VerificationRoleOption('singer', 'Chantre'),
-    VerificationRoleOption('ministry_leader', 'Responsable de ministère'),
-    VerificationRoleOption('public_figure', 'Personnalité publique'),
-    VerificationRoleOption('other', 'Autre'),
+    VerificationRoleOption('pastor'),
+    VerificationRoleOption('evangelist'),
+    VerificationRoleOption('singer'),
+    VerificationRoleOption('ministry_leader'),
+    VerificationRoleOption('public_figure'),
+    VerificationRoleOption('other'),
   ];
 }
 
@@ -160,10 +176,10 @@ const kVerificationDocumentExtensions = ['jpg', 'jpeg', 'png', 'webp', 'pdf'];
 /// Raison de refuser une pièce avant l'envoi (type ou taille), sinon null.
 String? verificationDocumentRejection(VerificationDocument doc, {int maxKb = 8192}) {
   if (!kVerificationDocumentExtensions.contains(doc.extension)) {
-    return 'Pièce justificative : photo (JPG, PNG, WebP) ou PDF.';
+    return L10n.current.profileVerifDocType;
   }
   if (doc.size > maxKb * 1024) {
-    return 'Chaque pièce justificative doit faire ${maxKb ~/ 1024} Mo au plus.';
+    return L10n.current.profileVerifDocTooBig(maxKb ~/ 1024);
   }
   return null;
 }
@@ -180,24 +196,25 @@ Map<String, String> validateVerificationForm({
   required List<VerificationDocument> documents,
   int maxDocuments = 3,
 }) {
+  final l10n = L10n.current;
   final errors = <String, String>{};
-  if (fullName.trim().length < 3) errors['full_name'] = 'Indiquez votre nom complet.';
+  if (fullName.trim().length < 3) errors['full_name'] = l10n.profileVerifFullNameRequired;
   if (role == null || role.isEmpty) {
-    errors['role'] = 'Choisissez votre fonction.';
+    errors['role'] = l10n.profileVerifRoleRequired;
   } else if (role == 'other' && roleOther.trim().isEmpty) {
-    errors['role_other'] = 'Précisez votre fonction.';
+    errors['role_other'] = l10n.profileVerifRoleOtherRequired;
   }
-  if (church.trim().length < 2) errors['church'] = 'Indiquez votre église ou votre ministère.';
+  if (church.trim().length < 2) errors['church'] = l10n.profileVerifChurchRequired;
   for (var i = 0; i < links.length; i++) {
     final l = links[i].trim();
     if (l.isNotEmpty && !_url.hasMatch(l)) {
-      errors['links.$i'] = 'Adresse web attendue (https://…).';
+      errors['links.$i'] = l10n.profileVerifLinkInvalid;
     }
   }
   if (documents.isEmpty) {
-    errors['documents'] = 'Ajoutez au moins une pièce justificative.';
+    errors['documents'] = l10n.profileVerifDocRequired;
   } else if (documents.length > maxDocuments) {
-    errors['documents'] = '$maxDocuments pièces justificatives au plus.';
+    errors['documents'] = l10n.profileVerifDocMax(maxDocuments);
   }
   return errors;
 }

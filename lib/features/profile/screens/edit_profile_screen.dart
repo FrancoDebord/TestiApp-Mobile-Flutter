@@ -20,13 +20,31 @@ import '../providers/profile_provider.dart';
 // Pays : liste partagée avec le site (lib/core/data/countries.dart).
 
 // Canonical stored gender values (language-neutral keys)
-const _kGenderValues = ['Homme', 'Femme'];
+const _kGenderValues = ['Homme', 'Femme']; // i18n-ignore
 
+/// Valeur enregistrée du titre « Autre » (saisie libre).
+const _kOtherTitle = 'Autre'; // i18n-ignore
+
+// Valeurs enregistrées (françaises) ; libellés traduits par [_titleLabel].
 const _kSuggestedTitles = [
-  'Pasteur', 'Évangéliste', 'Ancien', 'Diacre', 'Missionnaire',
-  'Étudiant en théologie', 'Fidèle', 'Coordinateur de jeunesse',
-  'Responsable de cellule', 'Autre',
+  'Pasteur', 'Évangéliste', 'Ancien', 'Diacre', 'Missionnaire', // i18n-ignore
+  'Étudiant en théologie', 'Fidèle', 'Coordinateur de jeunesse', // i18n-ignore
+  'Responsable de cellule', _kOtherTitle, // i18n-ignore
 ];
+
+String _titleLabel(AppLocalizations l10n, String value) => switch (value) {
+      'Pasteur' => l10n.profileTitlePastor, // i18n-ignore
+      'Évangéliste' => l10n.profileTitleEvangelist, // i18n-ignore
+      'Ancien' => l10n.profileTitleElder, // i18n-ignore
+      'Diacre' => l10n.profileTitleDeacon, // i18n-ignore
+      'Missionnaire' => l10n.profileTitleMissionary, // i18n-ignore
+      'Étudiant en théologie' => l10n.profileTitleTheologyStudent, // i18n-ignore
+      'Fidèle' => l10n.profileTitleBeliever, // i18n-ignore
+      'Coordinateur de jeunesse' => l10n.profileTitleYouthCoordinator, // i18n-ignore
+      'Responsable de cellule' => l10n.profileTitleCellLeader, // i18n-ignore
+      _kOtherTitle => l10n.profileRoleOther,
+      _ => value,
+    };
 
 class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
@@ -137,7 +155,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   // ── Picker photo ──────────────────────────────────────────────────────────
 
   Future<void> _pickAvatar() async {
-    final l10n = AppLocalizations.of(context);
+    final l10n = context.l10n;
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
       backgroundColor: AppColors.surface,
@@ -187,22 +205,22 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   // ── Save ──────────────────────────────────────────────────────────────────
 
   Future<void> _save() async {
-    final l10n = AppLocalizations.of(context);
+    final l10n = context.l10n;
     if (_isOrg) {
       if (_orgNameCtrl.text.trim().length < 2) {
-        _snack("Veuillez saisir le nom de l'organisation");
+        _snack(l10n.profileOrgNameRequired);
         return;
       }
       if (_orgType == null) {
-        _snack("Veuillez choisir le type d'organisation");
+        _snack(l10n.profileOrgTypeRequired);
         return;
       }
       if (_orgCityCtrl.text.trim().isEmpty) {
-        _snack('Veuillez saisir la ville');
+        _snack(l10n.profileOrgCityRequired);
         return;
       }
       if (!_isValidWebsite(_orgWebsiteCtrl.text)) {
-        _snack('Adresse du site web invalide');
+        _snack(l10n.profileOrgWebsiteInvalid);
         return;
       }
     }
@@ -213,7 +231,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       return;
     }
 
-    final title = _selectedTitle == 'Autre' || _selectedTitle == null
+    final title = _selectedTitle == _kOtherTitle || _selectedTitle == null
         ? _customTitleCtrl.text.trim()
         : _selectedTitle!;
 
@@ -241,18 +259,21 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       avatarPath: _avatarPath,
     );
 
-    final synced = await ref.read(profileExtrasProvider.notifier).save(
+    // Nouvelle photo choisie ici : envoyée avec l'enregistrement.
+    final initialAvatar = ref.read(profileExtrasProvider).value?.avatarPath;
+    final newAvatar = _avatarPath != null && _avatarPath != initialAvatar ? _avatarPath : null;
+
+    final error = await ref.read(profileExtrasProvider.notifier).save(
           extras,
           organization: _isOrg ? _organizationUpdate() : null,
+          newAvatarPath: newAvatar,
         );
 
     if (!mounted) return;
     setState(() => _isLoading = false);
-    if (!synced) {
-      // Rester sur l'écran : l'utilisateur peut réessayer.
-      _snack("Les informations de l'organisation n'ont pas pu être "
-          'enregistrées sur le serveur. Vérifiez votre connexion et '
-          'réessayez.');
+    if (error != null) {
+      // Rester sur l'écran : l'utilisateur peut corriger et réessayer.
+      _snack(error);
       return;
     }
     _snack(l10n.editSaved, success: true);
@@ -283,7 +304,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       loading: () => const Scaffold(
           body: Center(child: CircularProgressIndicator())),
       error: (e, _) =>
-          Scaffold(body: Center(child: Text('Erreur : $e'))),
+          Scaffold(body: Center(child: Text(context.l10n.profileErrorDetails('$e')))),
       data: (extras) {
         _initFrom(extras);
         return _buildForm(context);
@@ -292,7 +313,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   }
 
   Widget _buildForm(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+    final l10n = context.l10n;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -388,7 +409,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             const SizedBox(height: 8),
             Center(
               child: Text(
-                  _isOrg ? 'Logo · touchez pour modifier' : l10n.editTapToChange,
+                  _isOrg ? l10n.profileOrgLogoTap : l10n.editTapToChange,
                   style: const TextStyle(
                       fontFamily: AppFonts.family,
                       fontSize: 12,
@@ -398,17 +419,17 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
             // ── Organisation ────────────────────────────────────────────
             if (_isOrg) ...[
-              const _SectionTitle('Organisation'),
+              _SectionTitle(l10n.accountsOrganization),
               const SizedBox(height: 12),
               _Field(
-                label: "Nom de l'organisation *",
+                label: l10n.profileOrgNameLabel,
                 controller: _orgNameCtrl,
-                hint: 'Église de la Grâce',
+                hint: l10n.profileOrgNameHint,
                 prefixIcon: Icons.church_outlined,
                 textCapitalization: TextCapitalization.words,
               ),
               const SizedBox(height: 16),
-              const _Label('Type *'),
+              _Label(l10n.profileOrgTypeLabel),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
@@ -439,17 +460,17 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               ),
               const SizedBox(height: 16),
               _Field(
-                label: 'Ville *',
+                label: l10n.profileOrgCityLabel,
                 controller: _orgCityCtrl,
-                hint: 'Cotonou',
+                hint: 'Cotonou', // i18n-ignore
                 prefixIcon: Icons.location_city_rounded,
                 textCapitalization: TextCapitalization.words,
               ),
               const SizedBox(height: 16),
               _Field(
-                label: 'Site web (optionnel)',
+                label: l10n.profileOrgWebsiteLabel,
                 controller: _orgWebsiteCtrl,
-                hint: 'www.exemple.org',
+                hint: l10n.profileOrgWebsiteHint,
                 keyboardType: TextInputType.url,
                 prefixIcon: Icons.language_rounded,
               ),
@@ -466,7 +487,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   child: _Field(
                     label: '${l10n.authFirstNameLabel} *',
                     controller: _firstCtrl,
-                    hint: 'Marie',
+                    hint: l10n.profileFirstNameHint,
                     textCapitalization: TextCapitalization.words,
                   ),
                 ),
@@ -475,7 +496,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   child: _Field(
                     label: l10n.authLastNameLabel,
                     controller: _lastCtrl,
-                    hint: 'Dupont',
+                    hint: l10n.profileLastNameHint,
                     textCapitalization: TextCapitalization.words,
                   ),
                 ),
@@ -511,7 +532,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       ),
                     ),
                     child: Text(
-                      t,
+                      _titleLabel(l10n, t),
                       style: TextStyle(
                         fontFamily: AppFonts.family,
                         fontSize: 13,
@@ -525,14 +546,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 );
               }).toList(),
             ),
-            if (_selectedTitle == 'Autre' || _selectedTitle == null) ...[
+            if (_selectedTitle == _kOtherTitle || _selectedTitle == null) ...[
               const SizedBox(height: 10),
               _Field(
-                label: _selectedTitle == 'Autre'
+                label: _selectedTitle == _kOtherTitle
                     ? l10n.editSpecifyTitle
                     : l10n.editCustomTitle,
                 controller: _customTitleCtrl,
-                hint: 'Ex. : Responsable worship, Coordinatrice femmes…',
+                hint: l10n.profileCustomTitleHint,
               ),
             ],
             const SizedBox(height: 16),
@@ -559,13 +580,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 onDialChanged: (c) => setState(() => _phoneDial = c),
                 controller: _phoneCtrl,
                 required: _isOrg,
-                requiredNote: _isOrg ? null : '(facultatif)',
+                requiredNote: _isOrg ? null : l10n.profileOptionalNote,
               ),
             const SizedBox(height: 16),
             _Field(
-              label: 'Email',
+              label: l10n.profileEmailLabel,
               controller: _emailCtrl,
-              hint: 'marie@exemple.com',
+              hint: l10n.profileEmailHint,
               keyboardType: TextInputType.emailAddress,
               prefixIcon: Icons.email_outlined,
             ),
@@ -644,9 +665,10 @@ class _CoverPicker extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final hasCover = coverUrl != null;
+    final l10n = context.l10n;
     return Semantics(
       button: true,
-      label: hasCover ? 'Modifier la photo de couverture' : 'Ajouter une photo de couverture',
+      label: hasCover ? l10n.profileCoverEditPhoto : l10n.profileCoverAdd,
       child: Material(
         color: AppColors.border,
         borderRadius: BorderRadius.circular(14),
@@ -674,7 +696,7 @@ class _CoverPicker extends ConsumerWidget {
                         Icon(Icons.add_photo_alternate_outlined,
                             size: 16, color: hasCover ? Colors.white : AppColors.primary),
                         const SizedBox(width: 6),
-                        Text(hasCover ? 'Modifier la couverture' : 'Ajouter une photo de couverture',
+                        Text(hasCover ? l10n.profileCoverEdit : l10n.profileCoverAdd,
                             style: TextStyle(
                                 fontFamily: AppFonts.family,
                                 fontSize: 12,
@@ -812,7 +834,7 @@ class _GenderSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+    final l10n = context.l10n;
     final labels = [l10n.genderMale, l10n.genderFemale];
 
     return Row(
@@ -872,7 +894,7 @@ class _VerifiedPhone extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _Label('Téléphone'),
+        _Label(context.l10n.editPhoneLabel),
         const SizedBox(height: 8),
         Row(
           children: [
@@ -882,12 +904,12 @@ class _VerifiedPhone extends StatelessWidget {
             const SizedBox(width: 8),
             const Icon(Icons.verified_rounded, size: 18, color: AppColors.success),
             const SizedBox(width: 4),
-            const Text('Vérifié par SMS', style: TextStyle(fontSize: 12, color: AppColors.success)),
+            Text(context.l10n.profilePhoneVerifiedSms, style: const TextStyle(fontSize: 12, color: AppColors.success)),
           ],
         ),
         const SizedBox(height: 4),
-        const Text('Ce numéro sert à vous connecter : il ne se modifie pas ici.',
-            style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+        Text(context.l10n.profilePhoneLocked,
+            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
       ],
     );
   }

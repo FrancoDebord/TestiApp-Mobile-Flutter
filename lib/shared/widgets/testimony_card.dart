@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:testi_app/core/theme/app_colors.dart';
 import 'package:testi_app/core/theme/app_text_styles.dart';
 import '../../core/media/video_source.dart' show mediaHttpHeaders;
+import '../../l10n/app_localizations.dart';
 
 // ── Enums & models ─────────────────────────────────────────────────────────────
 
@@ -23,16 +24,16 @@ enum TestimonyCategory {
 
 extension TestimonyCategoryX on TestimonyCategory {
   String get label => switch (this) {
-        TestimonyCategory.guerison => 'Guérison',
-        TestimonyCategory.delivrance => 'Délivrance',
-        TestimonyCategory.conversion => 'Conversion',
-        TestimonyCategory.mariage => 'Mariage',
-        TestimonyCategory.famille => 'Famille',
-        TestimonyCategory.finances => 'Finances',
-        TestimonyCategory.miracles => 'Miracles',
-        TestimonyCategory.protection => 'Protection divine',
-        TestimonyCategory.ministere => 'Ministère',
-        TestimonyCategory.salut => 'Salut',
+        TestimonyCategory.guerison => L10n.current.sharedCategoryHealing,
+        TestimonyCategory.delivrance => L10n.current.sharedCategoryDeliverance,
+        TestimonyCategory.conversion => L10n.current.sharedCategoryConversion,
+        TestimonyCategory.mariage => L10n.current.sharedCategoryMarriage,
+        TestimonyCategory.famille => L10n.current.sharedCategoryFamily,
+        TestimonyCategory.finances => L10n.current.sharedCategoryFinances,
+        TestimonyCategory.miracles => L10n.current.sharedCategoryMiracles,
+        TestimonyCategory.protection => L10n.current.sharedCategoryProtection,
+        TestimonyCategory.ministere => L10n.current.sharedCategoryMinistry,
+        TestimonyCategory.salut => L10n.current.sharedCategorySalvation,
       };
 
   List<Color> get gradient => switch (this) {
@@ -296,7 +297,7 @@ class _MediaHeader extends StatelessWidget {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    isAudio ? 'Audio' : 'Vidéo',
+                    isAudio ? context.l10n.sharedMediaAudio : context.l10n.sharedMediaVideo,
                     style: AppTextStyles.labelSmall
                         .copyWith(color: Colors.white, fontSize: 10),
                   ),
@@ -384,7 +385,7 @@ class _FeaturedBadge extends StatelessWidget {
           const Icon(Icons.star_rounded, color: Colors.white, size: 14),
           const SizedBox(width: 6),
           Text(
-            'Témoignage mis en avant',
+            context.l10n.sharedFeaturedTestimony,
             style: AppTextStyles.labelSmall
                 .copyWith(color: Colors.white, fontSize: 11),
           ),
@@ -401,10 +402,11 @@ class _UserAvatarRow extends StatelessWidget {
 
   String get _relativeTime {
     final diff = DateTime.now().difference(testimony.publishedAt);
-    if (diff.inMinutes < 60) return 'il y a ${diff.inMinutes} min';
-    if (diff.inHours < 24) return 'il y a ${diff.inHours} h';
-    if (diff.inDays < 7) return 'il y a ${diff.inDays} j';
-    return '${testimony.publishedAt.day}/${testimony.publishedAt.month}/${testimony.publishedAt.year}';
+    final l10n = L10n.current;
+    if (diff.inMinutes < 60) return l10n.timeMinutesAgo(diff.inMinutes);
+    if (diff.inHours < 24) return l10n.timeHoursAgo(diff.inHours);
+    if (diff.inDays < 7) return l10n.timeDaysAgo(diff.inDays);
+    return formatDatePattern(testimony.publishedAt, 'd/M/y');
   }
 
   @override
@@ -614,28 +616,28 @@ class _ActionBar extends StatelessWidget {
             icon: testimony.isLikedByMe
                 ? Icons.favorite_rounded
                 : Icons.favorite_border_rounded,
-            label: 'J\'aime',
+            label: context.l10n.detailLike,
             activeColor: AppColors.danger,
             isActive: testimony.isLikedByMe,
             onTap: onLike,
           ),
           _ActionButton(
             icon: Icons.volunteer_activism_rounded,
-            label: 'Prier',
+            label: context.l10n.prayerPray,
             activeColor: AppColors.secondary,
             isActive: testimony.isPrayedByMe,
             onTap: onPray,
           ),
           _ActionButton(
             icon: Icons.chat_bubble_outline_rounded,
-            label: 'Commenter',
+            label: context.l10n.detailComment,
             activeColor: AppColors.primary,
             isActive: false,
             onTap: onComment,
           ),
           _ActionButton(
             icon: Icons.share_rounded,
-            label: 'Partager',
+            label: context.l10n.commonShare,
             activeColor: AppColors.primary,
             isActive: false,
             onTap: onShare,

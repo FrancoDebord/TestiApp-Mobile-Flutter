@@ -4,45 +4,54 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart' show AppFonts;
 import '../../../core/theme/app_tokens.dart';
+import '../../../l10n/app_localizations.dart';
 import '../models/event_models.dart';
 
-// ── Dates en français ────────────────────────────────────────────────────────
+// ── Dates (tables françaises écrites à la main, intl pour l'anglais) ────────
 
-const _days = ['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.'];
+const _days = ['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.']; // i18n-ignore
 const _months = [
-  'janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin',
-  'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.',
+  'janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', // i18n-ignore
+  'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.', // i18n-ignore
 ];
 
-String _hm(DateTime d) =>
-    '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+bool get _fr => L10n.languageCode == 'fr';
 
-/// « sam. 12 oct. 2026 ».
-String formatEventDay(DateTime d) =>
-    '${_days[d.weekday - 1]} ${d.day} ${_months[d.month - 1]} ${d.year}';
+/// Mois abrégé : « oct. » / « Oct ».
+String _month(int m) => _fr ? _months[m - 1] : formatDatePattern(DateTime(2000, m), 'MMM');
+
+String _hm(DateTime d) => _fr
+    ? '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}'
+    : formatTime(d);
+
+/// « sam. 12 oct. 2026 » / « Sat 12 Oct 2026 ».
+String formatEventDay(DateTime d) => _fr
+    ? '${_days[d.weekday - 1]} ${d.day} ${_months[d.month - 1]} ${d.year}'
+    : formatDatePattern(d, 'EEE d MMM y');
 
 /// Période lisible :
 /// - même jour : « sam. 12 oct. 2026 · 18:00 – 21:00 » ;
 /// - plusieurs jours : « 12 → 14 oct. 2026 » (ou mois / années différents).
 String formatEventRange(DateTime? start, DateTime? end) {
-  if (start == null) return 'Date à préciser';
+  if (start == null) return L10n.current.eventsDateTbd;
   if (end == null) return '${formatEventDay(start)} · ${_hm(start)}';
   final sameDay =
       start.year == end.year && start.month == end.month && start.day == end.day;
   if (sameDay) return '${formatEventDay(start)} · ${_hm(start)} – ${_hm(end)}';
   if (start.year == end.year && start.month == end.month) {
-    return '${start.day} → ${end.day} ${_months[end.month - 1]} ${end.year}';
+    return '${start.day} → ${end.day} ${_month(end.month)} ${end.year}';
   }
   if (start.year == end.year) {
-    return '${start.day} ${_months[start.month - 1]} → ${end.day} ${_months[end.month - 1]} ${end.year}';
+    return '${start.day} ${_month(start.month)} → ${end.day} ${_month(end.month)} ${end.year}';
   }
-  return '${start.day} ${_months[start.month - 1]} ${start.year} → '
-      '${end.day} ${_months[end.month - 1]} ${end.year}';
+  return '${start.day} ${_month(start.month)} ${start.year} → '
+      '${end.day} ${_month(end.month)} ${end.year}';
 }
 
 /// 950 · 1,2 k · 12 k · 1,5 M
 String compactCount(int n) {
   if (n < 1000) return '$n';
+  if (!_fr) return formatCompactNumber(n);
   if (n < 1000000) {
     return '${(n / 1000).toStringAsFixed(n < 10000 ? 1 : 0).replaceAll('.', ',')} k';
   }
@@ -115,13 +124,13 @@ class EventLiveBadge extends StatelessWidget {
         color: const Color(0xFFE11D48),
         borderRadius: BorderRadius.circular(6),
       ),
-      child: const Row(
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.sensors_rounded, size: 12, color: Colors.white),
-          SizedBox(width: 4),
+          const Icon(Icons.sensors_rounded, size: 12, color: Colors.white),
+          const SizedBox(width: 4),
           Text(
-            'EN DIRECT',
+            context.l10n.eventsLiveBadge,
             style: TextStyle(
               color: Colors.white,
               fontFamily: AppFonts.family,
@@ -212,7 +221,7 @@ class _EventCoverCarouselState extends State<EventCoverCarousel> {
             right: 0,
             bottom: 12,
             child: Semantics(
-              label: 'Image ${_index + 1} sur ${images.length}',
+              label: context.l10n.eventsImageOf(_index + 1, images.length),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -277,7 +286,7 @@ class EventCard extends StatelessWidget {
                         runSpacing: 4,
                         children: [
                           EventPhaseBadge(event: e, onImage: true),
-                          if (e.live?.isOnAir == true) const EventLiveBadge(),
+                          if (e.isLiveNow) const EventLiveBadge(),
                           ...EventFlagBadge.forEvent(e),
                         ],
                       ),
@@ -370,7 +379,7 @@ class EventCard extends StatelessWidget {
                         if (e.goingCount > 0) ...[
                           const SizedBox(width: 8),
                           Tooltip(
-                            message: '${e.goingCount} participant${e.goingCount > 1 ? 's' : ''}',
+                            message: context.l10n.eventsParticipantCount(e.goingCount),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
@@ -438,7 +447,7 @@ class EventMiniCard extends StatelessWidget {
                       Positioned(
                         left: 8,
                         top: 8,
-                        child: e.live?.isOnAir == true
+                        child: e.isLiveNow
                             ? const EventLiveBadge()
                             : EventPhaseBadge(event: e, onImage: true),
                       ),
@@ -465,8 +474,8 @@ class EventMiniCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         e.dateTbd
-                            ? 'Date à confirmer'
-                            : e.startsAt == null ? 'Date à préciser' : formatEventDay(e.startsAt!),
+                            ? context.l10n.eventsDateTbc
+                            : e.startsAt == null ? context.l10n.eventsDateTbd : formatEventDay(e.startsAt!),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -494,7 +503,7 @@ const _unconfirmedColor = Color(0xFFB42318);
 
 /// Période affichée d'un événement : « Date à confirmer » s'il est reporté sans date.
 String eventScheduleText(ChristianEvent e) =>
-    e.dateTbd ? 'Date à confirmer' : formatEventRange(e.startsAt, e.endsAt);
+    e.dateTbd ? L10n.current.eventsDateTbc : formatEventRange(e.startsAt, e.endsAt);
 
 /// Petite pastille d'information (Reporté, Non confirmé, Masqué).
 class EventFlagBadge extends StatelessWidget {
@@ -508,11 +517,11 @@ class EventFlagBadge extends StatelessWidget {
   /// « Non confirmé », « Masqué » (gestionnaires et modérateurs).
   static List<Widget> forEvent(ChristianEvent e) => [
         if (e.isPostponed && !e.dateTbd && !e.isCancelled)
-          const EventFlagBadge(label: 'Reporté', color: _postponedColor, icon: Icons.event_repeat_rounded),
+          EventFlagBadge(label: L10n.current.eventsFlagPostponed, color: _postponedColor, icon: Icons.event_repeat_rounded),
         if (e.isUnconfirmed)
-          const EventFlagBadge(label: 'Non confirmé', color: _unconfirmedColor, icon: Icons.help_outline_rounded),
+          EventFlagBadge(label: L10n.current.eventsFlagUnconfirmed, color: _unconfirmedColor, icon: Icons.help_outline_rounded),
         if (e.isHidden)
-          const EventFlagBadge(label: 'Masqué', color: Color(0xFF475467), icon: Icons.visibility_off_outlined),
+          EventFlagBadge(label: L10n.current.eventsFlagHidden, color: const Color(0xFF475467), icon: Icons.visibility_off_outlined),
       ];
 
   @override
@@ -558,7 +567,7 @@ class EventOriginalDate extends StatelessWidget {
     final d = event.originalStartsAt;
     if (!event.isPostponed || d == null) return const SizedBox.shrink();
     return Semantics(
-      label: 'Date initiale : ${formatEventRange(d, event.originalEndsAt)}',
+      label: context.l10n.eventsOriginalDate(formatEventRange(d, event.originalEndsAt)),
       excludeSemantics: true,
       child: Text(
         formatEventRange(d, event.originalEndsAt),
@@ -644,13 +653,13 @@ class EventCompactTile extends StatelessWidget {
                         fontSize: 12.5,
                       ),
                     ),
-                    if (showPhase || flags.isNotEmpty || e.live?.isOnAir == true) ...[
+                    if (showPhase || flags.isNotEmpty || e.isLiveNow) ...[
                       const SizedBox(height: 5),
                       Wrap(
                         spacing: 5,
                         runSpacing: 4,
                         children: [
-                          if (e.live?.isOnAir == true) const EventLiveBadge(),
+                          if (e.isLiveNow) const EventLiveBadge(),
                           if (showPhase) EventPhaseBadge(event: e),
                           ...flags,
                         ],
@@ -699,7 +708,7 @@ class _DateTile extends StatelessWidget {
             ),
           ),
           Text(
-            _months[date.month - 1].replaceAll('.', '').toUpperCase(),
+            _month(date.month).replaceAll('.', '').toUpperCase(),
             style: const TextStyle(
               color: AppColors.secondaryDark,
               fontFamily: AppFonts.family,

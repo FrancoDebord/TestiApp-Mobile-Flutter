@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_constants.dart';
 import '../../core/theme/app_colors.dart';
+import '../../l10n/app_localizations.dart';
 import '../../services/api_service.dart';
 import '../auth/providers/auth_notifier.dart';
 import '../home/models/testimony_model.dart';
@@ -39,16 +40,16 @@ Future<bool> confirmDeleteTestimony(BuildContext context, WidgetRef ref, Testimo
   final ok = await showDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: const Text('Supprimer ce témoignage ?'),
+      title: Text(ctx.l10n.testimonyDeleteTitle),
       content: Text(mine
-          ? 'Cette action est irréversible. Le témoignage sera définitivement supprimé.'
-          : 'Ce témoignage de ${t.author.displayName} sera définitivement supprimé, avec ses commentaires et ses réactions.'),
+          ? ctx.l10n.testimonyDeleteMineBody
+          : ctx.l10n.testimonyDeleteOtherBody(t.author.displayName)),
       actions: [
-        TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Annuler')),
+        TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(ctx.l10n.commonCancel)),
         FilledButton(
           style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
           onPressed: () => Navigator.of(ctx).pop(true),
-          child: const Text('Supprimer'),
+          child: Text(ctx.l10n.commonDelete),
         ),
       ],
     ),
@@ -60,7 +61,7 @@ Future<bool> confirmDeleteTestimony(BuildContext context, WidgetRef ref, Testimo
   } catch (e) {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e is LaravelApiException ? e.message : 'Impossible de supprimer. Réessayez.')),
+        SnackBar(content: Text(e is LaravelApiException ? e.message : context.l10n.testimonyDeleteError)),
       );
     }
     return false;
@@ -68,7 +69,7 @@ Future<bool> confirmDeleteTestimony(BuildContext context, WidgetRef ref, Testimo
   ref.read(deletedTestimoniesProvider.notifier).add(t.id);
   ref.read(feedNotifierProvider.notifier).removeTestimony(t.id);
   if (context.mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Témoignage supprimé.')));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.l10n.testimonyDeleted)));
   }
   return true;
 }

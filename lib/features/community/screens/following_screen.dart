@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../data/community_repository.dart';
 import '../widgets/paged_account_list.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Onglets de l'écran « Abonnés / Abonnements ».
 enum FollowsTab { followers, following }
@@ -22,10 +23,11 @@ class FollowsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final repo = ref.watch(communityRepositoryProvider);
+    final l10n = context.l10n;
     final discover = FilledButton.icon(
       onPressed: () => context.push('/community'),
       icon: const Icon(Icons.groups_rounded, size: 18),
-      label: const Text('Découvrir la Communauté'),
+      label: Text(l10n.communityDiscover),
     );
     const headerStyle = TextStyle(fontSize: 13, color: AppColors.textSecondary);
 
@@ -35,14 +37,14 @@ class FollowsScreen extends ConsumerWidget {
       child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
-          title: const Text('Abonnés et abonnements'),
+          title: Text(l10n.communityFollowsTitle),
           backgroundColor: AppColors.surface,
           surfaceTintColor: Colors.transparent,
-          bottom: const TabBar(
+          bottom: TabBar(
             labelColor: AppColors.primary,
             indicatorColor: AppColors.primary,
             unselectedLabelColor: AppColors.textSecondary,
-            tabs: [Tab(text: 'Abonnés'), Tab(text: 'Abonnements')],
+            tabs: [Tab(text: l10n.communityFollowersTab), Tab(text: l10n.communityFollowingTab)],
           ),
         ),
         body: TabBarView(
@@ -50,26 +52,24 @@ class FollowsScreen extends ConsumerWidget {
             PagedAccountList(
               key: const PageStorageKey('followers'),
               loader: (q, page) => repo.followers(query: q, page: page),
-              searchHint: 'Rechercher dans mes abonnés',
+              searchHint: l10n.communitySearchFollowers,
               searchRecentKey: 'followers',
-              followIdleLabel: 'Suivre en retour',
-              emptyText: 'Personne ne vous suit encore.\nPubliez des témoignages et participez à la Communauté : '
-                  'ceux qui vous suivront apparaîtront ici.',
+              followIdleLabel: l10n.communityFollowBack,
+              emptyText: l10n.communityFollowersEmpty,
               emptyAction: discover,
               header: (total) => Text(
-                total > 1 ? '$total comptes vous suivent' : '$total compte vous suit',
+                l10n.communityFollowersCount(total),
                 style: headerStyle,
               ),
             ),
             PagedAccountList(
               key: const PageStorageKey('following'),
               loader: (q, page) => repo.following(query: q, page: page),
-              searchHint: 'Rechercher dans mes abonnements',
+              searchHint: l10n.communitySearchFollowing,
               searchRecentKey: 'following',
-              emptyText: 'Vous ne suivez encore personne.\nSuivez des églises, des ministères et des personnes '
-                  'pour être prévenu de leurs témoignages et de leurs directs.',
+              emptyText: l10n.communityFollowingEmpty,
               emptyAction: discover,
-              header: (total) => Text('Vous suivez $total compte${total > 1 ? 's' : ''}', style: headerStyle),
+              header: (total) => Text(l10n.communityFollowingCount(total), style: headerStyle),
             ),
           ],
         ),

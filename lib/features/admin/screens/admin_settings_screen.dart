@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/admin_models.dart' show AppSettings;
 import '../providers/admin_provider.dart';
+import '../../../l10n/app_localizations.dart';
 
 // =============================================================================
 // AdminSettingsScreen — App-wide feature toggles
@@ -27,6 +28,7 @@ class AdminSettingsScreen extends ConsumerWidget {
     final settings = ref.watch(appSettingsProvider).value ?? const AppSettings();
     final notifier = ref.read(appSettingsProvider.notifier);
 
+    final l10n = context.l10n;
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
       children: [
@@ -38,27 +40,27 @@ class AdminSettingsScreen extends ConsumerWidget {
 
         // ── Access section ────────────────────────────────────────────────
         _SettingsSection(
-          title: 'Accès',
+          title: l10n.adminSettingsAccess,
           icon: Icons.lock_outline_rounded,
           tiles: [
             _ToggleTile(
               icon: Icons.person_add_outlined,
-              label: 'Nouvelles inscriptions',
-              sublabel: 'Autoriser les nouveaux comptes',
+              label: l10n.adminSettingsNewSignups,
+              sublabel: l10n.adminSettingsNewSignupsSub,
               value: settings.allowNewRegistrations,
               onChanged: (_) => notifier.toggle('allowNewRegistrations'),
             ),
             _ToggleTile(
               icon: Icons.visibility_outlined,
-              label: 'Accès visiteur',
-              sublabel: 'Consulter sans compte',
+              label: l10n.adminSettingsGuestAccess,
+              sublabel: l10n.adminSettingsGuestAccessSub,
               value: settings.allowGuestView,
               onChanged: (_) => notifier.toggle('allowGuestView'),
             ),
             _ToggleTile(
               icon: Icons.mark_email_read_outlined,
-              label: 'Vérification e-mail',
-              sublabel: 'Obligatoire à l\'inscription',
+              label: l10n.adminSettingsEmailVerification,
+              sublabel: l10n.adminSettingsEmailVerificationSub,
               value: settings.requireEmailVerification,
               onChanged: (_) => notifier.toggle('requireEmailVerification'),
             ),
@@ -68,13 +70,13 @@ class AdminSettingsScreen extends ConsumerWidget {
 
         // ── Moderation section ────────────────────────────────────────────
         _SettingsSection(
-          title: 'Modération',
+          title: l10n.adminSettingsModeration,
           icon: Icons.shield_outlined,
           tiles: [
             _ToggleTile(
               icon: Icons.auto_awesome_outlined,
-              label: 'Modération automatique',
-              sublabel: 'Filtres IA pré-approbation',
+              label: l10n.adminSettingsAutoModeration,
+              sublabel: l10n.adminSettingsAutoModerationSub,
               value: settings.autoModerationEnabled,
               onChanged: (_) => notifier.toggle('autoModerationEnabled'),
               isExperimental: true,
@@ -85,13 +87,13 @@ class AdminSettingsScreen extends ConsumerWidget {
 
         // ── Notifications section ─────────────────────────────────────────
         _SettingsSection(
-          title: 'Notifications',
+          title: l10n.adminSettingsNotifications,
           icon: Icons.notifications_outlined,
           tiles: [
             _ToggleTile(
               icon: Icons.send_outlined,
-              label: 'Notifications push',
-              sublabel: 'Envoyer des notifications aux utilisateurs',
+              label: l10n.adminSettingsPush,
+              sublabel: l10n.adminSettingsPushSub,
               value: settings.pushNotificationsEnabled,
               onChanged: (_) => notifier.toggle('pushNotificationsEnabled'),
             ),
@@ -129,13 +131,13 @@ class _MaintenanceBanner extends StatelessWidget {
           const Icon(Icons.construction_rounded,
               color: Color(0xFFF79009), size: 20),
           const SizedBox(width: 10),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Mode maintenance actif',
-                  style: TextStyle(
+                  context.l10n.adminMaintenanceActive,
+                  style: const TextStyle(
                     fontFamily: 'Plus Jakarta Sans',
                     fontWeight: FontWeight.w600,
                     fontSize: 13,
@@ -143,8 +145,8 @@ class _MaintenanceBanner extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  'L\'application est inaccessible aux utilisateurs.',
-                  style: TextStyle(
+                  context.l10n.adminMaintenanceActiveBody,
+                  style: const TextStyle(
                     fontFamily: 'Plus Jakarta Sans',
                     fontSize: 11,
                     color: Color(0xFFC48A06),
@@ -160,8 +162,8 @@ class _MaintenanceBanner extends StatelessWidget {
               padding:
                   const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             ),
-            child: const Text('Désactiver',
-                style: TextStyle(
+            child: Text(context.l10n.adminDisable,
+                style: const TextStyle(
                     fontFamily: 'Plus Jakarta Sans',
                     fontSize: 12,
                     fontWeight: FontWeight.w600)),
@@ -289,9 +291,9 @@ class _ToggleTile extends StatelessWidget {
                   color: const Color(0xFFFFF1E2),
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: const Text(
-                  'Bêta',
-                  style: TextStyle(
+                child: Text(
+                  context.l10n.adminBeta,
+                  style: const TextStyle(
                     fontFamily: 'Plus Jakarta Sans',
                     fontSize: 9,
                     fontWeight: FontWeight.w700,
@@ -351,10 +353,10 @@ class _DangerZone extends StatelessWidget {
                 const Icon(Icons.warning_amber_rounded,
                     size: 16, color: Color(0xFFD92D20)),
                 const SizedBox(width: 8),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Zone dangereuse',
-                    style: TextStyle(
+                    context.l10n.adminDangerZone,
+                    style: const TextStyle(
                       fontFamily: 'Plus Jakarta Sans',
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
@@ -386,9 +388,9 @@ class _DangerZone extends StatelessWidget {
                     : const Color(0xFFD92D20),
               ),
             ),
-            title: const Text(
-              'Mode maintenance',
-              style: TextStyle(
+            title: Text(
+              context.l10n.adminMaintenanceMode,
+              style: const TextStyle(
                 fontFamily: 'Plus Jakarta Sans',
                 fontWeight: FontWeight.w500,
                 fontSize: 13,
@@ -397,8 +399,8 @@ class _DangerZone extends StatelessWidget {
             ),
             subtitle: Text(
               maintenanceMode
-                  ? 'Application hors ligne pour les utilisateurs'
-                  : 'Mettre l\'app en mode maintenance',
+                  ? context.l10n.adminMaintenanceOnSub
+                  : context.l10n.adminMaintenanceOffSub,
               style: const TextStyle(
                 fontFamily: 'Plus Jakarta Sans',
                 fontSize: 11,
@@ -425,7 +427,9 @@ class _DangerZone extends StatelessWidget {
                 minimumSize: Size.zero,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              child: Text(maintenanceMode ? 'Désactiver' : 'Activer'),
+              child: Text(maintenanceMode
+                  ? context.l10n.adminDisable
+                  : context.l10n.adminEnable),
             ),
           ),
         ],

@@ -1,6 +1,9 @@
 // Paroles prophétiques du carnet privé (API Laravel ProphecyResource).
 // Doc serveur : docs/fonctionnalites/paroles-prophetiques.md
 
+import '../../../l10n/app_localizations.dart';
+
+
 DateTime? _day(Object? v) {
   if (v is! String || v.isEmpty) return null;
   final d = DateTime.tryParse(v);
@@ -33,12 +36,16 @@ String apiDate(DateTime d) =>
     '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
 enum ReminderFrequency {
-  daily('daily', 'Chaque jour'),
-  weekly('weekly', 'Chaque semaine');
+  daily('daily'),
+  weekly('weekly');
 
-  const ReminderFrequency(this.apiValue, this.label);
+  const ReminderFrequency(this.apiValue);
   final String apiValue;
-  final String label;
+
+  String get label => switch (this) {
+        ReminderFrequency.daily => L10n.current.prophecyEveryDay,
+        ReminderFrequency.weekly => L10n.current.prophecyEveryWeek,
+      };
 
   static ReminderFrequency? parse(Object? raw) => switch (raw) {
         'daily' => ReminderFrequency.daily,
@@ -73,11 +80,23 @@ class ProphecyReminder {
 
   String get time => '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
 
-  static const weekdays = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+  /// Jours de la semaine, du lundi au dimanche (« lundi » / « Monday »).
+  static List<String> get weekdays {
+    final l = L10n.current;
+    return [
+      l.prophecyMonday,
+      l.prophecyTuesday,
+      l.prophecyWednesday,
+      l.prophecyThursday,
+      l.prophecyFriday,
+      l.prophecySaturday,
+      l.prophecySunday,
+    ];
+  }
 
   String get label => frequency == ReminderFrequency.daily
-      ? 'Chaque jour à $time'
-      : 'Chaque ${weekdays[((weekday ?? 1) - 1).clamp(0, 6)]} à $time';
+      ? L10n.current.prophecyReminderDaily(time)
+      : L10n.current.prophecyReminderWeekly(weekdays[((weekday ?? 1) - 1).clamp(0, 6)], time);
 }
 
 class ProphecyPrayer {
@@ -159,7 +178,7 @@ class Prophecy {
     if (title != null) return title!;
     final t = bodyText?.replaceAll(RegExp(r'\s+'), ' ').trim();
     if (t != null && t.isNotEmpty) return t.length > 60 ? '${t.substring(0, 60)}…' : t;
-    return 'Parole du ${day(receivedOn)}';
+    return L10n.current.prophecyWordOf(day(receivedOn));
   }
 
   /// Échéance dépassée et pas encore accomplie.

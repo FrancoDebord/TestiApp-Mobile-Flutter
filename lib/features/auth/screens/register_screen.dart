@@ -104,7 +104,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   /// Même sélecteur que l'écran « Modifier le profil » (galerie / caméra).
   Future<void> _pickAvatar() async {
-    final l10n = AppLocalizations.of(context);
+    final l10n = context.l10n;
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
       backgroundColor: Colors.white,
@@ -144,8 +144,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     backgroundColor: AppColors.dangerSoft,
                     child: Icon(Icons.delete_outline_rounded,
                         color: AppColors.danger)),
-                title: const Text('Retirer',
-                    style: TextStyle(fontFamily: AppFonts.family)),
+                title: Text(l10n.commonRemove,
+                    style: const TextStyle(fontFamily: AppFonts.family)),
                 onTap: () {
                   Navigator.pop(sheetContext);
                   setState(() => _avatarPath = null);
@@ -176,9 +176,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     try {
       await container.read(profileExtrasProvider.notifier).uploadAvatar(path);
     } catch (_) {
-      messenger.showSnackBar(const SnackBar(
-        content: Text(
-            "Logo non envoyé, vous pourrez l'ajouter depuis votre profil"),
+      messenger.showSnackBar(SnackBar(
+        content: Text(L10n.current.authLogoUploadFailed),
         behavior: SnackBarBehavior.floating,
       ));
     }
@@ -230,12 +229,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   // ── Validators ──────────────────────────────────────────────────────────────
 
-  String? _validateName(String? value, String fieldName) {
+  String? _validateName(String? value, {required bool firstName}) {
+    final l10n = context.l10n;
     if (value == null || value.trim().isEmpty) {
-      return 'Veuillez saisir votre $fieldName';
+      return firstName ? l10n.authValidateFirstName : l10n.authValidateLastName;
     }
     if (value.trim().length < 2) {
-      return 'Le $fieldName doit contenir au moins 2 caractères';
+      return firstName ? l10n.authFirstNameMin2 : l10n.authLastNameMin2;
     }
     return null;
   }
@@ -253,7 +253,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         (uri.scheme == 'http' || uri.scheme == 'https') &&
         uri.host.contains('.') &&
         !v.contains(' ');
-    return ok ? null : 'Adresse du site web invalide';
+    return ok ? null : context.l10n.authInvalidWebsite;
   }
 
   static String? _normalizeWebsite(String raw) {
@@ -266,27 +266,28 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   String? _validateEmail(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Veuillez saisir votre adresse e-mail';
+      return context.l10n.authValidateEmail;
     }
     final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
-    if (!emailRegex.hasMatch(value.trim())) return 'Adresse e-mail invalide';
+    if (!emailRegex.hasMatch(value.trim())) return context.l10n.authInvalidEmail;
     return null;
   }
 
   String? _validatePassword(String? value) {
-    if (value == null || value.isEmpty) return 'Veuillez saisir un mot de passe';
-    if (value.length < 8) return 'Minimum 8 caractères';
-    if (!value.contains(RegExp(r'[A-Z]'))) return 'Au moins une majuscule requise';
-    if (!value.contains(RegExp(r'[0-9]'))) return 'Au moins un chiffre requis';
+    final l10n = context.l10n;
+    if (value == null || value.isEmpty) return l10n.authValidateNewPwd;
+    if (value.length < 8) return l10n.authPwdMin8Short;
+    if (!value.contains(RegExp(r'[A-Z]'))) return l10n.authPwdUppercase;
+    if (!value.contains(RegExp(r'[0-9]'))) return l10n.authPwdDigit;
     return null;
   }
 
   String? _validateConfirm(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Veuillez confirmer votre mot de passe';
+      return context.l10n.authPwdConfirmEmpty;
     }
     if (value != _passwordController.text) {
-      return 'Les mots de passe ne correspondent pas';
+      return context.l10n.authPwdMatch;
     }
     return null;
   }
@@ -299,13 +300,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     if (_country == null) {
-      setState(() => _errorMessage = 'Veuillez sélectionner votre pays');
+      setState(() => _errorMessage = context.l10n.authSelectCountryErr);
       return;
     }
 
     if (!_acceptedTerms) {
-      setState(() =>
-          _errorMessage = 'Vous devez accepter les CGU pour continuer');
+      setState(() => _errorMessage = context.l10n.authAcceptTerms);
       return;
     }
 
@@ -355,7 +355,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 : e.toString();
         setState(() => _errorMessage = msg.isNotEmpty
             ? msg
-            : 'Impossible de créer le compte. Vérifiez vos informations.');
+            : context.l10n.authCreateAccountFailed);
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -382,9 +382,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       AuthScreenHeader(
-                        title: 'Créer un compte',
-                        subtitle: 'Rejoignez une communauté qui partage la '
-                            'gloire de Dieu.',
+                        title: context.l10n.authCreateAccount,
+                        subtitle: context.l10n.authJoinTagline,
                         onBack: () => context.canPop()
                             ? context.pop()
                             : context.goNamed(AppRoutes.login),
@@ -421,12 +420,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         const SizedBox(height: 20),
                         AuthTextField(
                           controller: _orgNameController,
-                          label: "Nom de l'organisation",
-                          hint: 'Église de la Grâce',
+                          label: context.l10n.authOrgNameLabel,
+                          hint: context.l10n.authOrgNameHint,
                           prefixIcon: Icons.church_outlined,
                           textInputAction: TextInputAction.next,
                           validator: (v) => _validateRequired(
-                              v, "Veuillez saisir le nom de l'organisation"),
+                              v, context.l10n.authOrgNameRequired),
                           enabled: !isLoading,
                         ),
                         const SizedBox(height: 16),
@@ -438,19 +437,19 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         const SizedBox(height: 16),
                         AuthTextField(
                           controller: _orgCityController,
-                          label: 'Ville',
-                          hint: 'Cotonou',
+                          label: context.l10n.authCityLabel,
+                          hint: 'Cotonou', // i18n-ignore
                           prefixIcon: Icons.location_city_rounded,
                           textInputAction: TextInputAction.next,
                           validator: (v) =>
-                              _validateRequired(v, 'Veuillez saisir la ville'),
+                              _validateRequired(v, context.l10n.authCityRequired),
                           enabled: !isLoading,
                         ),
                         const SizedBox(height: 16),
                         AuthTextField(
                           controller: _orgWebsiteController,
-                          label: 'Site web (optionnel)',
-                          hint: 'www.exemple.org',
+                          label: context.l10n.authWebsiteLabel,
+                          hint: context.l10n.authWebsiteHint,
                           prefixIcon: Icons.language_rounded,
                           keyboardType: TextInputType.url,
                           textInputAction: TextInputAction.next,
@@ -465,11 +464,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           Expanded(
                             child: AuthTextField(
                               controller: _firstNameController,
-                              label: 'Prénom',
-                              hint: 'Jean',
+                              label: context.l10n.authFirstNameLabel,
+                              hint: context.l10n.authFirstNameHintMale,
                               prefixIcon: Icons.person_outline_rounded,
                               textInputAction: TextInputAction.next,
-                              validator: (v) => _validateName(v, 'prénom'),
+                              validator: (v) => _validateName(v, firstName: true),
                               enabled: !isLoading,
                             ),
                           ),
@@ -477,11 +476,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           Expanded(
                             child: AuthTextField(
                               controller: _lastNameController,
-                              label: 'Nom',
-                              hint: 'Dupont',
+                              label: context.l10n.authLastNameLabel,
+                              hint: context.l10n.authLastNameHint,
                               prefixIcon: Icons.badge_outlined,
                               textInputAction: TextInputAction.next,
-                              validator: (v) => _validateName(v, 'nom'),
+                              validator: (v) => _validateName(v, firstName: false),
                               enabled: !isLoading,
                             ),
                           ),
@@ -493,8 +492,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       // Email.
                       AuthTextField(
                         controller: _emailController,
-                        label: 'Adresse e-mail',
-                        hint: 'exemple@email.com',
+                        label: context.l10n.authEmailLabel,
+                        hint: context.l10n.authEmailHint,
                         prefixIcon: Icons.mail_outline_rounded,
                         keyboardType: TextInputType.emailAddress,
                         textInputAction: TextInputAction.next,
@@ -522,7 +521,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         onDialChanged: (c) => setState(() => _phoneDial = c),
                         controller: _phoneController,
                         required: _isOrg,
-                        requiredNote: _isOrg ? null : '(facultatif)',
+                        requiredNote: _isOrg ? null : context.l10n.authOptionalNote,
                         enabled: !isLoading,
                       ),
 
@@ -531,7 +530,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       // Password.
                       AuthTextField(
                         controller: _passwordController,
-                        label: 'Mot de passe',
+                        label: context.l10n.authPasswordLabel,
                         hint: '••••••••',
                         prefixIcon: Icons.lock_outline_rounded,
                         obscureText: _obscurePassword,
@@ -563,7 +562,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       // Confirm password.
                       AuthTextField(
                         controller: _confirmController,
-                        label: 'Confirmer le mot de passe',
+                        label: context.l10n.authConfirmPwdLabel,
                         hint: '••••••••',
                         prefixIcon: Icons.lock_outline_rounded,
                         obscureText: _obscureConfirm,
@@ -597,7 +596,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
                       // S'inscrire.
                       AuthPrimaryButton(
-                        label: "S'inscrire",
+                        label: context.l10n.authSignUp,
                         isLoading: isLoading && !_googleLoading,
                         onPressed: isLoading ? null : _submit,
                       ),
@@ -605,13 +604,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       const SizedBox(height: 20),
 
                       // Séparateur « ou ».
-                      const AuthOrDivider(label: 'ou'),
+                      AuthOrDivider(label: context.l10n.authOr),
 
                       const SizedBox(height: 16),
 
                       // Google sign-in.
                       AppButton(
-                        label: 'Continuer avec Google',
+                        label: context.l10n.authContinueWithGoogle,
                         variant: AppButtonVariant.outline,
                         leading: const GoogleGMark(size: 20),
                         fullWidth: true,
@@ -626,9 +625,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         alignment: WrapAlignment.center,
                         crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
-                          const Text(
-                            'Déjà inscrit ? ',
-                            style: TextStyle(
+                          Text(
+                            '${context.l10n.authHaveAccount} ',
+                            style: const TextStyle(
                               fontFamily: AppFonts.family,
                               fontSize: 14,
                               color: AppColors.textSecondary,
@@ -636,9 +635,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           ),
                           GestureDetector(
                             onTap: () => context.goNamed(AppRoutes.login),
-                            child: const Text(
-                              'Se connecter',
-                              style: TextStyle(
+                            child: Text(
+                              context.l10n.authSignIn,
+                              style: const TextStyle(
                                 fontFamily: AppFonts.family,
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
@@ -690,13 +689,13 @@ class _AvatarPicker extends StatelessWidget {
           Semantics(
             button: true,
             label: isOrganization
-                ? "Choisir le logo de l'organisation"
-                : 'Choisir une photo de profil',
+                ? context.l10n.authPickOrgLogo
+                : context.l10n.authPickProfilePhoto,
             child: GestureDetector(onTap: onPick, child: _buildCircle(icon)),
           ),
           const SizedBox(height: 6),
           Text(
-            isOrganization ? 'Logo' : 'Photo de profil',
+            isOrganization ? context.l10n.authLogo : context.l10n.authProfilePhoto,
             style: const TextStyle(
               fontFamily: AppFonts.family,
               fontSize: 12,
@@ -772,9 +771,9 @@ class _AccountTypeSelector extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          'Type de compte',
-          style: TextStyle(
+        Text(
+          context.l10n.authAccountType,
+          style: const TextStyle(
             fontFamily: AppFonts.family,
             fontWeight: FontWeight.w600,
             fontSize: 14,
@@ -784,16 +783,16 @@ class _AccountTypeSelector extends StatelessWidget {
         const SizedBox(height: 10),
         _AccountTypeCard(
           icon: Icons.person_rounded,
-          title: 'Je suis une personne',
-          subtitle: 'Partagez vos témoignages personnels',
+          title: context.l10n.authAccountTypeIndividual,
+          subtitle: context.l10n.authAccountTypeIndividualSub,
           selected: value == AccountType.individual,
           onTap: enabled ? () => onChanged(AccountType.individual) : null,
         ),
         const SizedBox(height: 10),
         _AccountTypeCard(
           icon: Icons.church_rounded,
-          title: 'Je représente une organisation',
-          subtitle: 'Église, ministère, association…',
+          title: context.l10n.authAccountTypeOrg,
+          subtitle: context.l10n.authAccountTypeOrgSub,
           selected: value == AccountType.organization,
           onTap: enabled ? () => onChanged(AccountType.organization) : null,
         ),
@@ -907,16 +906,15 @@ class _VerificationNote extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.primarySoft),
       ),
-      child: const Row(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.verified_rounded, color: AppColors.primary, size: 20),
-          SizedBox(width: 10),
+          const Icon(Icons.verified_rounded, color: AppColors.primary, size: 20),
+          const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Votre organisation sera vérifiée par notre équipe. Le badge '
-              'vérifié apparaîtra ensuite sur votre profil et vos témoignages.',
-              style: TextStyle(
+              context.l10n.authOrgVerificationNote,
+              style: const TextStyle(
                 fontFamily: AppFonts.family,
                 fontSize: 13,
                 height: 1.4,
@@ -948,9 +946,9 @@ class _OrganizationTypeDropdown extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          "Type d'organisation",
-          style: TextStyle(
+        Text(
+          context.l10n.authOrgTypeLabel,
+          style: const TextStyle(
             fontFamily: AppFonts.family,
             fontWeight: FontWeight.w500,
             fontSize: 13,
@@ -960,17 +958,17 @@ class _OrganizationTypeDropdown extends StatelessWidget {
         const SizedBox(height: 6),
         DropdownButtonFormField<OrganizationType>(
           initialValue: value,
-          hint: const Text(
-            'Sélectionnez le type',
+          hint: Text(
+            context.l10n.authOrgTypeHint,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
+            style: const TextStyle(
               fontFamily: AppFonts.family,
               color: AppColors.textSecondary,
               fontSize: 15,
             ),
           ),
           onChanged: enabled ? onChanged : null,
-          validator: (v) => v == null ? 'Veuillez choisir un type' : null,
+          validator: (v) => v == null ? context.l10n.authOrgTypeRequired : null,
           isExpanded: true,
           icon: const Icon(Icons.keyboard_arrow_down_rounded,
               color: AppColors.textSecondary),
@@ -994,9 +992,6 @@ class _PasswordStrengthBar extends StatelessWidget {
 
   final int strength; // 0–4
 
-  static const _labels = [
-    'Très faible', 'Faible', 'Moyen', 'Fort', 'Très fort'
-  ];
   static const _colors = [
     AppColors.danger,
     AppColors.secondary,
@@ -1009,7 +1004,14 @@ class _PasswordStrengthBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final idx = strength.clamp(0, 4);
     final color = _colors[idx];
-    final label = _labels[idx];
+    final l10n = context.l10n;
+    final label = [
+      l10n.authPwdVeryWeak,
+      l10n.authPwdWeak,
+      l10n.authPwdMedium,
+      l10n.authPwdStrong,
+      l10n.authPwdVeryStrong,
+    ][idx];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1075,26 +1077,26 @@ class _TermsCheckbox extends StatelessWidget {
         const SizedBox(width: 10),
         Expanded(
           child: RichText(
-            text: const TextSpan(
-              style: TextStyle(
+            text: TextSpan(
+              style: const TextStyle(
                 fontFamily: AppFonts.family,
                 fontSize: 13,
                 color: AppColors.textSecondary,
                 height: 1.5,
               ),
               children: [
-                TextSpan(text: "J'accepte les "),
+                TextSpan(text: context.l10n.authAcceptPrefix),
                 TextSpan(
-                  text: "Conditions Générales d'Utilisation",
-                  style: TextStyle(
+                  text: context.l10n.authTermsOfUse,
+                  style: const TextStyle(
                     color: AppColors.primary,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                TextSpan(text: ' et la '),
+                TextSpan(text: context.l10n.authAcceptAnd),
                 TextSpan(
-                  text: 'Politique de confidentialité',
-                  style: TextStyle(
+                  text: context.l10n.authPrivacyPolicy,
+                  style: const TextStyle(
                     color: AppColors.primary,
                     fontWeight: FontWeight.w500,
                   ),

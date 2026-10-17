@@ -12,6 +12,7 @@ import '../../core/theme/app_tokens.dart';
 import '../auth/providers/auth_notifier.dart' show currentUserProvider;
 import 'location_providers.dart';
 import 'user_location.dart';
+import '../../l10n/app_localizations.dart';
 
 /// Écran du réglage (route de premier niveau, ouverte depuis n'importe quel onglet).
 const locationSettingsPath = '/settings/location';
@@ -54,7 +55,7 @@ class NearbyFeedBanner extends ConsumerWidget {
           if (place case final p?)
             Semantics(
               button: signedIn,
-              label: 'Près de chez vous : ${p.label}. Réglage de localisation',
+              label: context.l10n.locationNearbySemantics(p.label),
               excludeSemantics: true,
               child: InkWell(
                 borderRadius: BorderRadius.circular(999),
@@ -81,7 +82,7 @@ class NearbyFeedBanner extends ConsumerWidget {
                       const SizedBox(width: 4),
                       Flexible(
                         child: Text(
-                          'Près de chez vous · ${p.label}',
+                          context.l10n.locationNearbyChip(p.label),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: AppTextStyles.labelSmall.copyWith(
@@ -132,7 +133,7 @@ class _LocationPrompt extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Activez votre position pour des témoignages proches de vous',
+                  context.l10n.locationPrompt,
                   style: AppTextStyles.bodySmall.copyWith(
                     color: AppColors.textPrimary,
                     height: 1.35,
@@ -145,13 +146,13 @@ class _LocationPrompt extends ConsumerWidget {
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                   onPressed: () => context.push(locationSettingsPath),
-                  child: const Text('Activer'),
+                  child: Text(context.l10n.locationEnable),
                 ),
               ],
             ),
           ),
           IconButton(
-            tooltip: 'Fermer',
+            tooltip: context.l10n.commonClose,
             icon: const Icon(Icons.close_rounded, size: 20),
             color: AppColors.textSecondary,
             onPressed: () =>

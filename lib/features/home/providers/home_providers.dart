@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart' show debugPrint, immutable;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../core/media/media_http.dart' show fixMediaUrl;
 import '../../../core/app_constants.dart';
 import '../../../core/local_db/daos/testimony_dao.dart';
 import '../../../core/media/youtube.dart';
@@ -14,6 +15,7 @@ import '../../../services/api_service.dart';
 import '../../location/location_providers.dart' show homeFeedPlaceProvider, nearbyLabelsProvider;
 import '../../location/user_location.dart' show FeedPlace, parseNearbyLabels;
 import '../models/testimony_model.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../core/media/video_source.dart' show isHlsUrl;
 import '../../../shared/models/account_approval.dart';
 import '../../../shared/models/mention.dart' show MentionRef;
@@ -48,19 +50,19 @@ extension ReactionTypeInfo on ReactionType {
   String get label {
     switch (this) {
       case ReactionType.like:
-        return "J'aime";
+        return L10n.current.detailLike;
       case ReactionType.pray:
-        return 'Je prie';
+        return L10n.current.detailPray;
       case ReactionType.love:
-        return "J'adore Dieu";
+        return L10n.current.homeReactionLove;
       case ReactionType.glory:
-        return 'Gloire à Dieu !';
+        return L10n.current.homeReactionGlory;
       case ReactionType.strong:
-        return 'Inspirant';
+        return L10n.current.homeReactionInspiring;
       case ReactionType.fire:
-        return 'Puissant';
+        return L10n.current.homeReactionPowerful;
       case ReactionType.touched:
-        return 'Touché';
+        return L10n.current.homeReactionTouched;
     }
   }
 
@@ -123,6 +125,7 @@ Testimony _applyStatsDelta(
       shareUrl: t.shareUrl, proofs: t.proofs,
       mentions: t.mentions, repost: t.repost, myReaction: t.myReaction,
       canDelete: t.canDelete, badges: t.badges, featuredSource: t.featuredSource,
+      conversion: t.conversion,
     );
   }
   if (t is AudioTestimony) {
@@ -138,6 +141,7 @@ Testimony _applyStatsDelta(
       shareUrl: t.shareUrl, proofs: t.proofs,
       mentions: t.mentions, repost: t.repost, myReaction: t.myReaction,
       canDelete: t.canDelete, badges: t.badges, featuredSource: t.featuredSource,
+      conversion: t.conversion,
     );
   }
   if (t is VideoTestimony) {
@@ -154,6 +158,7 @@ Testimony _applyStatsDelta(
       shareUrl: t.shareUrl, proofs: t.proofs,
       mentions: t.mentions, repost: t.repost, myReaction: t.myReaction,
       canDelete: t.canDelete, badges: t.badges, featuredSource: t.featuredSource,
+      conversion: t.conversion,
     );
   }
   return t;
@@ -173,7 +178,8 @@ int _parseInt(dynamic v) {
 // Convertit une URL relative serveur ("/storage/…") en URL absolue.
 String? _absUrl(String? raw) {
   if (raw == null || raw.isEmpty) return raw;
-  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+  // Ancien domaine (fichiers d'avant le changement de domaine) → domaine actuel.
+  if (raw.startsWith('http://') || raw.startsWith('https://')) return fixMediaUrl(raw);
   final root = AppConstants.baseUrl.replaceFirst(RegExp(r'/api/v1.*$'), '');
   return raw.startsWith('/') ? '$root$raw' : '$root/$raw';
 }
@@ -255,7 +261,7 @@ Testimony? testimonyFromApiJson(dynamic raw) {
     // Laravel peut renvoyer camelCase ou snake_case selon la version — on essaie les deux.
     final author = TestimonyAuthor(
       uid:         (userMap['id'] ?? m['userId'] ?? m['user_id'])?.toString() ?? '',
-      displayName: (userMap['displayName'] ?? userMap['display_name'])  as String? ?? 'Anonyme',
+      displayName: (userMap['displayName'] ?? userMap['display_name'])  as String? ?? L10n.current.commonAnonymous,
       avatarUrl:   (userMap['avatarUrl']   ?? userMap['avatar_url'])    as String?,
       isOrganization: ((userMap['accountType'] ?? userMap['account_type'])
               as String?) == 'organization',
@@ -304,6 +310,8 @@ Testimony? testimonyFromApiJson(dynamic raw) {
     final repost        = RepostInfo.fromFeedItem(m);
     final myReaction    = m['myReaction'] as String?;
     final canDelete     = m['canDelete'] as bool? ?? false;
+    // Témoignage de conversion (docs serveur fonctionnalites/temoignage-de-conversion.md).
+    final conversion    = ConversionDetails.fromTestimonyJson(m);
 
     switch (youtubeId != null ? 'video' : type) {
       case 'audio':
@@ -321,7 +329,7 @@ Testimony? testimonyFromApiJson(dynamic raw) {
           isFeatured: isFeatured, isLiked: isLiked, isPrayed: isPrayed, isSaved: isSaved,
           shareUrl: shareUrl, proofs: proofs, mentions: mentions,
           repost: repost, myReaction: myReaction, canDelete: canDelete,
-          badges: badges, featuredSource: featuredSource,
+          badges: badges, featuredSource: featuredSource, conversion: conversion,
         );
       case 'video':
         final bunny = youtubeId == null ? parseBunnyVideo(m) : null;
@@ -348,7 +356,7 @@ Testimony? testimonyFromApiJson(dynamic raw) {
           isFeatured: isFeatured, isLiked: isLiked, isPrayed: isPrayed, isSaved: isSaved,
           shareUrl: shareUrl, proofs: proofs, mentions: mentions,
           repost: repost, myReaction: myReaction, canDelete: canDelete,
-          badges: badges, featuredSource: featuredSource,
+          badges: badges, featuredSource: featuredSource, conversion: conversion,
         );
       default:
         final body = (m['bodyText'] ?? m['body_text']) as String? ?? '';
@@ -361,7 +369,7 @@ Testimony? testimonyFromApiJson(dynamic raw) {
           isFeatured: isFeatured, isLiked: isLiked, isPrayed: isPrayed, isSaved: isSaved,
           shareUrl: shareUrl, proofs: proofs, mentions: mentions,
           repost: repost, myReaction: myReaction, canDelete: canDelete,
-          badges: badges, featuredSource: featuredSource,
+          badges: badges, featuredSource: featuredSource, conversion: conversion,
         );
     }
   } catch (_) {
@@ -389,15 +397,21 @@ Testimony? testimonyFromApiJson(dynamic raw) {
 
 /// Tri du fil : `?sort=` de GET /testimonies.
 enum FeedSort {
-  forYou('for_you', 'Pour vous'),
-  recent('recent', 'Récents'),
-  popular('popular', 'Populaires'),
-  mostViewed('most_viewed', 'Plus vus');
+  forYou('for_you'),
+  recent('recent'),
+  popular('popular'),
+  mostViewed('most_viewed');
 
-  const FeedSort(this.apiValue, this.label);
+  const FeedSort(this.apiValue);
 
   final String apiValue;
-  final String label;
+
+  String get label => switch (this) {
+        FeedSort.forYou => L10n.current.homeSortForYou,
+        FeedSort.recent => L10n.current.homeSortRecent,
+        FeedSort.popular => L10n.current.homeSortPopular,
+        FeedSort.mostViewed => L10n.current.homeSortMostViewed,
+      };
 }
 
 /// Tri choisi et filtre « Approuvés » (`?verified=1` : label « Témoignage approuvé »).
@@ -588,7 +602,7 @@ class FeedNotifier extends Notifier<List<Testimony>> {
       final id     = row['id']?.toString() ?? '';
       final author = TestimonyAuthor(
         uid:         row['user_id']?.toString() ?? '',
-        displayName: row['author_name']   as String? ?? 'Anonyme',
+        displayName: row['author_name']   as String? ?? L10n.current.commonAnonymous,
         avatarUrl:   row['author_avatar'] as String?,
       );
       final title    = row['title']    as String? ?? '';
@@ -1043,9 +1057,9 @@ final selectedCategoryProvider =
 // ============================================================================
 
 const _kFallbackVerse = DailyVerse(
-  text: '« Car je connais les projets que j\'ai formés sur vous, dit l\'Éternel, '
-      'projets de paix et non de malheur, afin de vous donner un avenir et de l\'espérance. »',
-  reference: 'Jérémie 29 : 11',
+  text: '« Car je connais les projets que j\'ai formés sur vous, dit l\'Éternel, ' // i18n-ignore
+      'projets de paix et non de malheur, afin de vous donner un avenir et de l\'espérance. »', // i18n-ignore
+  reference: 'Jérémie 29 : 11', // i18n-ignore
 );
 
 class DailyVerseNotifier extends AsyncNotifier<DailyVerse> {

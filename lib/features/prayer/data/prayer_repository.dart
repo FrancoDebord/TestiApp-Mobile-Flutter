@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/app_constants.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../services/api_service.dart';
 import '../models/prayer_models.dart';
 
@@ -64,8 +65,8 @@ class PrayerRepository {
       final body = e.response?.data;
       final msg = body is Map ? body['message'] as String? : null;
       if (msg != null && msg.isNotEmpty) throw PrayerFailure(msg, statusCode: status);
-      if (status >= 500) throw PrayerFailure('Erreur du serveur ($status).', statusCode: status);
-      throw const PrayerFailure('Connexion impossible. Vérifiez votre accès à Internet.');
+      if (status >= 500) throw PrayerFailure(L10n.current.prayerErrorServer(status), statusCode: status);
+      throw PrayerFailure(L10n.current.prayerErrorConnection);
     }
   }
 
@@ -209,7 +210,7 @@ class PrayerRepository {
   Future<String> startSession(String id) => _guard(() async {
         final res = await _api.post<dynamic>(AppConstants.prayerSessionStart(id));
         final liveId = _map(_map(res.data)['live'])['id'];
-        if (liveId == null) throw const PrayerFailure("La salle n'a pas pu être ouverte.");
+        if (liveId == null) throw PrayerFailure(L10n.current.prayerErrorRoomNotOpened);
         return '$liveId';
       });
 }

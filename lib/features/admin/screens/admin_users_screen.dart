@@ -6,6 +6,7 @@ import '../providers/admin_provider.dart';
 import '../widgets/admin_user_row.dart';
 import '../../../shared/search/search_suggestions.dart';
 import '../../../shared/widgets/search_autocomplete_field.dart';
+import '../../../l10n/app_localizations.dart';
 
 // =============================================================================
 // AdminUsersScreen — User Management section
@@ -76,9 +77,9 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text(
-              'Annuler',
-              style: TextStyle(fontFamily: 'Plus Jakarta Sans', color: Color(0xFF667085)),
+            child: Text(
+              context.l10n.commonCancel,
+              style: const TextStyle(fontFamily: 'Plus Jakarta Sans', color: Color(0xFF667085)),
             ),
           ),
           ElevatedButton(
@@ -93,9 +94,9 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                   borderRadius: BorderRadius.circular(8)),
               elevation: 0,
             ),
-            child: const Text(
-              'Confirmer',
-              style: TextStyle(
+            child: Text(
+              context.l10n.commonConfirm,
+              style: const TextStyle(
                   fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600),
             ),
           ),
@@ -129,7 +130,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
               onChanged: (v) =>
                   ref.read(adminUserSearchProvider.notifier).update(v),
               decoration: InputDecoration(
-                hintText: 'Rechercher par nom ou e-mail…',
+                hintText: context.l10n.adminSearchUsersHint,
                 hintStyle: const TextStyle(
                   fontFamily: 'Plus Jakarta Sans',
                   fontSize: 13,
@@ -178,10 +179,10 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
             child: Row(
               children: [
                 const SizedBox(width: 48),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Utilisateur',
-                    style: TextStyle(
+                    context.l10n.adminRoleUser,
+                    style: const TextStyle(
                       fontFamily: 'Plus Jakarta Sans',
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
@@ -190,7 +191,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                   ),
                 ),
                 Text(
-                  '${users.length} résultat${users.length != 1 ? 's' : ''}',
+                  context.l10n.adminResultCount(users.length),
                   style: const TextStyle(
                     fontFamily: 'Plus Jakarta Sans',
                     fontSize: 11,
@@ -203,10 +204,10 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
           // Liste
           Expanded(
             child: users.isEmpty
-                ? const Center(
+                ? Center(
                     child: Text(
-                      'Aucun utilisateur trouvé.',
-                      style: TextStyle(
+                      context.l10n.adminNoUserFound,
+                      style: const TextStyle(
                         fontFamily: 'Plus Jakarta Sans',
                         fontSize: 14,
                         color: Color(0xFF667085),
@@ -220,32 +221,32 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                       return AdminUserRow(
                         user: user,
                         onSuspend: () => _showConfirm(
-                          'Suspendre ${user.displayName} ?',
-                          "L'utilisateur ne pourra plus se connecter temporairement.",
+                          context.l10n.adminSuspendTitle(user.displayName),
+                          context.l10n.adminSuspendBody,
                           const Color(0xFFF79009),
                           () => ref
                               .read(adminUsersNotifierProvider.notifier)
                               .suspend(user.uid),
                         ),
                         onBan: () => _showConfirm(
-                          'Bannir ${user.displayName} ?',
-                          'Cette action est définitive. Le compte sera désactivé.',
+                          context.l10n.adminBanTitle(user.displayName),
+                          context.l10n.adminBanBody,
                           const Color(0xFFD92D20),
                           () => ref
                               .read(adminUsersNotifierProvider.notifier)
                               .ban(user.uid),
                         ),
                         onPromote: () => _showConfirm(
-                          'Promouvoir ${user.displayName} ?',
-                          'Cet utilisateur deviendra modérateur.',
+                          context.l10n.adminPromoteTitle(user.displayName),
+                          context.l10n.adminPromoteUserBody,
                           const Color(0xFF184797),
                           () => ref
                               .read(adminUsersNotifierProvider.notifier)
                               .updateRole(user.uid, UserRole.moderateur),
                         ),
                         onRestore: () => _showConfirm(
-                          'Réactiver ${user.displayName} ?',
-                          'Le compte sera de nouveau accessible.',
+                          context.l10n.adminRestoreTitle(user.displayName),
+                          context.l10n.adminRestoreBody,
                           const Color(0xFF12B76A),
                           () => ref
                               .read(adminUsersNotifierProvider.notifier)
@@ -286,9 +287,9 @@ class _SearchPrompt extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Rechercher un utilisateur',
-            style: TextStyle(
+          Text(
+            context.l10n.adminSearchUserTitle,
+            style: const TextStyle(
               fontFamily: 'Plus Jakarta Sans',
               fontWeight: FontWeight.w600,
               fontSize: 16,
@@ -296,10 +297,10 @@ class _SearchPrompt extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          const Text(
-            'Saisissez un nom ou une adresse e-mail\npour trouver un compte.',
+          Text(
+            context.l10n.adminSearchUserBody,
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: const TextStyle(
               fontFamily: 'Plus Jakarta Sans',
               fontSize: 13,
               color: Color(0xFF667085),

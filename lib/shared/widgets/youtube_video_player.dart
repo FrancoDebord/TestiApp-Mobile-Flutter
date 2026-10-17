@@ -6,6 +6,7 @@
 import 'package:flutter/material.dart';
 import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 
@@ -38,11 +39,12 @@ class _YouTubeVideoPlayerState extends State<YouTubeVideoPlayer> {
       YoutubePlayerController.fromVideoId(
         videoId: id,
         autoPlay: widget.autoPlay,
-        params: const YoutubePlayerParams(
+        params: YoutubePlayerParams(
           showFullscreenButton: true,
           strictRelatedVideos: true,
-          interfaceLanguage: 'fr',
-          captionLanguage: 'fr',
+          // Langue affichée de l'application (fr / en).
+          interfaceLanguage: L10n.languageCode,
+          captionLanguage: L10n.languageCode,
           // youtube-nocookie.com
           privacyEnhancedMode: true,
         ),
@@ -102,7 +104,7 @@ class YouTubeBadge extends StatelessWidget {
           ),
           const SizedBox(width: 3),
           Text(
-            'YouTube',
+            'YouTube', // i18n-ignore (marque)
             style: TextStyle(
               color: AppColors.surface,
               fontFamily: AppFonts.family,

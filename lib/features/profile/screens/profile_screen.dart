@@ -5,9 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:intl/intl.dart' show DateFormat;
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../conversion/widgets/conversion_widgets.dart' show ProfileConversionSection;
+import '../../../services/api_service.dart' show LaravelApiException;
 import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -61,6 +62,8 @@ class ProfileScreen extends ConsumerWidget {
             const SizedBox(height: AppSpacing.lg),
             const _HeaderButtons(),
             const SizedBox(height: AppSpacing.xl),
+            // Mon témoignage de conversion, mis en avant, ou le bouton pour l'enregistrer.
+            const ProfileConversionSection(padding: EdgeInsets.only(bottom: AppSpacing.xl)),
             const _MainMenu(),
             const SizedBox(height: AppSpacing.xl),
             const _SpaceMenu(),
@@ -74,7 +77,7 @@ class ProfileScreen extends ConsumerWidget {
             // ── Déconnexion (avec confirmation, comme dans les Paramètres) ──
             const SizedBox(height: AppSpacing.xxxl),
             AppButton(
-              label: AppLocalizations.of(context).settingsLogout,
+              label: context.l10n.settingsLogout,
               leadingIcon: Icons.logout_rounded,
               variant: AppButtonVariant.danger,
               fullWidth: true,
@@ -94,7 +97,7 @@ class _GuestProfile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+    final l10n = context.l10n;
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -141,7 +144,7 @@ class _GuestProfile extends StatelessWidget {
                 ProfileMenuTile(
                   icon: Icons.language_rounded,
                   title: l10n.settingsLanguage,
-                  value: l10n.isFr ? 'Français' : 'English',
+                  value: l10n.isFr ? l10n.languageFrench : l10n.languageEnglish,
                   onTap: () => context.pushNamed(AppRoutes.language),
                 ),
                 ProfileMenuTile(
@@ -197,7 +200,7 @@ class _ProfileHeaderState extends ConsumerState<_ProfileHeader> {
                 backgroundColor: AppColors.primarySoft,
                 child: Icon(Icons.photo_library_rounded, color: AppColors.primary),
               ),
-              title: const Text('Galerie photos', style: TextStyle(fontFamily: AppFonts.family)),
+              title: Text(context.l10n.editGallery, style: const TextStyle(fontFamily: AppFonts.family)),
               onTap: () => Navigator.pop(context, ImageSource.gallery),
             ),
             ListTile(
@@ -205,7 +208,7 @@ class _ProfileHeaderState extends ConsumerState<_ProfileHeader> {
                 backgroundColor: AppColors.primarySoft,
                 child: Icon(Icons.camera_alt_rounded, color: AppColors.primary),
               ),
-              title: const Text('Prendre une photo', style: TextStyle(fontFamily: AppFonts.family)),
+              title: Text(context.l10n.editCamera, style: const TextStyle(fontFamily: AppFonts.family)),
               onTap: () => Navigator.pop(context, ImageSource.camera),
             ),
             const SizedBox(height: 8),
@@ -219,8 +222,14 @@ class _ProfileHeaderState extends ConsumerState<_ProfileHeader> {
     if (file == null || !mounted) return;
 
     setState(() => _uploading = true);
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = context.l10n;
     try {
-      await ref.read(profileExtrasProvider.notifier).updateAvatar(file.path);
+      await ref.read(profileExtrasProvider.notifier).uploadAvatar(file.path);
+    } on LaravelApiException catch (e) {
+      messenger.showSnackBar(SnackBar(behavior: SnackBarBehavior.floating, content: Text(e.displayMessage)));
+    } catch (_) {
+      messenger.showSnackBar(SnackBar(behavior: SnackBarBehavior.floating, content: Text(l10n.profileSaveFailed)));
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
@@ -237,7 +246,7 @@ class _ProfileHeaderState extends ConsumerState<_ProfileHeader> {
 
     return Semantics(
       button: true,
-      label: 'Modifier la photo de profil',
+      label: context.l10n.profileEditAvatar,
       child: GestureDetector(
         onTap: _pickAvatar,
         child: Stack(
@@ -297,7 +306,7 @@ class _ProfileHeaderState extends ConsumerState<_ProfileHeader> {
   @override
   Widget build(BuildContext context) {
     final profile = widget.profile;
-    final l10n = AppLocalizations.of(context);
+    final l10n = context.l10n;
     final user = ref.watch(currentUserProvider);
     final isOrg = user?.isOrganization ?? false;
     final hasCover = profile.coverUrl != null;
@@ -367,7 +376,7 @@ class _ProfileHeaderState extends ConsumerState<_ProfileHeader> {
         Align(
           alignment: Alignment.centerRight,
           child: IconButton(
-            tooltip: 'Photo de couverture',
+            tooltip: context.l10n.profileCoverPhoto,
             icon: const Icon(Icons.add_photo_alternate_outlined, color: AppColors.textSecondary),
             onPressed: () => showProfileCoverSheet(context, ref, hasCover: hasCover),
           ),
@@ -408,7 +417,7 @@ class _StatsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+    final l10n = context.l10n;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -489,7 +498,7 @@ class _HeaderButtons extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+    final l10n = context.l10n;
     return Row(
       children: [
         Expanded(
@@ -523,7 +532,7 @@ class _MainMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+    final l10n = context.l10n;
     return ProfileMenuCard(
       children: [
         ProfileMenuTile(
@@ -544,7 +553,7 @@ class _MainMenu extends StatelessWidget {
         ProfileMenuTile(
           icon: Icons.language_rounded,
           title: l10n.settingsLanguage,
-          value: l10n.isFr ? 'Français' : 'English',
+          value: l10n.isFr ? l10n.languageFrench : l10n.languageEnglish,
           onTap: () => context.pushNamed(AppRoutes.language),
         ),
         ProfileMenuTile(
@@ -572,69 +581,69 @@ class _SpaceMenu extends ConsumerWidget {
     final canModerate = ref.watch(canModerateProvider);
     final isAdmin = ref.watch(currentUserProvider)?.isAdmin ?? false;
     final me = ref.watch(currentUserProvider);
-    final l10n = AppLocalizations.of(context);
+    final l10n = context.l10n;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         ProfileMenuCard(
-          title: 'Mon espace',
+          title: l10n.profileMySpace,
           children: [
             // Compte personnel : badge « Compte vérifié » (docs/fonctionnalites/verification-des-comptes.md).
             if (me != null && !me.isOrganization)
               ProfileMenuTile(
                 icon: me.isApproved ? Icons.verified_rounded : Icons.verified_outlined,
-                title: me.isApproved ? 'Compte approuvé' : 'Faire vérifier mon compte',
+                title: me.isApproved ? l10n.profileAccountApproved : l10n.profileGetVerified,
                 subtitle: switch (me.verificationStatus) {
-                  _ when me.isApproved => 'Le badge apparaît à côté de votre nom',
-                  VerificationStatus.pending => 'Demande en cours d’examen',
-                  VerificationStatus.rejected => 'Demande refusée : voir le motif',
-                  _ => 'Pasteur, chantre, personnalité publique…',
+                  _ when me.isApproved => l10n.profileBadgeNextToName,
+                  VerificationStatus.pending => l10n.profileVerifUnderReview,
+                  VerificationStatus.rejected => l10n.profileVerifRejectedSeeReason,
+                  _ => l10n.profileGetVerifiedHint,
                 },
                 onTap: () => context.pushNamed(AppRoutes.accountVerification),
               ),
             ProfileMenuTile(
               icon: Icons.bookmark_outline_rounded,
               title: l10n.profileSaved,
-              subtitle: 'Vos témoignages mis de côté',
+              subtitle: l10n.profileSavedSubtitle,
               onTap: () => context.pushNamed(AppRoutes.savedTestimonies),
             ),
             ProfileMenuTile(
               icon: Icons.lock_outline_rounded,
-              title: 'Mon carnet privé',
-              subtitle: 'Ce que Dieu a fait pour moi, gardé pour moi seul',
+              title: l10n.profileJournal,
+              subtitle: l10n.profileJournalSubtitle,
               onTap: () => context.push('/journal'),
             ),
             ProfileMenuTile(
               icon: Icons.volunteer_activism_outlined,
-              title: 'Requêtes de prière',
-              subtitle: 'Soumettre et intercéder pour les autres',
+              title: l10n.profilePrayerRequests,
+              subtitle: l10n.profilePrayerRequestsSubtitle,
               onTap: () =>
                   Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const PrayerRequestsScreen())),
             ),
             ProfileMenuTile(
               icon: Icons.groups_outlined,
-              title: 'Sessions de prière',
-              subtitle: 'Rejoindre ou créer une session collective',
+              title: l10n.profilePrayerSessions,
+              subtitle: l10n.profilePrayerSessionsSubtitle,
               onTap: () =>
                   Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const GroupPrayerSessionsScreen())),
             ),
             ProfileMenuTile(
               icon: Icons.person_add_alt_outlined,
               title: l10n.profileFollowing,
-              subtitle: 'Les comptes que vous suivez',
+              subtitle: l10n.profileFollowingSubtitle,
               onTap: () => context.push('/following'),
             ),
             ProfileMenuTile(
               icon: Icons.people_alt_outlined,
-              title: 'Mes abonnés',
-              subtitle: 'Les comptes qui vous suivent',
+              title: l10n.profileMyFollowers,
+              subtitle: l10n.profileFollowersSubtitle,
               onTap: () => context.push('/followers'),
             ),
             ProfileMenuTile(
               icon: Icons.diversity_3_outlined,
-              title: 'Communauté',
-              subtitle: 'Églises, ministères et membres à suivre',
+              title: l10n.settingsCommunity,
+              subtitle: l10n.profileCommunitySubtitle,
               onTap: () => context.push('/community'),
             ),
           ],
@@ -642,21 +651,21 @@ class _SpaceMenu extends ConsumerWidget {
         if (canModerate || isAdmin) ...[
           const SizedBox(height: AppSpacing.xl),
           ProfileMenuCard(
-            title: 'Gestion',
+            title: l10n.profileManagement,
             children: [
               if (canModerate)
                 ProfileMenuTile(
                   icon: Icons.shield_outlined,
-                  title: 'Espace modération',
-                  subtitle: 'Gérer les témoignages en attente',
+                  title: l10n.profileModerationSpace,
+                  subtitle: l10n.profileModerationSpaceSubtitle,
                   onTap: () => context.push('/moderation'),
                 ),
               if (isAdmin)
                 ProfileMenuTile(
                   icon: Icons.admin_panel_settings_outlined,
                   color: AppColors.danger,
-                  title: 'Administration',
-                  subtitle: 'Gérer les utilisateurs et le contenu',
+                  title: l10n.profileAdministration,
+                  subtitle: l10n.profileAdministrationSubtitle,
                   onTap: () => context.push('/admin'),
                 ),
             ],
@@ -676,6 +685,7 @@ class _PersonalInfoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final e = profile.extras;
+    final l10n = context.l10n;
 
     return DecoratedBox(
       decoration: AppShadows.cardDecoration,
@@ -688,14 +698,14 @@ class _PersonalInfoCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    'Informations personnelles',
+                    l10n.profilePersonalInfo,
                     style: AppTextStyles.h4,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 IconButton(
-                  tooltip: AppLocalizations.of(context).profileEdit,
+                  tooltip: context.l10n.profileEdit,
                   icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
                   onPressed: () => context.pushNamed(AppRoutes.editProfile),
                 ),
@@ -711,13 +721,13 @@ class _PersonalInfoCard extends StatelessWidget {
                   Icon(Icons.person_add_outlined, size: 36, color: AppColors.textSecondary.withAlpha(110)),
                   const SizedBox(height: 10),
                   Text(
-                    'Complétez votre profil pour que la communauté vous connaisse.',
+                    l10n.profileCompleteHint,
                     style: AppTextStyles.bodySmall,
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 12),
                   AppButton(
-                    label: 'Compléter mon profil',
+                    label: l10n.profileComplete,
                     leadingIcon: Icons.add_rounded,
                     size: AppButtonSize.small,
                     onPressed: () => context.pushNamed(AppRoutes.editProfile),
@@ -726,14 +736,14 @@ class _PersonalInfoCard extends StatelessWidget {
               ),
             )
           else ...[
-            if (e.gender == 'Homme' || e.gender == 'Femme')
-              _InfoRow(Icons.wc_rounded, 'Sexe',
-                  e.gender == 'Homme'
-                      ? AppLocalizations.of(context).genderMale
-                      : AppLocalizations.of(context).genderFemale),
-            if (e.phone.isNotEmpty) _InfoRow(Icons.phone_outlined, 'Téléphone', e.phone),
-            if (e.email.isNotEmpty) _InfoRow(Icons.email_outlined, 'Email', e.email),
-            if (e.country.isNotEmpty) _InfoRow(Icons.public_rounded, 'Pays', e.country, isLast: true),
+            if (e.gender == 'Homme' || e.gender == 'Femme') // i18n-ignore
+              _InfoRow(Icons.wc_rounded, l10n.editGender,
+                  e.gender == 'Homme' // i18n-ignore
+                      ? context.l10n.genderMale
+                      : context.l10n.genderFemale),
+            if (e.phone.isNotEmpty) _InfoRow(Icons.phone_outlined, l10n.editPhoneLabel, e.phone),
+            if (e.email.isNotEmpty) _InfoRow(Icons.email_outlined, l10n.profileEmailLabel, e.email),
+            if (e.country.isNotEmpty) _InfoRow(Icons.public_rounded, l10n.authCountryLabel, e.country, isLast: true),
           ],
         ],
       ),
@@ -793,7 +803,7 @@ class _MyTestimoniesSection extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                'Mes témoignages récents',
+                context.l10n.profileRecentTestimonies,
                 style: AppTextStyles.h4,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -807,7 +817,7 @@ class _MyTestimoniesSection extends StatelessWidget {
                 minimumSize: Size.zero,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              child: const Text('Voir tout', style: TextStyle(fontFamily: AppFonts.family, fontSize: 13, fontWeight: FontWeight.w600)),
+              child: Text(context.l10n.commonSeeAll, style: const TextStyle(fontFamily: AppFonts.family, fontSize: 13, fontWeight: FontWeight.w600)),
             ),
           ],
         ),
@@ -839,7 +849,7 @@ class _OrganizationHeaderInfo extends StatelessWidget {
     if (uri == null) return;
     final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!ok && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Impossible d'ouvrir le site web")));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.l10n.profileAboutSiteOpenFailed)));
     }
   }
 
@@ -852,8 +862,8 @@ class _OrganizationHeaderInfo extends StatelessWidget {
     final website = user.organizationWebsite;
 
     final chip = switch (user.effectiveVerificationStatus) {
-      VerificationStatus.pending => ('Vérification en cours', Icons.hourglass_top_rounded, AppBadgeTone.yellow),
-      VerificationStatus.rejected => ('Vérification refusée', Icons.error_outline_rounded, AppBadgeTone.danger),
+      VerificationStatus.pending => (context.l10n.profileVerifPending, Icons.hourglass_top_rounded, AppBadgeTone.yellow),
+      VerificationStatus.rejected => (context.l10n.profileVerifRejected, Icons.error_outline_rounded, AppBadgeTone.danger),
       _ => null,
     };
 
@@ -932,13 +942,13 @@ class _EmptyMyTestimonies extends StatelessWidget {
           Icon(Icons.edit_note_rounded, size: 40, color: AppColors.textSecondary.withAlpha(110)),
           const SizedBox(height: 10),
           Text(
-            'Vous n\'avez pas encore publié de témoignage.',
+            context.l10n.profileNoTestimoniesYet,
             style: AppTextStyles.bodySmall,
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 12),
           AppButton(
-            label: 'Partager un témoignage',
+            label: context.l10n.profileShareTestimony,
             leadingIcon: Icons.add_rounded,
             variant: AppButtonVariant.orange,
             size: AppButtonSize.small,
@@ -963,10 +973,13 @@ class _ApprovedSince extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // GET /users/me/verification n'est appelé que si le profil n'a pas approved_at.
     final verifiedAt = approvedAt ?? ref.watch(accountVerificationProvider).value?.verifiedAt;
-    final label = badge == AccountApprovalBadge.organization ? 'Organisation approuvée' : 'Compte approuvé';
+    final l10n = context.l10n;
+    final label = badge == AccountApprovalBadge.organization
+        ? l10n.profileOrganizationApproved
+        : l10n.profileAccountApproved;
     final text = verifiedAt == null
         ? label
-        : '$label · depuis le ${DateFormat('d MMMM y', 'fr').format(verifiedAt.toLocal())}';
+        : l10n.profileApprovedSince(label, formatDateLong(verifiedAt));
     return Padding(
       padding: const EdgeInsets.only(top: 4),
       child: Text(

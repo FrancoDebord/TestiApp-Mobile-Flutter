@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/mention_text_field.dart';
 import '../data/prayer_repository.dart';
 import '../models/prayer_models.dart';
@@ -28,11 +29,11 @@ class _SubmitPrayerRequestScreenState extends ConsumerState<SubmitPrayerRequestS
   late final _draft = PrayerRequestDraft(eventId: widget.eventId);
   bool _sending = false;
 
-  static const _hints = {
-    PrayerVisibility.public: 'Visible de tous, même sans compte.',
-    PrayerVisibility.followers: 'Visible des personnes qui vous suivent.',
-    PrayerVisibility.private: 'Visible de vous seul (carnet de prière personnel).',
-  };
+  static String _hint(PrayerVisibility v) => switch (v) {
+        PrayerVisibility.public => L10n.current.prayerHintPublic,
+        PrayerVisibility.followers => L10n.current.prayerHintFollowers,
+        PrayerVisibility.private => L10n.current.prayerHintPrivate,
+      };
 
   @override
   void dispose() {
@@ -50,7 +51,7 @@ class _SubmitPrayerRequestScreenState extends ConsumerState<SubmitPrayerRequestS
       ref.invalidate(prayerRequestsPageProvider);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Votre requête est publiée. Que Dieu vous réponde !')),
+        SnackBar(content: Text(context.l10n.prayerRequestPublished)),
       );
       context.pop(created);
     } on PrayerFailure catch (e) {
@@ -66,7 +67,7 @@ class _SubmitPrayerRequestScreenState extends ConsumerState<SubmitPrayerRequestS
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Confier une requête'),
+        title: Text(context.l10n.prayerEntrustRequest),
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.textPrimary,
         surfaceTintColor: AppColors.surface,
@@ -86,19 +87,19 @@ class _SubmitPrayerRequestScreenState extends ConsumerState<SubmitPrayerRequestS
                   const Icon(Icons.event_rounded, color: AppColors.primary, size: 20),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text("Rattachée à l'événement : elle apparaîtra sur sa page.",
+                    child: Text(context.l10n.prayerRequestLinkedToEvent,
                         style: AppTextStyles.bodySmall.copyWith(color: AppColors.primary)),
                   ),
                 ]),
               ),
-            Text('Votre requête', style: AppTextStyles.labelMedium),
+            Text(context.l10n.prayerYourRequest, style: AppTextStyles.labelMedium),
             const SizedBox(height: AppSpacing.sm),
             // « @ » : mentionner quelqu'un (prévenu s'il peut voir la requête ; jamais pour « Moi seul »).
             FormField<String>(
               validator: (_) {
                 final t = _body.text.trim();
-                if (t.isEmpty) return 'Écrivez votre requête de prière.';
-                if (t.length < 10) return 'Votre requête est trop courte (10 caractères au moins).';
+                if (t.isEmpty) return context.l10n.prayerRequestEmptyError;
+                if (t.length < 10) return context.l10n.prayerRequestTooShort;
                 return null;
               },
               builder: (field) => MentionTextField(
@@ -111,18 +112,17 @@ class _SubmitPrayerRequestScreenState extends ConsumerState<SubmitPrayerRequestS
                   if (field.hasError) field.validate();
                 },
                 decoration: InputDecoration(
-                  hintText: "Pour quoi souhaitez-vous que l'on prie ? (@ pour mentionner)",
+                  hintText: context.l10n.prayerRequestHint,
                   helperText: _draft.visibility == PrayerVisibility.private
-                      ? "Évitez les informations trop personnelles. Requête privée : personne n'est prévenu des mentions."
-                      : "Évitez les informations trop personnelles (adresse, téléphone…). "
-                          'Les personnes mentionnées qui peuvent voir la requête sont prévenues.',
+                      ? context.l10n.prayerRequestHelperPrivate
+                      : context.l10n.prayerRequestHelper,
                   helperMaxLines: 3,
                   errorText: field.errorText,
                 ),
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
-            Text('Qui peut la voir ?', style: AppTextStyles.labelMedium),
+            Text(context.l10n.prayerWhoCanSee, style: AppTextStyles.labelMedium),
             const SizedBox(height: AppSpacing.xs),
             RadioGroup<PrayerVisibility>(
               groupValue: _draft.visibility,
@@ -133,7 +133,7 @@ class _SubmitPrayerRequestScreenState extends ConsumerState<SubmitPrayerRequestS
                     value: v,
                     contentPadding: EdgeInsets.zero,
                     title: Text(v.label),
-                    subtitle: Text(_hints[v]!),
+                    subtitle: Text(_hint(v)),
                   ),
               ]),
             ),
@@ -142,8 +142,8 @@ class _SubmitPrayerRequestScreenState extends ConsumerState<SubmitPrayerRequestS
               contentPadding: EdgeInsets.zero,
               value: _draft.isAnonymous,
               onChanged: (v) => setState(() => _draft.isAnonymous = v),
-              title: const Text('Publier anonymement'),
-              subtitle: const Text("Votre nom est masqué pour les autres. Il reste visible de vous et de l'équipe de modération."),
+              title: Text(context.l10n.prayerPostAnonymously),
+              subtitle: Text(context.l10n.prayerPostAnonymouslyDesc),
             ),
             const SizedBox(height: AppSpacing.xl),
             FilledButton.icon(
@@ -151,7 +151,7 @@ class _SubmitPrayerRequestScreenState extends ConsumerState<SubmitPrayerRequestS
               icon: _sending
                   ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                   : const Icon(Icons.send_rounded),
-              label: const Text('Publier ma requête'),
+              label: Text(context.l10n.prayerPublishMyRequest),
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 padding: const EdgeInsets.symmetric(vertical: 14),

@@ -1,0 +1,607 @@
+{
+  "@@locale": "fr",
+  "notifTypeComment": "Commentaire",
+  "notifTypeLike": "Like",
+  "notifTypePrayer": "Prière",
+  "notifTypeApproved": "Approuvé",
+  "notifTypeNewTestimony": "Nouveau témoignage",
+  "notifTypeResubmitted": "Renvoyé en modération",
+  "notifTypeApprovalRevoked": "Badge retiré",
+  "notifTypePendingCorrection": "Correction requise",
+  "notifTypeOrganizationVerified": "Organisation vérifiée",
+  "notifTypeOrganizationRejected": "Vérification refusée",
+  "notifTypeAccountVerified": "Compte vérifié",
+  "notifTypeAccountVerification": "Vérification du compte",
+  "notifTypeLive": "En direct",
+  "notifTypeEvent": "Événement",
+  "notifTypeFollow": "Abonné",
+  "notifTypeShare": "Partage",
+  "notifTypeMention": "Mention",
+  "notifTypeRejected": "Refusé",
+  "notifTypeAccountManagers": "Administrateurs",
+  "notifBodyComment": "{actor} a commenté votre témoignage « {title} »",
+  "@notifBodyComment": {
+    "placeholders": {
+      "actor": {
+        "type": "String"
+      },
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "notifBodyReacted": "{actor} a réagi à votre publication",
+  "@notifBodyReacted": {
+    "placeholders": {
+      "actor": {
+        "type": "String"
+      }
+    }
+  },
+  "notifBodyLiked": "{actor} a aimé votre témoignage « {title} »",
+  "@notifBodyLiked": {
+    "placeholders": {
+      "actor": {
+        "type": "String"
+      },
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "notifBodyPrayer": "{actor} prie pour vous suite à « {title} »",
+  "@notifBodyPrayer": {
+    "placeholders": {
+      "actor": {
+        "type": "String"
+      },
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "notifBodyApproved": "Votre témoignage « {title} » a été approuvé",
+  "@notifBodyApproved": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "notifBodyNewTestimony": "{actor} a partagé un nouveau témoignage « {title} »",
+  "@notifBodyNewTestimony": {
+    "placeholders": {
+      "actor": {
+        "type": "String"
+      },
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "notifBodyApprovalRevoked": "Le badge « Approuvé » a été retiré de votre compte",
+  "notifBodyResubmitted": "Un témoignage a été modifié et renvoyé en modération",
+  "notifBodyPendingCorrection": "Votre témoignage « {title} » nécessite des corrections",
+  "@notifBodyPendingCorrection": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "notifBodyOrganizationVerified": "Votre organisation a été vérifiée : le badge est maintenant visible",
+  "notifBodyOrganizationRejected": "La vérification de votre organisation a été refusée",
+  "notifBodyAccountVerified": "Votre compte est vérifié : le badge est maintenant visible",
+  "notifBodyAccountVerificationRejected": "La vérification de votre compte a été refusée",
+  "notifBodyLiveTitle": "{actor} est en direct : {title}",
+  "@notifBodyLiveTitle": {
+    "placeholders": {
+      "actor": {
+        "type": "String"
+      },
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "notifBodyLive": "{actor} est en direct",
+  "@notifBodyLive": {
+    "placeholders": {
+      "actor": {
+        "type": "String"
+      }
+    }
+  },
+  "notifBodyFollow": "{actor} vous suit maintenant",
+  "@notifBodyFollow": {
+    "placeholders": {
+      "actor": {
+        "type": "String"
+      }
+    }
+  },
+  "notifBodyShareTitle": "{actor} a partagé votre témoignage « {title} »",
+  "@notifBodyShareTitle": {
+    "placeholders": {
+      "actor": {
+        "type": "String"
+      },
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "notifBodyShare": "{actor} a partagé votre témoignage",
+  "@notifBodyShare": {
+    "placeholders": {
+      "actor": {
+        "type": "String"
+      }
+    }
+  },
+  "notifBodyMention": "{actor} vous a mentionné",
+  "@notifBodyMention": {
+    "placeholders": {
+      "actor": {
+        "type": "String"
+      }
+    }
+  },
+  "notifBodyRejected": "Votre témoignage « {title} » n'a pas été publié",
+  "@notifBodyRejected": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "notifBodyManagerAddedBy": "{actor} vous a nommé administrateur de son compte",
+  "@notifBodyManagerAddedBy": {
+    "placeholders": {
+      "actor": {
+        "type": "String"
+      }
+    }
+  },
+  "notifBodyManagerAdded": "Vous avez été nommé administrateur d'un compte",
+  "notifBodyManagerRemovedBy": "Vous n'administrez plus le compte de {actor}",
+  "@notifBodyManagerRemovedBy": {
+    "placeholders": {
+      "actor": {
+        "type": "String"
+      }
+    }
+  },
+  "notifBodyManagerRemoved": "Vous n'administrez plus un compte",
+  "notifTitleComment": "Nouveau commentaire",
+  "notifTitleReaction": "Nouvelle réaction",
+  "notifTitlePopular": "Témoignage populaire",
+  "notifTitlePrayerSession": "Session de prière",
+  "notifTitlePrayer": "Prière pour vous",
+  "notifTitleApproved": "Témoignage approuvé",
+  "notifTitleFollow": "Nouvel abonné",
+  "notifTitlePostShared": "Publication partagée",
+  "notifTitleTestimonyShared": "Témoignage partagé",
+  "notifTitleMention": "Vous avez été mentionné",
+  "notifTitleRejected": "Témoignage non publié",
+  "notifTitleManagerAdded": "Nouveau compte à administrer",
+  "notifTitleManagerRemoved": "Administration retirée",
+  "communityTabAll": "Tous",
+  "communityTabOrganizations": "Organisations",
+  "communityTabPeople": "Personnes",
+  "communityTabSuggestions": "Suggestions",
+  "communityTitle": "Communauté",
+  "communityFollowSignIn": "Connectez-vous pour suivre ce compte.",
+  "communityFollowSelf": "Vous ne pouvez pas vous suivre vous-même.",
+  "communityFollowFailed": "Action impossible. Vérifiez votre connexion.",
+  "communitySuggestionsError": "Impossible de charger les suggestions. Vérifiez votre connexion.",
+  "communitySuggestionsEmpty": "Aucune suggestion pour le moment. Parcourez l'onglet « Tous » pour découvrir la communauté.",
+  "communitySearchPeople": "Rechercher une personne",
+  "communitySearchOrganizations": "Rechercher une organisation, une ville…",
+  "communitySearchAll": "Rechercher un compte, une ville…",
+  "communityEmptyPeople": "Les personnes inscrites apparaîtront ici.",
+  "communityEmptyOrganizations": "Les églises, ministères et associations inscrits apparaîtront ici.",
+  "communityEmptyAll": "Les personnes et organisations inscrites apparaîtront ici.",
+  "communityDiscover": "Découvrir la Communauté",
+  "communityFollowsTitle": "Abonnés et abonnements",
+  "communityFollowersTab": "Abonnés",
+  "communityFollowingTab": "Abonnements",
+  "communitySearchFollowers": "Rechercher dans mes abonnés",
+  "communityFollowBack": "Suivre en retour",
+  "communityFollowersEmpty": "Personne ne vous suit encore.\nPubliez des témoignages et participez à la Communauté : ceux qui vous suivront apparaîtront ici.",
+  "communityFollowersCount": "{count, plural, =0{0 compte vous suit} =1{1 compte vous suit} other{{count} comptes vous suivent}}",
+  "@communityFollowersCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "communitySearchFollowing": "Rechercher dans mes abonnements",
+  "communityFollowingEmpty": "Vous ne suivez encore personne.\nSuivez des églises, des ministères et des personnes pour être prévenu de leurs témoignages et de leurs directs.",
+  "communityFollowingCount": "{count, plural, =0{Vous suivez 0 compte} =1{Vous suivez 1 compte} other{Vous suivez {count} comptes}}",
+  "@communityFollowingCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "communityProfileLoadError": "Ce profil n'a pas pu être chargé.",
+  "communityProfile": "Profil",
+  "communityTestimonies": "Témoignages",
+  "communityNoTestimonies": "Aucun témoignage publié pour le moment.",
+  "communityFollow": "Suivre",
+  "communityFollowing": "Abonné",
+  "communityAccountCounts": "{followers, plural, =0{0 abonné} =1{1 abonné} other{{followers} abonnés}} · {testimonies, plural, =0{0 témoignage} =1{1 témoignage} other{{testimonies} témoignages}}",
+  "@communityAccountCounts": {
+    "placeholders": {
+      "followers": {
+        "type": "int"
+      },
+      "testimonies": {
+        "type": "int"
+      }
+    }
+  },
+  "communityFollowSemantics": "Suivre{name}",
+  "communityUnfollowSemantics": "Ne plus suivre{name}",
+  "communityListNotDeployed": "Cette liste n'est pas encore disponible sur le serveur. Réessayez plus tard.",
+  "communityListSignIn": "Connectez-vous pour voir cette liste.",
+  "communityListTooMany": "Trop de demandes. Patientez un instant puis réessayez.",
+  "communityListError": "Impossible de charger la liste. Vérifiez votre connexion.",
+  "communityNoMatch": "Aucun compte ne correspond à votre recherche.",
+  "communitySuggestedTitle": "Comptes à suivre",
+  "communityVerifiedAccount": "Compte vérifié",
+  "communityStatTestimony": "témoignage",
+  "communityStatTestimonies": "témoignages",
+  "communityStatFollower": "abonné",
+  "communityStatFollowers": "abonnés",
+  "communityStatFollowingOne": "abonnement",
+  "communityStatFollowingMany": "abonnements",
+  "repostKindEventThis": "cet événement",
+  "repostKindEventThe": "L’événement",
+  "repostKindPrayerRequestThis": "cette requête de prière",
+  "repostKindPrayerRequestThe": "La requête de prière",
+  "repostKindPrayerSessionThis": "cette session de prière",
+  "repostKindPrayerSessionThe": "La session de prière",
+  "repostSharedWithFollowers": "Partagé avec vos abonnés.",
+  "repostCancelled": "Partage annulé.",
+  "repostServerUnsupported": "Le serveur ne prend pas encore en charge cette action. Réessayez plus tard.",
+  "repostReactionFailed": "Impossible d’enregistrer votre réaction. Réessayez.",
+  "repostReasonReactShare": "réagir et partager",
+  "repostShareThis": "Partager {what}",
+  "@repostShareThis": {
+    "placeholders": {
+      "what": {
+        "type": "String"
+      }
+    }
+  },
+  "repostOnTestiApp": "Sur TestiApp",
+  "repostCannotShare": "Impossible de partager {what} sur TestiApp : la publication est la vôtre, ou elle n’est pas publique.",
+  "@repostCannotShare": {
+    "placeholders": {
+      "what": {
+        "type": "String"
+      }
+    }
+  },
+  "repostLinkCopied": "Lien copié.",
+  "repostOtherApps": "Autres applis",
+  "repostReasonShare": "partager avec vos abonnés",
+  "repostFailed": "Le partage a échoué. Réessayez.",
+  "repostShareOnTestiApp": "Partager sur TestiApp",
+  "repostContentExplain": "{what} apparaîtra dans le fil de vos abonnés, avec son auteur, pour toucher plus de monde. L’auteur sera prévenu.",
+  "@repostContentExplain": {
+    "placeholders": {
+      "what": {
+        "type": "String"
+      }
+    }
+  },
+  "repostCommentLabel": "Votre commentaire (facultatif)",
+  "repostCommentHintContent": "Pourquoi vous le partagez…",
+  "repostShareWithFollowers": "Partager avec mes abonnés",
+  "repostUpdate": "Mettre à jour mon partage",
+  "repostUndo": "Annuler mon partage",
+  "repostSomeone": "Quelqu’un",
+  "repostTestimonyShared": "Témoignage partagé avec vos abonnés.",
+  "repostJustNow": "à l’instant",
+  "repostOnDate": "le {date}",
+  "@repostOnDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "repostHasShared": " a partagé",
+  "repostReasonShareTestimony": "partager ce témoignage avec vos abonnés",
+  "repostTestimonyExplain": "Le témoignage de {author} apparaîtra dans le fil de vos abonnés, avec son auteur. Il sera prévenu.",
+  "@repostTestimonyExplain": {
+    "placeholders": {
+      "author": {
+        "type": "String"
+      }
+    }
+  },
+  "repostCommentHintTestimony": "Pourquoi ce témoignage vous a touché…",
+  "repostSharesTitle": "Partages",
+  "repostNotPublishedYet": "Ce témoignage n’est pas encore publié.",
+  "repostOwnTestimony": "C’est votre témoignage : il est déjà visible par vos abonnés.",
+  "moderationReasonInappropriate": "Contenu inapproprié",
+  "moderationReasonFalseTestimony": "Faux témoignage",
+  "moderationReasonHateSpeech": "Discours haineux",
+  "moderationReasonSpam": "Spam",
+  "moderationReasonOther": "Autre",
+  "moderationError": "Erreur : {error}",
+  "@moderationError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "moderationTitle": "Modération",
+  "moderationAdvancedFilters": "Filtres avancés",
+  "moderationApprovedItem": "Approuvé : {title}",
+  "@moderationApprovedItem": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "moderationRejectedSnack": "Témoignage rejeté",
+  "moderationEditRequestedSnack": "Demande de modification envoyée",
+  "moderationStatApprovedToday": "Approuvés\naujourd'hui",
+  "moderationStatRejected": "Rejetés",
+  "moderationStatTotalMonth": "Total ce mois",
+  "moderationTabAll": "Tous",
+  "moderationEmptyTitle": "Aucun témoignage à modérer",
+  "moderationEmptyDesc": "Tout est à jour !",
+  "moderationPreviewAction": "Prévisualiser",
+  "moderationApproveShort": "Approuver",
+  "moderationEditShort": "Modif.",
+  "moderationRejectShort": "Rejeter",
+  "moderationRejectReasonLabel": "Motif du rejet",
+  "moderationSelectReason": "Sélectionner un motif",
+  "moderationNoteForModerator": "Note optionnelle pour le modérateur",
+  "moderationInstructionsForAuthor": "Instructions pour l'auteur",
+  "moderationNoteHint": "Ajouter une note interne (optionnel)…",
+  "moderationInstructionsHint": "Expliquer les modifications attendues…",
+  "moderationSendRequest": "Envoyer la demande",
+  "moderationConfirmReject": "Confirmer le rejet",
+  "downloadsTypeVideo": "Vidéo",
+  "downloadsTypeAudio": "Audio",
+  "downloadsTypeText": "Texte",
+  "downloadsYouTubeUnsupported": "Les vidéos YouTube ne peuvent pas être téléchargées.",
+  "downloadsStorageFull": "Espace de téléchargement plein. Supprimez des téléchargements.",
+  "downloadsFailedNetwork": "Téléchargement impossible. Vérifiez votre connexion.",
+  "downloadsFailedGeneric": "Téléchargement impossible.",
+  "downloadsNoFile": "Aucun fichier à télécharger.",
+  "downloadsFilterAll": "Tous",
+  "downloadsFilterVideos": "Vidéos",
+  "downloadsFilterAudios": "Audios",
+  "downloadsFilterTexts": "Textes",
+  "downloadsTitle": "Mes téléchargements",
+  "downloadsOfflineBanner": "Vous êtes hors ligne. Vos téléchargements restent disponibles.",
+  "downloadsStorageUsed": "Stockage utilisé {percent} %",
+  "@downloadsStorageUsed": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "downloadsManageStorage": "Gérer le stockage",
+  "downloadsCountUsed": "{count, plural, =0{0 téléchargement} =1{1 téléchargement} other{{count} téléchargements}} · {size} utilisés",
+  "@downloadsCountUsed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadsTheVideos": "les vidéos",
+  "downloadsTheAudios": "les audios",
+  "downloadsTheTexts": "les textes",
+  "downloadsDeleteTypeTitle": "Supprimer {label} ?",
+  "@downloadsDeleteTypeTitle": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadsDeleteTypeBody": "Tous {label} téléchargés seront supprimés de l’appareil.",
+  "@downloadsDeleteTypeBody": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadsDeleteAll": "Tout supprimer",
+  "downloadsDeleteAllTitle": "Tout supprimer ?",
+  "downloadsDeleteAllBody": "Tous vos téléchargements seront supprimés. Ils ne seront plus disponibles hors ligne.",
+  "downloadsDeleteTypeTooltip": "Supprimer les {name}",
+  "@downloadsDeleteTypeTooltip": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadsEmptyFiltered": "Aucun téléchargement de ce type",
+  "downloadsEmpty": "Aucun téléchargement",
+  "downloadsEmptyDesc": "Téléchargez des témoignages pour les lire, les écouter ou les regarder sans connexion.",
+  "downloadsExplore": "Explorer les témoignages",
+  "downloadsWebTitle": "Téléchargements disponibles sur l’application mobile",
+  "downloadsWebDesc": "Le navigateur ne permet pas d’enregistrer les témoignages pour une lecture hors ligne.",
+  "downloadsOfflineReading": "Lecture hors ligne",
+  "downloadsOffline": "Hors ligne",
+  "downloadsDownload": "Télécharger",
+  "downloadsDownloadTooltip": "Télécharger pour lire hors ligne",
+  "downloadsQueued": "En attente…",
+  "downloadsCancelDownload": "Annuler le téléchargement",
+  "downloadsDownloaded": "Téléchargé",
+  "downloadsDownloadedTooltip": "Téléchargé · disponible hors ligne",
+  "downloadsFailedRetry": "Échec du téléchargement · réessayer",
+  "downloadsStarted": "Téléchargement lancé…",
+  "downloadsAvailableOffline": "« {title} » est disponible hors ligne",
+  "@downloadsAvailableOffline": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadsFailed": "Échec du téléchargement",
+  "downloadsCancelled": "Téléchargement annulé",
+  "downloadsReadOffline": "Lire hors ligne",
+  "downloadsDeleteDownload": "Supprimer le téléchargement",
+  "downloadsDeleted": "Téléchargement supprimé",
+  "downloadsDeleteConfirmTitle": "Supprimer le téléchargement ?",
+  "downloadsDeleteConfirmBody": "« {title} » ne sera plus disponible hors ligne.",
+  "@downloadsDeleteConfirmBody": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadsMoreOptions": "Plus d’options",
+  "downloadsPlay": "Lire",
+  "downloadsInProgress": "Téléchargement…",
+  "downloadsProgress": "Téléchargement · {percent} %",
+  "@downloadsProgress": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "downloadsPercent": "{percent} %",
+  "@downloadsPercent": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "bibleTitle": "Bible",
+  "bibleUnexpectedResponse": "Réponse inattendue (type: {type})",
+  "@bibleUnexpectedResponse": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
+  "bibleErrorNotFound": "Endpoint introuvable (404). Vérifiez la configuration du serveur.",
+  "bibleErrorUnauthorized": "Non autorisé (401). Reconnectez-vous et réessayez.",
+  "bibleErrorServer": "Erreur serveur {status} : {message}",
+  "@bibleErrorServer": {
+    "placeholders": {
+      "status": {
+        "type": "int"
+      },
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "bibleErrorNetwork": "Erreur réseau : {message}",
+  "@bibleErrorNetwork": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "bibleErrorFormat": "Format de réponse invalide : {message}",
+  "@bibleErrorFormat": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "bibleError": "Erreur : {error}",
+  "@bibleError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "bibleNoContent": "Aucun contenu téléchargé.",
+  "bibleBookSublabel": "Bible · {count} chapitres",
+  "@bibleBookSublabel": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "bibleGoToBook": "Aller à un livre",
+  "bibleBookHint": "Livre (ex. Jean 3)",
+  "bibleStopReading": "Arrêter la lecture",
+  "bibleReadChapter": "Lire le chapitre",
+  "bibleChooseBook": "Choisir un livre",
+  "bibleChaptersShort": "{count} ch.",
+  "@bibleChaptersShort": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "bibleChapterEmpty": "Ce chapitre ne contient aucun verset.",
+  "bibleSelectedVerses": "{count, plural, =1{1 verset} other{{count} versets}}",
+  "@bibleSelectedVerses": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "bibleInsert": "Insérer",
+  "bibleHighlight": "Surligner",
+  "bibleShareVerse": "Partager ce verset",
+  "bibleCompareTranslations": "Comparer les traductions",
+  "bibleInsertInTestimony": "Insérer dans un témoignage",
+  "bibleCompareEmpty": "Téléchargez d'autres traductions pour les comparer.",
+  "bibleLanguageAmharic": "Amharique",
+  "bibleChooseTranslation": "Choisir une traduction",
+  "bibleDownloadedTranslations": "Traductions téléchargées",
+  "bibleNoTranslation": "Aucune traduction disponible.\nTéléchargez-en depuis l'onglet Bible.",
+  "bibleVerseCount": "{count} versets",
+  "@bibleVerseCount": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "bibleConnecting": "Connexion…",
+  "bibleRead": "Lire",
+  "bibleDownload": "Télécharger",
+  "bibleDeleteVersionTitle": "Supprimer la version ?",
+  "bibleDeleteVersionBody": "La version \"{name}\" sera supprimée de votre appareil. Vous pourrez la re-télécharger à tout moment.",
+  "@bibleDeleteVersionBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "bibleNoVersion": "Aucune version disponible",
+  "bibleNoVersionDesc": "Les versions de la Bible seront disponibles dès que le serveur les proposera.",
+  "bibleLoadVersionsFailed": "Impossible de charger les versions"
+}

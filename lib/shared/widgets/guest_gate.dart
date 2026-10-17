@@ -21,6 +21,7 @@ import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../features/auth/providers/auth_notifier.dart'
     show AuthStateAuthenticated, AuthStateGuest, authStateProvider;
+import '../../l10n/app_localizations.dart';
 import 'app_button.dart';
 import 'app_logo.dart';
 
@@ -33,7 +34,7 @@ final isGuestProvider = Provider<bool>(
 Future<bool> requireAccount(
   BuildContext context,
   WidgetRef ref, {
-  String reason = 'profiter de toutes les fonctionnalités',
+  String? reason,
 }) async {
   final state = ref.read(authStateProvider).value;
   if (state is AuthStateAuthenticated) return true;
@@ -50,7 +51,7 @@ Future<bool> requireAccount(
 /// Renvoie true si l'utilisateur a choisi « Se connecter ».
 Future<bool> showAccountRequiredSheet(
   BuildContext context, {
-  String reason = 'profiter de toutes les fonctionnalités',
+  String? reason,
 }) async {
   final goLogin = await showModalBottomSheet<bool>(
     context: context,
@@ -61,7 +62,8 @@ Future<bool> showAccountRequiredSheet(
       borderRadius:
           BorderRadius.vertical(top: Radius.circular(AppRadius.xxl)),
     ),
-    builder: (sheetContext) => AccountRequiredSheet(reason: reason),
+    builder: (sheetContext) =>
+        AccountRequiredSheet(reason: reason ?? sheetContext.l10n.sharedGuestDefaultReason),
   );
   if (goLogin == true && context.mounted) {
     GoRouter.of(context).pushNamed(AppRoutes.login);
@@ -100,28 +102,27 @@ class AccountRequiredSheet extends StatelessWidget {
             const Center(child: AppLogoMark(size: 56)),
             const SizedBox(height: AppSpacing.lg),
             Text(
-              'Créez un compte pour $reason',
+              context.l10n.sharedGuestCreateAccountFor(reason),
               textAlign: TextAlign.center,
               style: AppTextStyles.h3,
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
-              'C\'est gratuit et rapide. Vous pourrez partager, réagir et '
-              'retrouver vos témoignages sur tous vos appareils.',
+              context.l10n.sharedGuestSheetBody,
               textAlign: TextAlign.center,
               style: AppTextStyles.bodyMedium
                   .copyWith(color: AppColors.textSecondary, height: 1.5),
             ),
             const SizedBox(height: AppSpacing.xxl),
             AppButton(
-              label: 'Se connecter',
+              label: context.l10n.authSignIn,
               leadingIcon: Icons.login_rounded,
               fullWidth: true,
               onPressed: () => Navigator.of(context).pop(true),
             ),
             const SizedBox(height: AppSpacing.sm),
             AppButton(
-              label: 'Plus tard',
+              label: context.l10n.sharedGuestLater,
               variant: AppButtonVariant.ghost,
               fullWidth: true,
               onPressed: () => Navigator.of(context).pop(false),

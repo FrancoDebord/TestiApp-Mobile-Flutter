@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../l10n/app_localizations.dart';
 import '../providers/home_providers.dart';
 
 class FeedFilterBar extends ConsumerWidget {
@@ -34,8 +35,8 @@ class FeedFilterBar extends ConsumerWidget {
             size: 16,
             color: query.verifiedOnly ? AppColors.surface : AppColors.primary,
           ),
-          label: const Text('Approuvés'),
-          tooltip: 'Seulement les témoignages vérifiés par l\'équipe de modération',
+          label: Text(context.l10n.homeFilterApproved),
+          tooltip: context.l10n.homeFilterApprovedTooltip,
           labelStyle: AppTextStyles.labelMedium.copyWith(
             color: query.verifiedOnly ? AppColors.surface : AppColors.primary,
             fontWeight: FontWeight.w600,
@@ -47,7 +48,7 @@ class FeedFilterBar extends ConsumerWidget {
         ),
         PopupMenuButton<FeedSort>(
           key: const ValueKey('feed-sort'),
-          tooltip: 'Trier les témoignages',
+          tooltip: context.l10n.homeSortTooltip,
           initialValue: query.effectiveSort,
           onSelected: notifier.setSort,
           itemBuilder: (_) => [
@@ -58,13 +59,13 @@ class FeedFilterBar extends ConsumerWidget {
                 // « Pour vous » ne se combine pas avec « Approuvés » (non filtré côté serveur).
                 enabled: !(query.verifiedOnly && s == FeedSort.forYou),
                 child: Text(s == FeedSort.forYou && query.verifiedOnly
-                    ? '${s.label} (sans « Approuvés »)'
+                    ? context.l10n.homeSortWithoutApproved(s.label)
                     : s.label),
               ),
           ],
           child: Semantics(
             button: true,
-            label: 'Tri : ${query.effectiveSort.label}',
+            label: context.l10n.homeSortLabel(query.effectiveSort.label),
             excludeSemantics: true,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
@@ -80,7 +81,7 @@ class FeedFilterBar extends ConsumerWidget {
                   const SizedBox(width: 6),
                   Flexible(
                     child: Text(
-                      'Tri : ${query.effectiveSort.label}',
+                      context.l10n.homeSortLabel(query.effectiveSort.label),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.labelMedium.copyWith(fontWeight: FontWeight.w600),

@@ -3,6 +3,7 @@
 // Feuille « Qualité » façon YouTube, commune aux lecteurs vidéo et audio.
 
 import 'package:flutter/material.dart';
+import '../../l10n/app_localizations.dart';
 
 class QualityOption<T> {
   const QualityOption({
@@ -56,8 +57,8 @@ Future<T?> showQualityPickerSheet<T>(
                   color: o.value == selected ? cs.primary : cs.outline,
                 ),
                 title: Text(
-                  o.label == 'Auto' && currentLabel != null
-                      ? 'Auto ($currentLabel)'
+                  o.label == ctx.l10n.qualityAuto && currentLabel != null
+                      ? ctx.l10n.qualityAutoCurrent(currentLabel)
                       : o.label,
                   style: TextStyle(
                     fontWeight: o.value == selected

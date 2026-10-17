@@ -8,6 +8,7 @@ import '../../../shared/widgets/organization_badge.dart';
 import '../../community/widgets/follow_button.dart';
 import '../models/testimony_model.dart';
 import 'testimony_action_bar.dart' show formatCount;
+import '../../../l10n/app_localizations.dart';
 
 /// Compact author row for content-first card layout (maquette « Accueil »).
 /// Avatar (28 px) · Nom · badge organisation · « 3.4k vues » · « il y a 2 jours »
@@ -88,14 +89,13 @@ class TestimonyAuthorRow extends StatelessWidget {
 /// « il y a 2 jours », « il y a 3 h », « à l'instant »…
 String timeAgoFr(DateTime dt) {
   final diff = DateTime.now().difference(dt);
-  if (diff.inMinutes < 1) return "à l'instant";
-  if (diff.inMinutes < 60) return 'il y a ${diff.inMinutes} min';
-  if (diff.inHours < 24) return 'il y a ${diff.inHours} h';
-  if (diff.inDays == 1) return 'il y a 1 jour';
-  if (diff.inDays < 30) return 'il y a ${diff.inDays} jours';
-  if (diff.inDays < 365) return 'il y a ${diff.inDays ~/ 30} mois';
-  final years = diff.inDays ~/ 365;
-  return 'il y a $years an${years > 1 ? 's' : ''}';
+  final l10n = L10n.current;
+  if (diff.inMinutes < 1) return l10n.timeJustNow;
+  if (diff.inMinutes < 60) return l10n.timeMinutesAgo(diff.inMinutes);
+  if (diff.inHours < 24) return l10n.timeHoursAgo(diff.inHours);
+  if (diff.inDays < 30) return l10n.homeDaysAgoLong(diff.inDays);
+  if (diff.inDays < 365) return l10n.timeMonthsAgo(diff.inDays ~/ 30);
+  return l10n.timeYearsAgo(diff.inDays ~/ 365);
 }
 
 /// Avatar rond de l'auteur (photo ou initiale sur fond bleu clair).

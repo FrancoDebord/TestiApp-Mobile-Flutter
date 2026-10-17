@@ -4,17 +4,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../data/journal_offline_controller.dart';
+import '../../../l10n/app_localizations.dart';
 
+/// « 512 Ko », « 1.5 Mo », « 2.25 Go » (format d'origine conservé en français).
 String _size(int bytes) {
-  if (bytes < 1024 * 1024) return '${(bytes / 1024).ceil()} Ko';
-  if (bytes < 1024 * 1024 * 1024) return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} Mo';
-  return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} Go';
+  final l = L10n.current;
+  if (bytes < 1024 * 1024) return l.publishSizeKb('${(bytes / 1024).ceil()}');
+  if (bytes < 1024 * 1024 * 1024) {
+    return l.publishSizeMb((bytes / (1024 * 1024)).toStringAsFixed(1));
+  }
+  return l.publishSizeGb((bytes / (1024 * 1024 * 1024)).toStringAsFixed(2));
 }
 
-String _when(DateTime d) {
+/// « Mise à jour le 05/10/2026 à 14h05 » / « Updated 10/05/2026 at 14:05 ».
+String _updatedAt(DateTime d) {
   final l = d.toLocal();
   String two(int n) => n.toString().padLeft(2, '0');
-  return '${two(l.day)}/${two(l.month)}/${l.year} à ${two(l.hour)}h${two(l.minute)}';
+  return L10n.current.journalOfflineUpdatedAt(
+      two(l.day), two(l.month), '${l.year}', two(l.hour), two(l.minute));
 }
 
 /// Question posée à la première visite du carnet.
@@ -23,20 +30,14 @@ Future<void> askJournalOffline(BuildContext context, WidgetRef ref) async {
     context: context,
     builder: (context) => AlertDialog(
       icon: const Icon(Icons.offline_pin_rounded, color: AppColors.primary, size: 36),
-      title: const Text('Garder aussi une copie sur ce téléphone ?'),
-      content: const Text(
-        'Votre carnet est toujours sauvegardé en ligne : même si vous perdez '
-        'ou changez de téléphone, vous le retrouvez en vous connectant.\n\n'
-        'Une copie sur ce téléphone vous permet en plus de le relire et '
-        'd\'écouter vos audios et vidéos sans connexion. Elle utilise de '
-        'l\'espace de stockage.\n\nVous pourrez changer d\'avis à tout moment.',
-      ),
+      title: Text(context.l10n.journalOfflineAskTitle),
+      content: Text(context.l10n.journalOfflineAskBody),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Non merci')),
+        TextButton(onPressed: () => Navigator.pop(context, false), child: Text(context.l10n.journalOfflineAskNo)),
         FilledButton(
           onPressed: () => Navigator.pop(context, true),
           style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
-          child: const Text('Oui, garder une copie'),
+          child: Text(context.l10n.journalOfflineAskYes),
         ),
       ],
     ),
@@ -57,7 +58,7 @@ class JournalOfflineButton extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(journalOfflineProvider);
     return IconButton(
-      tooltip: s.enabled ? 'Disponible hors ligne' : 'Garder hors ligne',
+      tooltip: s.enabled ? context.l10n.journalOfflineAvailable : context.l10n.journalOfflineKeep,
       onPressed: () => showModalBottomSheet<void>(
         context: context,
         backgroundColor: AppColors.surface,
@@ -89,13 +90,11 @@ class JournalOfflineSheet extends ConsumerWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Retirer la copie de ce téléphone ?'),
-        content: const Text(
-            'Les fichiers enregistrés sur ce téléphone seront effacés. Votre carnet '
-            'reste intact en ligne : rien n\'est supprimé de votre compte.'),
+        title: Text(context.l10n.journalOfflineRemoveTitle),
+        content: Text(context.l10n.journalOfflineRemoveBody),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Retirer')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(context.l10n.commonCancel)),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(context.l10n.commonRemove)),
         ],
       ),
     );
@@ -113,11 +112,10 @@ class JournalOfflineSheet extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Hors ligne', style: AppTextStyles.h4),
+            Text(context.l10n.journalOfflineTitle, style: AppTextStyles.h4),
             const SizedBox(height: 4),
             Text(
-              'Votre carnet est toujours sauvegardé en ligne. La copie sur ce '
-              'téléphone sert à le relire sans connexion.',
+              context.l10n.journalOfflineSheetIntro,
               style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 8),
@@ -125,10 +123,10 @@ class JournalOfflineSheet extends ConsumerWidget {
               contentPadding: EdgeInsets.zero,
               value: s.enabled,
               onChanged: s.syncing ? null : (v) => _toggle(context, ref, v),
-              title: const Text('Disponible hors ligne sur ce téléphone'),
+              title: Text(context.l10n.journalOfflineAvailableOnPhone),
               subtitle: Text(s.enabled
-                  ? 'Textes, audios et vidéos gardés sur ce téléphone'
-                  : 'Seulement en ligne'),
+                  ? context.l10n.journalOfflineEnabledHint
+                  : context.l10n.journalOfflineOnlineOnly),
             ),
             if (s.enabled) ...[
               const Divider(),
@@ -139,8 +137,8 @@ class JournalOfflineSheet extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(s.total == 0
-                          ? 'Mise à jour de la copie…'
-                          : 'Téléchargement des audios et vidéos : ${s.done} / ${s.total}'),
+                          ? context.l10n.journalOfflineUpdating
+                          : context.l10n.journalOfflineDownloading(s.done, s.total)),
                       const SizedBox(height: 6),
                       LinearProgressIndicator(
                           value: s.total == 0 ? null : s.done / s.total),
@@ -148,14 +146,13 @@ class JournalOfflineSheet extends ConsumerWidget {
                   ),
                 )
               else ...[
-                _Line(Icons.sd_storage_outlined, 'Espace utilisé : ${_size(s.sizeBytes)}'),
+                _Line(Icons.sd_storage_outlined, context.l10n.journalOfflineSpaceUsed(_size(s.sizeBytes))),
                 if (s.settings.lastSyncAt != null)
-                  _Line(Icons.update_rounded, 'Mise à jour le ${_when(s.settings.lastSyncAt!)}'),
+                  _Line(Icons.update_rounded, _updatedAt(s.settings.lastSyncAt!)),
                 if (result != null && result.mediaFailed > 0)
                   _Line(
                     Icons.warning_amber_rounded,
-                    '${result.mediaFailed} fichier${result.mediaFailed > 1 ? 's' : ''} audio/vidéo '
-                    'non téléchargé${result.mediaFailed > 1 ? 's' : ''} (réessayé à la prochaine mise à jour)',
+                    context.l10n.journalOfflineMediaFailed(result.mediaFailed),
                     color: AppColors.secondary,
                   ),
                 if (s.error != null)
@@ -164,7 +161,7 @@ class JournalOfflineSheet extends ConsumerWidget {
                 OutlinedButton.icon(
                   onPressed: () => ref.read(journalOfflineProvider.notifier).sync(),
                   icon: const Icon(Icons.sync_rounded),
-                  label: const Text('Mettre à jour maintenant'),
+                  label: Text(context.l10n.journalOfflineUpdateNow),
                 ),
               ],
             ],

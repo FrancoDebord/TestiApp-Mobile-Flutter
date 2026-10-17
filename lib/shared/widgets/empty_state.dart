@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:testi_app/core/theme/app_colors.dart';
 import 'package:testi_app/core/theme/app_text_styles.dart';
+import 'package:testi_app/l10n/app_localizations.dart';
 import 'package:testi_app/shared/widgets/app_button.dart';
 
 // ── Preset configurations ──────────────────────────────────────────────────────
@@ -27,44 +28,41 @@ class _PresetData {
   final String subtitle;
 }
 
-const _presets = <EmptyStatePreset, _PresetData>{
+Map<EmptyStatePreset, _PresetData> _presetsFor(AppLocalizations l10n) => {
   EmptyStatePreset.noTestimonies: _PresetData(
     iconData: Icons.auto_stories_rounded,
     iconColor: AppColors.primaryLight,
-    title: 'Aucun témoignage',
-    subtitle:
-        'Soyez le premier à partager comment Dieu a agi dans votre vie.',
+    title: l10n.sharedEmptyNoTestimoniesTitle,
+    subtitle: l10n.sharedEmptyNoTestimoniesSubtitle,
   ),
   EmptyStatePreset.noResults: _PresetData(
     iconData: Icons.search_off_rounded,
     iconColor: AppColors.textSecondary,
-    title: 'Aucun résultat',
-    subtitle: 'Essayez d\'autres mots-clés ou changez de catégorie.',
+    title: l10n.commonNoResults,
+    subtitle: l10n.sharedEmptyNoResultsSubtitle,
   ),
   EmptyStatePreset.noNotifications: _PresetData(
     iconData: Icons.notifications_none_rounded,
     iconColor: AppColors.secondary,
-    title: 'Pas de notifications',
-    subtitle: 'Vous êtes à jour ! Revenez plus tard.',
+    title: l10n.sharedEmptyNoNotificationsTitle,
+    subtitle: l10n.sharedEmptyNoNotificationsSubtitle,
   ),
   EmptyStatePreset.noInternet: _PresetData(
     iconData: Icons.wifi_off_rounded,
     iconColor: AppColors.danger,
-    title: 'Pas de connexion',
-    subtitle:
-        'Vérifiez votre connexion internet et réessayez.',
+    title: l10n.sharedEmptyNoInternetTitle,
+    subtitle: l10n.sharedEmptyNoInternetSubtitle,
   ),
   EmptyStatePreset.noFavorites: _PresetData(
     iconData: Icons.bookmark_border_rounded,
     iconColor: AppColors.primaryLight,
-    title: 'Aucun favori',
-    subtitle:
-        'Les témoignages que vous sauvegardez apparaîtront ici.',
+    title: l10n.sharedEmptyNoFavoritesTitle,
+    subtitle: l10n.sharedEmptyNoFavoritesSubtitle,
   ),
   EmptyStatePreset.custom: _PresetData(
     iconData: Icons.inbox_rounded,
     iconColor: AppColors.textSecondary,
-    title: 'Rien à afficher',
+    title: l10n.sharedEmptyNothingTitle,
     subtitle: '',
   ),
 };
@@ -130,7 +128,7 @@ class EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final data = _presets[preset]!;
+    final data = _presetsFor(context.l10n)[preset]!;
     final resolvedTitle = title ?? data.title;
     final resolvedSubtitle = subtitle ?? data.subtitle;
 

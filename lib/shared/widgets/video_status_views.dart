@@ -15,6 +15,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/app_tokens.dart';
 import 'video_poster.dart';
+import '../../l10n/app_localizations.dart';
 
 /// Pastille « Vidéo en cours de traitement ».
 class VideoProcessingBadge extends StatelessWidget {
@@ -47,7 +48,7 @@ class VideoProcessingBadge extends StatelessWidget {
             const SizedBox(width: 7),
             Flexible(
               child: Text(
-                compact ? 'En traitement' : VideoStatusText.processing,
+                compact ? context.l10n.mediaProcessingShort : VideoStatusText.processing,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -147,7 +148,7 @@ class VideoNotReadySurface extends StatelessWidget {
                               key: const ValueKey('resend-video-button'),
                               onPressed: onResend,
                               icon: const Icon(Icons.upload_rounded, size: 18),
-                              label: const Text(VideoStatusText.resend),
+                              label: Text(VideoStatusText.resend),
                               style: FilledButton.styleFrom(
                                 backgroundColor: AppColors.secondary,
                                 foregroundColor: Colors.white,

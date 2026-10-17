@@ -14,6 +14,7 @@ import '../../../shared/widgets/video_poster.dart' show VideoThumbnailImage;
 import '../../home/models/testimony_model.dart';
 import '../../home/widgets/testimony_card_header.dart'
     show AuthorAvatar, categoryBadgeTone;
+import '../../../l10n/app_localizations.dart';
 
 // Hauteurs fixes — garantissent l'absence d'overflow dans le ListView
 const double _kCardWidth  = 172;
@@ -110,7 +111,7 @@ class HorizontalTestimonyCard extends StatelessWidget {
                           Row(
                             children: [
                               Icon(
-                                _statIcon(statLabel),
+                                _statIcon(context.l10n, statLabel),
                                 size: 12,
                                 color: AppColors.primary,
                               ),
@@ -143,9 +144,9 @@ class HorizontalTestimonyCard extends StatelessWidget {
     );
   }
 
-  IconData _statIcon(String? label) {
-    if (label == 'prières') return Icons.volunteer_activism_outlined;
-    if (label == 'vues')    return Icons.visibility_outlined;
+  IconData _statIcon(AppLocalizations l10n, String? label) {
+    if (label == l10n.exploreStatPrayers) return Icons.volunteer_activism_outlined;
+    if (label == l10n.exploreStatViews) return Icons.visibility_outlined;
     return Icons.favorite_border_rounded;
   }
 

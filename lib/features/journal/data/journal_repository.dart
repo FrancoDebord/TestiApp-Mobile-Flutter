@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/app_constants.dart';
 import '../../../services/api_service.dart';
 import '../models/journal_entry.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Erreur lisible d'une action du carnet.
 class JournalFailure implements Exception {
@@ -32,10 +33,9 @@ class JournalRepository {
       final body = e.response?.data;
       final msg = body is Map ? body['message'] as String? : null;
       if (status == 0) {
-        throw const JournalFailure(
-            'Connexion impossible. Vérifiez votre accès à Internet.');
+        throw JournalFailure(L10n.current.journalConnectionFailed);
       }
-      throw JournalFailure(msg ?? 'Erreur du serveur ($status).',
+      throw JournalFailure(msg ?? L10n.current.journalServerError(status),
           statusCode: status);
     }
   }

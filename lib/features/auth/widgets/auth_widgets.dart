@@ -4,6 +4,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../shared/widgets/app_logo.dart';
+import '../../../l10n/app_localizations.dart';
 
 // =============================================================================
 // Composants communs des écrans d'authentification (charte ARISE & SHINE)
@@ -47,7 +48,7 @@ class AuthScreenHeader extends StatelessWidget {
               : Align(
                   alignment: Alignment.centerLeft,
                   child: IconButton(
-                    tooltip: 'Retour',
+                    tooltip: context.l10n.commonBack,
                     onPressed: onBack,
                     icon: const Icon(Icons.arrow_back_rounded,
                         color: AppColors.primary),
@@ -285,9 +286,10 @@ class AuthErrorBanner extends StatelessWidget {
 // ── Séparateur « ou continuer avec » ─────────────────────────────────────────
 
 class AuthOrDivider extends StatelessWidget {
-  const AuthOrDivider({this.label = 'ou continuer avec', super.key});
+  const AuthOrDivider({this.label, super.key});
 
-  final String label;
+  /// Texte du séparateur ; « ou continuer avec » par défaut.
+  final String? label;
 
   @override
   Widget build(BuildContext context) {
@@ -299,7 +301,7 @@ class AuthOrDivider extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Text(
-              label,
+              label ?? context.l10n.authOrContinueWith,
               textAlign: TextAlign.center,
               maxLines: 2,
               style: AppTextStyles.bodySmall,

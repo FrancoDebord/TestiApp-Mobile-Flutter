@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../home/models/testimony_model.dart';
 import '../offline_open.dart';
 import '../providers/downloads_provider.dart';
@@ -26,20 +27,20 @@ Future<void> confirmDeleteDownload(
   final ok = await showDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: const Text('Supprimer le téléchargement ?'),
+      title: Text(context.l10n.downloadsDeleteConfirmTitle),
       content: Text(
-        '« ${e.title} » ne sera plus disponible hors ligne.',
+        context.l10n.downloadsDeleteConfirmBody(e.title),
         maxLines: 4,
         overflow: TextOverflow.ellipsis,
       ),
       actions: [
         TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Annuler')),
+            child: Text(context.l10n.commonCancel)),
         TextButton(
           onPressed: () => Navigator.pop(ctx, true),
           style: TextButton.styleFrom(foregroundColor: AppColors.danger),
-          child: const Text('Supprimer'),
+          child: Text(context.l10n.commonDelete),
         ),
       ],
     ),
@@ -49,8 +50,8 @@ Future<void> confirmDeleteDownload(
   if (context.mounted) {
     ScaffoldMessenger.maybeOf(context)
       ?..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(
-        content: Text('Téléchargement supprimé'),
+      ..showSnackBar(SnackBar(
+        content: Text(context.l10n.downloadsDeleted),
         behavior: SnackBarBehavior.floating,
       ));
   }
@@ -69,21 +70,21 @@ class DownloadTile extends ConsumerWidget {
       subtitle: entry.subtitle,
       onTap: () => openDownloadedTestimony(context, ref, entry),
       trailing: PopupMenuButton<String>(
-        tooltip: 'Plus d’options',
+        tooltip: context.l10n.downloadsMoreOptions,
         icon: const Icon(Icons.more_vert_rounded,
             color: AppColors.textSecondary),
         onSelected: (v) {
           if (v == 'play') openDownloadedTestimony(context, ref, entry);
           if (v == 'delete') confirmDeleteDownload(context, ref, entry);
         },
-        itemBuilder: (_) => const [
+        itemBuilder: (_) => [
           PopupMenuItem(
             value: 'play',
             child: ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: Icon(Icons.play_circle_outline_rounded,
+              leading: const Icon(Icons.play_circle_outline_rounded,
                   color: AppColors.primary),
-              title: Text('Lire'),
+              title: Text(context.l10n.downloadsPlay),
             ),
           ),
           PopupMenuItem(
@@ -91,8 +92,8 @@ class DownloadTile extends ConsumerWidget {
             child: ListTile(
               contentPadding: EdgeInsets.zero,
               leading:
-                  Icon(Icons.delete_outline_rounded, color: AppColors.danger),
-              title: Text('Supprimer'),
+                  const Icon(Icons.delete_outline_rounded, color: AppColors.danger),
+              title: Text(context.l10n.commonDelete),
             ),
           ),
         ],
@@ -112,11 +113,11 @@ class DownloadTaskTile extends ConsumerWidget {
     final n = ref.read(downloadsProvider.notifier);
     final failed = task.status == DownloadStatus.failed;
     final subtitle = switch (task.status) {
-      DownloadStatus.queued => 'En attente…',
-      DownloadStatus.failed => task.error ?? 'Échec du téléchargement',
+      DownloadStatus.queued => context.l10n.downloadsQueued,
+      DownloadStatus.failed => task.error ?? context.l10n.downloadsFailed,
       _ => task.progress == null
-          ? 'Téléchargement…'
-          : 'Téléchargement · ${((task.progress ?? 0) * 100).round()} %',
+          ? context.l10n.downloadsInProgress
+          : context.l10n.downloadsProgress(((task.progress ?? 0) * 100).round()),
     };
     return _TileShell(
       entry: task.entry,
@@ -125,12 +126,12 @@ class DownloadTaskTile extends ConsumerWidget {
       progress: failed ? null : (task.progress ?? -1),
       trailing: failed
           ? IconButton(
-              tooltip: 'Réessayer',
+              tooltip: context.l10n.commonRetry,
               icon: const Icon(Icons.refresh_rounded, color: AppColors.primary),
               onPressed: () => n.retryId(task.entry.id),
             )
           : IconButton(
-              tooltip: 'Annuler',
+              tooltip: context.l10n.commonCancel,
               icon: const Icon(Icons.close_rounded,
                   color: AppColors.textSecondary),
               onPressed: () => n.cancel(task.entry.id),

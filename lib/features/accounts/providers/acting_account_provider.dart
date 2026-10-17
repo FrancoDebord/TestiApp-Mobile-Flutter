@@ -19,6 +19,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../../core/app_constants.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../services/acting_as_interceptor.dart';
 import '../../../services/api_service.dart';
 import '../../../shared/models/user_model.dart';
@@ -209,7 +210,7 @@ class ActingAccountNotifier extends Notifier<ActingAccount?> {
       if (state?.id != id) return;
       final match = snap.byId(id);
       if (match == null || match.isOwner) {
-        await _returnToOwnAccount("Vous n'administrez plus ce compte.");
+        await _returnToOwnAccount(L10n.current.accountsNoLongerManaged);
         return;
       }
       final user = await _repo.me();

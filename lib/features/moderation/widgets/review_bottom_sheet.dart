@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/moderation_models.dart';
+import '../../../l10n/app_localizations.dart';
 
 // =============================================================================
 // ReviewBottomSheet
@@ -70,7 +71,7 @@ class _ReviewBottomSheetState extends State<ReviewBottomSheet> {
           ),
           // ── Title ─────────────────────────────────────────────────────────
           Text(
-            _isReject ? 'Rejeter le témoignage' : 'Demander une modification',
+            _isReject ? context.l10n.modReject : context.l10n.modRequestEdit,
             style: const TextStyle(
               fontFamily: 'Plus Jakarta Sans',
               fontWeight: FontWeight.w600,
@@ -118,9 +119,9 @@ class _ReviewBottomSheetState extends State<ReviewBottomSheet> {
 
           // ── Rejection reason dropdown (reject only) ───────────────────────
           if (_isReject) ...[
-            const Text(
-              'Motif du rejet',
-              style: TextStyle(
+            Text(
+              context.l10n.moderationRejectReasonLabel,
+              style: const TextStyle(
                 fontFamily: 'Plus Jakarta Sans',
                 fontWeight: FontWeight.w600,
                 fontSize: 13,
@@ -130,9 +131,9 @@ class _ReviewBottomSheetState extends State<ReviewBottomSheet> {
             const SizedBox(height: 8),
             DropdownButtonFormField<RejectionReason>(
               initialValue: _selectedReason,
-              hint: const Text(
-                'Sélectionner un motif',
-                style: TextStyle(
+              hint: Text(
+                context.l10n.moderationSelectReason,
+                style: const TextStyle(
                   fontFamily: 'Plus Jakarta Sans',
                   fontSize: 13,
                   color: Color(0xFF98A2B3),
@@ -182,8 +183,8 @@ class _ReviewBottomSheetState extends State<ReviewBottomSheet> {
           // ── Moderator note text field ──────────────────────────────────────
           Text(
             _isReject
-                ? 'Note optionnelle pour le modérateur'
-                : 'Instructions pour l\'auteur',
+                ? context.l10n.moderationNoteForModerator
+                : context.l10n.moderationInstructionsForAuthor,
             style: const TextStyle(
               fontFamily: 'Plus Jakarta Sans',
               fontWeight: FontWeight.w600,
@@ -198,8 +199,8 @@ class _ReviewBottomSheetState extends State<ReviewBottomSheet> {
             onChanged: (_) => setState(() {}),
             decoration: InputDecoration(
               hintText: _isReject
-                  ? 'Ajouter une note interne (optionnel)…'
-                  : 'Expliquer les modifications attendues…',
+                  ? context.l10n.moderationNoteHint
+                  : context.l10n.moderationInstructionsHint,
               hintStyle: const TextStyle(
                 fontFamily: 'Plus Jakarta Sans',
                 fontSize: 13,
@@ -252,7 +253,7 @@ class _ReviewBottomSheetState extends State<ReviewBottomSheet> {
                 elevation: 0,
               ),
               child: Text(
-                _isReject ? 'Confirmer le rejet' : 'Envoyer la demande',
+                _isReject ? context.l10n.moderationConfirmReject : context.l10n.moderationSendRequest,
                 style: const TextStyle(
                   fontFamily: 'Plus Jakarta Sans',
                   fontWeight: FontWeight.w600,

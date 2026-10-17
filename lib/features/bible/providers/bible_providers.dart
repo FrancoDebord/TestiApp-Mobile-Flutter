@@ -6,6 +6,7 @@ import '../../../core/local_db/daos/bible_dao.dart';
 import '../../../core/local_db/daos/bible_highlight_dao.dart';
 import '../../../core/local_db/database_service.dart';
 import '../../../services/api_service.dart';
+import '../../../l10n/app_localizations.dart';
 import '../models/bible_models.dart';
 
 // ── DAO providers ──────────────────────────────────────────────────────────────
@@ -178,9 +179,9 @@ class BibleTranslationsNotifier
         connectTimeout: const Duration(seconds: 30),
         receiveTimeout: const Duration(minutes: 15),
         headers: {
-          'Accept': 'application/json',
+          'Accept': 'application/json', // i18n-ignore
           if (token != null && token.isNotEmpty)
-            'Authorization': 'Bearer $token',
+            'Authorization': 'Bearer $token', // i18n-ignore
         },
       ));
 
@@ -206,7 +207,7 @@ class BibleTranslationsNotifier
       final Map<String, dynamic> root = raw is Map<String, dynamic>
           ? raw
           : throw FormatException(
-              'Réponse inattendue (type: ${raw.runtimeType})');
+              L10n.current.bibleUnexpectedResponse('${raw.runtimeType}'));
       final data = (root['data'] as Map<String, dynamic>?) ?? root;
 
       // Debug : affiche la structure reçue si `books` est absent
@@ -242,12 +243,12 @@ class BibleTranslationsNotifier
   static String _friendlyError(Object e) {
     if (e is DioException) {
       final status = e.response?.statusCode;
-      if (status == 404) return 'Endpoint introuvable (404). Vérifiez la configuration du serveur.';
-      if (status == 401) return 'Non autorisé (401). Reconnectez-vous et réessayez.';
-      if (status != null) return 'Erreur serveur $status : ${e.message}';
-      return 'Erreur réseau : ${e.message}';
+      if (status == 404) return L10n.current.bibleErrorNotFound;
+      if (status == 401) return L10n.current.bibleErrorUnauthorized;
+      if (status != null) return L10n.current.bibleErrorServer(status, '${e.message}');
+      return L10n.current.bibleErrorNetwork('${e.message}');
     }
-    if (e is FormatException) return 'Format de réponse invalide : ${e.message}';
+    if (e is FormatException) return L10n.current.bibleErrorFormat(e.message);
     return e.toString();
   }
 

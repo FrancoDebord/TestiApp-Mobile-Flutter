@@ -1,0 +1,593 @@
+{
+  "@@locale": "fr",
+  "accountsOwnerOnlyMessage": "Revenez sur votre compte pour cette action.",
+  "accountsSwitchFailed": "Bascule impossible. Réessayez.",
+  "accountsBackToOwn": "Vous êtes revenu sur votre compte.",
+  "accountsActingAs": "Vous agissez au nom de {name}",
+  "@accountsActingAs": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "accountsMyAccounts": "Mes comptes",
+  "accountsSwitcherIntro": "Choisissez le compte au nom duquel vous agissez : publications, commentaires, réactions et abonnements seront faits en son nom.",
+  "accountsNoOtherManaged": "Vous n'administrez aucun autre compte pour le moment.",
+  "accountsLoadFailed": "Chargement impossible.",
+  "accountsManagersTitle": "Administrateurs du compte",
+  "accountsOrganization": "Organisation",
+  "accountsActive": "Compte actif",
+  "accountsActingAsPrefix": "Vous agissez au nom de ",
+  "accountsReturnToMine": "Revenir à mon compte",
+  "accountsActingAsOwnerOnly": "Vous agissez au nom de {name}. {message}",
+  "@accountsActingAsOwnerOnly": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "accountsReturn": "Revenir",
+  "accountsAddManager": "Ajouter un administrateur",
+  "accountsManagerAdded": "{name} peut maintenant agir en votre nom.",
+  "@accountsManagerAdded": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "accountsRemoveManagerTitle": "Retirer cet administrateur ?",
+  "accountsRemoveManagerBody": "{name} ne pourra plus agir au nom de votre compte.",
+  "@accountsRemoveManagerBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "accountsManagerRemoved": "Administrateur retiré.",
+  "accountsLeaveTitle": "Ne plus administrer ce compte ?",
+  "accountsLeaveBody": "Vous ne pourrez plus agir au nom de {name}. Seul son titulaire pourra vous nommer à nouveau.",
+  "@accountsLeaveBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "accountsLeaveAction": "Me retirer",
+  "accountsLeft": "Vous n'administrez plus {name}.",
+  "@accountsLeft": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "accountsManagersExplanation": "Désignez jusqu'à deux personnes de confiance : avec leur propre compte, elles agissent en votre nom (témoignages, événements, prière, commentaires, réactions, abonnements). Elles ne peuvent pas changer vos identifiants, supprimer le compte, nommer d'autres administrateurs, ni voir votre carnet privé. Vous pouvez les retirer à tout moment.",
+  "accountsManagersCount": "Administrateurs ({count}/{max})",
+  "@accountsManagersCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "accountsNoManagers": "Aucun administrateur pour le moment.",
+  "accountsManagerSince": "Depuis le {date}",
+  "@accountsManagerSince": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "accountsManagersFull": "Deux administrateurs au plus",
+  "accountsManagersSection": "Administrateurs",
+  "accountsActivityLog": "Journal des actions",
+  "accountsNoActivity": "Aucune action faite en votre nom pour le moment.",
+  "accountsManagedTitle": "Comptes que j'administre",
+  "accountsNoneManaged": "Vous n'administrez aucun compte.",
+  "accountsActOnBehalf": "Agir en son nom",
+  "accountsDateNumeric": "{day}/{month}/{year}",
+  "@accountsDateNumeric": {
+    "placeholders": {
+      "day": {
+        "type": "String"
+      },
+      "month": {
+        "type": "String"
+      },
+      "year": {
+        "type": "String"
+      }
+    }
+  },
+  "accountsDateTimeAt": "{date} à {hour}h{minute}",
+  "@accountsDateTimeAt": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "hour": {
+        "type": "String"
+      },
+      "minute": {
+        "type": "String"
+      }
+    }
+  },
+  "accountsConnectionFailed": "Connexion impossible. Vérifiez votre réseau.",
+  "accountsUnexpectedResponse": "Réponse inattendue du serveur.",
+  "accountsFallbackName": "Compte",
+  "accountsFallbackActor": "Un administrateur",
+  "accountsNoLongerManaged": "Vous n'administrez plus ce compte.",
+  "profileRolePastor": "Pasteur",
+  "profileRoleEvangelist": "Évangéliste",
+  "profileRoleSinger": "Chantre",
+  "profileRoleMinistryLeader": "Responsable de ministère",
+  "profileRolePublicFigure": "Personnalité publique",
+  "profileRoleOther": "Autre",
+  "profileVerifDocType": "Pièce justificative : photo (JPG, PNG, WebP) ou PDF.",
+  "profileVerifDocTooBig": "Chaque pièce justificative doit faire {mb} Mo au plus.",
+  "@profileVerifDocTooBig": {
+    "placeholders": {
+      "mb": {
+        "type": "int"
+      }
+    }
+  },
+  "profileVerifFullNameRequired": "Indiquez votre nom complet.",
+  "profileVerifRoleRequired": "Choisissez votre fonction.",
+  "profileVerifRoleOtherRequired": "Précisez votre fonction.",
+  "profileVerifChurchRequired": "Indiquez votre église ou votre ministère.",
+  "profileVerifLinkInvalid": "Adresse web attendue (https://…).",
+  "profileVerifDocRequired": "Ajoutez au moins une pièce justificative.",
+  "profileVerifDocMax": "{count} pièces justificatives au plus.",
+  "@profileVerifDocMax": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "profileFallbackUser": "Utilisateur",
+  "profileMemberSinceMonthYear": "Membre depuis {month, select, 1{Janvier} 2{Février} 3{Mars} 4{Avril} 5{Mai} 6{Juin} 7{Juillet} 8{Août} 9{Septembre} 10{Octobre} 11{Novembre} 12{Décembre} other{{month}}} {year}",
+  "@profileMemberSinceMonthYear": {
+    "placeholders": {
+      "month": {
+        "type": "String"
+      },
+      "year": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsCommentEveryone": "Tout le monde",
+  "settingsCommentFollowers": "Mes abonnés",
+  "settingsCommentNobody": "Personne",
+  "profileStatusPending": "En attente",
+  "profileStatusPublished": "Publié",
+  "profileStatusRejected": "Refusé",
+  "profileErrorStatus": "Erreur ({status}).",
+  "@profileErrorStatus": {
+    "placeholders": {
+      "status": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsVideoQuality": "Qualité vidéo",
+  "settingsCurrentConnectionMobile": "Connexion actuelle : données mobiles",
+  "settingsCurrentConnectionWifi": "Connexion actuelle : Wi-Fi",
+  "settingsOnMobileData": "Sur données mobiles",
+  "settingsMobileDataFooter": "Sur données mobiles, les vidéos ne démarrent jamais seules : la miniature s’affiche avec un bouton de lecture.",
+  "settingsOnWifi": "En Wi-Fi",
+  "settingsWifiFooter": "Auto adapte la qualité à votre connexion pendant la lecture.",
+  "settingsQualityDuringPlayback": "Vous pouvez changer de qualité pendant une lecture avec le bouton « Qualité » du lecteur ; ce choix ne vaut que pour la lecture en cours.",
+  "profileSavedTab": "Sauvegardés",
+  "profileOfflineTab": "Hors ligne",
+  "profileNoSaved": "Aucun témoignage sauvegardé",
+  "profileNoSavedHint": "Appuyez sur le signet dans un témoignage\npour le retrouver ici.",
+  "profileNoOffline": "Aucun témoignage disponible hors ligne",
+  "profileNoOfflineHint": "Appuyez sur l’icône de téléchargement d’un témoignage\npour le lire sans connexion.",
+  "profileDownloadsMobileOnly": "Les téléchargements sont disponibles sur l’application mobile.",
+  "profileManageDownloads": "Gérer dans Mes téléchargements",
+  "profileDeleteConfirmWord": "SUPPRIMER",
+  "profileDeleteEnterPassword": "Saisissez votre mot de passe.",
+  "profileDeleteWrongPassword": "Mot de passe incorrect.",
+  "profileServerUnreachable": "Impossible de joindre le serveur. Réessayez.",
+  "profileDeleteIrreversible": "Cette action est irréversible",
+  "profileDeleteWarnTestimonies": "Tous vos témoignages seront supprimés.",
+  "profileDeleteWarnAccount": "Votre compte ne pourra pas être récupéré.",
+  "profileDeleteWarnSaved": "Vos sauvegardes et interactions seront perdues.",
+  "profileDeleteTypePrefix": "Pour confirmer, saisissez ",
+  "profileDeleteTypeSuffix": " ci-dessous :",
+  "profileDeletePasswordHint": "Votre mot de passe actuel",
+  "profileDeleteForever": "Supprimer définitivement",
+  "profilePwdEnterCurrent": "Saisissez votre mot de passe actuel.",
+  "profilePwdMinLengthError": "{count} caractères au moins.",
+  "@profilePwdMinLengthError": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "profilePwdMustDiffer": "Choisissez un mot de passe différent de l'actuel.",
+  "profilePwdMismatch": "Les deux mots de passe ne correspondent pas.",
+  "profilePwdCurrentWrong": "Mot de passe actuel incorrect.",
+  "profilePwdChanged": "Mot de passe modifié. Vos autres appareils devront se reconnecter.",
+  "profileSecurity": "Sécurité",
+  "profileChangePassword": "Changer le mot de passe",
+  "profilePwdOtherDevices": "Les autres appareils connectés à votre compte devront se reconnecter avec le nouveau mot de passe.",
+  "profilePwdCurrent": "Mot de passe actuel",
+  "profilePwdNew": "Nouveau mot de passe",
+  "profilePwdMinLengthHelper": "{count} caractères au moins",
+  "@profilePwdMinLengthHelper": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "profilePwdConfirmNew": "Confirmer le nouveau mot de passe",
+  "profileNoPassword": "Aucun mot de passe",
+  "profileNoPasswordBody": "Votre compte se connecte par numéro de téléphone, Google ou Facebook : il n'a pas de mot de passe à changer.",
+  "profileAboutSiteOpenFailed": "Impossible d'ouvrir le site web",
+  "profileAboutVersion": "Version {version}",
+  "@profileAboutVersion": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "profileAboutMission": "Notre mission",
+  "profileAboutMissionBody": "Témoignages de Gloire rassemble les récits de vies transformées pour la gloire de Dieu. Partagez ce que Dieu a fait pour vous en vidéo, en audio, en texte ou en image, et soyez édifiés par les témoignages de la communauté — même hors connexion.",
+  "profileAboutVerse": "« Ils l'ont vaincu à cause du sang de l'Agneau et à cause de la parole de leur témoignage. » — Apocalypse 12:11",
+  "profileAboutWebsite": "Site web",
+  "profileAboutLicenses": "Licences open source",
+  "profileAboutDesignedBy": "Conçu par {name}",
+  "@profileAboutDesignedBy": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "profileAboutCopyright": "© {year} Témoignages de Gloire. Tous droits réservés.",
+  "@profileAboutCopyright": {
+    "placeholders": {
+      "year": {
+        "type": "String"
+      }
+    }
+  },
+  "profileFaqPublishQ": "Comment publier un témoignage ?",
+  "profileFaqPublishA": "Touchez le bouton « + Publier » au centre de la barre du bas, puis choisissez vidéo, audio, texte ou image. Ajoutez un titre, une description et une catégorie, puis touchez « Publier ».",
+  "profileFaqPendingQ": "Pourquoi mon témoignage est-il « en attente » ?",
+  "profileFaqPendingA": "Chaque témoignage est relu par notre équipe de modération avant sa publication. Vous recevez une notification dès qu'il est approuvé ou si une correction est demandée.",
+  "profileFaqOfflineQ": "Comment regarder hors connexion ?",
+  "profileFaqOfflineA": "Sur un témoignage, touchez « Télécharger ». Retrouvez-le ensuite dans l'onglet « Téléchargements ». Activez « Mode hors ligne » dans les paramètres pour ne lire que les témoignages téléchargés.",
+  "profileFaqAccountQ": "Comment modifier ou supprimer mon compte ?",
+  "profileFaqAccountA": "Profil › Modifier le profil pour vos informations. Paramètres › Compte et sécurité pour supprimer définitivement votre compte.",
+  "profileFaqPrivacyQ": "Mes données sont-elles protégées ?",
+  "profileFaqPrivacyA": "Vos informations personnelles ne sont jamais vendues. Votre carnet privé n'est visible que par vous, et vous choisissez qui peut commenter vos témoignages dans les paramètres.",
+  "profileFaqTtsQ": "Comment fonctionne la lecture vocale ?",
+  "profileFaqTtsA": "Les témoignages écrits sont lus à voix haute automatiquement à l'ouverture. Utilisez les commandes de lecture pour mettre en pause, reprendre ou arrêter la voix.",
+  "profileHelpHowCanWeHelp": "Comment pouvons-nous vous aider ?",
+  "profileHelpQuickAnswers": "Réponses rapides aux questions fréquentes.",
+  "profileHelpFaq": "Questions fréquentes",
+  "profileHelpContact": "Nous contacter",
+  "profileHelpReportProblem": "Signaler un problème",
+  "profileHelpReportProblemHint": "Décrivez ce qui ne fonctionne pas",
+  "profileHelpReportSubject": "Témoignages de Gloire — signalement d'un problème",
+  "profileHelpReportBody": "{text}\n\n— Plateforme : {platform} · Version {version}",
+  "@profileHelpReportBody": {
+    "placeholders": {
+      "text": {
+        "type": "String"
+      },
+      "platform": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "profileHelpReportShareInfo": "Votre message sera partagé via l'application de votre choix (e-mail, WhatsApp…).",
+  "profileHelpReportInputHint": "Que s'est-il passé ? Sur quel écran ?",
+  "settingsManagersSubtitle": "Deux personnes au plus agissent en votre nom",
+  "settingsSwitchAccount": "Changer de compte",
+  "settingsSwitchAccountSubtitle": "Agir au nom d'un compte que vous administrez",
+  "settingsLocation": "Localisation",
+  "settingsLocationSubtitle": "Témoignages et événements proches de vous",
+  "settingsVideoQualitySubtitle": "Données mobiles : {mobile} · Wi-Fi : {wifi}",
+  "@settingsVideoQualitySubtitle": {
+    "placeholders": {
+      "mobile": {
+        "type": "String"
+      },
+      "wifi": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsAudioQuality": "Qualité audio par défaut",
+  "settingsDataSaver": "Économiseur de données",
+  "settingsDataSaverSubtitle": "Audio en qualité réduite sur données mobiles",
+  "settingsAutoplay": "Lecture automatique",
+  "settingsAutoplaySubtitle": "Enchaîner le témoignage suivant",
+  "settingsRepeat": "Répétition",
+  "settingsFeedLayout": "Affichage du fil",
+  "settingsPreferences": "Préférences",
+  "settingsInviteSubject": "Découvre l'application Témoignages",
+  "settingsInviteText": "Je t'invite à rejoindre l'application Témoignages — un espace pour partager et vivre les miracles de Dieu 🙏\n\nTélécharge-la ici : {url}",
+  "@settingsInviteText": {
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsSecurityPassword": "Sécurité et mot de passe",
+  "settingsNotifApprovalTitle": "Validation",
+  "settingsActingNoticeSuffix": ". La sécurité, les notifications, la localisation et « Qui peut commenter » restent ceux de votre compte : revenez sur votre compte pour les modifier.",
+  "profileTitlePastor": "Pasteur",
+  "profileTitleEvangelist": "Évangéliste",
+  "profileTitleElder": "Ancien",
+  "profileTitleDeacon": "Diacre",
+  "profileTitleMissionary": "Missionnaire",
+  "profileTitleTheologyStudent": "Étudiant en théologie",
+  "profileTitleBeliever": "Fidèle",
+  "profileTitleYouthCoordinator": "Coordinateur de jeunesse",
+  "profileTitleCellLeader": "Responsable de cellule",
+  "profileOrgNameRequired": "Veuillez saisir le nom de l'organisation",
+  "profileOrgTypeRequired": "Veuillez choisir le type d'organisation",
+  "profileOrgCityRequired": "Veuillez saisir la ville",
+  "profileOrgWebsiteInvalid": "Adresse du site web invalide",
+  "profileOrgSaveFailed": "Les informations de l'organisation n'ont pas pu être enregistrées sur le serveur. Vérifiez votre connexion et réessayez.",
+  "profileErrorDetails": "Erreur : {details}",
+  "@profileErrorDetails": {
+    "placeholders": {
+      "details": {
+        "type": "String"
+      }
+    }
+  },
+  "profileOrgLogoTap": "Logo · touchez pour modifier",
+  "profileOrgNameLabel": "Nom de l'organisation *",
+  "profileOrgNameHint": "Église de la Grâce",
+  "profileOrgTypeLabel": "Type *",
+  "profileOrgCityLabel": "Ville *",
+  "profileOrgWebsiteLabel": "Site web (optionnel)",
+  "profileOrgWebsiteHint": "www.exemple.org",
+  "profileFirstNameHint": "Marie",
+  "profileLastNameHint": "Dupont",
+  "profileCustomTitleHint": "Ex. : Responsable worship, Coordinatrice femmes…",
+  "profileOptionalNote": "(facultatif)",
+  "profileEmailLabel": "Email",
+  "profileEmailHint": "marie@exemple.com",
+  "profileCoverEditPhoto": "Modifier la photo de couverture",
+  "profileCoverAdd": "Ajouter une photo de couverture",
+  "profileCoverEdit": "Modifier la couverture",
+  "profilePhoneVerifiedSms": "Vérifié par SMS",
+  "profilePhoneLocked": "Ce numéro sert à vous connecter : il ne se modifie pas ici.",
+  "profileEditAvatar": "Modifier la photo de profil",
+  "profileCoverPhoto": "Photo de couverture",
+  "profileMySpace": "Mon espace",
+  "profileAccountApproved": "Compte approuvé",
+  "profileGetVerified": "Faire vérifier mon compte",
+  "profileBadgeNextToName": "Le badge apparaît à côté de votre nom",
+  "profileVerifUnderReview": "Demande en cours d’examen",
+  "profileVerifRejectedSeeReason": "Demande refusée : voir le motif",
+  "profileGetVerifiedHint": "Pasteur, chantre, personnalité publique…",
+  "profileSavedSubtitle": "Vos témoignages mis de côté",
+  "profileJournal": "Mon carnet privé",
+  "profileJournalSubtitle": "Ce que Dieu a fait pour moi, gardé pour moi seul",
+  "profilePrayerRequests": "Requêtes de prière",
+  "profilePrayerRequestsSubtitle": "Soumettre et intercéder pour les autres",
+  "profilePrayerSessions": "Sessions de prière",
+  "profilePrayerSessionsSubtitle": "Rejoindre ou créer une session collective",
+  "profileFollowingSubtitle": "Les comptes que vous suivez",
+  "profileMyFollowers": "Mes abonnés",
+  "profileFollowersSubtitle": "Les comptes qui vous suivent",
+  "profileCommunitySubtitle": "Églises, ministères et membres à suivre",
+  "profileManagement": "Gestion",
+  "profileModerationSpace": "Espace modération",
+  "profileModerationSpaceSubtitle": "Gérer les témoignages en attente",
+  "profileAdministration": "Administration",
+  "profileAdministrationSubtitle": "Gérer les utilisateurs et le contenu",
+  "profilePersonalInfo": "Informations personnelles",
+  "profileCompleteHint": "Complétez votre profil pour que la communauté vous connaisse.",
+  "profileComplete": "Compléter mon profil",
+  "profileRecentTestimonies": "Mes témoignages récents",
+  "profileVerifPending": "Vérification en cours",
+  "profileVerifRejected": "Vérification refusée",
+  "profileNoTestimoniesYet": "Vous n'avez pas encore publié de témoignage.",
+  "profileShareTestimony": "Partager un témoignage",
+  "profileOrganizationApproved": "Organisation approuvée",
+  "profileApprovedSince": "{label} · depuis le {date}",
+  "@profileApprovedSince": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "profileTabAll": "Tous ({count})",
+  "@profileTabAll": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "profileTabPublished": "Publiés ({count})",
+  "@profileTabPublished": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "profileTabRejected": "Refusés ({count})",
+  "@profileTabRejected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "profileNewTestimony": "Nouveau",
+  "profilePendingNotice": "En cours de validation par notre équipe. Vous recevrez une notification dès que ce sera traité.",
+  "profileEditResubmit": "Modifier et renvoyer",
+  "profileDeleteTestimonyTitle": "Supprimer ce témoignage ?",
+  "profileDeleteTestimonyBody": "Cette action est irréversible. Le témoignage sera définitivement supprimé.",
+  "profileDeleteTestimonyFailed": "Impossible de supprimer. Réessaie.",
+  "profileDateToday": "Aujourd'hui",
+  "profileDateYesterday": "Hier",
+  "profileDateDaysAgo": "Il y a {count} j",
+  "@profileDateDaysAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "profileDateWeeksAgo": "Il y a {count} sem",
+  "@profileDateWeeksAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "profileVideoFailed": "Échec",
+  "profileView": "Consulter",
+  "profileEmptyPendingTitle": "Aucun témoignage en attente",
+  "profileEmptyPendingBody": "Vos témoignages soumis apparaîtront ici\npendant leur validation.",
+  "profileEmptyPublishedTitle": "Aucun témoignage publié",
+  "profileEmptyPublishedBody": "Vos témoignages validés\ns'afficheront ici.",
+  "profileEmptyRejectedTitle": "Aucun témoignage refusé",
+  "profileEmptyRejectedBody": "Bonne nouvelle ! Aucun de vos\ntémoignages n'a été refusé.",
+  "profileEmptyAllTitle": "Aucun témoignage",
+  "profileEmptyAllBody": "Partagez ce que Dieu a fait\ndans votre vie.",
+  "profilePublishTestimony": "Publier un témoignage",
+  "profileMyTestimoniesLoadFailed": "Impossible de charger vos témoignages.",
+  "profilePublishedEditWarning": "Votre témoignage repassera en modération et ne sera plus visible jusqu'à sa validation. Continuer ?",
+  "profilePublishedEditWarningLabel": "Votre témoignage repassera en modération et ne sera plus visible jusqu'à sa validation. Continuer ?\n\nIl perdra aussi son label Témoignage approuvé.",
+  "profileEditPublishedTitle": "Modifier un témoignage publié ?",
+  "profileResubmitted": "Renvoyé en modération",
+  "profileChangesSaved": "Modifications enregistrées",
+  "profileSaveFailed": "Impossible d'enregistrer. Réessayez.",
+  "profileBodyTranscription": "Transcription",
+  "profileBodyDescription": "Description",
+  "profileBodyTestimony": "Témoignage",
+  "profileEditTestimony": "Modifier le témoignage",
+  "profileRejectionReason": "Motif du refus : {reason}",
+  "@profileRejectionReason": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "profileTitleLabel": "Titre",
+  "profileTitleRequired": "Le titre est obligatoire.",
+  "profileBodyRequired": "Le texte du témoignage est obligatoire.",
+  "profileResubmitAction": "Renvoyer en modération",
+  "profileVerifTitle": "Vérification du compte",
+  "profileVerifOrgTitle": "Compte organisation",
+  "profileVerifOrgBody": "Les organisations sont vérifiées à partir des informations de leur profil. Modifiez votre profil pour compléter ou corriger ces informations.",
+  "profileVerifLoadFailedTitle": "Chargement impossible",
+  "profileVerifLoadFailedBody": "Impossible de joindre le serveur. Réessayez.",
+  "profileVerifVerifiedTitle": "Votre compte est vérifié",
+  "profileVerifVerifiedBody": "Le badge « Compte vérifié » apparaît à côté de votre nom sur votre profil, vos témoignages et vos commentaires.",
+  "profileVerifPendingBody": "Notre équipe vérifie vos informations. Vous serez prévenu dans vos notifications.",
+  "profileVerifRevokedTitle": "Vérification retirée",
+  "profileVerifRefusedTitle": "Demande refusée",
+  "profileVerifReason": "Motif : {reason}",
+  "@profileVerifReason": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "profileVerifCanRequestAgain": "Vous pouvez envoyer une nouvelle demande.",
+  "profileVerifRequestTitle": "Faire vérifier mon compte",
+  "profileVerifRequestBody": "Pasteurs, évangélistes, chantres, responsables de ministère, personnalités publiques : le badge aide la communauté à reconnaître votre compte officiel. Il ne donne pas de droits supplémentaires.",
+  "profileVerifYourRequest": "Votre demande",
+  "profileVerifSummaryFullName": "Nom complet",
+  "profileVerifSummaryRole": "Fonction",
+  "profileVerifSummaryChurch": "Église ou ministère",
+  "profileVerifSummaryDocuments": "Pièces justificatives",
+  "profileVerifDocumentsPrivateCount": "{count} (privées)",
+  "@profileVerifDocumentsPrivateCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "profileVerifFixFields": "Merci de corriger les champs signalés.",
+  "profileVerifSendFailed": "Impossible d’envoyer la demande. Vérifiez votre connexion et réessayez.",
+  "profileVerifSent": "Demande envoyée. Vous serez prévenu dans vos notifications.",
+  "profileVerifFullNameLabel": "Nom complet *",
+  "profileVerifFullNameHelper": "Tel qu’il figure sur votre pièce d’identité",
+  "profileVerifRoleLabel": "Fonction *",
+  "profileVerifRoleOtherLabel": "Précisez votre fonction *",
+  "profileVerifChurchLabel": "Église ou ministère de rattachement *",
+  "profileVerifChurchHint": "Église de la Grâce, Cotonou",
+  "profileVerifLinksLabel": "Liens publics (facultatif)",
+  "profileVerifLinksHint": "Site, page Facebook, chaîne YouTube… qui montrent votre ministère.",
+  "profileVerifAddLink": "Ajouter un lien",
+  "profileVerifDocumentsLabel": "Pièces justificatives *",
+  "profileVerifDocumentsHint": "Photo de votre pièce d’identité et/ou lettre de votre église : JPG, PNG, WebP ou PDF, {mb} Mo au plus chacune, {max} au plus.",
+  "@profileVerifDocumentsHint": {
+    "placeholders": {
+      "mb": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "profileVerifTakePhoto": "Prendre une photo",
+  "profileVerifPickFile": "Choisir un fichier",
+  "profileVerifDocumentsPrivate": "Ces pièces restent privées : seuls les administrateurs chargés de la vérification peuvent les consulter. Elles ne sont jamais publiées.",
+  "profileVerifMessageLabel": "Message (facultatif)",
+  "profileVerifMessageHint": "Toute information utile à notre équipe",
+  "profileVerifSubmit": "Envoyer la demande",
+  "profileFileSizeMb": "{size} Mo",
+  "@profileFileSizeMb": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "profileFileSizeKb": "{size} Ko",
+  "@profileFileSizeKb": {
+    "placeholders": {
+      "size": {
+        "type": "int"
+      }
+    }
+  }
+}

@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../features/bible/providers/bible_providers.dart' show bibleReaderPositionProvider;
+import '../../l10n/app_localizations.dart';
 import '../search/search_suggestions.dart';
 
 /// Construit le champ de recherche ; `submit` lance la recherche (à brancher sur
@@ -398,15 +399,16 @@ class _SearchAutocompleteState extends ConsumerState<SearchAutocomplete> {
   Widget _list() {
     final children = <Widget>[];
     final q = _query;
+    final l10n = context.l10n;
     _Kind? section;
     for (var i = 0; i < _options.length; i++) {
       final o = _options[i];
       if (o.kind != section) {
         section = o.kind;
         children.add(_header(switch (o.kind) {
-          _Kind.recent => q.isEmpty ? 'Recherches récentes' : 'Récentes',
-          _Kind.suggestion => 'Suggestions',
-          _Kind.result => 'Accès direct',
+          _Kind.recent => q.isEmpty ? l10n.sharedSearchRecentSearches : l10n.sharedSearchRecent,
+          _Kind.suggestion => l10n.sharedSearchSuggestions,
+          _Kind.result => l10n.sharedSearchDirectAccess,
         }, clear: o.kind == _Kind.recent && q.isEmpty));
       }
       children.add(_row(o, i));
@@ -419,7 +421,7 @@ class _SearchAutocompleteState extends ConsumerState<SearchAutocomplete> {
         // Annonce du nombre de propositions (lecteur d'écran).
         Semantics(
           liveRegion: true,
-          label: _loading ? 'Recherche de suggestions…' : '$n proposition${n > 1 ? 's' : ''}',
+          label: _loading ? l10n.sharedSearchLoadingSuggestions : l10n.sharedSearchSuggestionCount(n),
           child: const SizedBox(height: 4),
         ),
         Flexible(
@@ -454,7 +456,7 @@ class _SearchAutocompleteState extends ConsumerState<SearchAutocomplete> {
             TextButton(
               onPressed: _clearRecents,
               style: TextButton.styleFrom(visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: 8)),
-              child: const Text('Tout effacer', semanticsLabel: 'Effacer toutes les recherches récentes'),
+              child: Text(context.l10n.sharedSearchClearAll, semanticsLabel: context.l10n.sharedSearchClearAllSemantics),
             ),
         ],
       ),
@@ -465,10 +467,12 @@ class _SearchAutocompleteState extends ConsumerState<SearchAutocomplete> {
     final selected = index == _active;
     final r = o.result;
     final typeName = r == null ? null : searchResultTypeLabel(r.type);
+    final l10n = context.l10n;
     final semantics = switch (o.kind) {
-      _Kind.recent => 'Recherche récente : ${o.text}',
-      _Kind.suggestion => 'Suggestion : ${o.text}',
-      _Kind.result => '$typeName : ${o.text}${r!.verified ? ', vérifié' : ''}${r.sublabel != null ? ', ${r.sublabel}' : ''}',
+      _Kind.recent => l10n.sharedSearchRecentSemantics(o.text),
+      _Kind.suggestion => l10n.sharedSearchSuggestionSemantics(o.text),
+      _Kind.result => '${l10n.sharedSearchResultSemantics(typeName!, o.text)}'
+          '${r!.verified ? l10n.sharedSearchVerifiedSuffix : ''}${r.sublabel != null ? ', ${r.sublabel}' : ''}',
     };
 
     return Semantics(
@@ -519,14 +523,14 @@ class _SearchAutocompleteState extends ConsumerState<SearchAutocomplete> {
                     IconButton(
                       icon: const Icon(Icons.close_rounded, size: 18),
                       color: AppColors.textSecondary,
-                      tooltip: 'Retirer « ${o.text} » des recherches récentes',
+                      tooltip: l10n.sharedSearchRemoveRecent(o.text),
                       onPressed: () => _removeRecent(o.text),
                     )
                   else if (o.kind != _Kind.result)
                     IconButton(
                       icon: const Icon(Icons.north_west_rounded, size: 18),
                       color: AppColors.textSecondary,
-                      tooltip: 'Compléter avec « ${o.text} »',
+                      tooltip: l10n.sharedSearchComplete(o.text),
                       onPressed: () => _complete(o.text),
                     ),
                 ],
@@ -581,7 +585,7 @@ class SearchAutocompleteField extends StatefulWidget {
     this.focusNode,
     this.scope = SearchScope.all,
     this.recentKey,
-    this.hintText = 'Rechercher…',
+    this.hintText,
     this.onChanged,
     this.onResultSelected,
     this.localResults,
@@ -594,7 +598,7 @@ class SearchAutocompleteField extends StatefulWidget {
   final FocusNode? focusNode;
   final SearchScope scope;
   final String? recentKey;
-  final String hintText;
+  final String? hintText;
   final ValueChanged<String>? onChanged;
   final void Function(SearchDirectResult result)? onResultSelected;
   final List<SearchDirectResult> Function(String query)? localResults;
@@ -640,13 +644,13 @@ class _SearchAutocompleteFieldState extends State<SearchAutocompleteField> {
           textInputAction: TextInputAction.search,
           decoration: widget.decoration ??
               InputDecoration(
-                hintText: widget.hintText,
+                hintText: widget.hintText ?? context.l10n.sharedSearchHint,
                 prefixIcon: const Icon(Icons.search_rounded),
                 suffixIcon: value.text.isEmpty
                     ? null
                     : IconButton(
                         icon: const Icon(Icons.close_rounded),
-                        tooltip: 'Effacer',
+                        tooltip: context.l10n.sharedSearchClear,
                         onPressed: () {
                           _controller.clear();
                           widget.onChanged?.call('');
@@ -676,19 +680,19 @@ IconData searchResultIcon(SearchResultType type) => switch (type) {
     };
 
 String searchResultTypeLabel(SearchResultType type) => switch (type) {
-      SearchResultType.testimony => 'Témoignage',
-      SearchResultType.user => 'Compte',
-      SearchResultType.event => 'Événement',
-      SearchResultType.category => 'Catégorie',
-      SearchResultType.bible => 'Livre de la Bible',
-      SearchResultType.prayerSession => 'Session de prière',
-      SearchResultType.unknown => 'Résultat',
+      SearchResultType.testimony => L10n.current.modTestimony,
+      SearchResultType.user => L10n.current.sharedSearchTypeAccount,
+      SearchResultType.event => L10n.current.notifTypeEvent,
+      SearchResultType.category => L10n.current.sharedSearchTypeCategory,
+      SearchResultType.bible => L10n.current.sharedSearchTypeBibleBook,
+      SearchResultType.prayerSession => L10n.current.feedPrayerSession,
+      SearchResultType.unknown => L10n.current.sharedSearchTypeResult,
     };
 
 /// Ouverture par défaut d'un résultat direct.
 void openSearchResult(BuildContext context, WidgetRef ref, SearchDirectResult r) {
   if (r.type == SearchResultType.bible && r.book != null) {
-    final translation = r.translation ?? 'LSG';
+    final translation = r.translation ?? 'LSG'; // i18n-ignore
     ref.read(bibleReaderPositionProvider.notifier).setPosition(translation, r.book!, 1);
     context.push('/bible/$translation');
     return;

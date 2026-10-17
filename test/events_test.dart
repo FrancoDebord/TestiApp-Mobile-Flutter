@@ -9,6 +9,8 @@ import 'package:testi_app/features/events/models/event_models.dart';
 import 'package:testi_app/features/events/screens/event_detail_screen.dart';
 import 'package:testi_app/features/events/screens/event_form_screen.dart';
 import 'package:testi_app/features/events/screens/events_screen.dart';
+import 'package:testi_app/features/events/screens/past_events_screen.dart';
+import 'package:testi_app/features/events/widgets/past_events_widgets.dart';
 import 'package:testi_app/features/events/widgets/event_widgets.dart';
 import 'package:testi_app/features/home/models/testimony_model.dart';
 import 'package:testi_app/features/notifications/models/notification_models.dart' show NotificationType;
@@ -354,6 +356,36 @@ void main() {
           await tester.pumpWidget(const SizedBox());
         });
 
+        testWidgets('événements passés ($label)', (tester) async {
+          await pump(tester, const PastEventsScreen(),
+              ChristianEvent.fromJson({..._json(), 'phase': 'past', 'stats': {'testimonies': 3}}),
+              size: size, scale: scale);
+          expect(tester.takeException(), isNull);
+          expect(find.text('Événements passés'), findsOneWidget);
+          expect(find.text('3 témoignages'), findsWidgets);
+          expect(find.text('Revivre les témoignages'), findsWidgets);
+          // Bande de l'accueil : mêmes cartes, défilement horizontal.
+          await tester.pumpWidget(const SizedBox());
+          await tester.pumpWidget(ProviderScope(
+            overrides: [
+              pastEventsHomeProvider.overrideWith((ref) async =>
+                  [ChristianEvent.fromJson({..._json(), 'phase': 'past', 'stats': {'testimonies': 0}})]),
+            ],
+            child: MaterialApp(
+              home: MediaQuery.withClampedTextScaling(
+                minScaleFactor: scale,
+                maxScaleFactor: scale,
+                child: const Scaffold(body: SingleChildScrollView(child: PastEventsStrip())),
+              ),
+            ),
+          ));
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+          expect(find.text('Revivre les événements'), findsOneWidget);
+          expect(find.text('Aucun témoignage'), findsOneWidget);
+          expect(find.text("Voir l'événement"), findsOneWidget);
+        });
+
         testWidgets('détail gestionnaire ($label)', (tester) async {
           await pump(tester, const EventDetailScreen(eventId: 'e1'),
               ChristianEvent.fromJson(_json(manage: true)),
@@ -361,7 +393,7 @@ void main() {
           expect(tester.takeException(), isNull);
           await tester.scrollUntilVisible(find.text('Gestion de la page'), 200,
               scrollable: find.byType(Scrollable).first);
-          expect(find.text('Lancer un direct'), findsOneWidget);
+          expect(find.text('Ajouter le direct YouTube'), findsOneWidget);
           expect(find.text('Reporter'), findsOneWidget);
           expect(find.text("Annuler l'événement"), findsOneWidget);
           // Pas de « Signaler » pour les gestionnaires.

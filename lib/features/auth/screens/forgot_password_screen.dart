@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/router/app_routes.dart';
 import '../providers/auth_notifier.dart';
 import '../widgets/auth_widgets.dart';
+import '../../../l10n/app_localizations.dart';
 
 // =============================================================================
 // FORGOT PASSWORD SCREEN
@@ -64,10 +65,10 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
   String? _validateEmail(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Veuillez saisir votre adresse e-mail';
+      return context.l10n.authValidateEmail;
     }
     final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
-    if (!emailRegex.hasMatch(value.trim())) return 'Adresse e-mail invalide';
+    if (!emailRegex.hasMatch(value.trim())) return context.l10n.authInvalidEmail;
     return null;
   }
 
@@ -85,8 +86,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       if (mounted) setState(() => _isSent = true);
     } catch (e) {
       if (mounted) {
-        setState(() => _errorMessage =
-            "Impossible d'envoyer l'e-mail. Vérifiez l'adresse saisie.");
+        setState(() => _errorMessage = context.l10n.authResetEmailFailed);
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -174,9 +174,9 @@ class _InputBody extends StatelessWidget {
                       color: AppColors.primary, size: 30),
                 ),
                 const SizedBox(height: 12),
-                const Text(
-                  'Mot de passe oublié ?',
-                  style: TextStyle(
+                Text(
+                  context.l10n.authForgotPassword,
+                  style: const TextStyle(
                     fontFamily: AppFonts.family,
                     fontWeight: FontWeight.w600,
                     fontSize: 22,
@@ -185,7 +185,7 @@ class _InputBody extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Nous vous enverrons un lien de réinitialisation',
+                  context.l10n.authResetSubtitle,
                   style: TextStyle(
                     fontFamily: AppFonts.family,
                     fontSize: 13,
@@ -213,10 +213,9 @@ class _InputBody extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     // Instructional text.
-                    const Text(
-                      'Saisissez l\'adresse e-mail associée à votre compte. '
-                      'Vous recevrez un lien pour créer un nouveau mot de passe.',
-                      style: TextStyle(
+                    Text(
+                      context.l10n.authResetInstructions,
+                      style: const TextStyle(
                         fontFamily: AppFonts.family,
                         fontSize: 14,
                         color: AppColors.textSecondary,
@@ -234,8 +233,8 @@ class _InputBody extends StatelessWidget {
                     // Email field.
                     AuthTextField(
                       controller: emailController,
-                      label: 'Adresse e-mail',
-                      hint: 'exemple@email.com',
+                      label: context.l10n.authEmailLabel,
+                      hint: context.l10n.authEmailHint,
                       prefixIcon: Icons.mail_outline_rounded,
                       keyboardType: TextInputType.emailAddress,
                       textInputAction: TextInputAction.done,
@@ -248,7 +247,7 @@ class _InputBody extends StatelessWidget {
 
                     // Submit button.
                     AuthPrimaryButton(
-                      label: 'Envoyer le lien',
+                      label: context.l10n.authSendLink,
                       isLoading: isLoading,
                       onPressed: isLoading ? null : onSubmit,
                     ),
@@ -259,9 +258,9 @@ class _InputBody extends StatelessWidget {
                     Center(
                       child: TextButton(
                         onPressed: () => context.goNamed(AppRoutes.login),
-                        child: const Text(
-                          'Retour à la connexion',
-                          style: TextStyle(
+                        child: Text(
+                          context.l10n.authBackToSignIn,
+                          style: const TextStyle(
                             fontFamily: AppFonts.family,
                             fontSize: 14,
                             color: AppColors.primary,
@@ -317,10 +316,10 @@ class _SuccessBody extends StatelessWidget {
 
             const SizedBox(height: 32),
 
-            const Text(
-              'E-mail envoyé !',
+            Text(
+              context.l10n.authEmailSent,
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontFamily: AppFonts.family,
                 fontWeight: FontWeight.w600,
                 fontSize: 26,
@@ -331,9 +330,7 @@ class _SuccessBody extends StatelessWidget {
             const SizedBox(height: 12),
 
             Text(
-              'Nous avons envoyé un lien de réinitialisation à\n'
-              '${_maskEmail(email)}\n\n'
-              'Vérifiez également vos courriers indésirables.',
+              context.l10n.authResetEmailSentBody(_maskEmail(email)),
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontFamily: AppFonts.family,
@@ -347,7 +344,7 @@ class _SuccessBody extends StatelessWidget {
 
             // Back to login — primary.
             AuthPrimaryButton(
-              label: 'Retour à la connexion',
+              label: context.l10n.authBackToSignIn,
               isLoading: false,
               onPressed: () => context.goNamed(AppRoutes.login),
             ),
@@ -363,9 +360,9 @@ class _SuccessBody extends StatelessWidget {
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14)),
               ),
-              child: const Text(
-                'Renvoyer l\'e-mail',
-                style: TextStyle(
+              child: Text(
+                context.l10n.authResendEmail,
+                style: const TextStyle(
                   fontFamily: AppFonts.family,
                   fontWeight: FontWeight.w600,
                   fontSize: 16,

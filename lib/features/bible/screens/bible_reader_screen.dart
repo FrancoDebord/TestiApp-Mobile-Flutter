@@ -8,6 +8,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/search/search_suggestions.dart';
 import '../../../shared/widgets/search_autocomplete_field.dart';
+import '../../../l10n/app_localizations.dart';
 import '../models/bible_models.dart';
 import '../providers/bible_providers.dart';
 
@@ -36,7 +37,7 @@ class BibleReaderScreen extends ConsumerWidget {
         ),
         body: Center(
           child: Text(
-            'Erreur : $e',
+            context.l10n.bibleError('$e'),
             style:
                 AppTextStyles.bodyMedium.copyWith(color: AppColors.danger),
             textAlign: TextAlign.center,
@@ -52,8 +53,8 @@ class BibleReaderScreen extends ConsumerWidget {
               backgroundColor: AppColors.surface,
               elevation: 0,
             ),
-            body: const Center(
-              child: Text('Aucun contenu téléchargé.'),
+            body: Center(
+              child: Text(context.l10n.bibleNoContent),
             ),
           );
         }
@@ -154,7 +155,7 @@ class _ReaderBodyState extends ConsumerState<_ReaderBody> {
           type: SearchResultType.bible,
           id: '${b.bookNumber}',
           label: b.name,
-          sublabel: b.chaptersCount > 0 ? 'Bible · ${b.chaptersCount} chapitres' : 'Bible',
+          sublabel: b.chaptersCount > 0 ? context.l10n.bibleBookSublabel(b.chaptersCount) : context.l10n.bibleTitle,
           book: b.bookNumber,
           translation: widget.translationCode,
         ),
@@ -192,13 +193,13 @@ class _ReaderBodyState extends ConsumerState<_ReaderBody> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('Aller à un livre', style: AppTextStyles.h4),
+                Text(context.l10n.bibleGoToBook, style: AppTextStyles.h4),
                 const SizedBox(height: 12),
                 SearchAutocompleteField(
                   autofocus: true,
                   scope: SearchScope.bible,
                   recentKey: 'bible',
-                  hintText: 'Livre (ex. Jean 3)',
+                  hintText: context.l10n.bibleBookHint,
                   localResults: _localBookResults,
                   onResultSelected: (r) {
                     Navigator.pop(sheet);
@@ -324,13 +325,13 @@ class _ReaderBodyState extends ConsumerState<_ReaderBody> {
                 _toggleSpeech(verses);
               }
             },
-            tooltip: _isSpeaking ? 'Arrêter la lecture' : 'Lire le chapitre',
+            tooltip: _isSpeaking ? context.l10n.bibleStopReading : context.l10n.bibleReadChapter,
           ),
           IconButton(
             icon: const Icon(Icons.search_rounded,
                 color: AppColors.textSecondary),
             onPressed: _openBookSearch,
-            tooltip: 'Aller à un livre',
+            tooltip: context.l10n.bibleGoToBook,
           ),
         ],
       ),
@@ -418,7 +419,7 @@ class _ReaderBodyState extends ConsumerState<_ReaderBody> {
             const SizedBox(height: 12),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Text('Choisir un livre', style: AppTextStyles.h3),
+              child: Text(context.l10n.bibleChooseBook, style: AppTextStyles.h3),
             ),
             const SizedBox(height: 12),
             const Divider(height: 1, color: AppColors.border),
@@ -448,7 +449,7 @@ class _ReaderBodyState extends ConsumerState<_ReaderBody> {
                       ),
                     ),
                     trailing: Text(
-                      '${book.chaptersCount} ch.',
+                      context.l10n.bibleChaptersShort(book.chaptersCount),
                       style: AppTextStyles.bodySmall.copyWith(
                         color: AppColors.textSecondary,
                       ),
@@ -635,14 +636,14 @@ class _VerseListState extends ConsumerState<_VerseList> {
               child: CircularProgressIndicator(color: AppColors.primary),
             ),
             error: (e, _) => Center(
-              child: Text('Erreur : $e',
+              child: Text(context.l10n.bibleError('$e'),
                   style: AppTextStyles.bodyMedium
                       .copyWith(color: AppColors.danger)),
             ),
             data: (verses) {
               if (verses.isEmpty) {
-                return const Center(
-                  child: Text('Ce chapitre ne contient aucun verset.'),
+                return Center(
+                  child: Text(context.l10n.bibleChapterEmpty),
                 );
               }
               return ListView.builder(
@@ -941,7 +942,7 @@ class _SelectionBar extends StatelessWidget {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                '$selectedCount verset${selectedCount > 1 ? 's' : ''}',
+                context.l10n.bibleSelectedVerses(selectedCount),
                 style: const TextStyle(
                   fontFamily: 'Plus Jakarta Sans',
                   fontSize: 12,
@@ -954,14 +955,14 @@ class _SelectionBar extends StatelessWidget {
             // Insert
             _BarAction(
               icon: Icons.add_circle_outline_rounded,
-              label: 'Insérer',
+              label: context.l10n.bibleInsert,
               onTap: onInsert,
             ),
             const SizedBox(width: 8),
             // Share
             _BarAction(
               icon: Icons.share_rounded,
-              label: 'Partager',
+              label: context.l10n.commonShare,
               onTap: onShare,
             ),
           ],
@@ -1085,7 +1086,7 @@ class _MultiVerseShareSheet extends StatelessWidget {
                       );
                     },
                     icon: const Icon(Icons.share_rounded, size: 16),
-                    label: const Text('Partager'),
+                    label: Text(context.l10n.commonShare),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.primary,
                       side: const BorderSide(color: AppColors.primary),
@@ -1233,7 +1234,7 @@ class _VerseActionSheet extends ConsumerWidget {
 
             // Highlight swatches
             Text(
-              'Surligner',
+              context.l10n.bibleHighlight,
               style: AppTextStyles.labelSmall
                   .copyWith(color: AppColors.textSecondary),
             ),
@@ -1293,17 +1294,17 @@ class _VerseActionSheet extends ConsumerWidget {
 
             _ActionRow(
               icon:  Icons.share_rounded,
-              label: 'Partager ce verset',
+              label: context.l10n.bibleShareVerse,
               onTap: () => _share(context),
             ),
             _ActionRow(
               icon:  Icons.compare_arrows_rounded,
-              label: 'Comparer les traductions',
+              label: context.l10n.bibleCompareTranslations,
               onTap: () => _compare(context, ref),
             ),
             _ActionRow(
               icon:   Icons.edit_note_rounded,
-              label:  'Insérer dans un témoignage',
+              label:  context.l10n.bibleInsertInTestimony,
               onTap:  () => _insert(context, ref),
               isLast: true,
             ),
@@ -1386,11 +1387,11 @@ class _CompareSheet extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             if (texts.isEmpty)
-              const Padding(
-                padding: EdgeInsets.all(16),
+              Padding(
+                padding: const EdgeInsets.all(16),
                 child: Text(
-                  'Téléchargez d\'autres traductions pour les comparer.',
-                  style: TextStyle(
+                  context.l10n.bibleCompareEmpty,
+                  style: const TextStyle(
                     fontFamily: 'Plus Jakarta Sans',
                     fontSize:   13,
                     color:      AppColors.textSecondary,
@@ -1533,21 +1534,21 @@ class _NavigationBar extends StatelessWidget {
 // ── Language helpers ──────────────────────────────────────────────────────────
 
 String _languageLabel(String lang) => switch (lang.toLowerCase()) {
-      'fr' => 'Français',
-      'en' => 'English',
-      'es' => 'Español',
-      'pt' => 'Português',
-      'de' => 'Deutsch',
-      'it' => 'Italiano',
-      'ar' => 'العربية',
-      'sw' => 'Kiswahili',
-      'ln' => 'Lingala',
-      'yo' => 'Yoruba',
-      'ha' => 'Hausa',
-      'ig' => 'Igbo',
-      'am' => 'Amharique',
-      'rw' => 'Kinyarwanda',
-      'wo' => 'Wolof',
+      'fr' => 'Français', // i18n-ignore
+      'en' => 'English', // i18n-ignore
+      'es' => 'Español', // i18n-ignore
+      'pt' => 'Português', // i18n-ignore
+      'de' => 'Deutsch', // i18n-ignore
+      'it' => 'Italiano', // i18n-ignore
+      'ar' => 'العربية', // i18n-ignore
+      'sw' => 'Kiswahili', // i18n-ignore
+      'ln' => 'Lingala', // i18n-ignore
+      'yo' => 'Yoruba', // i18n-ignore
+      'ha' => 'Hausa', // i18n-ignore
+      'ig' => 'Igbo', // i18n-ignore
+      'am' => L10n.current.bibleLanguageAmharic,
+      'rw' => 'Kinyarwanda', // i18n-ignore
+      'wo' => 'Wolof', // i18n-ignore
       _    => lang.toUpperCase(),
     };
 
@@ -1605,10 +1606,10 @@ class _TranslationPickerSheet extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 14),
-            Text('Choisir une traduction', style: AppTextStyles.h3),
+            Text(context.l10n.bibleChooseTranslation, style: AppTextStyles.h3),
             const SizedBox(height: 4),
             Text(
-              'Traductions téléchargées',
+              context.l10n.bibleDownloadedTranslations,
               style: AppTextStyles.bodySmall
                   .copyWith(color: AppColors.textSecondary),
             ),
@@ -1620,8 +1621,7 @@ class _TranslationPickerSheet extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 24),
                 child: Center(
                   child: Text(
-                    'Aucune traduction disponible.\n'
-                    'Téléchargez-en depuis l\'onglet Bible.',
+                    context.l10n.bibleNoTranslation,
                     textAlign: TextAlign.center,
                     style: AppTextStyles.bodySmall
                         .copyWith(color: AppColors.textSecondary),

@@ -12,6 +12,7 @@ import '../../../shared/widgets/video_poster.dart' show VideoThumbnailImage;
 import '../models/testimony_model.dart';
 import '../providers/home_providers.dart';
 import 'testimony_card_header.dart' show categoryBadgeTone;
+import '../../../l10n/app_localizations.dart';
 
 /// "À la une" section: section header + horizontal scroll of featured cards.
 ///
@@ -38,7 +39,7 @@ class FeaturedCarousel extends ConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Flexible(
-                child: Text('À la une',
+                child: Text(context.l10n.homeFeaturedTab,
                     style: AppTextStyles.h3,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis),
@@ -52,7 +53,7 @@ class FeaturedCarousel extends ConsumerWidget {
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
                 child: Text(
-                  'Voir tout',
+                  context.l10n.homeViewAll,
                   style: AppTextStyles.labelMedium.copyWith(
                     color: AppColors.primary,
                   ),

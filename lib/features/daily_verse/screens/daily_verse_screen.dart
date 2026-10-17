@@ -17,6 +17,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../services/tts_service.dart';
 import '../../../shared/widgets/guest_gate.dart';
 import '../../../shared/widgets/mention_text.dart';
@@ -61,9 +62,9 @@ Future<void> openDailyVerse(BuildContext context, {int initialTab = 0}) {
 }
 
 const _kFallbackVerse = DailyVerse(
-  text: '« Car je connais les projets que j\'ai formés sur vous, dit l\'Éternel, '
-      'projets de paix et non de malheur, afin de vous donner un avenir et de l\'espérance. »',
-  reference: 'Jérémie 29 : 11',
+  text: '« Car je connais les projets que j\'ai formés sur vous, dit l\'Éternel, ' // i18n-ignore
+      'projets de paix et non de malheur, afin de vous donner un avenir et de l\'espérance. »', // i18n-ignore
+  reference: 'Jérémie 29 : 11', // i18n-ignore
 );
 
 class DailyVerseScreen extends ConsumerStatefulWidget {
@@ -120,7 +121,7 @@ class _DailyVerseScreenState extends ConsumerState<DailyVerseScreen>
       return (text: v.text!, label: v.name, version: v, missing: null);
     }
     final missing = preferred != null && data != null ? (v?.name ?? preferred) : null;
-    return (text: data?.originalText ?? verse.text, label: 'Texte du jour', version: null, missing: missing);
+    return (text: data?.originalText ?? verse.text, label: context.l10n.verseTodayText, version: null, missing: missing);
   }
 
   String _reference(DailyVerse verse, DailyVerseVersions? data) =>
@@ -129,7 +130,7 @@ class _DailyVerseScreenState extends ConsumerState<DailyVerseScreen>
   // ── Actions ────────────────────────────────────────────────────────────────
 
   Future<void> _share(String text, String reference, String label, VerseVersion? version) async {
-    final suffix = label == 'Texte du jour' ? '' : ' ($label)';
+    final suffix = version == null ? '' : ' ($label)';
     await shareVerseImage(
       context,
       design: ref.read(currentVerseDesignProvider),
@@ -137,7 +138,7 @@ class _DailyVerseScreenState extends ConsumerState<DailyVerseScreen>
       text: text,
       reference: version == null ? reference : '$reference$suffix',
       version: version,
-      shareText: '« ${_strip(text)} »\n— $reference$suffix',
+      shareText: context.l10n.verseShareText(_strip(text), '$reference$suffix'),
     );
     await ref.read(dailyVerseProvider.notifier).recordShare();
   }
@@ -175,7 +176,7 @@ class _DailyVerseScreenState extends ConsumerState<DailyVerseScreen>
       if (!mounted) return;
       setState(() => _speaking = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("La lecture à voix haute n'est pas disponible sur cet appareil.")),
+        SnackBar(content: Text(context.l10n.verseTtsUnavailable)),
       );
       return;
     }
@@ -188,13 +189,13 @@ class _DailyVerseScreenState extends ConsumerState<DailyVerseScreen>
   }
 
   Future<void> _react({required bool pray}) async {
-    if (!await requireAccount(context, ref, reason: pray ? 'prier avec ce verset' : 'aimer ce verset')) return;
+    if (!await requireAccount(context, ref, reason: pray ? context.l10n.verseReasonPray : context.l10n.verseReasonLike)) return;
     final notifier = ref.read(dailyVerseProvider.notifier);
     await (pray ? notifier.togglePray() : notifier.toggleLike());
   }
 
   Future<void> _testify(DailyVerse verse, DailyVerseVersions? data) async {
-    if (!await requireAccount(context, ref, reason: 'témoigner sur ce verset')) return;
+    if (!await requireAccount(context, ref, reason: context.l10n.verseReasonTestify)) return;
     if (!mounted) return;
     final reference = _reference(verse, data);
     ref.read(bibleVerseToInsertProvider.notifier).set(reference);
@@ -376,23 +377,23 @@ class _CompactBar extends StatelessWidget {
             child: Row(
               children: [
                 IconButton(
-                  tooltip: 'Fermer',
+                  tooltip: context.l10n.commonClose,
                   onPressed: onClose,
                   icon: const Icon(Icons.close_rounded, color: AppColors.textPrimary),
                 ),
                 Expanded(
-                  child: Text('Verset du jour',
+                  child: Text(context.l10n.verseOfTheDay,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.labelMedium.copyWith(color: AppColors.primary, fontWeight: FontWeight.w700)),
                 ),
                 IconButton(
-                  tooltip: 'Partager',
+                  tooltip: context.l10n.commonShare,
                   onPressed: onShare,
                   icon: const Icon(Icons.share_rounded, color: AppColors.textPrimary),
                 ),
                 IconButton(
-                  tooltip: 'Revenir au verset',
+                  tooltip: context.l10n.verseBackToVerse,
                   onPressed: onTop,
                   icon: const Icon(Icons.vertical_align_top_rounded, color: AppColors.textPrimary),
                 ),
@@ -467,30 +468,30 @@ class _TopBar extends StatelessWidget {
       child: Row(
         children: [
           IconButton(
-            tooltip: 'Fermer',
+            tooltip: context.l10n.commonClose,
             onPressed: onClose,
             icon: Icon(Icons.close_rounded, color: ink),
           ),
           Expanded(
             child: Text(
-              'Verset du jour',
+              context.l10n.verseOfTheDay,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: verseLabelStyle(accent).copyWith(fontSize: 14, fontWeight: FontWeight.w700),
             ),
           ),
           IconButton(
-            tooltip: speaking ? 'Arrêter la lecture' : 'Écouter',
+            tooltip: speaking ? context.l10n.verseStopReading : context.l10n.testimonyTtsListen,
             onPressed: onSpeak,
             icon: Icon(speaking ? Icons.stop_circle_outlined : Icons.volume_up_rounded, color: ink),
           ),
           IconButton(
-            tooltip: 'Partager',
+            tooltip: context.l10n.commonShare,
             onPressed: onShare,
             icon: Icon(Icons.share_rounded, color: ink),
           ),
           IconButton(
-            tooltip: reading ? 'Quitter le mode lecture' : 'Mode lecture',
+            tooltip: reading ? context.l10n.verseExitReadingMode : context.l10n.verseReadingMode,
             onPressed: onReading,
             icon: Icon(reading ? Icons.fullscreen_exit_rounded : Icons.fullscreen_rounded, color: ink),
           ),
@@ -612,7 +613,7 @@ class _VerseHero extends StatelessWidget {
                 Expanded(
                   child: Semantics(
                     container: true,
-                    label: 'Verset du jour, $reference',
+                    label: context.l10n.verseSemantics(reference),
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(_side, 12, _side, 8),
                       child: Column(
@@ -638,7 +639,7 @@ class _VerseHero extends StatelessWidget {
                           if (missing != null) ...[
                             const SizedBox(height: 8),
                             Text(
-                              'Passage absent de la version « $missing » : texte du jour affiché.',
+                              context.l10n.verseMissingInVersion(missing!),
                               textAlign: align.textAlign,
                               style: verseLabelStyle(r.ink).copyWith(fontWeight: FontWeight.w400),
                             ),
@@ -653,7 +654,7 @@ class _VerseHero extends StatelessWidget {
                   Center(
                     child: Semantics(
                       button: true,
-                      label: 'Faire défiler : versions, prière, commentaires',
+                      label: context.l10n.verseScrollHintSemantics,
                       excludeSemantics: true,
                       child: InkWell(
                         onTap: onScrollHint,
@@ -663,7 +664,7 @@ class _VerseHero extends StatelessWidget {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text('Faire défiler', style: verseLabelStyle(r.ink).copyWith(fontSize: 11.5)),
+                              Text(context.l10n.verseScrollHint, style: verseLabelStyle(r.ink).copyWith(fontSize: 11.5)),
                               Icon(Icons.keyboard_arrow_down_rounded, color: r.ink, size: 22),
                             ],
                           ),
@@ -700,10 +701,12 @@ class _ReactionsRow extends StatelessWidget {
   final VoidCallback onShare;
   final Widget picker;
 
-  static String likeLabel(DailyVerse v) => v.likeCount > 0 ? "J'aime · ${v.likeCount}" : "J'aime";
-  static String prayLabel(DailyVerse v) => v.prayerCount > 0 ? 'Je prie · ${v.prayerCount}' : 'Je prie';
-  static const _commentLabel = 'Commenter';
-  static const _shareLabel = 'Partager';
+  static String likeLabel(DailyVerse v) =>
+      v.likeCount > 0 ? L10n.current.verseLikeCount(v.likeCount) : L10n.current.detailLike;
+  static String prayLabel(DailyVerse v) =>
+      v.prayerCount > 0 ? L10n.current.versePrayCount(v.prayerCount) : L10n.current.detailPray;
+  static String get _commentLabel => L10n.current.detailComment;
+  static String get _shareLabel => L10n.current.commonShare;
   static const _padding = EdgeInsets.fromLTRB(20, 4, 12, 4);
   static const _pickerWidth = 56.0 + 8;
   static const _pickerHeight = 64.0;
@@ -862,13 +865,12 @@ class _VersionSelector extends ConsumerWidget {
     final preferred = ref.watch(preferredVerseTranslationProvider);
     final data = async.value;
     final note = switch (async) {
-      AsyncLoading() when data == null => 'Recherche des versions…',
-      _ when data == null => 'Versions indisponibles pour le moment.',
-      _ when data.parsed == null => 'Référence non reconnue : seul le texte du jour est proposé.',
-      _ when data.versions.isEmpty && data.offline =>
-        'Hors connexion : téléchargez une Bible (onglet Bible) pour lire d\'autres versions.',
-      _ when data.versions.isEmpty => 'Aucune autre version installée.',
-      _ when data.offline => 'Hors connexion : versions téléchargées sur l\'appareil.',
+      AsyncLoading() when data == null => context.l10n.verseVersionsSearching,
+      _ when data == null => context.l10n.verseVersionsUnavailable,
+      _ when data.parsed == null => context.l10n.verseReferenceUnrecognized,
+      _ when data.versions.isEmpty && data.offline => context.l10n.verseOfflineDownloadBible,
+      _ when data.versions.isEmpty => context.l10n.verseNoOtherVersion,
+      _ when data.offline => context.l10n.verseOfflineDownloaded,
       _ => null,
     };
 
@@ -881,7 +883,7 @@ class _VersionSelector extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Text(
-              'Versions de la Bible',
+              context.l10n.verseBibleVersions,
               style: AppTextStyles.labelMedium.copyWith(color: AppColors.primary, fontWeight: FontWeight.w700),
             ),
           ),
@@ -892,20 +894,20 @@ class _VersionSelector extends ConsumerWidget {
             child: Row(
               children: [
                 _VersionChip(
-                  label: 'Texte du jour',
+                  label: context.l10n.verseTodayText,
                   selected: !compare && (preferred == null || data?.byCode(preferred)?.available != true),
                   onTap: () => notifier.select(null),
                 ),
                 for (final v in data?.versions ?? const <VerseVersion>[])
                   _VersionChip(
                     label: v.code,
-                    tooltip: v.available ? v.name : '${v.name} : passage absent de cette version',
+                    tooltip: v.available ? v.name : context.l10n.verseVersionMissingTooltip(v.name),
                     selected: !compare && preferred == v.code && v.available,
                     onTap: v.available ? () => notifier.select(v.code) : null,
                   ),
                 if ((data?.versions.isNotEmpty ?? false))
                   _VersionChip(
-                    label: 'Comparer',
+                    label: context.l10n.verseCompare,
                     icon: Icons.view_agenda_outlined,
                     selected: compare,
                     onTap: onCompare,
@@ -1003,13 +1005,13 @@ class _CompareList extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
       child: Column(
         children: [
-          block('Texte du jour', Text(data.originalText, style: style)),
+          block(context.l10n.verseTodayText, Text(data.originalText, style: style)),
           for (final v in data.versions)
             block(
               '${v.code} · ${v.name}',
               v.available
                   ? VersePassageText(text: v.text!, version: v, style: style, accent: AppColors.secondaryDark)
-                  : Text("Ce passage n'est pas disponible dans cette version.",
+                  : Text(context.l10n.verseVersionUnavailable,
                       style: style.copyWith(color: AppColors.textSecondary, fontStyle: FontStyle.italic)),
             ),
         ],
@@ -1045,19 +1047,19 @@ class _Participation extends StatelessWidget {
             indicatorColor: AppColors.secondary,
             labelStyle: AppTextStyles.labelMedium.copyWith(fontWeight: FontWeight.w700),
             unselectedLabelStyle: AppTextStyles.labelMedium,
-            tabs: const [
-              Tab(icon: Icon(Icons.volunteer_activism_outlined, size: 20), text: 'Sujets de prière', iconMargin: EdgeInsets.only(bottom: 2)),
-              Tab(icon: Icon(Icons.chat_bubble_outline_rounded, size: 20), text: 'Commentaires', iconMargin: EdgeInsets.only(bottom: 2)),
-              Tab(icon: Icon(Icons.auto_awesome_outlined, size: 20), text: 'Témoignages', iconMargin: EdgeInsets.only(bottom: 2)),
+            tabs: [
+              Tab(icon: const Icon(Icons.volunteer_activism_outlined, size: 20), text: context.l10n.verseTabPrayerTopics, iconMargin: const EdgeInsets.only(bottom: 2)),
+              Tab(icon: const Icon(Icons.chat_bubble_outline_rounded, size: 20), text: context.l10n.verseTabComments, iconMargin: const EdgeInsets.only(bottom: 2)),
+              Tab(icon: const Icon(Icons.auto_awesome_outlined, size: 20), text: context.l10n.verseTabTestimonies, iconMargin: const EdgeInsets.only(bottom: 2)),
             ],
           ),
           const Divider(height: 1),
           Padding(
             padding: const EdgeInsets.all(AppSpacing.screen),
             child: !online
-                ? const _Notice(
+                ? _Notice(
                     icon: Icons.cloud_off_rounded,
-                    text: 'Les sujets de prière, commentaires et témoignages seront disponibles une fois en ligne.',
+                    text: context.l10n.verseParticipationOffline,
                   )
                 : switch (tabs.index) {
                     0 => _PrayerTab(verseId: verse.id),
@@ -1089,7 +1091,7 @@ class _Notice extends StatelessWidget {
           Text(text, textAlign: TextAlign.center, style: AppTextStyles.bodySmall),
           if (onRetry != null) ...[
             const SizedBox(height: 8),
-            TextButton.icon(onPressed: onRetry, icon: const Icon(Icons.refresh_rounded), label: const Text('Réessayer')),
+            TextButton.icon(onPressed: onRetry, icon: const Icon(Icons.refresh_rounded), label: Text(context.l10n.commonRetry)),
           ],
         ],
       ),
@@ -1145,7 +1147,7 @@ class _PrayerTab extends ConsumerWidget {
   final int verseId;
 
   Future<void> _create(BuildContext context, WidgetRef ref) async {
-    if (!await requireAccount(context, ref, reason: 'confier un sujet de prière')) return;
+    if (!await requireAccount(context, ref, reason: context.l10n.verseReasonPrayerTopic)) return;
     if (!context.mounted) return;
     final created = await showModalBottomSheet<bool>(
       context: context,
@@ -1163,19 +1165,19 @@ class _PrayerTab extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('Confiez un sujet de prière inspiré par ce verset ; d\'autres prieront avec vous.',
+        Text(context.l10n.versePrayerIntro,
             style: AppTextStyles.bodySmall),
         const SizedBox(height: 10),
         FilledButton.icon(
           onPressed: () => _create(context, ref),
           style: FilledButton.styleFrom(backgroundColor: AppColors.primary, minimumSize: const Size.fromHeight(46)),
           icon: const Icon(Icons.add_rounded),
-          label: const Text('Confier un sujet de prière'),
+          label: Text(context.l10n.versePrayerCreate),
         ),
         const SizedBox(height: 16),
         _AsyncList<PrayerRequest>(
           async: ref.watch(dailyVersePrayerRequestsProvider(verseId)),
-          empty: 'Aucun sujet de prière pour le moment. Soyez le premier !',
+          empty: context.l10n.versePrayerEmpty,
           itemBuilder: (r) => PrayerRequestFeedCard(request: r, showEvent: false, maxLines: 5),
           onRetry: () => ref.invalidate(dailyVersePrayerRequestsProvider(verseId)),
         ),
@@ -1213,7 +1215,7 @@ class _VersePrayerSheetState extends ConsumerState<VersePrayerSheet> {
       await ref.read(prayerRepositoryProvider).create(_draft);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Votre requête est publiée. Que Dieu vous réponde !')),
+        SnackBar(content: Text(context.l10n.prayerRequestPublished)),
       );
       Navigator.of(context).pop(true);
     } on PrayerFailure catch (e) {
@@ -1237,7 +1239,7 @@ class _VersePrayerSheetState extends ConsumerState<VersePrayerSheet> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('Sujet de prière sur le verset du jour', style: AppTextStyles.h4),
+                Text(context.l10n.versePrayerSheetTitle, style: AppTextStyles.h4),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _body,
@@ -1246,11 +1248,11 @@ class _VersePrayerSheetState extends ConsumerState<VersePrayerSheet> {
                   maxLength: 2000,
                   autofocus: true,
                   textCapitalization: TextCapitalization.sentences,
-                  decoration: const InputDecoration(hintText: 'Seigneur, à la lumière de ce verset, je te confie…'),
+                  decoration: InputDecoration(hintText: context.l10n.versePrayerHint),
                   validator: (v) {
                     final t = v?.trim() ?? '';
-                    if (t.isEmpty) return 'Écrivez votre requête de prière.';
-                    if (t.length < 10) return 'Votre requête est trop courte (10 caractères au moins).';
+                    if (t.isEmpty) return context.l10n.prayerRequestEmptyError;
+                    if (t.length < 10) return context.l10n.prayerRequestTooShort;
                     return null;
                   },
                 ),
@@ -1258,7 +1260,7 @@ class _VersePrayerSheetState extends ConsumerState<VersePrayerSheet> {
                 DropdownButtonFormField<PrayerVisibility>(
                   initialValue: _draft.visibility,
                   isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'Qui peut la voir ?'),
+                  decoration: InputDecoration(labelText: context.l10n.prayerWhoCanSee),
                   items: [
                     for (final v in PrayerVisibility.values)
                       DropdownMenuItem(value: v, child: Text(v.label, overflow: TextOverflow.ellipsis)),
@@ -1269,8 +1271,8 @@ class _VersePrayerSheetState extends ConsumerState<VersePrayerSheet> {
                   contentPadding: EdgeInsets.zero,
                   value: _draft.isAnonymous,
                   onChanged: (v) => setState(() => _draft.isAnonymous = v),
-                  title: const Text('Publier anonymement'),
-                  subtitle: const Text('Votre nom reste visible de vous et de la modération.'),
+                  title: Text(context.l10n.prayerPostAnonymously),
+                  subtitle: Text(context.l10n.verseAnonymousSubtitle),
                 ),
                 const SizedBox(height: 8),
                 FilledButton.icon(
@@ -1279,7 +1281,7 @@ class _VersePrayerSheetState extends ConsumerState<VersePrayerSheet> {
                   icon: _sending
                       ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                       : const Icon(Icons.send_rounded),
-                  label: const Text('Publier ma requête'),
+                  label: Text(context.l10n.prayerPublishMyRequest),
                 ),
               ],
             ),
@@ -1316,7 +1318,7 @@ class _CommentsTabState extends ConsumerState<_CommentsTab> {
 
   Future<void> _send() async {
     if (_sending || _ctrl.text.trim().length < 2) return;
-    if (!await requireAccount(context, ref, reason: 'commenter le verset du jour')) return;
+    if (!await requireAccount(context, ref, reason: context.l10n.verseReasonComment)) return;
     final body = _ctrl.encodedText;
     setState(() => _sending = true);
     try {
@@ -1336,10 +1338,10 @@ class _CommentsTabState extends ConsumerState<_CommentsTab> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Supprimer le commentaire ?'),
+        title: Text(context.l10n.verseCommentDeleteTitle),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Supprimer')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(context.l10n.commonCancel)),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(context.l10n.commonDelete)),
         ],
       ),
     );
@@ -1360,7 +1362,7 @@ class _CommentsTabState extends ConsumerState<_CommentsTab> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(title: Text('Signaler ce commentaire', style: AppTextStyles.h4)),
+            ListTile(title: Text(context.l10n.verseCommentReportTitle, style: AppTextStyles.h4)),
             for (final e in kVerseCommentReportReasons.entries)
               ListTile(title: Text(e.value), onTap: () => Navigator.pop(ctx, e.key)),
           ],
@@ -1370,7 +1372,7 @@ class _CommentsTabState extends ConsumerState<_CommentsTab> {
     if (reason == null) return;
     try {
       await ref.read(dailyVerseRepositoryProvider).reportComment(widget.verseId, c.id, reason);
-      if (mounted) _snack('Merci, le commentaire a été signalé à la modération.');
+      if (mounted) _snack(context.l10n.verseCommentReported);
     } on DailyVerseFailure catch (e) {
       if (mounted) _snack(e.message);
     }
@@ -1390,23 +1392,23 @@ class _CommentsTabState extends ConsumerState<_CommentsTab> {
               child: guest
                   ? TextField(
                       readOnly: true,
-                      onTap: () => requireAccount(context, ref, reason: 'commenter le verset du jour'),
-                      decoration: const InputDecoration(hintText: 'Ce que ce verset vous dit aujourd\'hui…'),
+                      onTap: () => requireAccount(context, ref, reason: context.l10n.verseReasonComment),
+                      decoration: InputDecoration(hintText: context.l10n.verseCommentHint),
                     )
                   : MentionTextField(
                       controller: _ctrl,
                       minLines: 1,
                       maxLines: 4,
                       maxLength: 1000,
-                      decoration: const InputDecoration(
-                        hintText: 'Ce que ce verset vous dit aujourd\'hui… (@ pour mentionner)',
+                      decoration: InputDecoration(
+                        hintText: context.l10n.verseCommentHintMention,
                         counterText: '',
                       ),
                     ),
             ),
             const SizedBox(width: 8),
             IconButton.filled(
-              tooltip: 'Envoyer',
+              tooltip: context.l10n.commonSend,
               onPressed: _sending ? null : _send,
               style: IconButton.styleFrom(backgroundColor: AppColors.primary),
               icon: const Icon(Icons.send_rounded),
@@ -1416,7 +1418,7 @@ class _CommentsTabState extends ConsumerState<_CommentsTab> {
         const SizedBox(height: 16),
         _AsyncList<VerseComment>(
           async: ref.watch(dailyVerseCommentsProvider(widget.verseId)),
-          empty: 'Aucun commentaire. Partagez ce que ce verset vous inspire.',
+          empty: context.l10n.verseCommentsEmpty,
           itemBuilder: (c) => _CommentTile(
             comment: c,
             onDelete: c.canDelete ? () => _delete(c) : null,
@@ -1468,7 +1470,7 @@ class _CommentTile extends StatelessWidget {
                 if (c.isHidden)
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
-                    child: Text('Retiré après signalement', style: AppTextStyles.bodySmall.copyWith(color: AppColors.warning)),
+                    child: Text(context.l10n.verseCommentHidden, style: AppTextStyles.bodySmall.copyWith(color: AppColors.warning)),
                   ),
                 const SizedBox(height: 4),
                 MentionText(c.body, mentions: c.mentions, style: AppTextStyles.bodyMedium),
@@ -1477,12 +1479,12 @@ class _CommentTile extends StatelessWidget {
           ),
           if (onDelete != null || onReport != null)
             PopupMenuButton<String>(
-              tooltip: 'Options',
+              tooltip: context.l10n.commonOptions,
               icon: const Icon(Icons.more_vert_rounded, size: 20, color: AppColors.textSecondary),
               onSelected: (v) => v == 'delete' ? onDelete?.call() : onReport?.call(),
               itemBuilder: (_) => [
-                if (onDelete != null) const PopupMenuItem(value: 'delete', child: Text('Supprimer')),
-                if (onReport != null) const PopupMenuItem(value: 'report', child: Text('Signaler')),
+                if (onDelete != null) PopupMenuItem(value: 'delete', child: Text(context.l10n.commonDelete)),
+                if (onReport != null) PopupMenuItem(value: 'report', child: Text(context.l10n.commonReport)),
               ],
             ),
         ],
@@ -1503,18 +1505,18 @@ class _TestimoniesTab extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('Ce verset s\'est accompli dans votre vie ? Racontez-le.', style: AppTextStyles.bodySmall),
+        Text(context.l10n.verseTestifyIntro, style: AppTextStyles.bodySmall),
         const SizedBox(height: 10),
         FilledButton.icon(
           onPressed: onTestify,
           style: FilledButton.styleFrom(backgroundColor: AppColors.secondary, minimumSize: const Size.fromHeight(46)),
           icon: const Icon(Icons.edit_rounded),
-          label: const Text('Témoigner sur ce verset'),
+          label: Text(context.l10n.verseTestify),
         ),
         const SizedBox(height: 16),
         _AsyncList<Testimony>(
           async: ref.watch(dailyVerseTestimoniesProvider(verseId)),
-          empty: 'Aucun témoignage ne cite encore ce verset.',
+          empty: context.l10n.verseTestimoniesEmpty,
           itemBuilder: (t) => _TestimonyTile(testimony: t),
           onRetry: () => ref.invalidate(dailyVerseTestimoniesProvider(verseId)),
         ),

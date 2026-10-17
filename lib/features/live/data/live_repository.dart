@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/app_constants.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../services/api_service.dart';
 import '../models/live_models.dart';
 
@@ -48,16 +49,16 @@ class LiveRepository {
       final serverMsg = body is Map ? body['message'] as String? : null;
       if (status == 503) {
         throw LiveFailure(
-          serverMsg ?? 'Le service vidéo est momentanément indisponible.',
+          serverMsg ?? L10n.current.liveVideoUnavailable,
           statusCode: 503,
         );
       }
       if (status >= 500) {
-        throw LiveFailure(serverMsg ?? 'Erreur du serveur ($status).',
+        throw LiveFailure(serverMsg ?? L10n.current.liveServerError(status),
             statusCode: status);
       }
-      throw const LiveFailure(
-          'Connexion impossible. Vérifiez votre accès à Internet.');
+      throw LiveFailure(
+          L10n.current.liveConnectionImpossible);
     }
   }
 

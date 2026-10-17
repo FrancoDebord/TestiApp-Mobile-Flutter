@@ -13,6 +13,7 @@ import 'admin_settings_screen.dart';
 import 'admin_stats_screen.dart';
 import 'admin_users_screen.dart';
 import 'admin_verifications_screen.dart';
+import '../../../l10n/app_localizations.dart';
 
 // =============================================================================
 // AdminDashboardScreen
@@ -66,12 +67,12 @@ class AdminDashboardScreen extends ConsumerWidget {
                       size: 18, color: Colors.white),
                 ),
                 const SizedBox(width: 10),
-                const Flexible(
+                Flexible(
                   child: Text(
-                    'Administration',
+                    context.l10n.adminTitle,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontFamily: 'Plus Jakarta Sans',
                       fontWeight: FontWeight.w600,
                       fontSize: 20,
@@ -86,14 +87,14 @@ class AdminDashboardScreen extends ConsumerWidget {
               IconButton(
                 icon: const Icon(Icons.fact_check_outlined,
                     color: Color(0xFF184797)),
-                tooltip: 'File de modération',
+                tooltip: context.l10n.adminModerationQueue,
                 onPressed: () => context.push('/moderation'),
               ),
               // Vérification des comptes personnels (docs/fonctionnalites/verification-des-comptes.md)
               IconButton(
                 icon: const Icon(Icons.how_to_reg_outlined,
                     color: Color(0xFF184797)),
-                tooltip: 'Vérification des comptes',
+                tooltip: context.l10n.adminAccountVerification,
                 onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
                     builder: (_) => const AdminVerificationsScreen())),
               ),
@@ -111,11 +112,11 @@ class AdminDashboardScreen extends ConsumerWidget {
                   child: _MetricsGrid(metrics: metrics),
                 ),
                 const SizedBox(height: 20),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Text(
-                    'Gestion',
-                    style: TextStyle(
+                    context.l10n.adminManagement,
+                    style: const TextStyle(
                       fontFamily: 'Plus Jakarta Sans',
                       fontWeight: FontWeight.w600,
                       fontSize: 15,
@@ -148,40 +149,41 @@ class _MetricsGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final cards = [
         AdminMetricCard(
-          title: 'Utilisateurs',
+          title: l10n.adminUsers,
           primaryValue: _fmt(metrics.totalUsers),
-          primaryLabel: 'total',
+          primaryLabel: l10n.adminMetricTotal,
           secondaryValue: '+${metrics.newUsersToday}',
-          secondaryLabel: 'nouveaux aujourd\'hui',
+          secondaryLabel: l10n.adminMetricNewToday,
           icon: Icons.people_outline_rounded,
           accentColor: const Color(0xFF184797),
         ),
         AdminMetricCard(
-          title: 'Témoignages',
+          title: l10n.adminTestimonies,
           primaryValue: _fmt(metrics.totalTestimonies),
-          primaryLabel: 'publiés',
+          primaryLabel: l10n.adminMetricPublished,
           secondaryValue: _fmt(metrics.viewsThisMonth),
-          secondaryLabel: 'vues ce mois',
+          secondaryLabel: l10n.adminMetricViewsThisMonth,
           icon: Icons.auto_stories_outlined,
           accentColor: const Color(0xFFF79009),
         ),
         AdminMetricCard(
-          title: 'Approbation',
+          title: l10n.adminApproval,
           primaryValue: '${metrics.approvalRate.toStringAsFixed(1)}%',
-          primaryLabel: 'taux d\'approbation',
+          primaryLabel: l10n.adminMetricApprovalRate,
           secondaryValue: '${metrics.pendingTestimonies}',
-          secondaryLabel: 'en attente',
+          secondaryLabel: l10n.adminMetricPending,
           icon: Icons.check_circle_outline_rounded,
           accentColor: const Color(0xFF12B76A),
         ),
         AdminMetricCard(
-          title: 'Engagement',
+          title: l10n.adminEngagement,
           primaryValue: metrics.avgEngagement.toStringAsFixed(1),
-          primaryLabel: 'moy. interactions',
+          primaryLabel: l10n.adminMetricAvgInteractions,
           secondaryValue: _fmt(metrics.commentsThisMonth),
-          secondaryLabel: 'commentaires/mois',
+          secondaryLabel: l10n.adminMetricCommentsPerMonth,
           icon: Icons.trending_up_rounded,
           accentColor: const Color(0xFF2B5DB0),
         ),
@@ -212,7 +214,9 @@ class _MetricsGrid extends StatelessWidget {
 
   /// 950 → « 950 », 12 400 → « 12,4k », 1 234 567 → « 1,2M ».
   String _fmt(int n) {
-    String one(double v) => v.toStringAsFixed(1).replaceAll('.', ',');
+    String one(double v) => L10n.languageCode == 'fr'
+        ? v.toStringAsFixed(1).replaceAll('.', ',')
+        : v.toStringAsFixed(1);
     if (n >= 1000000) return '${one(n / 1000000)}M';
     if (n >= 1000) return '${one(n / 1000)}k';
     return '$n';
@@ -229,47 +233,48 @@ class _SectionNavList extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final metrics = ref.watch(adminMetricsProvider).value;
 
+    final l10n = context.l10n;
     final sections = [
       (
         AdminSection.users,
         Icons.people_outline_rounded,
-        'Utilisateurs',
-        'Gérer les comptes',
+        l10n.adminUsers,
+        l10n.adminUsersSub,
         null,
       ),
       (
         AdminSection.content,
         Icons.article_outlined,
-        'Contenus',
-        'Témoignages publiés',
+        l10n.adminContent,
+        l10n.adminContentSub,
         null,
       ),
       (
         AdminSection.moderators,
         Icons.shield_outlined,
-        'Modérateurs',
-        'Assigner / retirer le rôle',
+        l10n.adminModerators,
+        l10n.adminModeratorsSub,
         null,
       ),
       (
         AdminSection.categories,
         Icons.category_outlined,
-        'Catégories',
-        'Ajouter, modifier, réordonner',
+        l10n.adminCategories,
+        l10n.adminCategoriesSub,
         null,
       ),
       (
         AdminSection.stats,
         Icons.bar_chart_rounded,
-        'Statistiques',
-        'Graphiques et tendances',
+        l10n.adminStats,
+        l10n.adminStatsSub,
         null,
       ),
       (
         AdminSection.settings,
         Icons.settings_outlined,
-        'Paramètres',
-        'Configuration de l\'app',
+        l10n.adminSettings,
+        l10n.adminSettingsSub,
         metrics?.pendingTestimonies,
       ),
     ];
@@ -299,15 +304,16 @@ class _SectionTitleBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final (title, icon) = switch (section) {
-      AdminSection.users => ('Gestion des utilisateurs', Icons.people_rounded),
+      AdminSection.users => (l10n.adminUsersManagement, Icons.people_rounded),
       AdminSection.content =>
-        ('Gestion des contenus', Icons.article_rounded),
+        (l10n.adminContentManagement, Icons.article_rounded),
       AdminSection.moderators =>
-        ('Modérateurs', Icons.admin_panel_settings_rounded),
-      AdminSection.categories => ('Catégories', Icons.category_rounded),
-      AdminSection.stats => ('Statistiques', Icons.analytics_rounded),
-      AdminSection.settings => ('Paramètres', Icons.settings_rounded),
+        (l10n.adminModerators, Icons.admin_panel_settings_rounded),
+      AdminSection.categories => (l10n.adminCategories, Icons.category_rounded),
+      AdminSection.stats => (l10n.adminStats, Icons.analytics_rounded),
+      AdminSection.settings => (l10n.adminSettings, Icons.settings_rounded),
     };
 
     return Container(

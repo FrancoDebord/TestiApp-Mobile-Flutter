@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../home/models/testimony_model.dart';
 import '../offline_open.dart';
 import '../providers/downloads_provider.dart';
@@ -52,29 +53,29 @@ class DownloadButton extends ConsumerWidget {
         switch (item.status) {
       DownloadStatus.none => (
           Icon(Icons.download_rounded, size: size, color: c),
-          'Télécharger',
-          'Télécharger pour lire hors ligne',
+          context.l10n.downloadsDownload,
+          context.l10n.downloadsDownloadTooltip,
           () => _start(context, ref),
         ),
       DownloadStatus.queued || DownloadStatus.downloading => (
           _Progress(value: item.progress, size: size, color: c),
           item.progress == null
-              ? 'En attente…'
-              : '${((item.progress ?? 0) * 100).round()} %',
-          'Annuler le téléchargement',
+              ? context.l10n.downloadsQueued
+              : context.l10n.downloadsPercent(((item.progress ?? 0) * 100).round()),
+          context.l10n.downloadsCancelDownload,
           () => _cancel(context, ref),
         ),
       DownloadStatus.done => (
           Icon(Icons.download_done_rounded,
               size: size, color: AppColors.success),
-          'Téléchargé',
-          'Téléchargé · disponible hors ligne',
+          context.l10n.downloadsDownloaded,
+          context.l10n.downloadsDownloadedTooltip,
           () => _openMenu(context, ref, item.entry),
         ),
       DownloadStatus.failed => (
           Icon(Icons.refresh_rounded, size: size, color: AppColors.danger),
-          'Réessayer',
-          item.error ?? 'Échec du téléchargement · réessayer',
+          context.l10n.commonRetry,
+          item.error ?? context.l10n.downloadsFailedRetry,
           () => _start(context, ref, retry: true),
         ),
     };
@@ -135,15 +136,16 @@ class DownloadButton extends ConsumerWidget {
       {bool retry = false}) async {
     final messenger = ScaffoldMessenger.maybeOf(context);
     final notifier = ref.read(downloadsProvider.notifier);
-    _snack(context, 'Téléchargement lancé…');
+    _snack(context, context.l10n.downloadsStarted);
     final outcome = retry
         ? await notifier.retry(testimony)
         : await notifier.download(testimony);
+    final l10n = context.l10n;
     final msg = switch (outcome) {
-      DownloadOutcome.done => '« ${testimony.title} » est disponible hors ligne',
+      DownloadOutcome.done => l10n.downloadsAvailableOffline(testimony.title),
       DownloadOutcome.cancelled => null,
       DownloadOutcome.failed || DownloadOutcome.unsupported =>
-        notifier.statusOf(testimony.id).error ?? 'Échec du téléchargement',
+        notifier.statusOf(testimony.id).error ?? l10n.downloadsFailed,
     };
     if (msg == null || messenger == null) return;
     messenger
@@ -156,7 +158,7 @@ class DownloadButton extends ConsumerWidget {
 
   void _cancel(BuildContext context, WidgetRef ref) {
     ref.read(downloadsProvider.notifier).cancel(testimony.id);
-    _snack(context, 'Téléchargement annulé');
+    _snack(context, context.l10n.downloadsCancelled);
   }
 
   Future<void> _openMenu(
@@ -183,13 +185,13 @@ class DownloadButton extends ConsumerWidget {
             ListTile(
               leading: const Icon(Icons.play_circle_outline_rounded,
                   color: AppColors.primary),
-              title: const Text('Lire hors ligne'),
+              title: Text(context.l10n.downloadsReadOffline),
               onTap: () => Navigator.pop(ctx, 'play'),
             ),
             ListTile(
               leading: const Icon(Icons.delete_outline_rounded,
                   color: AppColors.danger),
-              title: const Text('Supprimer le téléchargement'),
+              title: Text(context.l10n.downloadsDeleteDownload),
               onTap: () => Navigator.pop(ctx, 'delete'),
             ),
             const SizedBox(height: AppSpacing.sm),
@@ -203,7 +205,7 @@ class DownloadButton extends ConsumerWidget {
       await openDownloadedTestimony(context, ref, e);
     } else if (choice == 'delete') {
       await ref.read(downloadsProvider.notifier).delete(testimony.id);
-      if (context.mounted) _snack(context, 'Téléchargement supprimé');
+      if (context.mounted) _snack(context, context.l10n.downloadsDeleted);
     }
   }
 }

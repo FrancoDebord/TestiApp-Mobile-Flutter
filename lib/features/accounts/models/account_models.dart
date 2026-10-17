@@ -1,6 +1,7 @@
 // Administrateurs de compte : modèles (GET /users/me/accounts, /users/me/managers,
 // /users/me/managers/activity, /users/me/managed-organizations).
 
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/models/user_model.dart';
 
 String? _str(dynamic v) {
@@ -45,7 +46,7 @@ class AccountSummary {
   });
 
   factory AccountSummary.fromJson(Map<String, dynamic> m) {
-    final name = _str(m['displayName']) ?? _str(m['display_name']) ?? 'Compte';
+    final name = _str(m['displayName']) ?? _str(m['display_name']) ?? L10n.current.accountsFallbackName;
     return AccountSummary(
       id: '${m['id'] ?? ''}',
       displayName: name,
@@ -171,7 +172,7 @@ class ManagerActivity {
   factory ManagerActivity.fromJson(Map<String, dynamic> m) => ManagerActivity(
         id: '${m['id'] ?? ''}',
         actorId: _str(m['actorId']),
-        actorName: _str(m['actorName']) ?? 'Un administrateur',
+        actorName: _str(m['actorName']) ?? L10n.current.accountsFallbackActor,
         action: _str(m['action']) ?? '',
         createdAt: _date(m['createdAt']),
       );

@@ -13,6 +13,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../services/api_service.dart';
+import '../../l10n/app_localizations.dart';
 
 // ── Enums ────────────────────────────────────────────────────────────────────
 
@@ -32,20 +33,20 @@ enum VideoQuality {
 
   /// Libellé court (bouton du lecteur).
   String get label => switch (this) {
-        auto => 'Auto',
-        p720 => 'HD',
-        p360 => 'Standard',
-        p240 => 'Économie',
+        auto => L10n.current.qualityAuto,
+        p720 => L10n.current.qualityVideoHd,
+        p360 => L10n.current.qualityVideoStandard,
+        p240 => L10n.current.qualityVideoDataSaver,
       };
 
   /// Libellé complet (menus) : « Économie (240p) ».
-  String get fullLabel => this == auto ? 'Auto' : '$label (${height}p)';
+  String get fullLabel => this == auto ? L10n.current.qualityAuto : L10n.current.qualityVideoFullLabel(label, height);
 
   String get hint => switch (this) {
-        auto => "S'adapte à votre connexion",
-        p720 => 'Haute qualité · plus de données',
-        p360 => 'Bon compromis · ≈ 6 Mo par minute',
-        p240 => 'Minimum de données · ≈ 4,5 Mo par minute',
+        auto => L10n.current.qualityAutoHint,
+        p720 => L10n.current.qualityVideoHdHint,
+        p360 => L10n.current.qualityVideoStandardHint,
+        p240 => L10n.current.qualityVideoDataSaverHint,
       };
 
   /// Choix proposés sur données mobiles (jamais Auto ni HD).
@@ -67,19 +68,19 @@ enum AudioQuality {
   final int maxKbps;
 
   String get label => switch (this) {
-        auto => 'Auto',
-        high => 'Haute',
-        standard => 'Standard',
-        low => 'Faible',
-        veryLow => 'Très faible',
+        auto => L10n.current.qualityAuto,
+        high => L10n.current.qualityAudioHigh,
+        standard => L10n.current.qualityAudioStandard,
+        low => L10n.current.qualityAudioLow,
+        veryLow => L10n.current.qualityAudioVeryLow,
       };
 
   String get hint => switch (this) {
-        auto => "S'adapte à votre connexion",
-        high => 'Meilleur son · plus de données',
-        standard => 'Bon compromis (≈128 kbps)',
-        low => 'Économique (≈64 kbps)',
-        veryLow => 'Minimum de données (≈32 kbps)',
+        auto => L10n.current.qualityAutoHint,
+        high => L10n.current.qualityAudioHighHint,
+        standard => L10n.current.qualityAudioStandardHint,
+        low => L10n.current.qualityAudioLowHint,
+        veryLow => L10n.current.qualityAudioVeryLowHint,
       };
 }
 
@@ -90,9 +91,9 @@ enum RepeatMode {
   all;
 
   String get label => switch (this) {
-        off => 'Pas de répétition',
-        one => 'Répéter ce témoignage',
-        all => 'Répéter la liste',
+        off => L10n.current.mediaRepeatOff,
+        one => L10n.current.mediaRepeatOne,
+        all => L10n.current.mediaRepeatAll,
       };
 
   RepeatMode get next => RepeatMode.values[(index + 1) % 3];
@@ -103,7 +104,7 @@ enum FeedLayout {
   cards,
   compact;
 
-  String get label => this == cards ? 'Grandes cartes' : 'Liste compacte';
+  String get label => this == cards ? L10n.current.mediaFeedLayoutCards : L10n.current.mediaFeedLayoutCompact;
 }
 
 // ── State ────────────────────────────────────────────────────────────────────

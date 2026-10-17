@@ -15,6 +15,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../models/event_models.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Identifiant de l'application, exigé par la politique des tuiles OpenStreetMap
 /// (https://operations.osmfoundation.org/policies/tiles/).
@@ -38,7 +39,7 @@ Widget _osmTiles() {
 
 /// Attribution OpenStreetMap, obligatoire sur toute carte.
 Widget _osmAttribution() => SimpleAttributionWidget(
-      source: const Text('© contributeurs OpenStreetMap', style: TextStyle(fontSize: 10)),
+      source: Text(L10n.current.eventsOsmAttribution, style: const TextStyle(fontSize: 10)),
       onTap: () => launchUrl(Uri.parse('https://www.openstreetmap.org/copyright'),
           mode: LaunchMode.externalApplication),
     );
@@ -48,8 +49,8 @@ Marker _pin(LatLng point) => Marker(
       width: 44,
       height: 44,
       alignment: Alignment.topCenter,
-      child: const Icon(Icons.location_on_rounded, size: 44, color: AppColors.secondaryDark,
-          semanticLabel: "Lieu de l'événement"),
+      child: Icon(Icons.location_on_rounded, size: 44, color: AppColors.secondaryDark,
+          semanticLabel: L10n.current.eventsPlacePin),
     );
 
 String formatCoordinates(double lat, double lng) =>
@@ -74,25 +75,20 @@ abstract final class EventLocationService {
   /// Position actuelle de l'appareil (demande la permission si besoin).
   static Future<LatLng> currentPosition() async {
     if (!kIsWeb && !await Geolocator.isLocationServiceEnabled()) {
-      throw const LocationFailure(
-          'La localisation est désactivée. Activez-la dans les réglages du téléphone, '
-          'ou touchez la carte pour placer le repère.');
+      throw LocationFailure(L10n.current.eventsLocationServiceOff);
     }
     var permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
     }
     if (permission == LocationPermission.denied) {
-      throw const LocationFailure(
-          'Accès à la position refusé. Touchez la carte pour placer le repère.');
+      throw LocationFailure(L10n.current.eventsLocationDenied);
     }
     if (permission == LocationPermission.deniedForever) {
       throw LocationFailure(
           kIsWeb
-              ? 'Accès à la position bloqué : autorisez la localisation pour ce site dans '
-                  'les réglages du navigateur, ou touchez la carte.'
-              : "Accès à la position refusé. Autorisez-le dans les réglages de l'application, "
-                  'ou touchez la carte pour placer le repère.',
+              ? L10n.current.eventsLocationBlockedWeb
+              : L10n.current.eventsLocationDeniedForever,
           canOpenSettings: !kIsWeb);
     }
     try {
@@ -104,8 +100,7 @@ abstract final class EventLocationService {
       );
       return LatLng(p.latitude, p.longitude);
     } catch (_) {
-      throw const LocationFailure(
-          'Position introuvable pour le moment. Touchez la carte pour placer le repère.');
+      throw LocationFailure(L10n.current.eventsLocationNotFound);
     }
   }
 
@@ -114,7 +109,7 @@ abstract final class EventLocationService {
     connectTimeout: const Duration(seconds: 10),
     receiveTimeout: const Duration(seconds: 10),
     // Politique Nominatim : application identifiée (le navigateur envoie son propre en-tête sur le web).
-    headers: kIsWeb ? null : {'User-Agent': 'TestiApp/1.0 ($osmUserAgentPackage)'},
+    headers: kIsWeb ? null : {'User-Agent': 'TestiApp/1.0 ($osmUserAgentPackage)'}, // i18n-ignore
   ));
 
   /// Géocodage d'une adresse (Nominatim / OpenStreetMap) : à n'appeler que sur une action
@@ -272,11 +267,11 @@ class _EventMapPickerState extends State<EventMapPicker> {
     setState(() => _locating = true);
     try {
       final p = await EventLocationService.currentPosition();
-      if (mounted) _place(p, zoom: 17, message: 'Repère placé sur votre position.');
+      if (mounted) _place(p, zoom: 17, message: L10n.current.eventsPinOnPosition);
     } on LocationFailure catch (e) {
       _snack(e.message,
           action: e.canOpenSettings
-              ? SnackBarAction(label: 'Réglages', onPressed: Geolocator.openAppSettings)
+              ? SnackBarAction(label: L10n.current.locationOpenSettings, onPressed: Geolocator.openAppSettings)
               : null);
     } finally {
       if (mounted) setState(() => _locating = false);
@@ -286,7 +281,7 @@ class _EventMapPickerState extends State<EventMapPicker> {
   Future<void> _search() async {
     final q = widget.addressQuery?.call().trim() ?? '';
     if (q.isEmpty) {
-      _snack("Saisissez d'abord le lieu, l'adresse ou la ville.");
+      _snack(L10n.current.eventsEnterAddressFirst);
       return;
     }
     // Politique Nominatim : une requête par seconde au plus.
@@ -297,12 +292,12 @@ class _EventMapPickerState extends State<EventMapPicker> {
       final p = await EventLocationService.geocode(q);
       if (!mounted) return;
       if (p == null) {
-        _snack('Adresse introuvable sur la carte : touchez la carte pour placer le repère.');
+        _snack(L10n.current.eventsAddressNotFound);
       } else {
-        _place(p, zoom: 16, message: 'Adresse trouvée : ajustez le repère si besoin.');
+        _place(p, zoom: 16, message: L10n.current.eventsAddressFound);
       }
     } catch (_) {
-      _snack('Recherche impossible pour le moment : touchez la carte pour placer le repère.');
+      _snack(L10n.current.eventsAddressSearchFailed);
     } finally {
       if (mounted) setState(() => _searching = false);
     }
@@ -324,7 +319,7 @@ class _EventMapPickerState extends State<EventMapPicker> {
                   ? const SizedBox(
                       width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                   : const Icon(Icons.my_location_rounded, size: 18),
-              label: const Text('Ma position'),
+              label: Text(context.l10n.eventsMyPosition),
             ),
             if (widget.addressQuery != null)
               OutlinedButton.icon(
@@ -333,13 +328,13 @@ class _EventMapPickerState extends State<EventMapPicker> {
                     ? const SizedBox(
                         width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                     : const Icon(Icons.travel_explore_rounded, size: 18),
-                label: const Text("Chercher l'adresse"),
+                label: Text(context.l10n.eventsSearchAddress),
               ),
             if (p != null)
               TextButton.icon(
                 onPressed: _clear,
                 icon: const Icon(Icons.close_rounded, size: 18),
-                label: const Text('Effacer le repère'),
+                label: Text(context.l10n.eventsClearPin),
               ),
           ],
         ),
@@ -349,7 +344,7 @@ class _EventMapPickerState extends State<EventMapPicker> {
           child: SizedBox(
             height: 240,
             child: Semantics(
-              label: "Carte : touchez pour placer le repère du lieu de l'événement",
+              label: context.l10n.eventsMapPickerSemantics,
               child: FlutterMap(
                 mapController: _map,
                 options: MapOptions(
@@ -372,8 +367,8 @@ class _EventMapPickerState extends State<EventMapPicker> {
         const SizedBox(height: 6),
         Text(
           p == null
-              ? 'Aucun repère placé. Touchez la carte pour indiquer le lieu.'
-              : '${_message ?? 'Repère placé'} (${formatCoordinates(p.latitude, p.longitude)})',
+              ? context.l10n.eventsNoPin
+              : '${_message ?? context.l10n.eventsPinPlaced} (${formatCoordinates(p.latitude, p.longitude)})',
           style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
         ),
       ],
@@ -392,9 +387,9 @@ class EventPlaceCard extends StatelessWidget {
   Future<void> _directions(BuildContext context) async {
     final ok = await EventDirections.open(event);
     if (!ok && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         behavior: SnackBarBehavior.floating,
-        content: Text("Impossible d'ouvrir l'itinéraire sur cet appareil."),
+        content: Text(context.l10n.eventsDirectionsFailed),
       ));
     }
   }
@@ -404,9 +399,9 @@ class EventPlaceCard extends StatelessWidget {
     final text = e.fullAddress ?? formatCoordinates(e.latitude!, e.longitude!);
     await Clipboard.setData(ClipboardData(text: text));
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         behavior: SnackBarBehavior.floating,
-        content: Text('Adresse copiée.'),
+        content: Text(context.l10n.eventsAddressCopied),
       ));
     }
   }
@@ -430,7 +425,7 @@ class EventPlaceCard extends StatelessWidget {
             children: [
               const Icon(Icons.place_rounded, color: AppColors.primary, size: 20),
               const SizedBox(width: 6),
-              Text('Lieu',
+              Text(context.l10n.eventsPlace,
                   style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w800, color: AppColors.primary)),
             ],
           ),
@@ -449,7 +444,7 @@ class EventPlaceCard extends StatelessWidget {
               child: SizedBox(
                 height: 170,
                 child: Semantics(
-                  label: "Carte du lieu de l'événement",
+                  label: context.l10n.eventsPlaceMap,
                   child: FlutterMap(
                     options: MapOptions(
                       initialCenter: point,
@@ -474,12 +469,12 @@ class EventPlaceCard extends StatelessWidget {
               FilledButton.icon(
                 onPressed: () => _directions(context),
                 icon: const Icon(Icons.directions_rounded, size: 18),
-                label: const Text('Itinéraire'),
+                label: Text(context.l10n.eventsDirections),
               ),
               OutlinedButton.icon(
                 onPressed: () => _copy(context),
                 icon: const Icon(Icons.copy_rounded, size: 18),
-                label: const Text("Copier l'adresse"),
+                label: Text(context.l10n.eventsCopyAddress),
               ),
             ],
           ),

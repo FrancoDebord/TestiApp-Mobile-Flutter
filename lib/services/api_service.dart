@@ -15,6 +15,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../core/app_constants.dart';
 import 'acting_as_interceptor.dart';
+import '../l10n/app_localizations.dart' show L10n;
 
 // ── Secure storage singleton ───────────────────────────────────────────────────
 
@@ -32,6 +33,7 @@ class LaravelResponse<T> {
     required this.data,
     this.message,
     this.meta,
+    this.body = const {},
   });
 
   final bool success;
@@ -41,11 +43,14 @@ class LaravelResponse<T> {
   /// Pagination des listes (`meta` : current_page, last_page, total…), si fournie.
   final Object? meta;
 
+  /// Corps complet de la réponse (champs hors de `data`, ex. `can_create`).
+  final Map<String, dynamic> body;
+
   factory LaravelResponse.fromDio(Response response) {
     final raw = response.data;
     if (raw is! Map<String, dynamic>) {
       throw LaravelApiException(
-        message: 'Réponse inattendue du serveur.',
+        message: L10n.current.apiUnexpectedResponse,
         statusCode: response.statusCode ?? 0,
       );
     }
@@ -56,7 +61,7 @@ class LaravelResponse<T> {
     if (!success) {
       final errors = body['errors'];
       throw LaravelApiException(
-        message: message ?? 'Une erreur est survenue.',
+        message: message ?? L10n.current.commonError,
         errors: errors is Map<String, dynamic> ? errors : null,
         statusCode: response.statusCode ?? 0,
       );
@@ -67,6 +72,7 @@ class LaravelResponse<T> {
       data: body['data'] as T,
       message: message,
       meta: body['meta'],
+      body: body,
     );
   }
 }
@@ -114,10 +120,20 @@ class LaravelApiException implements Exception {
   }
 
   @override
-  String toString() => 'LaravelApiException($statusCode): $message';
+  String toString() => 'LaravelApiException($statusCode): $message'; // i18n-ignore
 }
 
 // ── Auth interceptor ───────────────────────────────────────────────────────────
+
+/// En-tête Accept-Language de chaque requête : langue choisie dans
+/// l'application (« fr-BJ,fr;q=0.9 », « en »).
+class LanguageInterceptor extends Interceptor {
+  @override
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+    options.headers['Accept-Language'] = L10n.acceptLanguage; // i18n-ignore
+    handler.next(options);
+  }
+}
 
 class AuthInterceptor extends Interceptor {
   AuthInterceptor(this._storage);
@@ -130,9 +146,9 @@ class AuthInterceptor extends Interceptor {
   ) async {
     final token = await _storage.read(key: AppConstants.keyAccessToken);
     if (token != null && token.isNotEmpty) {
-      options.headers['Authorization'] = 'Bearer $token';
+      options.headers['Authorization'] = 'Bearer $token'; // i18n-ignore
     }
-    options.headers['Accept'] = 'application/json';
+    options.headers['Accept'] = 'application/json'; // i18n-ignore
     options.headers['X-Requested-With'] = 'XMLHttpRequest';
     handler.next(options);
   }
@@ -161,7 +177,7 @@ class AuthInterceptor extends Interceptor {
         if (refreshToken != null) {
           final refreshDio = Dio(BaseOptions(
             baseUrl: AppConstants.baseUrl,
-            headers: {'Accept': 'application/json'},
+            headers: {'Accept': 'application/json'}, // i18n-ignore
           ));
           final res = await refreshDio.post(
             AppConstants.authRefresh,
@@ -183,7 +199,7 @@ class AuthInterceptor extends Interceptor {
       } catch (_) {}
 
       if (newToken != null) {
-        err.requestOptions.headers['Authorization'] = 'Bearer $newToken';
+        err.requestOptions.headers['Authorization'] = 'Bearer $newToken'; // i18n-ignore
         err.requestOptions.extra['_auth_retry'] = true;
         try {
           final retried = await Dio().fetch(err.requestOptions);
@@ -258,7 +274,7 @@ class LoggingInterceptor extends Interceptor {
         : data;
     final text = '$masked';
     return text.length > _maxBodyChars
-        ? '${text.substring(0, _maxBodyChars)}… (${text.length} car.)'
+        ? '${text.substring(0, _maxBodyChars)}… (${text.length} car.)' // i18n-ignore (journal)
         : text;
   }
 
@@ -305,11 +321,13 @@ class ApiService {
         receiveTimeout:
             const Duration(milliseconds: AppConstants.receiveTimeoutMs),
         headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
+          'Content-Type': 'application/json', // i18n-ignore
+          'Accept': 'application/json', // i18n-ignore
         },
       ),
     )
+      // Langue affichée (Accept-Language) : messages et contenus du serveur.
+      ..interceptors.add(LanguageInterceptor())
       ..interceptors.add(AuthInterceptor(storage))
       // Agir au nom d'un compte administré (en-tête X-Act-As).
       ..interceptors.add(ActingAsInterceptor(actingAs ?? ActingAsStore()))
@@ -335,12 +353,11 @@ class ApiService {
     final errors     = body['errors'];
     // Route absente (« The route api/v1/feed could not be found. ») : le serveur
     // n'a pas encore la version de l'API attendue par l'application.
-    if (statusCode == 404 && message != null && message.contains('could not be found')) {
-      message = "Cette fonctionnalité n'est pas encore disponible sur le serveur. "
-          'Réessayez après sa mise à jour.';
+    if (statusCode == 404 && message != null && message.contains('could not be found')) { // i18n-ignore
+      message = L10n.current.apiFeatureNotDeployed;
     }
     throw LaravelApiException(
-      message:    message ?? 'Erreur serveur ($statusCode).',
+      message:    message ?? L10n.current.apiServerError(statusCode),
       errors:     errors is Map<String, dynamic> ? errors : null,
       statusCode: statusCode,
     );

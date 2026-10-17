@@ -96,5 +96,12 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!-- Notifications push (Firebase Cloud Messaging) : messages reçus en arrière-plan
+	     (content-available), voir lib/services/push_service.dart -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>

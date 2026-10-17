@@ -33,6 +33,9 @@ import '../../../../shared/widgets/mention_text.dart' show MentionText;
 import '../../../../shared/widgets/mention_text_field.dart';
 import '../providers/publish_provider.dart';
 import 'video_camera_screen.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../conversion/data/conversion_repository.dart' show conversionMinYear, isValidConversionYear;
+import '../../conversion/widgets/conversion_widgets.dart' show conversionIcon;
 
 // =============================================================================
 // PublishPreviewScreen — 3-step stepper for text / audio / video testimony
@@ -123,8 +126,6 @@ class _StepperHeader extends StatelessWidget {
   final int step;
   final TestimonyFormat format;
 
-  static const _stepNames = ['Détails', 'Contenu', 'Publication'];
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -136,7 +137,7 @@ class _StepperHeader extends StatelessWidget {
       child: Row(
         children: [
           IconButton(
-            tooltip: 'Retour',
+            tooltip: context.l10n.commonBack,
             icon: const Icon(Icons.arrow_back_rounded,
                 color: AppColors.textPrimary),
             onPressed: () => context.pop(),
@@ -157,7 +158,14 @@ class _StepperHeader extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Étape $step sur 3 · ${_stepNames[(step - 1).clamp(0, 2)]}',
+                  context.l10n.publishStepOf(
+                    step,
+                    [
+                      context.l10n.publishStepDetails,
+                      context.l10n.publishStepContent,
+                      context.l10n.publishStepPublication,
+                    ][(step - 1).clamp(0, 2)],
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.bodySmall,
@@ -267,17 +275,22 @@ class _Step1DetailsState extends ConsumerState<_Step1Details> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // ── Témoignage de conversion : année, lieu, verset (facultatifs) ──
+          if (ref.watch(publishConversionProvider) != null) ...[
+            const _SectionCard(children: [ConversionFieldsForm()]),
+            const SizedBox(height: AppSpacing.lg),
+          ],
           _SectionCard(
             children: [
               // ── Title (facultatif : repli sur la description) ─────────────
-              const _FieldLabel(label: 'Titre (optionnel)', required: false),
+              _FieldLabel(label: context.l10n.publishTitleOptional, required: false),
               const SizedBox(height: 8),
               TextField(
                 controller: _titleCtrl,
                 maxLength: 80,
                 onChanged: notifier.updateTitle,
                 decoration: _inputDecoration(
-                  hint: 'Ex : Dieu a changé ma vie',
+                  hint: context.l10n.publishTitleHint,
                   counterText: '${draft.title.length}/80',
                 ),
                 style: _inputTextStyle,
@@ -288,13 +301,13 @@ class _Step1DetailsState extends ConsumerState<_Step1Details> {
               // Texte : corps du témoignage (obligatoire). Audio : transcription.
               // Vidéo : description facultative.
               _FieldLabel(
-                label: isText ? 'Description' : 'Description (optionnel)',
+                label: isText ? context.l10n.publishDescription : context.l10n.publishDescriptionOptional,
                 required: isText,
               ),
               if (isAudio) ...[
                 const SizedBox(height: 2),
                 Text(
-                  "Sert aussi de transcription pour l'accessibilité.",
+                  context.l10n.publishTranscriptHint,
                   style: AppTextStyles.bodySmall,
                 ),
               ],
@@ -311,7 +324,7 @@ class _Step1DetailsState extends ConsumerState<_Step1Details> {
                 maxLines: isText ? 14 : 8,
                 keyboardType: TextInputType.multiline,
                 decoration: _inputDecoration(
-                  hint: 'Racontez votre témoignage… (@ pour mentionner)',
+                  hint: context.l10n.publishBodyHint,
                   counterText: '$descLength/5000',
                   contentPadding: const EdgeInsets.all(14),
                 ),
@@ -322,7 +335,7 @@ class _Step1DetailsState extends ConsumerState<_Step1Details> {
               // ── Category ──────────────────────────────────────────────────
               // Carnet privé : catégorie facultative.
               _FieldLabel(
-                label: isPrivate ? 'Catégorie (optionnel)' : 'Catégorie',
+                label: isPrivate ? context.l10n.publishCategoryOptional : context.l10n.journalCategory,
                 required: !isPrivate,
               ),
               const SizedBox(height: 8),
@@ -337,8 +350,8 @@ class _Step1DetailsState extends ConsumerState<_Step1Details> {
           // ── Cover image ─────────────────────────────────────────────────────
           _SectionCard(
             children: [
-              const _FieldLabel(
-                  label: 'Image de couverture (optionnel)', required: false),
+              _FieldLabel(
+                  label: context.l10n.publishCoverOptional, required: false),
               const SizedBox(height: 8),
               _CoverImagePicker(
                 imagePath: draft.coverImagePath,
@@ -352,6 +365,110 @@ class _Step1DetailsState extends ConsumerState<_Step1Details> {
           const _SectionCard(children: [_ProofsSection()]),
         ],
       ),
+    );
+  }
+}
+
+/// Champs du témoignage de conversion (année, lieu, verset), tous facultatifs.
+class ConversionFieldsForm extends ConsumerStatefulWidget {
+  const ConversionFieldsForm({super.key});
+
+  @override
+  ConsumerState<ConversionFieldsForm> createState() => _ConversionFieldsFormState();
+}
+
+class _ConversionFieldsFormState extends ConsumerState<ConversionFieldsForm> {
+  late final TextEditingController _year;
+  late final TextEditingController _place;
+  late final TextEditingController _verse;
+
+  @override
+  void initState() {
+    super.initState();
+    final f = ref.read(publishConversionProvider) ?? const ConversionFields();
+    _year = TextEditingController(text: f.year?.toString() ?? '');
+    _place = TextEditingController(text: f.place);
+    _verse = TextEditingController(text: f.verse);
+  }
+
+  @override
+  void dispose() {
+    _year.dispose();
+    _place.dispose();
+    _verse.dispose();
+    super.dispose();
+  }
+
+  void _sync() {
+    final current = ref.read(publishConversionProvider);
+    if (current == null) return;
+    ref.read(publishConversionProvider.notifier).update(ConversionFields(
+          year: int.tryParse(_year.text.trim()),
+          place: _place.text,
+          verse: _verse.text,
+        ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final yearText = _year.text.trim();
+    final year = int.tryParse(yearText);
+    final yearError = yearText.isNotEmpty && (year == null || !isValidConversionYear(year))
+        ? l10n.conversionYearInvalid(conversionMinYear, DateTime.now().year)
+        : null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            const Icon(conversionIcon, color: AppColors.secondaryDark, size: 20),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(l10n.conversionMyConversion,
+                  style: AppTextStyles.labelMedium.copyWith(fontWeight: FontWeight.w800)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(l10n.conversionFieldsHint, style: AppTextStyles.bodySmall),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _year,
+          keyboardType: TextInputType.number,
+          maxLength: 4,
+          onChanged: (_) => setState(_sync),
+          decoration: _inputDecoration(hint: l10n.conversionYearHint, counterText: '').copyWith(
+            labelText: l10n.conversionYear,
+            errorText: yearError,
+            prefixIcon: const Icon(Icons.event_rounded),
+          ),
+          style: _inputTextStyle,
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _place,
+          maxLength: 150,
+          textCapitalization: TextCapitalization.sentences,
+          onChanged: (_) => _sync(),
+          decoration: _inputDecoration(hint: l10n.conversionPlaceHint, counterText: '').copyWith(
+            labelText: l10n.conversionPlace,
+            prefixIcon: const Icon(Icons.place_outlined),
+          ),
+          style: _inputTextStyle,
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _verse,
+          maxLength: 100,
+          onChanged: (_) => _sync(),
+          decoration: _inputDecoration(hint: l10n.conversionVerseHint, counterText: '').copyWith(
+            labelText: l10n.conversionVerse,
+            prefixIcon: const Icon(Icons.menu_book_rounded),
+          ),
+          style: _inputTextStyle,
+        ),
+      ],
     );
   }
 }
@@ -430,14 +547,14 @@ class _Step2TextState extends ConsumerState<_Step2Text> {
             children: [
               Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: _FieldLabel(
-                        label: 'Votre témoignage', required: false),
+                        label: context.l10n.publishYourTestimony, required: false),
                   ),
                   TextButton.icon(
                     onPressed: ref.read(publishStepProvider.notifier).previous,
                     icon: const Icon(Icons.edit_rounded, size: 16),
-                    label: const Text('Modifier'),
+                    label: Text(context.l10n.commonEdit),
                     style: TextButton.styleFrom(
                       foregroundColor: AppColors.primary,
                       textStyle: const TextStyle(
@@ -451,7 +568,7 @@ class _Step2TextState extends ConsumerState<_Step2Text> {
               ),
               const SizedBox(height: 4),
               MentionText(
-                body.isEmpty ? 'Aucune description.' : body,
+                body.isEmpty ? context.l10n.publishNoDescription : body,
                 mentions: draft.mentions,
                 maxLines: 6,
                 overflow: TextOverflow.ellipsis,
@@ -468,8 +585,8 @@ class _Step2TextState extends ConsumerState<_Step2Text> {
           // ── Bible verse ──────────────────────────────────────────────────
           _SectionCard(
             children: [
-              const _FieldLabel(
-                  label: 'Verset biblique (optionnel)', required: false),
+              _FieldLabel(
+                  label: context.l10n.publishVerseOptional, required: false),
               const SizedBox(height: 8),
               TextField(
                 controller: _verseCtrl,
@@ -481,7 +598,7 @@ class _Step2TextState extends ConsumerState<_Step2Text> {
                   }
                 },
                 decoration: _inputDecoration(
-                  hint: 'Ex. : Jean 3:16 ou sélectionnez dans la Bible',
+                  hint: context.l10n.publishVerseHint,
                   prefixIcon: const Icon(Icons.menu_book_rounded,
                       color: AppColors.secondary, size: 20),
                 ),
@@ -536,9 +653,9 @@ class _Step2AudioState extends ConsumerState<_Step2Audio> {
     if (!hasPerm) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Permission microphone refusée.',
-                style: TextStyle(fontFamily: AppFonts.family)),
+          SnackBar(
+            content: Text(context.l10n.publishMicPermissionDenied,
+                style: const TextStyle(fontFamily: AppFonts.family)),
             backgroundColor: AppColors.danger,
           ),
         );
@@ -631,7 +748,7 @@ class _Step2AudioState extends ConsumerState<_Step2Audio> {
               const Expanded(child: Divider(color: AppColors.border)),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Text('ou',
+                child: Text(context.l10n.publishOr,
                     style: const TextStyle(
                         fontFamily: AppFonts.family,
                         fontSize: 13,
@@ -646,7 +763,7 @@ class _Step2AudioState extends ConsumerState<_Step2Audio> {
           // ── Import fichier ─────────────────────────────────────────────────
           _UploadButton(
             icon:  Icons.upload_file_rounded,
-            label: 'Importer depuis les fichiers',
+            label: context.l10n.publishImportFromFiles,
             onTap: _import,
           ),
 
@@ -844,9 +961,9 @@ class _VideoSourceToggle extends StatelessWidget {
       ),
       child: Row(
         children: [
-          option(false, Icons.videocam_rounded, 'Fichier vidéo'),
+          option(false, Icons.videocam_rounded, context.l10n.publishVideoFile),
           const SizedBox(width: 4),
-          option(true, Icons.smart_display_rounded, 'Lien YouTube'),
+          option(true, Icons.smart_display_rounded, context.l10n.publishYouTubeLink),
         ],
       ),
     );
@@ -878,13 +995,13 @@ class _YouTubeLinkFieldState extends State<_YouTubeLinkField> {
     final text = _ctrl.text.trim();
     final id = extractYouTubeId(text);
     final error = text.isNotEmpty && id == null
-        ? 'Lien YouTube non reconnu (youtube.com/watch?v=…, youtu.be/…, /shorts/…).'
+        ? context.l10n.publishYouTubeInvalid
         : null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _FieldLabel(label: 'Lien YouTube', required: true),
+        _FieldLabel(label: context.l10n.publishYouTubeLink, required: true),
         const SizedBox(height: 8),
         TextField(
           controller: _ctrl,
@@ -906,8 +1023,7 @@ class _YouTubeLinkFieldState extends State<_YouTubeLinkField> {
         ),
         const SizedBox(height: 8),
         Text(
-          "La vidéo reste hébergée sur YouTube et sera lue avec le lecteur "
-          "YouTube. Sa miniature sert d'image de couverture.",
+          context.l10n.publishYouTubeNote,
           style: AppTextStyles.bodySmall
               .copyWith(color: AppColors.textSecondary, height: 1.5),
         ),
@@ -948,7 +1064,7 @@ class _ProofsSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _FieldLabel(label: 'Preuves du témoignage (facultatif)', required: false),
+        _FieldLabel(label: context.l10n.publishProofsLabel, required: false),
         const SizedBox(height: 6),
         Container(
           padding: const EdgeInsets.all(12),
@@ -964,9 +1080,7 @@ class _ProofsSection extends ConsumerWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  "Joignez jusqu'à 2 justificatifs (image ou PDF, 10 Mo au "
-                  "maximum). Par défaut, seuls vous et l'équipe de modération "
-                  "pouvez les voir ; vous pouvez choisir de les publier.",
+                  context.l10n.publishProofsHint,
                   style: AppTextStyles.bodySmall.copyWith(
                     color: AppColors.textPrimary,
                     height: 1.5,
@@ -1001,16 +1115,14 @@ class _ProofsSection extends ConsumerWidget {
               activeColor: AppColors.primary,
               contentPadding: const EdgeInsets.symmetric(horizontal: 8),
               title: Text(
-                'Publier aussi mes preuves pour confirmer le témoignage',
+                context.l10n.publishProofsPublic,
                 style: AppTextStyles.labelMedium.copyWith(
                   fontWeight: FontWeight.w600,
                   color: AppColors.textPrimary,
                 ),
               ),
               subtitle: Text(
-                'Une fois le témoignage publié, tout le monde pourra les voir. '
-                "Masquez d'abord les informations personnelles. L'équipe de "
-                'modération peut retirer cet affichage.',
+                context.l10n.publishProofsPublicHint,
                 style: AppTextStyles.bodySmall.copyWith(height: 1.4),
               ),
             ),
@@ -1027,9 +1139,13 @@ class _ProofSlot extends ConsumerWidget {
   final int position;
   final ProofAttachment? file;
 
-  static String _size(int bytes) => bytes < 1024 * 1024
-      ? '${(bytes / 1024).ceil()} Ko'
-      : '${(bytes / (1024 * 1024)).toStringAsFixed(1).replaceAll('.', ',')} Mo';
+  /// « 12 Ko » / « 1,5 Mo » (virgule décimale en français, point en anglais).
+  static String _size(int bytes) {
+    final l = L10n.current;
+    if (bytes < 1024 * 1024) return l.publishSizeKb('${(bytes / 1024).ceil()}');
+    final mb = (bytes / (1024 * 1024)).toStringAsFixed(1);
+    return l.publishSizeMb(L10n.languageCode == 'fr' ? mb.replaceAll('.', ',') : mb);
+  }
 
   Future<void> _pick(BuildContext context, WidgetRef ref) async {
     final source = await showModalBottomSheet<String>(
@@ -1045,13 +1161,13 @@ class _ProofSlot extends ConsumerWidget {
             ListTile(
               leading: const Icon(Icons.photo_library_outlined,
                   color: AppColors.primary),
-              title: const Text('Image de la galerie'),
+              title: Text(ctx.l10n.publishProofFromGallery),
               onTap: () => Navigator.of(ctx).pop('image'),
             ),
             ListTile(
               leading: const Icon(Icons.picture_as_pdf_outlined,
                   color: AppColors.primary),
-              title: const Text('Document PDF ou image (fichiers)'),
+              title: Text(ctx.l10n.publishProofFromFiles),
               onTap: () => Navigator.of(ctx).pop('file'),
             ),
           ],
@@ -1110,7 +1226,7 @@ class _ProofSlot extends ConsumerWidget {
               borderRadius: BorderRadius.circular(AppRadius.button)),
         ),
         icon: const Icon(Icons.attach_file_rounded, size: 18),
-        label: Text('Ajouter la preuve $position',
+        label: Text(context.l10n.publishProofAdd(position),
             style: TextStyle(fontFamily: AppFonts.family, fontSize: 14)),
       );
     }
@@ -1143,7 +1259,7 @@ class _ProofSlot extends ConsumerWidget {
                   ),
                 ),
                 Text(
-                  'Preuve $position · ${_size(f.size)}',
+                  context.l10n.publishProofItem(position, _size(f.size)),
                   style: AppTextStyles.bodySmall
                       .copyWith(color: AppColors.textSecondary),
                 ),
@@ -1151,7 +1267,7 @@ class _ProofSlot extends ConsumerWidget {
             ),
           ),
           IconButton(
-            tooltip: 'Retirer la preuve $position',
+            tooltip: context.l10n.publishProofRemove(position),
             onPressed: () =>
                 ref.read(publishProvider.notifier).removeProof(position),
             icon: const Icon(Icons.close_rounded,
@@ -1192,7 +1308,9 @@ class _BottomNavButtonsState extends ConsumerState<_BottomNavButtons> {
             draft.visibility == TestimonyVisibility.private;
         final bodyOk = format != TestimonyFormat.text ||
             draft.bodyText.trim().isNotEmpty;
-        return categoryOk && bodyOk;
+        final conversionYear = ref.read(publishConversionProvider)?.year;
+        final conversionOk = conversionYear == null || isValidConversionYear(conversionYear);
+        return categoryOk && bodyOk && conversionOk;
       case 2:
         if (format == TestimonyFormat.text) {
           return draft.bodyText.trim().isNotEmpty;
@@ -1224,7 +1342,7 @@ class _BottomNavButtonsState extends ConsumerState<_BottomNavButtons> {
       // bloquer (ScaffoldMessenger affiche les messages l'un après l'autre).
       for (final position in result.failedProofPositions) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text("La preuve $position n'a pas pu être envoyée"),
+          content: Text(context.l10n.publishProofUploadFailed(position)),
           behavior: SnackBarBehavior.floating,
           margin: const EdgeInsets.all(16),
         ));
@@ -1233,7 +1351,7 @@ class _BottomNavButtonsState extends ConsumerState<_BottomNavButtons> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              result.errorMessage ?? 'Session expirée. Reconnecte-toi.',
+              result.errorMessage ?? context.l10n.publishSessionExpired,
               style: const TextStyle(fontFamily: AppFonts.family, fontSize: 13),
             ),
             backgroundColor: AppColors.danger,
@@ -1242,7 +1360,7 @@ class _BottomNavButtonsState extends ConsumerState<_BottomNavButtons> {
                 borderRadius: BorderRadius.circular(10)),
             margin: const EdgeInsets.all(16),
             action: SnackBarAction(
-              label: 'Se connecter',
+              label: context.l10n.authSignIn,
               textColor: Colors.white,
               onPressed: () => context.go('/login'),
             ),
@@ -1278,9 +1396,9 @@ class _BottomNavButtonsState extends ConsumerState<_BottomNavButtons> {
         ref.read(publishStepProvider.notifier).goTo(1);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text(
-              'Hors ligne — témoignage enregistré localement. Il sera envoyé à la prochaine connexion.',
-              style: TextStyle(fontFamily: AppFonts.family, fontSize: 13),
+            content: Text(
+              context.l10n.publishSavedOffline,
+              style: const TextStyle(fontFamily: AppFonts.family, fontSize: 13),
             ),
             backgroundColor: AppColors.warning,
             behavior: SnackBarBehavior.floating,
@@ -1297,9 +1415,9 @@ class _BottomNavButtonsState extends ConsumerState<_BottomNavButtons> {
         ref.read(publishStepProvider.notifier).goTo(1);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text(
-              'Enregistré dans votre carnet privé 🔒',
-              style: TextStyle(fontFamily: AppFonts.family, fontSize: 13),
+            content: Text(
+              context.l10n.publishSavedToJournal,
+              style: const TextStyle(fontFamily: AppFonts.family, fontSize: 13),
             ),
             backgroundColor: AppColors.primary,
             behavior: SnackBarBehavior.floating,
@@ -1316,9 +1434,9 @@ class _BottomNavButtonsState extends ConsumerState<_BottomNavButtons> {
         ref.read(publishStepProvider.notifier).goTo(1);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text(
-              'Témoignage soumis ! Il sera visible après modération.',
-              style: TextStyle(fontFamily: AppFonts.family, fontSize: 13),
+            content: Text(
+              context.l10n.publishSubmitted,
+              style: const TextStyle(fontFamily: AppFonts.family, fontSize: 13),
             ),
             backgroundColor: AppColors.primary,
             behavior: SnackBarBehavior.floating,
@@ -1338,6 +1456,7 @@ class _BottomNavButtonsState extends ConsumerState<_BottomNavButtons> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(publishConversionProvider); // année de conversion valide pour « Suivant »
     final draft           = ref.watch(publishProvider);
     final recordingStatus = ref.watch(audioRecordingProvider);
     final stepNotifier    = ref.read(publishStepProvider.notifier);
@@ -1364,7 +1483,7 @@ class _BottomNavButtonsState extends ConsumerState<_BottomNavButtons> {
           if (widget.step > 1) ...[
             Expanded(
               child: AppButton(
-                label: 'Précédent',
+                label: context.l10n.commonPrevious,
                 variant: AppButtonVariant.outline,
                 size: isLastStep ? AppButtonSize.large : AppButtonSize.medium,
                 fullWidth: true,
@@ -1377,7 +1496,7 @@ class _BottomNavButtonsState extends ConsumerState<_BottomNavButtons> {
             flex: widget.step == 1 ? 1 : 2,
             child: isLastStep
                 ? AppButton(
-                    label: isPrivate ? 'Enregistrer' : 'Publier',
+                    label: isPrivate ? context.l10n.commonSave : context.l10n.commonPublish,
                     variant: AppButtonVariant.orange,
                     size: AppButtonSize.large,
                     fullWidth: true,
@@ -1388,7 +1507,7 @@ class _BottomNavButtonsState extends ConsumerState<_BottomNavButtons> {
                     onPressed: canPublish ? _publish : null,
                   )
                 : AppButton(
-                    label: 'Suivant',
+                    label: context.l10n.commonNext,
                     fullWidth: true,
                     trailingIcon: Icons.arrow_forward_rounded,
                     onPressed: canGo ? stepNotifier.next : null,
@@ -1419,18 +1538,18 @@ class _Step3Visibility extends ConsumerWidget {
         children: [
           // ── Visibility ─────────────────────────────────────────────────────
           _SectionCard(children: [
-          const _FieldLabel(label: 'Visibilité', required: true),
+          _FieldLabel(label: context.l10n.publishVisibility, required: true),
           const SizedBox(height: 4),
           Text(
-            'Qui peut voir votre témoignage ?',
+            context.l10n.publishWhoCanSee,
             style: AppTextStyles.bodySmall,
           ),
           const SizedBox(height: 16),
 
           _VisibilityOption(
             icon: Icons.public_rounded,
-            label: 'Public',
-            description: 'Visible par tous les utilisateurs',
+            label: context.l10n.publishVisibilityPublic,
+            description: context.l10n.publishVisibilityPublicHint,
             selected: draft.visibility == TestimonyVisibility.public,
             onTap: () => ref
                 .read(publishProvider.notifier)
@@ -1439,8 +1558,8 @@ class _Step3Visibility extends ConsumerWidget {
           const SizedBox(height: 10),
           _VisibilityOption(
             icon: Icons.people_rounded,
-            label: 'Amis',
-            description: 'Visible uniquement par vos abonnés',
+            label: context.l10n.publishVisibilityFriends,
+            description: context.l10n.publishVisibilityFriendsHint,
             selected: draft.visibility == TestimonyVisibility.friends,
             onTap: () => ref
                 .read(publishProvider.notifier)
@@ -1449,9 +1568,8 @@ class _Step3Visibility extends ConsumerWidget {
           const SizedBox(height: 10),
           _VisibilityOption(
             icon: Icons.lock_rounded,
-            label: 'Carnet privé',
-            description:
-                'Gardé pour vous seul, sans modération. Vous pourrez le partager plus tard.',
+            label: context.l10n.publishJournalOption,
+            description: context.l10n.publishVisibilityPrivateHint,
             selected: draft.visibility == TestimonyVisibility.private,
             onTap: () => ref
                 .read(publishProvider.notifier)
@@ -1510,7 +1628,7 @@ class _Step3Visibility extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Je certifie que ce témoignage est réel',
+                          context.l10n.publishCertifyReal,
                           style: TextStyle(
                             fontFamily: AppFonts.family,
                             fontWeight: FontWeight.w600,
@@ -1521,11 +1639,9 @@ class _Step3Visibility extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        const Text(
-                          'Je confirme que les faits relatés dans ce '
-                          'témoignage sont authentiques et vécus '
-                          'personnellement.',
-                          style: TextStyle(
+                        Text(
+                          context.l10n.publishCertifyBody,
+                          style: const TextStyle(
                             fontFamily: AppFonts.family,
                             fontSize: 12,
                             color: AppColors.textSecondary,
@@ -1542,15 +1658,15 @@ class _Step3Visibility extends ConsumerWidget {
 
           if (!draft.consentGiven) ...[
             const SizedBox(height: 8),
-            const Row(
+            Row(
               children: [
-                Icon(Icons.info_outline_rounded,
+                const Icon(Icons.info_outline_rounded,
                     size: 14, color: AppColors.textSecondary),
-                SizedBox(width: 6),
+                const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    'La confirmation est requise pour publier.',
-                    style: TextStyle(
+                    context.l10n.publishConsentRequired,
+                    style: const TextStyle(
                       fontFamily: AppFonts.family,
                       fontSize: 12,
                       color: AppColors.textSecondary,
@@ -1566,15 +1682,15 @@ class _Step3Visibility extends ConsumerWidget {
           if (draft.visibility != TestimonyVisibility.private &&
               draft.category == null) ...[
             const SizedBox(height: 12),
-            const Row(
+            Row(
               children: [
-                Icon(Icons.warning_amber_rounded,
+                const Icon(Icons.warning_amber_rounded,
                     size: 16, color: AppColors.secondary),
-                SizedBox(width: 6),
+                const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    'Pour publier, choisissez une catégorie (étape 1).',
-                    style: TextStyle(
+                    context.l10n.publishCategoryRequired,
+                    style: const TextStyle(
                       fontFamily: AppFonts.family,
                       fontSize: 12,
                       color: AppColors.textSecondary,
@@ -1606,18 +1722,15 @@ class _JournalInfoCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.primary.withAlpha(60)),
       ),
-      child: const Row(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.lock_rounded, color: AppColors.primary, size: 20),
-          SizedBox(width: 12),
+          const Icon(Icons.lock_rounded, color: AppColors.primary, size: 20),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Ce témoignage sera rangé dans votre carnet privé : '
-              'vous seul pourrez le voir, il ne sera ni publié ni relu par '
-              'les modérateurs.\n\nVous pourrez le partager quand vous le '
-              'souhaitez, depuis votre carnet.',
-              style: TextStyle(
+              context.l10n.publishJournalInfo,
+              style: const TextStyle(
                 fontFamily: AppFonts.family,
                 fontSize: 13,
                 color: AppColors.textPrimary,
@@ -1806,7 +1919,7 @@ class _CategorySelector extends ConsumerWidget {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                displayName ?? 'Choisir une catégorie',
+                displayName ?? context.l10n.publishChooseCategory,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
@@ -1853,13 +1966,13 @@ class _CategorySelector extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 14),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    'Choisir une catégorie',
-                    style: TextStyle(
+                    context.l10n.publishChooseCategory,
+                    style: const TextStyle(
                       fontFamily: AppFonts.family,
                       fontWeight: FontWeight.w600,
                       fontSize: 16,
@@ -1948,8 +2061,8 @@ class _CoverImagePicker extends StatelessWidget {
                 child: Icon(Icons.photo_library_rounded,
                     color: AppColors.primary),
               ),
-              title: const Text('Galerie photos',
-                  style: TextStyle(fontFamily: AppFonts.family)),
+              title: Text(context.l10n.editGallery,
+                  style: const TextStyle(fontFamily: AppFonts.family)),
               onTap: () => Navigator.pop(context, ImageSource.gallery),
             ),
             ListTile(
@@ -1958,8 +2071,8 @@ class _CoverImagePicker extends StatelessWidget {
                 child: Icon(Icons.camera_alt_rounded,
                     color: AppColors.primary),
               ),
-              title: const Text('Prendre une photo',
-                  style: TextStyle(fontFamily: AppFonts.family)),
+              title: Text(context.l10n.editCamera,
+                  style: const TextStyle(fontFamily: AppFonts.family)),
               onTap: () => Navigator.pop(context, ImageSource.camera),
             ),
             const SizedBox(height: 8),
@@ -2021,14 +2134,14 @@ class _CoverImagePicker extends StatelessWidget {
                         color: Colors.black.withAlpha(140),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.edit_rounded,
+                          const Icon(Icons.edit_rounded,
                               color: Colors.white, size: 13),
-                          SizedBox(width: 4),
-                          Text('Changer',
-                              style: TextStyle(
+                          const SizedBox(width: 4),
+                          Text(context.l10n.publishChange,
+                              style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 11,
                                   fontFamily: AppFonts.family)),
@@ -2043,17 +2156,17 @@ class _CoverImagePicker extends StatelessWidget {
     );
   }
 
-  static const Widget _placeholder = Center(
+  static Widget get _placeholder => Center(
     child: Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(Icons.add_photo_alternate_rounded,
+        const Icon(Icons.add_photo_alternate_rounded,
             size: 36, color: AppColors.textSecondary),
-        SizedBox(height: 8),
+        const SizedBox(height: 8),
         Text(
-          'Appuyez pour ajouter\nune image de couverture',
+          L10n.current.publishTapToAddCover,
           textAlign: TextAlign.center,
-          style: TextStyle(
+          style: const TextStyle(
             fontFamily: AppFonts.family,
             fontSize: 12,
             color: AppColors.textSecondary,
@@ -2135,31 +2248,31 @@ class _TextFormatToolbar extends StatelessWidget {
         children: [
           _ToolbarButton(
               icon: Icons.title_rounded,
-              tooltip: 'Titre (# texte)',
+              tooltip: context.l10n.publishFormatHeading,
               onTap: _heading),
           _ToolbarButton(
               icon: Icons.format_bold_rounded,
-              tooltip: 'Gras (**texte**)',
+              tooltip: context.l10n.publishFormatBold,
               onTap: () => _wrap('**', '**')),
           _ToolbarButton(
               icon: Icons.format_italic_rounded,
-              tooltip: 'Italique (__texte__)',
+              tooltip: context.l10n.publishFormatItalic,
               onTap: () => _wrap('__', '__')),
           _ToolbarButton(
               icon: Icons.format_strikethrough_rounded,
-              tooltip: 'Barré (~~texte~~)',
+              tooltip: context.l10n.publishFormatStrike,
               onTap: () => _wrap('~~', '~~')),
           _ToolbarButton(
               icon: Icons.format_quote_rounded,
-              tooltip: 'Citation (> texte)',
+              tooltip: context.l10n.publishFormatQuote,
               onTap: _quote),
           _ToolbarButton(
               icon: Icons.format_list_bulleted_rounded,
-              tooltip: 'Liste à puces (- texte)',
+              tooltip: context.l10n.publishFormatBullets,
               onTap: _bullets),
           _ToolbarButton(
               icon: Icons.format_list_numbered_rounded,
-              tooltip: 'Liste numérotée (1. texte)',
+              tooltip: context.l10n.publishFormatNumbered,
               onTap: _numbered),
         ],
       ),
@@ -2347,10 +2460,10 @@ class _RealRecordingCard extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             isRecording
-                ? 'Appuyez pour arrêter'
+                ? context.l10n.publishTapToStop
                 : hasAudio
-                    ? 'Enregistrement terminé ✓'
-                    : 'Appuyez pour enregistrer',
+                    ? context.l10n.publishRecordingDone
+                    : context.l10n.publishTapToRecord,
             style: TextStyle(
               fontFamily: AppFonts.family,
               fontSize: 12,
@@ -2597,7 +2710,7 @@ class _VideoCameraPreview extends StatelessWidget {
                   onPressed: onRecord,
                   icon: const Icon(Icons.fiber_manual_record_rounded,
                       color: AppColors.danger, size: 16),
-                  label: const Text('Filmer une vidéo'),
+                  label: Text(context.l10n.publishFilmVideo),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
                     foregroundColor: AppColors.textPrimary,
@@ -2616,9 +2729,9 @@ class _VideoCameraPreview extends StatelessWidget {
                   onPressed: onImport,
                   icon: const Icon(Icons.photo_library_rounded,
                       color: Colors.white70, size: 18),
-                  label: const Text(
-                    'Choisir depuis la galerie',
-                    style: TextStyle(
+                  label: Text(
+                    context.l10n.publishPickFromGallery,
+                    style: const TextStyle(
                         color: Colors.white70,
                         fontFamily: AppFonts.family,
                         fontSize: 13),
@@ -2682,14 +2795,14 @@ class _VideoSelected extends StatelessWidget {
                 color: Colors.black.withAlpha(140),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.edit_rounded,
+                  const Icon(Icons.edit_rounded,
                       color: Colors.white, size: 13),
-                  SizedBox(width: 4),
-                  Text('Changer',
-                      style: TextStyle(
+                  const SizedBox(width: 4),
+                  Text(context.l10n.publishChange,
+                      style: const TextStyle(
                           color: Colors.white,
                           fontSize: 11,
                           fontFamily: AppFonts.family)),
@@ -2729,9 +2842,9 @@ class _VideoTrimTool extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Couper la vidéo',
-          style: TextStyle(
+        Text(
+          context.l10n.publishTrimVideo,
+          style: const TextStyle(
             fontFamily: AppFonts.family,
             fontWeight: FontWeight.w600,
             fontSize: 14,
@@ -2794,9 +2907,9 @@ class _ThumbnailSelector extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Miniature',
-          style: TextStyle(
+        Text(
+          context.l10n.publishThumbnail,
+          style: const TextStyle(
             fontFamily: AppFonts.family,
             fontWeight: FontWeight.w600,
             fontSize: 14,
@@ -2849,15 +2962,15 @@ class _ThumbnailSelector extends StatelessWidget {
                             ? AppColors.primary
                             : AppColors.border),
                   ),
-                  child: const Column(
+                  child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.add_photo_alternate_rounded,
+                      const Icon(Icons.add_photo_alternate_rounded,
                           size: 20, color: AppColors.textSecondary),
-                      SizedBox(height: 2),
+                      const SizedBox(height: 2),
                       Text(
-                        'Perso.',
-                        style: TextStyle(
+                        context.l10n.publishThumbnailCustom,
+                        style: const TextStyle(
                             fontFamily: AppFonts.family,
                             fontSize: 9,
                             color: AppColors.textSecondary),

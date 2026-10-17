@@ -15,6 +15,9 @@ import '../../auth/providers/auth_notifier.dart' show currentUserProvider;
 import '../models/publish_models.dart';
 import '../providers/publish_provider.dart';
 import 'short_record_screen.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../conversion/providers/conversion_providers.dart' show myConversionProvider;
+import '../../conversion/widgets/conversion_widgets.dart' show ConversionInviteCard, canStartConversion, conversionIcon;
 
 // =============================================================================
 // PublishScreen — « Partager un témoignage » (maquette, écran 5)
@@ -105,25 +108,23 @@ class PublishScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              Text('Importer une image / document', style: AppTextStyles.h4),
+              Text(ctx.l10n.publishImportTitle, style: AppTextStyles.h4),
               const SizedBox(height: 4),
               Text(
-                'Le fichier accompagne un témoignage écrit : une image devient '
-                'la couverture, un document (PDF ou image) est joint comme '
-                'preuve.',
+                ctx.l10n.publishImportHint,
                 style: AppTextStyles.bodySmall,
               ),
               const SizedBox(height: 8),
               _SheetOption(
                 icon: Icons.image_outlined,
-                title: 'Image de couverture',
-                subtitle: 'Photo de la galerie',
+                title: ctx.l10n.publishImportCover,
+                subtitle: ctx.l10n.publishImportCoverHint,
                 onTap: () => Navigator.of(ctx).pop('cover'),
               ),
               _SheetOption(
                 icon: Icons.description_outlined,
-                title: 'Document ou preuve',
-                subtitle: 'PDF, JPG, PNG ou WebP · 10 Mo max.',
+                title: ctx.l10n.publishImportProof,
+                subtitle: ctx.l10n.publishImportProofHint,
                 onTap: () => Navigator.of(ctx).pop('proof'),
               ),
             ],
@@ -184,6 +185,10 @@ class PublishScreen extends ConsumerWidget {
         isAdmin || ((user?.isOrganization ?? false) && (user?.isVerified ?? false));
     final forEvent = ref.watch(publishEventProvider);
     final forProphecy = ref.watch(publishProphecyProvider);
+    // Témoignage de conversion : un seul par compte personnel (docs serveur
+    // fonctionnalites/temoignage-de-conversion.md).
+    final forConversion = ref.watch(publishConversionProvider);
+    final myConversion = ref.watch(myConversionProvider).value;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -193,7 +198,7 @@ class PublishScreen extends ConsumerWidget {
         elevation: 0,
         scrolledUnderElevation: 0,
         leading: IconButton(
-          tooltip: 'Retour',
+          tooltip: context.l10n.commonBack,
           icon: const Icon(
             Icons.arrow_back_rounded,
             color: AppColors.textPrimary,
@@ -208,7 +213,7 @@ class PublishScreen extends ConsumerWidget {
         ),
         titleSpacing: 0,
         title: Text(
-          'Partager un témoignage',
+          context.l10n.publishShareTitle,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: AppTextStyles.h4.copyWith(
@@ -250,7 +255,25 @@ class PublishScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: AppSpacing.lg),
                 ],
-                if (forEvent == null && forProphecy == null) ...[
+                // Mon témoignage de conversion (année, lieu et verset à l'étape suivante).
+                if (forConversion != null) ...[
+                  _ConversionAttachBanner(
+                    onClear: () => ref.read(publishConversionProvider.notifier).clear(),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                ] else if (forEvent == null &&
+                    forProphecy == null &&
+                    (myConversion?.canCreate ?? false)) ...[
+                  ConversionInviteCard(
+                    onTap: () {
+                      if (canStartConversion(context, ref)) {
+                        ref.read(publishConversionProvider.notifier).start();
+                      }
+                    },
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                ],
+                if (forEvent == null && forProphecy == null && forConversion == null) ...[
                   EncouragementCard(
                     message: encouragementVerses[2], // Psaume 66:16
                     compact: true,
@@ -261,7 +284,7 @@ class PublishScreen extends ConsumerWidget {
                   const SizedBox(height: AppSpacing.lg),
                 ],
                 Text(
-                  'Quelle forme prend votre témoignage ?',
+                  context.l10n.publishWhichForm,
                   style: AppTextStyles.bodyMedium.copyWith(
                     color: AppColors.textSecondary,
                   ),
@@ -272,13 +295,13 @@ class PublishScreen extends ConsumerWidget {
                   children: [
                     _PublishTile(
                       icon: Icons.videocam_rounded,
-                      label: 'Enregistrer une vidéo',
+                      label: context.l10n.publishRecordVideo,
                       onTap: () =>
                           _openFormat(context, ref, TestimonyFormat.video),
                     ),
                     _PublishTile(
                       icon: Icons.mic_rounded,
-                      label: 'Enregistrer un audio',
+                      label: context.l10n.publishRecordAudio,
                       onTap: () =>
                           _openFormat(context, ref, TestimonyFormat.audio),
                     ),
@@ -289,13 +312,13 @@ class PublishScreen extends ConsumerWidget {
                   children: [
                     _PublishTile(
                       icon: Icons.article_rounded,
-                      label: 'Écrire un texte',
+                      label: context.l10n.publishWriteText,
                       onTap: () =>
                           _openFormat(context, ref, TestimonyFormat.text),
                     ),
                     _PublishTile(
                       icon: Icons.add_photo_alternate_rounded,
-                      label: 'Importer une image / document',
+                      label: context.l10n.publishImportTitle,
                       onTap: () => _import(context, ref),
                     ),
                   ],
@@ -303,7 +326,7 @@ class PublishScreen extends ConsumerWidget {
                 const SizedBox(height: AppSpacing.xxl),
                 // ── Autres entrées ───────────────────────────────────────
                 Text(
-                  'Autres façons de partager',
+                  context.l10n.publishOtherWays,
                   style: AppTextStyles.labelMedium.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
@@ -311,30 +334,38 @@ class PublishScreen extends ConsumerWidget {
                 const SizedBox(height: AppSpacing.sm),
                 _OptionTile(
                   icon: Icons.slow_motion_video_rounded,
-                  title: 'Short Témoignage',
-                  description: '60 secondes · Impact immédiat',
+                  title: context.l10n.publishShortTitle,
+                  description: context.l10n.publishShortHint,
                   onTap: () => _openShort(context, ref),
                 ),
+                // Témoignage de conversion déjà raconté : le modifier.
+                if (myConversion?.exists ?? false)
+                  _OptionTile(
+                    icon: conversionIcon,
+                    title: context.l10n.conversionMineTitle,
+                    description: context.l10n.conversionMineHint,
+                    onTap: () => context.push('/conversions/mine/edit'),
+                  ),
                 _OptionTile(
                   icon: Icons.lock_rounded,
-                  title: 'Carnet privé',
-                  description: 'Garder un témoignage pour moi, sans le publier',
+                  title: context.l10n.publishJournalOption,
+                  description: context.l10n.publishJournalOptionHint,
                   onTap: () => context.push('/journal'),
                 ),
                 // Événement chrétien : organisations vérifiées / administrateurs.
                 if (canCreateEvents)
                   _OptionTile(
                     icon: Icons.event_rounded,
-                    title: 'Créer un événement',
-                    description: 'Croisade, conférence, camp… avec participation et direct',
+                    title: context.l10n.publishCreateEvent,
+                    description: context.l10n.publishCreateEventHint,
                     onTap: () => context.push('/events/new'),
                   ),
                 // Live : modérateurs / administrateurs.
                 if (canLive)
                   _OptionTile(
                     icon: Icons.live_tv_rounded,
-                    title: 'Live',
-                    description: 'Témoignage en direct, en temps réel',
+                    title: context.l10n.publishLive,
+                    description: context.l10n.publishLiveHint,
                     onTap: () => context.push('/lives/new'),
                   ),
                 // Lien YouTube (administrateurs) : docs serveur
@@ -342,9 +373,8 @@ class PublishScreen extends ConsumerWidget {
                 if (isAdmin)
                   _OptionTile(
                     icon: Icons.smart_display_rounded,
-                    title: 'Lien YouTube',
-                    description:
-                        'Publier une vidéo déjà sur YouTube (administrateurs)',
+                    title: context.l10n.publishYouTubeLink,
+                    description: context.l10n.publishYouTubeHint,
                     onTap: () => _openYouTube(context, ref),
                   ),
                 const SizedBox(height: 80),
@@ -576,7 +606,7 @@ class _StatusBarRow extends StatelessWidget {
           scrollDirection: Axis.horizontal,
           child: Row(
             children: [
-              Text('Statut :', style: AppTextStyles.bodySmall),
+              Text(context.l10n.publishStatusLabel, style: AppTextStyles.bodySmall),
               const SizedBox(width: 8),
               ...PublishStatus.values.map((s) {
                 final isActive = s.index <= status.index;
@@ -656,6 +686,48 @@ class _StatusChip extends StatelessWidget {
   }
 }
 
+/// « Mon témoignage de conversion » : le témoignage publié sera celui-là.
+class _ConversionAttachBanner extends StatelessWidget {
+  const _ConversionAttachBanner({required this.onClear});
+
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 10, 4, 10),
+      decoration: BoxDecoration(
+        color: AppColors.sunSoft,
+        borderRadius: AppRadius.cardRadius,
+        border: Border.all(color: AppColors.sunBorder),
+      ),
+      child: Row(
+        children: [
+          const Icon(conversionIcon, color: AppColors.secondaryDark),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text.rich(
+              TextSpan(children: [
+                TextSpan(
+                  text: '${context.l10n.conversionTestimonyTitle}\n',
+                  style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primaryDark),
+                ),
+                TextSpan(text: context.l10n.conversionPublishHint),
+              ]),
+              style: AppTextStyles.bodyMedium,
+            ),
+          ),
+          IconButton(
+            tooltip: context.l10n.conversionPublishCancel,
+            onPressed: onClear,
+            icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// « Témoignage pour l'événement … » : le témoignage publié y sera rattaché.
 class _EventAttachBanner extends StatelessWidget {
   const _EventAttachBanner({required this.title, required this.onClear});
@@ -679,7 +751,7 @@ class _EventAttachBanner extends StatelessWidget {
           Expanded(
             child: Text.rich(
               TextSpan(children: [
-                const TextSpan(text: "Témoignage de l'événement\n"),
+                TextSpan(text: '${context.l10n.publishEventTestimony}\n'),
                 TextSpan(
                   text: title,
                   style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary),
@@ -691,7 +763,7 @@ class _EventAttachBanner extends StatelessWidget {
             ),
           ),
           IconButton(
-            tooltip: "Ne pas rattacher à l'événement",
+            tooltip: context.l10n.publishEventDetach,
             onPressed: onClear,
             icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary),
           ),
@@ -733,7 +805,7 @@ class _ProphecyAttachBanner extends StatelessWidget {
               Expanded(
                 child: Text.rich(
                   TextSpan(children: [
-                    const TextSpan(text: "Accomplissement de la parole\n"),
+                    TextSpan(text: '${context.l10n.publishProphecyFulfillment}\n'),
                     TextSpan(
                       text: prophecy.title,
                       style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primaryDark),
@@ -745,7 +817,7 @@ class _ProphecyAttachBanner extends StatelessWidget {
                 ),
               ),
               IconButton(
-                tooltip: 'Ne pas rattacher à la parole',
+                tooltip: context.l10n.publishProphecyDetach,
                 onPressed: onClear,
                 icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary),
               ),
@@ -756,8 +828,8 @@ class _ProphecyAttachBanner extends StatelessWidget {
             dense: true,
             value: prophecy.makePublic,
             onChanged: onPublicChanged,
-            title: const Text('Publier aussi la parole prophétique'),
-            subtitle: const Text('Elle sera montrée avec votre témoignage, une fois celui-ci publié.'),
+            title: Text(context.l10n.publishProphecyMakePublic),
+            subtitle: Text(context.l10n.publishProphecyMakePublicHint),
           ),
         ],
       ),

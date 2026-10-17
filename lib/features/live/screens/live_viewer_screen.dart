@@ -9,6 +9,7 @@ import 'package:livekit_client/livekit_client.dart' as lk;
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../auth/providers/auth_notifier.dart' show currentUserProvider;
 import '../controllers/live_room_controller.dart';
 import '../data/live_repository.dart';
@@ -220,8 +221,8 @@ class _LiveViewerScreenState extends ConsumerState<LiveViewerScreen> {
     enabled: commentsOpen,
     showPinOption: ctrl.canChangePin,
     disabledHint: ctrl.banned
-        ? 'Vous ne pouvez plus commenter ce direct'
-        : 'Commentaires désactivés',
+        ? context.l10n.liveCannotComment
+        : context.l10n.liveCommentsDisabled,
     onSend: ctrl.sendComment,
   );
 
@@ -407,12 +408,12 @@ class _LiveViewerScreenState extends ConsumerState<LiveViewerScreen> {
                           padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
                           child: LiveCommentInput(
                             light: true,
-                            hint: 'Chat…',
+                            hint: context.l10n.liveChatHint,
                             enabled: commentsOpen,
                             showPinOption: ctrl.canChangePin,
                             disabledHint: ctrl.banned
-                                ? 'Vous ne pouvez plus commenter ce direct'
-                                : 'Commentaires désactivés',
+                                ? context.l10n.liveCannotComment
+                                : context.l10n.liveCommentsDisabled,
                             onSend: ctrl.sendComment,
                           ),
                         ),
@@ -510,8 +511,8 @@ class _LiveViewerScreenState extends ConsumerState<LiveViewerScreen> {
                                   const SizedBox.shrink(),
                                 IconButton(
                                   tooltip: _showComments
-                                      ? 'Masquer les commentaires'
-                                      : 'Afficher les commentaires',
+                                      ? context.l10n.liveHideComments
+                                      : context.l10n.liveShowComments,
                                   onPressed: () => setState(
                                     () => _showComments = !_showComments,
                                   ),
@@ -557,18 +558,18 @@ class _LiveViewerScreenState extends ConsumerState<LiveViewerScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const ListTile(
+            ListTile(
               title: Text(
-                'Modération du direct',
-                style: TextStyle(fontWeight: FontWeight.w700),
+                context.l10n.liveModerationTitle,
+                style: const TextStyle(fontWeight: FontWeight.w700),
               ),
-              subtitle: Text('Vous regardez ce direct en tant que modérateur.'),
+              subtitle: Text(context.l10n.liveModerationSubtitle),
             ),
             const Divider(height: 1),
             ListTile(
               leading: const Icon(Icons.logout_rounded),
-              title: const Text('Quitter le direct'),
-              subtitle: const Text('Le direct continue pour les autres.'),
+              title: Text(context.l10n.liveLeaveLive),
+              subtitle: Text(context.l10n.liveContinuesForOthers),
               onTap: () => Navigator.pop(context, 'leave'),
             ),
             // Couper le direct : administrateurs seulement (jamais un modérateur).
@@ -578,11 +579,11 @@ class _LiveViewerScreenState extends ConsumerState<LiveViewerScreen> {
                   Icons.stop_circle_outlined,
                   color: AppColors.danger,
                 ),
-                title: const Text(
-                  'Couper le direct pour tous',
-                  style: TextStyle(color: AppColors.danger),
+                title: Text(
+                  context.l10n.liveCutForAll,
+                  style: const TextStyle(color: AppColors.danger),
                 ),
-                subtitle: const Text('Arrête définitivement la diffusion.'),
+                subtitle: Text(context.l10n.liveCutForAllHint),
                 onTap: () => Navigator.pop(context, 'cut'),
               ),
             const SizedBox(height: 8),
@@ -625,11 +626,11 @@ class _VideoArea extends StatelessWidget {
       return lk.VideoTrackRenderer(track, fit: fit, key: ValueKey(track.sid));
     }
     final waiting = ctrl.link == LiveLinkState.connecting
-        ? 'Connexion au direct…'
+        ? context.l10n.liveConnectingToLive
         : ctrl.error ??
               (ctrl.live.isOnAir
-                  ? 'En attente de l\'image du diffuseur…'
-                  : 'Le direct va bientôt commencer…');
+                  ? context.l10n.liveWaitingHostImage
+                  : context.l10n.liveStartingSoon);
     return Container(
       color: const Color(0xFF120A1F),
       alignment: Alignment.center,
@@ -666,7 +667,7 @@ class _VideoArea extends StatelessWidget {
               OutlinedButton(
                 onPressed: onRetry,
                 style: OutlinedButton.styleFrom(foregroundColor: Colors.white),
-                child: const Text('Réessayer'),
+                child: Text(context.l10n.commonRetry),
               ),
             ],
           ],
@@ -715,19 +716,19 @@ class _VideoOverlayBar extends StatelessWidget {
           const Spacer(),
           if (onModerate != null)
             IconButton(
-              tooltip: 'Modération',
+              tooltip: context.l10n.liveModeration,
               visualDensity: VisualDensity.compact,
               onPressed: onModerate,
               icon: const Icon(Icons.shield_outlined, color: Colors.white),
             ),
           IconButton(
-            tooltip: 'Plein écran',
+            tooltip: context.l10n.liveFullscreen,
             visualDensity: VisualDensity.compact,
             onPressed: onFullscreen,
             icon: const Icon(Icons.fullscreen_rounded, color: Colors.white),
           ),
           IconButton(
-            tooltip: 'Quitter le direct',
+            tooltip: context.l10n.liveLeaveLive,
             visualDensity: VisualDensity.compact,
             onPressed: onClose,
             icon: const Icon(Icons.close_rounded, color: Colors.white),
@@ -748,7 +749,7 @@ class _ChatHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const font = 'Plus Jakarta Sans';
+    const font = 'Plus Jakarta Sans'; // i18n-ignore
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 12, 10),
       child: Row(
@@ -757,9 +758,9 @@ class _ChatHeader extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Chat en direct',
-                  style: TextStyle(
+                Text(
+                  context.l10n.liveChatTitle,
+                  style: const TextStyle(
                     color: AppColors.textPrimary,
                     fontFamily: font,
                     fontWeight: FontWeight.w700,
@@ -891,7 +892,7 @@ class _ReactionFabState extends State<_ReactionFab> {
                 ),
               ),
           Tooltip(
-            message: 'Réagir',
+            message: context.l10n.liveReact,
             child: _bubble(
               LiveReactionType.like.emoji,
               size: 52,
@@ -945,7 +946,7 @@ class _EmptyChat extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Text(
-        'Aucun message pour l\'instant.\nSoyez le premier à écrire !',
+        context.l10n.liveChatEmpty,
         textAlign: TextAlign.center,
         style: TextStyle(
           color: AppColors.textSecondary,
@@ -1072,12 +1073,12 @@ class _TopBar extends StatelessWidget {
           ),
           if (onModerate != null)
             IconButton(
-              tooltip: 'Modération',
+              tooltip: context.l10n.liveModeration,
               onPressed: onModerate,
               icon: const Icon(Icons.shield_outlined, color: Colors.white),
             ),
           IconButton(
-            tooltip: fullscreen ? 'Quitter le plein écran' : 'Plein écran',
+            tooltip: fullscreen ? context.l10n.liveExitFullscreen : context.l10n.liveFullscreen,
             onPressed: onToggleFullscreen,
             icon: Icon(
               fullscreen
@@ -1087,7 +1088,7 @@ class _TopBar extends StatelessWidget {
             ),
           ),
           IconButton(
-            tooltip: 'Quitter le direct',
+            tooltip: context.l10n.liveLeaveLive,
             onPressed: onClose,
             icon: const Icon(Icons.close_rounded, color: Colors.white),
           ),
@@ -1138,7 +1139,7 @@ class _Loading extends StatelessWidget {
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.white,
                           ),
-                          child: const Text('Réessayer'),
+                          child: Text(context.l10n.commonRetry),
                         ),
                       ],
                     ),

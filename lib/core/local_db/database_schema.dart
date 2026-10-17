@@ -65,9 +65,9 @@ abstract final class DatabaseSchema {
     }
     if (oldV < 3) {
       // Recreate Bible tables with string code as primary key (was integer).
-      await db.execute('DROP TABLE IF EXISTS $tBibleVerses');
-      await db.execute('DROP TABLE IF EXISTS $tBibleBooks');
-      await db.execute('DROP TABLE IF EXISTS $tBibleTranslations');
+      await db.execute('DROP TABLE IF EXISTS $tBibleVerses'); // i18n-ignore
+      await db.execute('DROP TABLE IF EXISTS $tBibleBooks'); // i18n-ignore
+      await db.execute('DROP TABLE IF EXISTS $tBibleTranslations'); // i18n-ignore
       await db.execute(_createBibleTranslations);
       await db.execute(_createBibleBooks);
       await db.execute(_createBibleVerses);

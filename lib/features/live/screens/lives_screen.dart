@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../l10n/app_localizations.dart';
 import '../data/live_repository.dart';
 import '../models/live_models.dart';
 import '../widgets/live_widgets.dart';
@@ -53,7 +54,7 @@ class _LivesScreenState extends ConsumerState<LivesScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Directs'),
+        title: Text(context.l10n.livesTitle),
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
@@ -64,7 +65,7 @@ class _LivesScreenState extends ConsumerState<LivesScreen> {
               backgroundColor: kLiveRed,
               foregroundColor: Colors.white,
               icon: const Icon(Icons.sensors_rounded),
-              label: const Text('Lancer un direct'),
+              label: Text(context.l10n.livesGoLive),
             )
           : null,
       body: RefreshIndicator(
@@ -75,10 +76,10 @@ class _LivesScreenState extends ConsumerState<LivesScreen> {
               icon: Icons.wifi_off_rounded,
               text: error is LiveFailure
                   ? error.message
-                  : 'Impossible de charger les directs.',
+                  : context.l10n.livesLoadError,
               action: TextButton(
                 onPressed: () => ref.invalidate(livesIndexProvider),
-                child: const Text('Réessayer'),
+                child: Text(context.l10n.commonRetry),
               ),
             ),
           _ => const Center(child: CircularProgressIndicator()),
@@ -97,31 +98,30 @@ class _List extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!index.configured) {
-      return const _Message(
+      return _Message(
         icon: Icons.videocam_off_outlined,
-        text: 'Les directs ne sont pas encore disponibles.\n'
-            'Le service vidéo doit être configuré sur le serveur.',
+        text: context.l10n.livesNotAvailable,
       );
     }
     if (index.active.isEmpty && index.recent.isEmpty) {
       return _Message(
         icon: Icons.live_tv_rounded,
         text: index.canGoLive
-            ? 'Aucun direct pour le moment.\nLancez le premier !'
-            : 'Aucun direct pour le moment.\nRevenez bientôt.',
+            ? context.l10n.livesEmptyCanGoLive
+            : context.l10n.livesEmptyComeBack,
       );
     }
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
       children: [
         if (index.active.isNotEmpty) ...[
-          _SectionTitle('En direct', count: index.active.length),
+          _SectionTitle(context.l10n.homeLive, count: index.active.length),
           for (final live in index.active)
             _ActiveCard(live: live, onTap: () => onOpen(live)),
           const SizedBox(height: 12),
         ],
         if (index.recent.isNotEmpty) ...[
-          const _SectionTitle('Récents'),
+          _SectionTitle(context.l10n.livesRecent),
           for (final live in index.recent)
             _RecentTile(live: live, onTap: () => onOpen(live)),
         ],
@@ -195,8 +195,8 @@ class _ActiveCard extends StatelessWidget {
                 children: [
                   live.isOnAir
                       ? const LiveBadge()
-                      : const LiveBadge(
-                          label: 'EN PRÉPARATION', color: Color(0xFF475467)),
+                      : LiveBadge(
+                          label: context.l10n.liveBadgePreparing, color: const Color(0xFF475467)),
                   const Spacer(),
                   if (viewers != null)
                     LiveChip(icon: Icons.visibility_rounded, label: '$viewers'),
@@ -248,7 +248,7 @@ class _ActiveCard extends StatelessWidget {
                       backgroundColor: Colors.white,
                       foregroundColor: AppColors.primary,
                     ),
-                    child: Text(live.isHost ? 'Reprendre' : 'Regarder'),
+                    child: Text(live.isHost ? context.l10n.liveResume : context.l10n.liveWatch),
                   ),
                 ],
               ),
@@ -270,8 +270,8 @@ class _RecentTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final details = <String>[
       if (live.duration != null) formatLiveDuration(live.duration!),
-      '${live.peakViewers} spectateur${live.peakViewers > 1 ? 's' : ''}',
-      '${live.commentCount} commentaire${live.commentCount > 1 ? 's' : ''}',
+      context.l10n.livesViewerCount(live.peakViewers),
+      context.l10n.livesCommentCount(live.commentCount),
     ].join(' · ');
     return Card(
       elevation: 0,

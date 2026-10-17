@@ -5,6 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../features/auth/providers/auth_notifier.dart'
     show currentUserProvider;
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/models/comment_model.dart';
 import '../../../shared/widgets/guest_gate.dart';
 import '../../../shared/widgets/approval_badges.dart';
@@ -37,10 +38,10 @@ class TestimonyCommentsScreen extends ConsumerWidget {
         elevation: 0,
         centerTitle: false,
         title: async.when(
-          loading: () => const Text('Commentaires'),
-          error:   (_, _) => const Text('Commentaires'),
+          loading: () => Text(context.l10n.detailComments),
+          error:   (_, _) => Text(context.l10n.detailComments),
           data:    (list) => Text(
-            'Commentaires (${list.length})',
+            context.l10n.commentsTitleCount(list.length),
             style: const TextStyle(
               fontFamily: AppFonts.family,
               fontWeight: FontWeight.w600,
@@ -90,7 +91,7 @@ class TestimonyCommentsScreen extends ConsumerWidget {
             onSubmit: (text) async {
               // Mode invité : commenter demande un compte.
               if (!await requireAccount(context, ref,
-                  reason: 'commenter les témoignages')) {
+                  reason: context.l10n.authGuestReasonComment)) {
                 return;
               }
               ref
@@ -160,7 +161,7 @@ class _CommentTile extends StatelessWidget {
                         children: [
                           Flexible(
                             child: Text(
-                              comment.user?.displayName ?? 'Anonyme',
+                              comment.user?.displayName ?? context.l10n.commonAnonymous,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
@@ -204,7 +205,7 @@ class _CommentTile extends StatelessWidget {
                     if (comment.repliesCount > 0) ...[
                       const SizedBox(width: 12),
                       Text(
-                        '${comment.repliesCount} réponse${comment.repliesCount > 1 ? 's' : ''}',
+                        context.l10n.commentsReplies(comment.repliesCount),
                         style: const TextStyle(
                           fontFamily: AppFonts.family,
                           fontSize: 11,
@@ -217,9 +218,9 @@ class _CommentTile extends StatelessWidget {
                     if (_canDelete)
                       GestureDetector(
                         onTap: () => _confirmDelete(context),
-                        child: const Text(
-                          'Supprimer',
-                          style: TextStyle(
+                        child: Text(
+                          context.l10n.commonDelete,
+                          style: const TextStyle(
                             fontFamily: AppFonts.family,
                             fontSize: 11,
                             color: AppColors.danger,
@@ -243,17 +244,17 @@ class _CommentTile extends StatelessWidget {
       builder: (_) => AlertDialog(
         shape:
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          'Supprimer ce commentaire ?',
-          style: TextStyle(
+        title: Text(
+          context.l10n.commentsDeleteTitle,
+          style: const TextStyle(
             fontFamily: AppFonts.family,
             fontWeight: FontWeight.w600,
             fontSize: 16,
           ),
         ),
-        content: const Text(
-          'Cette action est irréversible.',
-          style: TextStyle(
+        content: Text(
+          context.l10n.commentsDeleteIrreversible,
+          style: const TextStyle(
               fontFamily: AppFonts.family,
               fontSize: 13,
               color: AppColors.textSecondary),
@@ -261,8 +262,8 @@ class _CommentTile extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Annuler',
-                style: TextStyle(
+            child: Text(context.l10n.commonCancel,
+                style: const TextStyle(
                     fontFamily: AppFonts.family, color: AppColors.textSecondary)),
           ),
           ElevatedButton(
@@ -277,8 +278,8 @@ class _CommentTile extends StatelessWidget {
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8)),
             ),
-            child: const Text('Supprimer',
-                style: TextStyle(
+            child: Text(context.l10n.commonDelete,
+                style: const TextStyle(
                     fontFamily: AppFonts.family, fontWeight: FontWeight.w600)),
           ),
         ],
@@ -291,10 +292,11 @@ class _CommentTile extends StatelessWidget {
     final dt = DateTime.tryParse(iso);
     if (dt == null) return '';
     final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 1) return 'À l\'instant';
-    if (diff.inMinutes < 60) return 'il y a ${diff.inMinutes} min';
-    if (diff.inHours < 24) return 'il y a ${diff.inHours} h';
-    if (diff.inDays < 7) return 'il y a ${diff.inDays} j';
+    final l = L10n.current;
+    if (diff.inMinutes < 1) return l.commentsJustNow;
+    if (diff.inMinutes < 60) return l.timeMinutesAgo(diff.inMinutes);
+    if (diff.inHours < 24) return l.timeHoursAgo(diff.inHours);
+    if (diff.inDays < 7) return l.timeDaysAgo(diff.inDays);
     return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
   }
 }
@@ -398,7 +400,7 @@ class _CommentInputState extends State<_CommentInput> {
                 maxLines: 4,
                 textCapitalization: TextCapitalization.sentences,
                 decoration: InputDecoration(
-                  hintText: 'Ajouter un commentaire…',
+                  hintText: context.l10n.detailAddComment,
                   hintStyle: const TextStyle(
                     fontFamily: AppFonts.family,
                     fontSize: 14,
@@ -467,9 +469,9 @@ class _EmptyState extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-          const Text(
-            'Aucun commentaire',
-            style: TextStyle(
+          Text(
+            context.l10n.commentsEmptyTitle,
+            style: const TextStyle(
               fontFamily: AppFonts.family,
               fontWeight: FontWeight.w600,
               fontSize: 16,
@@ -477,9 +479,9 @@ class _EmptyState extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          const Text(
-            'Soyez le premier à réagir !',
-            style: TextStyle(
+          Text(
+            context.l10n.commentsEmptyBody,
+            style: const TextStyle(
               fontFamily: AppFonts.family,
               fontSize: 13,
               color: AppColors.textSecondary,
@@ -505,9 +507,9 @@ class _ErrorState extends StatelessWidget {
           const Icon(Icons.cloud_off_rounded,
               size: 48, color: AppColors.textSecondary),
           const SizedBox(height: 12),
-          const Text(
-            'Impossible de charger les commentaires',
-            style: TextStyle(
+          Text(
+            context.l10n.commentsLoadError,
+            style: const TextStyle(
                 fontFamily: AppFonts.family,
                 fontSize: 14,
                 color: AppColors.textSecondary),
@@ -516,9 +518,9 @@ class _ErrorState extends StatelessWidget {
           TextButton.icon(
             onPressed: onRetry,
             icon: const Icon(Icons.refresh_rounded, color: AppColors.primary),
-            label: const Text(
-              'Réessayer',
-              style: TextStyle(
+            label: Text(
+              context.l10n.commonRetry,
+              style: const TextStyle(
                   fontFamily: AppFonts.family,
                   color: AppColors.primary,
                   fontWeight: FontWeight.w600),

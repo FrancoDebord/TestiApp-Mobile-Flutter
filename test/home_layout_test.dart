@@ -33,6 +33,7 @@ import 'package:testi_app/features/prayer/providers/prayer_providers.dart' show 
 import 'package:testi_app/features/notifications/providers/notifications_provider.dart';
 import 'package:testi_app/shared/widgets/guest_gate.dart';
 import 'package:testi_app/shared/widgets/scaffold_with_bottom_nav.dart';
+import 'package:testi_app/features/conversion/providers/conversion_providers.dart';
 
 const _longName =
     'Ministère International Lumière du Monde pour la Restauration';
@@ -111,6 +112,21 @@ class _FakeDownloads extends DownloadsNotifier {
       const DownloadsState(loaded: true, supported: true);
 }
 
+/// Événement passé avec témoignages (bande « Revivre les événements »).
+final _pastEvent = ChristianEvent.fromJson({
+  'id': 'p1',
+  'title': 'Grande croisade de guérison et de délivrance de Cotonou 2025, trois soirées',
+  'type': 'crusade',
+  'status': 'published',
+  'phase': 'past',
+  'startsAt': '2025-08-12T17:00:00+00:00',
+  'endsAt': '2025-08-14T21:00:00+00:00',
+  'city': 'Cotonou',
+  'country': 'Bénin',
+  'organizer': {'id': 'o1', 'displayName': 'Église de la Grâce'},
+  'stats': {'testimonies': 12},
+});
+
 List<Override> get _overrides => [
       feedNotifierProvider.overrideWith(_FakeFeed.new),
       feedIsLoadingProvider.overrideWithBuild((ref, notifier) => false),
@@ -146,6 +162,9 @@ List<Override> get _overrides => [
           ]),
       // Bandeau « Événements à venir » : pas d'appel réseau.
       upcomingEventsProvider.overrideWith((ref) async => const <ChristianEvent>[]),
+      pastEventsHomeProvider.overrideWith((ref) async => [_pastEvent]),
+      latestConversionsProvider.overrideWith((ref) async => const <Testimony>[]),
+      myConversionProvider.overrideWith((ref) async => null),
       // Requêtes de prière insérées dans le fil : auteur au nom long, une anonyme.
       prayerRequestsPageProvider(homePrayerRequests).overrideWith((ref) async => PrayerPage(items: [
             for (final (i, anonymous) in [(1, false), (2, true)])

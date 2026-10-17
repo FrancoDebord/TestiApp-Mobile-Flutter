@@ -2,6 +2,7 @@
 // Doc backend : docs/fonctionnalites/carnet-prive.md
 
 import '../../../core/app_constants.dart';
+import '../../../l10n/app_localizations.dart';
 
 enum JournalEntryType {
   text,
@@ -17,9 +18,9 @@ enum JournalEntryType {
   String get apiValue => name;
 
   String get label => switch (this) {
-        JournalEntryType.text  => 'Texte',
-        JournalEntryType.audio => 'Audio',
-        JournalEntryType.video => 'Vidéo',
+        JournalEntryType.text  => L10n.current.journalTypeText,
+        JournalEntryType.audio => L10n.current.journalTypeAudio,
+        JournalEntryType.video => L10n.current.journalTypeVideo,
       };
 }
 
@@ -46,7 +47,7 @@ class JournalEntry {
         id: '${m['id']}',
         title: (m['title'] as String?)?.trim().isNotEmpty == true
             ? (m['title'] as String).trim()
-            : 'Sans titre',
+            : L10n.current.journalUntitled,
         type: JournalEntryType.parse(m['type']),
         body: (m['bodyText'] ?? m['body_text']) as String? ?? '',
         category: (m['category'] as String?) ?? 'autre',

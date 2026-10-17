@@ -11,6 +11,7 @@ import '../providers/follow_provider.dart';
 import 'account_tile.dart';
 import '../../../shared/search/search_suggestions.dart';
 import '../../../shared/widgets/search_autocomplete_field.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Charge une page de comptes (recherche, numéro de page à partir de 1).
 typedef AccountPageLoader = Future<CommunityPage> Function(String query, int page);
@@ -20,13 +21,13 @@ String accountListErrorMessage(Object error) {
   if (error is LaravelApiException) {
     // 404 : route absente, le serveur n'a pas encore reçu la mise à jour.
     if (error.statusCode == 404) {
-      return "Cette liste n'est pas encore disponible sur le serveur. Réessayez plus tard.";
+      return L10n.current.communityListNotDeployed;
     }
-    if (error.statusCode == 401) return 'Connectez-vous pour voir cette liste.';
-    if (error.statusCode == 429) return 'Trop de demandes. Patientez un instant puis réessayez.';
+    if (error.statusCode == 401) return L10n.current.communityListSignIn;
+    if (error.statusCode == 429) return L10n.current.communityListTooMany;
     if (error.message.isNotEmpty) return error.message;
   }
-  return 'Impossible de charger la liste. Vérifiez votre connexion.';
+  return L10n.current.communityListError;
 }
 
 /// Liste de comptes paginée avec recherche, tirer pour actualiser et bouton Suivre.
@@ -39,7 +40,7 @@ class PagedAccountList extends ConsumerStatefulWidget {
     required this.emptyText,
     this.emptyAction,
     this.header,
-    this.followIdleLabel = 'Suivre',
+    this.followIdleLabel,
     this.searchRecentKey = 'accounts',
   });
 
@@ -54,7 +55,7 @@ class PagedAccountList extends ConsumerStatefulWidget {
   final Widget Function(int total)? header;
 
   /// Texte du bouton Suivre tant qu'on ne suit pas (« Suivre en retour » dans Mes abonnés).
-  final String followIdleLabel;
+  final String? followIdleLabel;
 
   /// Liste de recherches récentes de la barre (autocomplétion).
   final String searchRecentKey;
@@ -205,7 +206,7 @@ class _PagedAccountListState extends ConsumerState<PagedAccountList> with Automa
         padding: const EdgeInsets.all(24),
         child: Column(children: [
           Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textSecondary)),
-          TextButton(onPressed: () => _load(reset: _items.isEmpty), child: const Text('Réessayer')),
+          TextButton(onPressed: () => _load(reset: _items.isEmpty), child: Text(context.l10n.commonRetry)),
         ]),
       );
     }
@@ -215,7 +216,7 @@ class _PagedAccountListState extends ConsumerState<PagedAccountList> with Automa
         padding: const EdgeInsets.all(32),
         child: Column(children: [
           Text(
-            searching ? 'Aucun compte ne correspond à votre recherche.' : widget.emptyText,
+            searching ? context.l10n.communityNoMatch : widget.emptyText,
             textAlign: TextAlign.center,
             style: const TextStyle(color: AppColors.textSecondary),
           ),

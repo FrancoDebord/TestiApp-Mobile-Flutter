@@ -3,6 +3,7 @@
 // =============================================================================
 
 import '../../../shared/models/mention.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// The three testimony formats a user can publish.
 enum TestimonyFormat { text, audio, video }
@@ -11,22 +12,22 @@ extension TestimonyFormatLabel on TestimonyFormat {
   String get label {
     switch (this) {
       case TestimonyFormat.text:
-        return 'Témoignage Écrit';
+        return L10n.current.publishFormatText;
       case TestimonyFormat.audio:
-        return 'Témoignage Audio';
+        return L10n.current.publishFormatAudio;
       case TestimonyFormat.video:
-        return 'Témoignage Vidéo';
+        return L10n.current.publishFormatVideo;
     }
   }
 
   String get description {
     switch (this) {
       case TestimonyFormat.text:
-        return 'Racontez avec vos mots';
+        return L10n.current.publishFormatTextHint;
       case TestimonyFormat.audio:
-        return 'Enregistrez votre voix';
+        return L10n.current.publishFormatAudioHint;
       case TestimonyFormat.video:
-        return 'Filmez votre histoire';
+        return L10n.current.publishFormatVideoHint;
     }
   }
 }
@@ -51,19 +52,19 @@ extension PublishStatusLabel on PublishStatus {
   String get label {
     switch (this) {
       case PublishStatus.draft:
-        return 'Brouillon';
+        return L10n.current.publishStatusDraft;
       case PublishStatus.submitted:
-        return 'Soumis';
+        return L10n.current.publishStatusSubmitted;
       case PublishStatus.inReview:
-        return 'En validation';
+        return L10n.current.publishStatusInReview;
       case PublishStatus.published:
-        return 'Publié';
+        return L10n.current.publishStatusPublished;
       case PublishStatus.pendingSync:
-        return 'Hors ligne';
+        return L10n.current.publishStatusOffline;
       case PublishStatus.savedToJournal:
-        return 'Dans mon carnet';
+        return L10n.current.publishStatusJournal;
       case PublishStatus.videoUploading:
-        return 'Envoi de la vidéo';
+        return L10n.current.publishStatusVideoUploading;
     }
   }
 }
@@ -72,18 +73,19 @@ extension PublishStatusLabel on PublishStatus {
 /// `private` = carnet privé : visible uniquement par l'auteur, sans modération.
 enum TestimonyVisibility { public, friends, private }
 
-/// All available testimony categories.
+/// All available testimony categories (valeurs internes, cf. _categoryFromString
+/// dans publish_provider.dart ; les libellés affichés viennent de l'API).
 const List<String> kTestimonyCategories = [
-  'Guérison',
-  'Délivrance',
-  'Conversion',
-  'Mariage',
-  'Famille',
-  'Finances',
-  'Miracles',
-  'Protection divine',
-  'Ministère',
-  'Salut',
+  'Guérison', // i18n-ignore
+  'Délivrance', // i18n-ignore
+  'Conversion', // i18n-ignore
+  'Mariage', // i18n-ignore
+  'Famille', // i18n-ignore
+  'Finances', // i18n-ignore
+  'Miracles', // i18n-ignore
+  'Protection divine', // i18n-ignore
+  'Ministère', // i18n-ignore
+  'Salut', // i18n-ignore
 ];
 
 // ---------------------------------------------------------------------------
@@ -123,10 +125,10 @@ String? proofRejectionReason({required String name, required int size}) {
   final dot = name.lastIndexOf('.');
   final ext = dot < 0 ? '' : name.substring(dot + 1).toLowerCase();
   if (!kProofExtensions.contains(ext)) {
-    return 'Format non accepté : image (JPG, PNG, WebP) ou PDF uniquement.';
+    return L10n.current.publishProofBadFormat;
   }
   if (size > kMaxProofBytes) {
-    return 'Fichier trop lourd : 10 Mo au maximum.';
+    return L10n.current.publishProofTooBig;
   }
   return null;
 }
@@ -245,7 +247,7 @@ class PublishDraft {
         return line.length > 60 ? '${line.substring(0, 60).trimRight()}…' : line;
       }
     }
-    return 'Mon témoignage';
+    return L10n.current.publishDefaultTitle;
   }
 
   PublishDraft copyWith({

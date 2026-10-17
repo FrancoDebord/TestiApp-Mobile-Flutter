@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../services/api_service.dart' show secureStorageProvider;
 import '../models/ip_camera_config.dart';
 import '../models/live_models.dart' show liveCameraUrlPattern;
@@ -147,9 +148,9 @@ class _IpCameraFormState extends ConsumerState<IpCameraForm> {
     } else if (_url.text.trim().isNotEmpty) {
       final parsed = IpCameraConfig.parse(_url.text);
       if (parsed == null) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           behavior: SnackBarBehavior.floating,
-          content: Text("Adresse illisible : le formulaire n'a pas été rempli."),
+          content: Text(context.l10n.liveCamUnreadableUrl),
         ));
       } else {
         _fill(parsed);
@@ -171,7 +172,7 @@ class _IpCameraFormState extends ConsumerState<IpCameraForm> {
       );
 
   Widget _eye() => IconButton(
-        tooltip: _showSecret ? 'Masquer' : 'Afficher',
+        tooltip: _showSecret ? context.l10n.liveCamHide : context.l10n.liveCamShow,
         icon: Icon(_showSecret ? Icons.visibility_off_outlined : Icons.visibility_outlined),
         onPressed: () => setState(() => _showSecret = !_showSecret),
       );
@@ -186,9 +187,9 @@ class _IpCameraFormState extends ConsumerState<IpCameraForm> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SegmentedButton<bool>(
-          segments: const [
-            ButtonSegment(value: false, icon: Icon(Icons.tune_rounded), label: Text('Formulaire')),
-            ButtonSegment(value: true, icon: Icon(Icons.link_rounded), label: Text('Adresse complète')),
+          segments: [
+            ButtonSegment(value: false, icon: const Icon(Icons.tune_rounded), label: Text(context.l10n.liveCamModeForm)),
+            ButtonSegment(value: true, icon: const Icon(Icons.link_rounded), label: Text(context.l10n.liveCamModeFullUrl)),
           ],
           selected: {_advanced},
           onSelectionChanged: (s) => _toggleAdvanced(s.first),
@@ -201,19 +202,15 @@ class _IpCameraFormState extends ConsumerState<IpCameraForm> {
             color: AppColors.warningSoft,
             iconColor: AppColors.warning,
             icon: Icons.warning_amber_rounded,
-            text: "« $host » est une adresse du réseau local : le service vidéo, sur Internet, "
-                'ne pourra pas la joindre. Utilisez l\'adresse IP publique de la box ou un nom DDNS, '
-                'avec une redirection de port vers la caméra, ou choisissez le mode RTMP (OBS, ffmpeg).',
+            text: context.l10n.liveCamPrivateHost(host),
           ),
         ],
         const SizedBox(height: 10),
-        const _Notice(
+        _Notice(
           color: AppColors.primarySoft,
           iconColor: AppColors.primary,
           icon: Icons.public_rounded,
-          text: 'La caméra doit être joignable depuis Internet par le service vidéo : IP publique '
-              'ou DDNS, et redirection du port (ex. 554) vers la caméra sur la box. '
-              "L'adresse est conservée chiffrée sur le serveur ; le mot de passe n'est pas mémorisé sur ce téléphone.",
+          text: context.l10n.liveCamReachableNotice,
         ),
       ],
     );
@@ -228,16 +225,16 @@ class _IpCameraFormState extends ConsumerState<IpCameraForm> {
           obscureText: !_showSecret,
           maxLength: IpCameraConfig.maxLength,
           decoration: _decoration(
-            'Adresse du flux *',
-            hint: 'rtsp://utilisateur:motdepasse@cam.exemple.org:554/stream1',
-            helper: 'rtsp(s)://, rtmp(s)://, http(s):// ou srt://. Caractères spéciaux du mot de passe encodés (@ → %40).',
+            context.l10n.liveCamStreamUrlLabel,
+            hint: context.l10n.liveCamStreamUrlHint,
+            helper: context.l10n.liveCamStreamUrlHelper,
             suffix: _eye(),
           ),
           validator: (v) {
             final value = v?.trim() ?? '';
-            if (value.isEmpty) return "Indiquez l'adresse du flux de la caméra.";
+            if (value.isEmpty) return context.l10n.liveCamStreamUrlRequired;
             if (!liveCameraUrlPattern.hasMatch(value)) {
-              return 'Adresse non reconnue : elle doit commencer par rtsp://, rtmp://, http(s):// ou srt://.';
+              return context.l10n.liveCamStreamUrlInvalid;
             }
             return null;
           },
@@ -249,7 +246,7 @@ class _IpCameraFormState extends ConsumerState<IpCameraForm> {
           initialValue: _preset.id,
           key: ValueKey('preset-${_preset.id}'),
           isExpanded: true,
-          decoration: _decoration('Modèle de caméra'),
+          decoration: _decoration(context.l10n.liveCamModel),
           items: [
             for (final p in IpCameraPreset.all)
               DropdownMenuItem(value: p.id, child: Text(p.label)),
@@ -265,9 +262,9 @@ class _IpCameraFormState extends ConsumerState<IpCameraForm> {
         if (_preset.hasSubStream) ...[
           const SizedBox(height: 10),
           SegmentedButton<IpCameraStream>(
-            segments: const [
-              ButtonSegment(value: IpCameraStream.main, label: Text('Flux principal')),
-              ButtonSegment(value: IpCameraStream.sub, label: Text('Flux secondaire')),
+            segments: [
+              ButtonSegment(value: IpCameraStream.main, label: Text(context.l10n.liveCamMainStream)),
+              ButtonSegment(value: IpCameraStream.sub, label: Text(context.l10n.liveCamSubStream)),
             ],
             selected: {_stream},
             onSelectionChanged: (s) => _selectStream(s.first),
@@ -278,7 +275,7 @@ class _IpCameraFormState extends ConsumerState<IpCameraForm> {
           initialValue: _protocol,
           key: ValueKey('protocol-${_protocol.scheme}'),
           isExpanded: true,
-          decoration: _decoration('Protocole'),
+          decoration: _decoration(context.l10n.liveCamProtocol),
           items: [
             for (final p in IpCameraProtocol.values)
               DropdownMenuItem(value: p, child: Text(p.label)),
@@ -297,7 +294,7 @@ class _IpCameraFormState extends ConsumerState<IpCameraForm> {
                 keyboardType: TextInputType.url,
                 autocorrect: false,
                 enableSuggestions: false,
-                decoration: _decoration('Adresse IP ou nom d\'hôte *', hint: 'cam.exemple.org'),
+                decoration: _decoration(context.l10n.liveCamHostLabel, hint: context.l10n.liveCamHostHint),
                 validator: (v) => IpCameraConfig.validateHost(v ?? ''),
               ),
             ),
@@ -308,7 +305,7 @@ class _IpCameraFormState extends ConsumerState<IpCameraForm> {
                 controller: _port,
                 keyboardType: TextInputType.number,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: _decoration('Port'),
+                decoration: _decoration(context.l10n.liveCamPort),
                 validator: (v) => IpCameraConfig.validatePort(v ?? ''),
               ),
             ),
@@ -321,8 +318,8 @@ class _IpCameraFormState extends ConsumerState<IpCameraForm> {
           autocorrect: false,
           enableSuggestions: false,
           decoration: _decoration(
-            _protocol.isSrt ? 'Chemin / paramètres (facultatif)' : 'Chemin du flux',
-            hint: '/stream1',
+            _protocol.isSrt ? context.l10n.liveCamPathParams : context.l10n.liveCamPath,
+            hint: '/stream1', // i18n-ignore
           ),
           validator: (v) => IpCameraConfig.validatePath(v ?? ''),
         ),
@@ -332,7 +329,7 @@ class _IpCameraFormState extends ConsumerState<IpCameraForm> {
             controller: _streamId,
             autocorrect: false,
             enableSuggestions: false,
-            decoration: _decoration('Stream ID (facultatif)'),
+            decoration: _decoration(context.l10n.liveCamStreamId),
           ),
           const SizedBox(height: 12),
           TextFormField(
@@ -340,8 +337,8 @@ class _IpCameraFormState extends ConsumerState<IpCameraForm> {
             autocorrect: false,
             enableSuggestions: false,
             obscureText: !_showSecret,
-            decoration: _decoration('Phrase secrète (facultatif)',
-                helper: 'Chiffrement SRT : 10 à 79 caractères.', suffix: _eye()),
+            decoration: _decoration(context.l10n.liveCamPassphrase,
+                helper: context.l10n.liveCamPassphraseHelper, suffix: _eye()),
             validator: (v) => IpCameraConfig.validatePassphrase(v ?? ''),
           ),
         ] else ...[
@@ -350,7 +347,7 @@ class _IpCameraFormState extends ConsumerState<IpCameraForm> {
             autocorrect: false,
             enableSuggestions: false,
             autofillHints: const [AutofillHints.username],
-            decoration: _decoration('Identifiant de la caméra', hint: 'admin'),
+            decoration: _decoration(context.l10n.liveCamUsername, hint: 'admin'), // i18n-ignore
           ),
           const SizedBox(height: 12),
           TextFormField(
@@ -359,7 +356,7 @@ class _IpCameraFormState extends ConsumerState<IpCameraForm> {
             enableSuggestions: false,
             obscureText: !_showSecret,
             autofillHints: const [AutofillHints.password],
-            decoration: _decoration('Mot de passe', suffix: _eye()),
+            decoration: _decoration(context.l10n.authPasswordLabel, suffix: _eye()),
           ),
         ],
         const SizedBox(height: 12),
@@ -373,7 +370,7 @@ class _IpCameraFormState extends ConsumerState<IpCameraForm> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Adresse composée',
+              Text(context.l10n.liveCamComposedUrl,
                   style: AppTextStyles.labelSmall.copyWith(color: AppColors.textSecondary)),
               const SizedBox(height: 4),
               SelectableText(

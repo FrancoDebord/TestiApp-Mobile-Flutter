@@ -10,6 +10,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../shared/widgets/app_badge.dart';
+import '../../../l10n/app_localizations.dart' hide formatBytes;
 import '../../home/models/testimony_model.dart';
 import '../models/download_models.dart';
 
@@ -28,7 +29,7 @@ class OfflineTextScreen extends StatelessWidget {
         backgroundColor: AppColors.surface,
         surfaceTintColor: Colors.transparent,
         title: Text(
-          'Lecture hors ligne',
+          context.l10n.downloadsOfflineReading,
           style: AppTextStyles.h4,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
@@ -52,8 +53,8 @@ class OfflineTextScreen extends StatelessWidget {
             runSpacing: AppSpacing.sm,
             children: [
               AppBadge(label: entry.category.label, tone: AppBadgeTone.yellow),
-              const AppBadge(
-                label: 'Hors ligne',
+              AppBadge(
+                label: context.l10n.downloadsOffline,
                 tone: AppBadgeTone.blue,
                 icon: Icons.download_done_rounded,
               ),

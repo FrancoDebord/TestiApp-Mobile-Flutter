@@ -33,20 +33,20 @@ Future<void> showTestimonyShareSheet(
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     builder: (sheet) {
-      final l10n = AppLocalizations.of(sheet);
+      final l10n = sheet.l10n;
       final messenger = ScaffoldMessenger.of(context);
       void close() => Navigator.of(sheet).pop();
 
       void repost() {
         close();
         if (testimony.id.startsWith('local_')) {
-          messenger.showSnackBar(const SnackBar(
-            content: Text('Ce témoignage n’est pas encore publié.'),
+          messenger.showSnackBar(SnackBar(
+            content: Text(l10n.repostNotPublishedYet),
             behavior: SnackBarBehavior.floating,
           ));
         } else if (isMine) {
-          messenger.showSnackBar(const SnackBar(
-            content: Text('C’est votre témoignage : il est déjà visible par vos abonnés.'),
+          messenger.showSnackBar(SnackBar(
+            content: Text(l10n.repostOwnTestimony),
             behavior: SnackBarBehavior.floating,
           ));
         } else {
@@ -128,7 +128,7 @@ Future<void> showTestimonyShareSheet(
                         child: _ShareOption(
                           key: const ValueKey('repost-on-testiapp'),
                           icon: Icons.repeat_rounded,
-                          label: 'Sur TestiApp',
+                          label: l10n.repostOnTestiApp,
                           color: AppColors.primary,
                           onTap: repost,
                         ),

@@ -5,6 +5,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../downloads/widgets/download_button.dart';
 import '../models/testimony_model.dart';
 import '../providers/home_providers.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Formate un compteur : 1234 → « 1.2k ».
 String formatCount(int n) {
@@ -95,7 +96,7 @@ class TestimonyActionBar extends StatelessWidget {
                       ? Icons.volunteer_activism
                       : Icons.volunteer_activism_outlined,
                   count: prayersCount ?? stats.prayers,
-                  tooltip: 'Je prie',
+                  tooltip: context.l10n.detailPray,
                   color: prayed ? AppColors.primary : AppColors.textSecondary,
                   onTap: onPray,
                 ),
@@ -104,7 +105,7 @@ class TestimonyActionBar extends StatelessWidget {
                 child: _StatAction(
                   icon: Icons.chat_bubble_outline_rounded,
                   count: stats.comments,
-                  tooltip: 'Commenter',
+                  tooltip: context.l10n.detailComment,
                   color: AppColors.textSecondary,
                   onTap: onComment,
                 ),
@@ -112,7 +113,7 @@ class TestimonyActionBar extends StatelessWidget {
               Flexible(
                 child: _StatAction(
                   icon: Icons.share_outlined,
-                  tooltip: 'Partager',
+                  tooltip: context.l10n.commonShare,
                   color: AppColors.textSecondary,
                   onTap: onShare,
                 ),
@@ -123,7 +124,7 @@ class TestimonyActionBar extends StatelessWidget {
         if (showDownload) DownloadButton(testimony: testimony, size: 21),
         if (onSave != null)
           IconButton(
-            tooltip: saved ? 'Enlever des sauvegardes' : 'Sauvegarder',
+            tooltip: saved ? context.l10n.homeUnsave : context.l10n.detailSave,
             onPressed: onSave,
             visualDensity: VisualDensity.compact,
             icon: Icon(
@@ -472,7 +473,7 @@ class TestimonyCardMenu extends StatelessWidget {
       icon: const Icon(Icons.more_vert_rounded, size: 20),
       iconColor: iconColor,
       padding: EdgeInsets.zero,
-      tooltip: 'Plus d’options',
+      tooltip: context.l10n.homeMoreOptions,
       color: AppColors.surface,
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -501,7 +502,7 @@ class TestimonyCardMenu extends StatelessWidget {
               const SizedBox(width: 10),
               Flexible(
                 child: Text(
-                  isSaved ? 'Enlever des sauvegardes' : 'Sauvegarder',
+                  isSaved ? context.l10n.homeUnsave : context.l10n.detailSave,
                   style: AppTextStyles.bodyMedium,
                 ),
               ),
@@ -515,7 +516,7 @@ class TestimonyCardMenu extends StatelessWidget {
               const Icon(Icons.share_outlined,
                   size: 18, color: AppColors.textSecondary),
               const SizedBox(width: 10),
-              Flexible(child: Text('Partager', style: AppTextStyles.bodyMedium)),
+              Flexible(child: Text(context.l10n.commonShare, style: AppTextStyles.bodyMedium)),
             ],
           ),
         ),
@@ -528,7 +529,7 @@ class TestimonyCardMenu extends StatelessWidget {
               const SizedBox(width: 10),
               Flexible(
                 child: Text(
-                  'Signaler',
+                  context.l10n.commonReport,
                   style: AppTextStyles.bodyMedium
                       .copyWith(color: AppColors.danger),
                 ),
@@ -546,7 +547,7 @@ class TestimonyCardMenu extends StatelessWidget {
                 const SizedBox(width: 10),
                 Flexible(
                   child: Text(
-                    'Supprimer',
+                    context.l10n.commonDelete,
                     style: AppTextStyles.bodyMedium
                         .copyWith(color: AppColors.danger),
                   ),

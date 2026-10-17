@@ -1,3 +1,4 @@
+// i18n-ignore-file : noms et abréviations des livres bibliques (fr / en), non traduits.
 // Références bibliques écrites à la main : « Jérémie 29 : 11 », « Jean 3:16-18 »,
 // « 1 Pierre 5.7 », « Ps 23,1 », « John 3:16 ». Même règle que le serveur
 // (App\Support\BibleReference) : sert hors connexion à relire le passage dans

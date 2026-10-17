@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
+import '../../../l10n/app_localizations.dart' show AppLocalizations, AppLocalizationsContext, L10n, lookupAppLocalizations;
 import '../../../shared/widgets/app_badge.dart';
 import '../../../shared/widgets/organization_badge.dart';
 import '../../downloads/widgets/download_button.dart';
@@ -28,29 +29,25 @@ String formatCompactCount(int n, {bool fr = true}) {
   return '$n';
 }
 
+/// Textes de la langue demandée ([fr] : français, sinon anglais).
+AppLocalizations _l10n(bool fr) => lookupAppLocalizations(fr ? L10n.fr : L10n.en);
+
 /// « il y a 5 jours » / « 5 days ago ».
 String formatTimeAgo(DateTime dt, {bool fr = true, DateTime? now}) {
+  final l = _l10n(fr);
   final diff = (now ?? DateTime.now()).difference(dt);
-  String p(int n, String frS, String enS) => fr
-      ? 'il y a $n $frS${n > 1 && !frS.endsWith('s') ? 's' : ''}'
-      : '$n $enS${n > 1 ? 's' : ''} ago';
-  if (diff.inMinutes < 1) return fr ? "à l'instant" : 'just now';
-  if (diff.inMinutes < 60) return fr ? 'il y a ${diff.inMinutes} min' : '${diff.inMinutes} min ago';
-  if (diff.inHours < 24) return p(diff.inHours, 'heure', 'hour');
-  if (diff.inDays < 30) return p(diff.inDays, 'jour', 'day');
-  if (diff.inDays < 365) {
-    final m = diff.inDays ~/ 30;
-    return fr ? 'il y a $m mois' : '$m month${m > 1 ? 's' : ''} ago';
-  }
-  return p(diff.inDays ~/ 365, 'an', 'year');
+  if (diff.inMinutes < 1) return l.testimonyAgoJustNow;
+  if (diff.inMinutes < 60) return l.testimonyAgoMinutes(diff.inMinutes);
+  if (diff.inHours < 24) return l.testimonyAgoHours(diff.inHours);
+  if (diff.inDays < 30) return l.testimonyAgoDays(diff.inDays);
+  if (diff.inDays < 365) return l.testimonyAgoMonths(diff.inDays ~/ 30);
+  return l.testimonyAgoYears(diff.inDays ~/ 365);
 }
 
 /// « 12,4k vues · il y a 5 jours ».
 String viewsAndAge(Testimony t, {bool fr = true}) {
   final v = t.stats.views;
-  final views = fr
-      ? '${formatCompactCount(v)} vue${v > 1 ? 's' : ''}'
-      : '${formatCompactCount(v, fr: false)} view${v == 1 ? '' : 's'}';
+  final views = _l10n(fr).testimonyViews(v, formatCompactCount(v, fr: fr));
   return '$views · ${formatTimeAgo(t.createdAt, fr: fr)}';
 }
 
@@ -266,7 +263,7 @@ class TestimonyStatsRow extends StatelessWidget {
                 color: AppColors.danger,
                 label: formatCompactCount(likes, fr: fr),
                 onTap: onLike,
-                semanticLabel: fr ? "J'aime" : 'Like',
+                semanticLabel: _l10n(fr).testimonyLikeSemantic,
               ),
               if (prayers != null)
                 TestimonyStatAction(
@@ -274,19 +271,19 @@ class TestimonyStatsRow extends StatelessWidget {
                   color: isPraying ? AppColors.primary : AppColors.textSecondary,
                   label: formatCompactCount(prayers!, fr: fr),
                   onTap: onPray,
-                  semanticLabel: fr ? 'Je prie' : 'Pray',
+                  semanticLabel: _l10n(fr).testimonyPraySemantic,
                 ),
               TestimonyStatAction(
                 icon: Icons.share_rounded,
                 label: '',
                 onTap: onShare,
-                semanticLabel: fr ? 'Partager' : 'Share',
+                semanticLabel: _l10n(fr).testimonyShareSemantic,
               ),
               TestimonyStatAction(
                 icon: Icons.chat_bubble_outline_rounded,
                 label: formatCompactCount(comments, fr: fr),
                 onTap: onComment,
-                semanticLabel: fr ? 'Commentaires' : 'Comments',
+                semanticLabel: _l10n(fr).testimonyCommentsSemantic,
               ),
             ],
           ),
@@ -330,7 +327,7 @@ class InsightVerseCard extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  title ?? 'Parole de Dieu',
+                  title ?? context.l10n.testimonyWordOfGod,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.labelMedium.copyWith(
@@ -373,9 +370,9 @@ class OfflineBadge extends StatelessWidget {
   const OfflineBadge({super.key});
 
   @override
-  Widget build(BuildContext context) => const AppBadge(
-        key: ValueKey('offline-badge'),
-        label: 'Hors ligne',
+  Widget build(BuildContext context) => AppBadge(
+        key: const ValueKey('offline-badge'),
+        label: context.l10n.testimonyOffline,
         tone: AppBadgeTone.success,
         icon: Icons.download_done_rounded,
         dense: true,

@@ -3,6 +3,7 @@
 // Doc backend : docs/fonctionnalites/lives.md
 
 import 'package:flutter/widgets.dart' show StringCharacters;
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/models/mention.dart';
 
 enum LiveStatus {
@@ -74,16 +75,24 @@ final RegExp liveCameraUrlPattern =
 
 /// Réactions acceptées par `POST /lives/{id}/reactions`.
 enum LiveReactionType {
-  like('like', '❤️', "J'aime"),
-  pray('pray', '🙏', 'Prière'),
-  amen('amen', '🙌', 'Amen'),
-  worship('worship', '🛐', 'Adorer Dieu'),
-  fire('fire', '🔥', 'Feu');
+  like('like', '❤️'),
+  pray('pray', '🙏'),
+  amen('amen', '🙌'),
+  worship('worship', '🛐'),
+  fire('fire', '🔥');
 
-  const LiveReactionType(this.apiValue, this.emoji, this.label);
+  const LiveReactionType(this.apiValue, this.emoji);
   final String apiValue;
   final String emoji;
-  final String label;
+
+  /// Libellé dans la langue affichée.
+  String get label => switch (this) {
+        like => L10n.current.detailLike,
+        pray => L10n.current.liveReactionPray,
+        amen => L10n.current.liveReactionAmen,
+        worship => L10n.current.liveReactionWorship,
+        fire => L10n.current.liveReactionFire,
+      };
 
   static LiveReactionType? parse(Object? raw) {
     for (final t in values) {
@@ -111,7 +120,7 @@ class LivePerson {
 
   factory LivePerson.fromJson(Map<String, dynamic> m) {
     final name = (m['displayName'] as String?)?.trim();
-    final display = (name == null || name.isEmpty) ? 'Anonyme' : name;
+    final display = (name == null || name.isEmpty) ? L10n.current.commonAnonymous : name;
     final initials = (m['initials'] as String?)?.trim();
     return LivePerson(
       id: '${m['id'] ?? ''}',
@@ -217,7 +226,7 @@ class LiveSession {
     final liveStats = m['liveStats'];
     return LiveSession(
       id: '${m['id']}',
-      title: (m['title'] as String?) ?? 'Direct',
+      title: (m['title'] as String?) ?? L10n.current.liveDefaultTitle,
       description: m['description'] as String?,
       category: m['category'] as String?,
       status: LiveStatus.parse(m['status']),
@@ -292,11 +301,11 @@ class LiveSession {
 
 /// Libellé d'un motif de fin (`end_reason`) ; null → message générique.
 String liveEndReasonLabel(String? reason) => switch (reason) {
-      'host'       => 'Terminé par le diffuseur',
-      'moderator'  => 'Coupé par la modération',
-      'connection' => 'Interrompu (connexion perdue)',
-      'abandoned'  => "Jamais passé à l'antenne",
-      _            => "Merci d'avoir suivi ce témoignage.",
+      'host'       => L10n.current.liveEndReasonHost,
+      'moderator'  => L10n.current.liveEndReasonModerator,
+      'connection' => L10n.current.liveEndReasonConnection,
+      'abandoned'  => L10n.current.liveEndReasonAbandoned,
+      _            => L10n.current.liveEndReasonDefault,
     };
 
 /// Réponse de `GET /lives`.

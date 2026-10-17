@@ -6,6 +6,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../shared/widgets/organization_badge.dart';
 import '../models/community_account.dart';
 import 'follow_button.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Photo de profil ou initiales.
 class AccountAvatar extends StatelessWidget {
@@ -42,11 +43,11 @@ class AccountAvatar extends StatelessWidget {
 
 /// Ligne d'un compte (Communauté) : avatar, nom, coche, type / ville, compteurs, bouton Suivre.
 class AccountTile extends StatefulWidget {
-  const AccountTile({required this.account, this.followIdleLabel = 'Suivre', super.key});
+  const AccountTile({required this.account, this.followIdleLabel, super.key});
   final CommunityAccount account;
 
   /// Texte du bouton tant qu'on ne suit pas le compte.
-  final String followIdleLabel;
+  final String? followIdleLabel;
 
   @override
   State<AccountTile> createState() => _AccountTileState();
@@ -90,7 +91,7 @@ class _AccountTileState extends State<AccountTile> {
                         style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                   const SizedBox(height: 2),
                   Text(
-                    '$_followers abonné${_followers > 1 ? 's' : ''} · ${a.testimonyCount} témoignage${a.testimonyCount > 1 ? 's' : ''}',
+                    context.l10n.communityAccountCounts(_followers, a.testimonyCount),
                     style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                   ),
                   if (a.bio != null) ...[

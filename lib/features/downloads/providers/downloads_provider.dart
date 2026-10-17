@@ -16,6 +16,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/media/media_quality.dart';
 import '../../../core/media/video_source.dart' show isHlsUrl;
 import '../../../core/media/playback_preferences.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../home/models/testimony_model.dart';
 import '../data/downloads_repository.dart';
 import '../models/download_models.dart';
@@ -108,7 +109,7 @@ class DownloadsNotifier extends Notifier<DownloadsState> {
   Future<DownloadOutcome> download(Testimony t) async {
     if (!state.supported) return DownloadOutcome.unsupported;
     if (t is VideoTestimony && t.isYouTube) {
-      _fail(t, 'Les vidéos YouTube ne peuvent pas être téléchargées.');
+      _fail(t, L10n.current.downloadsYouTubeUnsupported);
       return DownloadOutcome.unsupported;
     }
     await ensureLoaded();
@@ -156,7 +157,7 @@ class DownloadsNotifier extends Notifier<DownloadsState> {
       _complete(id, DownloadOutcome.cancelled);
       return;
     }
-    _tokens[id]?.cancel('Annulé');
+    _tokens[id]?.cancel('Annulé'); // i18n-ignore
     if (!_tokens.containsKey(id)) _removeTask(id); // échec affiché : on l'efface
   }
 
@@ -221,8 +222,7 @@ class DownloadsNotifier extends Notifier<DownloadsState> {
     final cap = ref.read(downloadsStorageCapProvider);
     try {
       if (state.totalBytes >= cap) {
-        throw const _DownloadError(
-            'Espace de téléchargement plein. Supprimez des téléchargements.');
+        throw _DownloadError(L10n.current.downloadsStorageFull);
       }
       final entry = await _fetch(t, token);
       _removeTask(t.id);
@@ -233,14 +233,14 @@ class DownloadsNotifier extends Notifier<DownloadsState> {
         _removeTask(t.id);
         _complete(t.id, DownloadOutcome.cancelled);
       } else {
-        _fail(t, 'Téléchargement impossible. Vérifiez votre connexion.');
+        _fail(t, L10n.current.downloadsFailedNetwork);
         _complete(t.id, DownloadOutcome.failed);
       }
     } on _DownloadError catch (e) {
       _fail(t, e.message);
       _complete(t.id, DownloadOutcome.failed);
     } catch (_) {
-      _fail(t, 'Téléchargement impossible.');
+      _fail(t, L10n.current.downloadsFailedGeneric);
       _complete(t.id, DownloadOutcome.failed);
     } finally {
       _tokens.remove(t.id);
@@ -255,7 +255,7 @@ class DownloadsNotifier extends Notifier<DownloadsState> {
     // 1. Média
     String? label;
     if (t is TextTestimony) {
-      label = 'Texte';
+      label = L10n.current.downloadsTypeText;
       size += utf8.encode(t.preview).length;
     } else {
       // Qualité : même règle que la lecture (Auto → 360p / 64 kbps sur
@@ -282,7 +282,7 @@ class DownloadsNotifier extends Notifier<DownloadsState> {
         TextTestimony() => null,
       };
       if (resolved == null || resolved.isLocal) {
-        throw const _DownloadError('Aucun fichier à télécharger.');
+        throw _DownloadError(L10n.current.downloadsNoFile);
       }
       label = resolved.label;
       final ext = DownloadsRepository.extensionFor(

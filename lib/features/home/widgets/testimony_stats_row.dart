@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../models/testimony_model.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Full stats section for a testimony card.
 ///
@@ -118,7 +119,7 @@ class _ReactionAvatarRow extends StatelessWidget {
           Flexible(
             child: Text(
               others > 0
-                  ? '${_format(total)} · et ${_format(others)} autres'
+                  ? context.l10n.homeStatsAndOthers(_format(total), _format(others))
                   : _format(total),
               style: AppTextStyles.bodySmall.copyWith(
                 color: AppColors.textSecondary,

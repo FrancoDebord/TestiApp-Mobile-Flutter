@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../services/api_service.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_text_field.dart';
@@ -26,7 +27,8 @@ class _DeleteAccountScreenState
   bool  _confirmed   = false;
   String? _error;
 
-  static const _kWord = 'SUPPRIMER';
+  /// Mot à saisir pour confirmer (« SUPPRIMER »).
+  String get _kWord => context.l10n.profileDeleteConfirmWord;
 
   @override
   void initState() {
@@ -50,7 +52,7 @@ class _DeleteAccountScreenState
   /// pour un compte téléphone / Google / Facebook (sans mot de passe).
   Future<void> _delete() async {
     if (_hasPassword && _passwordCtrl.text.isEmpty) {
-      setState(() => _error = 'Saisissez votre mot de passe.');
+      setState(() => _error = context.l10n.profileDeleteEnterPassword);
       return;
     }
     setState(() {
@@ -69,7 +71,7 @@ class _DeleteAccountScreenState
       setState(() {
         _isDeleting = false;
         _error = e.statusCode == 403
-            ? 'Mot de passe incorrect.'
+            ? context.l10n.profileDeleteWrongPassword
             : e.displayMessage;
       });
       return;
@@ -77,7 +79,7 @@ class _DeleteAccountScreenState
       if (!mounted) return;
       setState(() {
         _isDeleting = false;
-        _error = 'Impossible de joindre le serveur. Réessayez.';
+        _error = context.l10n.profileServerUnreachable;
       });
       return;
     }
@@ -87,11 +89,12 @@ class _DeleteAccountScreenState
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Supprimer le compte',
-            style: TextStyle(
+        title: Text(l10n.settingsDelete,
+            style: const TextStyle(
               fontFamily: AppFonts.family,
               fontWeight: FontWeight.w600,
               fontSize: 17,
@@ -126,9 +129,9 @@ class _DeleteAccountScreenState
               ),
             ),
 
-            const Text(
-              'Cette action est irréversible',
-              style: TextStyle(
+            Text(
+              l10n.profileDeleteIrreversible,
+              style: const TextStyle(
                 fontFamily: AppFonts.family,
                 fontWeight: FontWeight.w700,
                 fontSize: 20,
@@ -141,14 +144,13 @@ class _DeleteAccountScreenState
             // Conséquences
             _WarningItem(
                 icon: Icons.auto_stories_outlined,
-                text: 'Tous vos témoignages seront supprimés.'),
+                text: l10n.profileDeleteWarnTestimonies),
             _WarningItem(
                 icon: Icons.person_off_outlined,
-                text: 'Votre compte ne pourra pas être récupéré.'),
+                text: l10n.profileDeleteWarnAccount),
             _WarningItem(
                 icon: Icons.bookmark_remove_outlined,
-                text:
-                    'Vos sauvegardes et interactions seront perdues.'),
+                text: l10n.profileDeleteWarnSaved),
 
             const SizedBox(height: 32),
 
@@ -173,9 +175,7 @@ class _DeleteAccountScreenState
                         height: 1.5,
                       ),
                       children: [
-                        const TextSpan(
-                            text:
-                                'Pour confirmer, saisissez '),
+                        TextSpan(text: l10n.profileDeleteTypePrefix),
                         TextSpan(
                           text: _kWord,
                           style: const TextStyle(
@@ -184,8 +184,7 @@ class _DeleteAccountScreenState
                             fontFamily: AppFonts.family,
                           ),
                         ),
-                        const TextSpan(
-                            text: ' ci-dessous :'),
+                        TextSpan(text: l10n.profileDeleteTypeSuffix),
                       ],
                     ),
                   ),
@@ -236,8 +235,8 @@ class _DeleteAccountScreenState
             if (_hasPassword) ...[
               const SizedBox(height: 16),
               AppTextField(
-                label: 'Mot de passe',
-                hint: 'Votre mot de passe actuel',
+                label: l10n.authPasswordLabel,
+                hint: l10n.profileDeletePasswordHint,
                 controller: _passwordCtrl,
                 isPassword: true,
                 textInputAction: TextInputAction.done,
@@ -261,7 +260,7 @@ class _DeleteAccountScreenState
 
             // Bouton supprimer
             AppButton(
-              label: 'Supprimer définitivement',
+              label: l10n.profileDeleteForever,
               variant: AppButtonVariant.danger,
               size: AppButtonSize.large,
               fullWidth: true,
@@ -274,8 +273,8 @@ class _DeleteAccountScreenState
             // Annuler
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Annuler',
-                  style: TextStyle(
+              child: Text(l10n.commonCancel,
+                  style: const TextStyle(
                     fontFamily: AppFonts.family,
                     fontSize: 14,
                     color: AppColors.textSecondary,

@@ -47,6 +47,9 @@ import '../../features/testimony/screens/featured_testimony_screen.dart';
 import '../../features/testimony/screens/report_testimony_screen.dart';
 import '../../features/testimony/screens/testimony_comments_screen.dart';
 import '../../features/testimony/screens/testimony_detail_screen.dart';
+import '../../features/conversion/screens/conversion_edit_screen.dart';
+import '../../features/events/screens/past_events_screen.dart';
+import '../../features/conversion/screens/conversion_testimonies_screen.dart';
 import '../../features/auth/guest_access.dart';
 import '../../features/auth/providers/auth_notifier.dart'
     show
@@ -77,6 +80,7 @@ import '../../features/prayer/screens/submit_prayer_request_screen.dart';
 import 'app_routes.dart';
 import 'app_transitions.dart';
 import '../../shared/widgets/scaffold_with_bottom_nav.dart';
+import '../../l10n/app_localizations.dart';
 
 // ============================================================================
 // Router provider
@@ -320,6 +324,28 @@ List<RouteBase> _buildRoutes() {
     // Uses its own Navigator so it sits above the bottom-nav shell.
     // Lien public share_url (https://<domaine>/testimonies/{id}), intercepté
     // par les App Links (Android) / Universal Links (iOS).
+    // Témoignages de conversion (docs serveur fonctionnalites/temoignage-de-conversion.md).
+    GoRoute(
+      path: '/temoignages-de-conversion',
+      redirect: (_, _) => '/conversions',
+    ),
+    GoRoute(
+      path: '/conversions',
+      pageBuilder: (context, state) => AppTransitions.slideRight(
+        state: state,
+        child: const ConversionTestimoniesScreen(),
+      ),
+      routes: [
+        GoRoute(
+          path: 'mine/edit',
+          pageBuilder: (context, state) => AppTransitions.slideUp(
+            state: state,
+            child: const ConversionEditScreen(),
+          ),
+        ),
+      ],
+    ),
+
     GoRoute(
       path: '/testimonies/:id',
       redirect: (_, state) => '/testimony/${state.pathParameters['id']}',
@@ -527,7 +553,7 @@ List<RouteBase> _buildRoutes() {
       path: locationSettingsPath,
       // Réservé au titulaire : masqué quand on agit pour un compte administré.
       builder: (context, state) =>
-          const OwnerOnlyGate(title: 'Localisation', child: LocationSettingsScreen()),
+          OwnerOnlyGate(title: context.l10n.locationTitle, child: const LocationSettingsScreen()),
     ),
 
     // Administrateurs du compte (tous les comptes) / comptes que j'administre.
@@ -745,6 +771,11 @@ List<RouteBase> _buildRoutes() {
                   path: 'new',
                   builder: (context, state) => const EventFormScreen(),
                 ),
+                // Événements passés : revivre les témoignages.
+                GoRoute(
+                  path: 'past',
+                  builder: (context, state) => const PastEventsScreen(),
+                ),
                 GoRoute(
                   path: ':id',
                   builder: (context, state) =>
@@ -803,8 +834,8 @@ List<RouteBase> _buildRoutes() {
                   name: AppRoutes.accountVerification,
                   pageBuilder: (context, state) => AppTransitions.slideRight(
                     state: state,
-                    child: const OwnerOnlyGate(
-                        title: 'Vérification du compte', child: AccountVerificationScreen()),
+                    child: OwnerOnlyGate(
+                        title: context.l10n.notifTypeAccountVerification, child: const AccountVerificationScreen()),
                   ),
                 ),
                 GoRoute(
@@ -857,8 +888,8 @@ List<RouteBase> _buildRoutes() {
                       pageBuilder: (context, state) =>
                           AppTransitions.slideRight(
                         state: state,
-                        child: const OwnerOnlyGate(
-                            title: 'Sécurité et mot de passe', child: ChangePasswordScreen()),
+                        child: OwnerOnlyGate(
+                            title: context.l10n.appSecurityAndPassword, child: const ChangePasswordScreen()),
                       ),
                     ),
                     GoRoute(
@@ -866,8 +897,8 @@ List<RouteBase> _buildRoutes() {
                       name: AppRoutes.deleteAccount,
                       pageBuilder: (context, state) => AppTransitions.slideUp(
                         state: state,
-                        child: const OwnerOnlyGate(
-                            title: 'Supprimer le compte', child: DeleteAccountScreen()),
+                        child: OwnerOnlyGate(
+                            title: context.l10n.settingsDelete, child: const DeleteAccountScreen()),
                       ),
                     ),
                   ],

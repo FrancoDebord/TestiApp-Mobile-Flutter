@@ -22,6 +22,9 @@ import '../models/publish_models.dart';
 import '../upload/video_upload_controller.dart' show videoUploadProvider;
 import '../../../shared/models/mention.dart' show MentionRef;
 import '../../prophecies/providers/prophecies_providers.dart' show propheciesListProvider;
+import '../../conversion/providers/conversion_providers.dart'
+    show myConversionProvider, latestConversionsProvider;
+import '../../../l10n/app_localizations.dart';
 
 // Converts a relative server URL (e.g. "/storage/videos/x.mp4") to absolute.
 String? _absoluteUrl(String? raw) {
@@ -39,7 +42,7 @@ String _uploadErrorMessage(Object e, String fallback) {
     return detail.isNotEmpty ? '$fallback\n$detail' : fallback;
   }
   if (e is DioException && e.type == DioExceptionType.receiveTimeout) {
-    return '$fallback\nLe serveur a mis trop de temps à répondre.';
+    return '$fallback\n${L10n.current.publishServerTooSlow}';
   }
   return fallback;
 }
@@ -85,6 +88,47 @@ final publishProphecyProvider =
     NotifierProvider<PublishProphecyNotifier, PublishProphecy?>(PublishProphecyNotifier.new);
 
 // =============================================================================
+// Témoignage de conversion (kind = conversion), un seul par compte personnel.
+// Backend : docs/fonctionnalites/temoignage-de-conversion.md
+// =============================================================================
+
+/// Champs propres du témoignage de conversion, tous facultatifs.
+class ConversionFields {
+  const ConversionFields({this.year, this.place = '', this.verse = ''});
+
+  final int? year;
+  final String place;
+  final String verse;
+
+  ConversionFields copyWith({int? Function()? year, String? place, String? verse}) => ConversionFields(
+        year: year != null ? year() : this.year,
+        place: place ?? this.place,
+        verse: verse ?? this.verse,
+      );
+
+  /// Champs envoyés avec POST /testimonies (ou /videos/upload-init).
+  Map<String, dynamic> toJson() => {
+        'kind': 'conversion',
+        'conversion_year': year,
+        'conversion_place': place.trim().isEmpty ? null : place.trim(),
+        'conversion_verse': verse.trim().isEmpty ? null : verse.trim(),
+      };
+}
+
+/// Le prochain témoignage publié est mon témoignage de conversion ; null : témoignage standard.
+class PublishConversionNotifier extends Notifier<ConversionFields?> {
+  @override
+  ConversionFields? build() => null;
+
+  void start() => state = const ConversionFields();
+  void update(ConversionFields fields) => state = fields;
+  void clear() => state = null;
+}
+
+final publishConversionProvider =
+    NotifierProvider<PublishConversionNotifier, ConversionFields?>(PublishConversionNotifier.new);
+
+// =============================================================================
 // Publish flow state — drives the multi-step stepper
 // =============================================================================
 
@@ -96,10 +140,17 @@ class PublishNotifier extends Notifier<PublishDraft> {
 
   /// [journal] : nouvelle entrée du carnet privé (visibilité privée d'office).
   void selectFormat(TestimonyFormat format, {bool journal = false}) {
+    // Témoignage de conversion : catégorie « Conversion » proposée d'office.
+    final conversion = !journal && ref.read(publishConversionProvider) != null;
+    final conversionCat = conversion
+        ? ref.read(categoriesListProvider).where((c) => c.slug == 'conversion').firstOrNull
+        : null;
     state = PublishDraft(
       format: format,
       visibility:
           journal ? TestimonyVisibility.private : TestimonyVisibility.public,
+      category: conversion ? 'conversion' : null, // i18n-ignore
+      categoryId: conversionCat != null && conversionCat.id.isNotEmpty ? conversionCat.id : null,
     );
   }
 
@@ -207,7 +258,7 @@ class PublishNotifier extends Notifier<PublishDraft> {
         state = state.copyWith(
           isUploadingMedia: false,
           status: PublishStatus.draft,
-          uploadError: _uploadErrorMessage(e, "Échec de l'envoi de l'image de couverture. Réessaie."),
+          uploadError: _uploadErrorMessage(e, L10n.current.publishCoverUploadFailed),
         );
         return;
       }
@@ -234,7 +285,7 @@ class PublishNotifier extends Notifier<PublishDraft> {
         state = state.copyWith(
           isUploadingMedia: false,
           status: PublishStatus.draft,
-          uploadError: _uploadErrorMessage(e, "Échec de l'envoi audio. Réessaie."),
+          uploadError: _uploadErrorMessage(e, L10n.current.publishAudioUploadFailed),
         );
         return;
       }
@@ -256,7 +307,7 @@ class PublishNotifier extends Notifier<PublishDraft> {
 
     final user     = ref.read(currentUserProvider);
     final userId   = user?.id ?? 'anon';
-    final userName = user?.displayName ?? 'Vous';
+    final userName = user?.displayName ?? L10n.current.commonYou;
     final author   = TestimonyAuthor(uid: userId, displayName: userName);
     final now      = DateTime.now();
 
@@ -336,6 +387,8 @@ class PublishNotifier extends Notifier<PublishDraft> {
         'prophecy_id': p.id,
         'prophecy_public': p.makePublic && state.visibility != TestimonyVisibility.private,
       },
+      // Témoignage de conversion : sorte et champs propres (année, lieu, verset).
+      if (ref.read(publishConversionProvider) case final c?) ...c.toJson(),
       'visibility'  : switch (state.visibility) {
         TestimonyVisibility.private => 'private',
         TestimonyVisibility.friends => 'followers', // valeur attendue par l'API
@@ -363,13 +416,13 @@ class PublishNotifier extends Notifier<PublishDraft> {
       } on StateError {
         state = state.copyWith(
           status: PublishStatus.draft,
-          errorMessage: 'Une autre vidéo est en cours d’envoi. '
-              'Attendez la fin de son envoi (ou annulez-le) avant d’en publier une nouvelle.',
+          errorMessage: L10n.current.publishAnotherVideoUploading,
         );
         return;
       }
       ref.read(publishEventProvider.notifier).clear();
       ref.read(bibleVerseRefProvider.notifier).clear();
+      _conversionPublished();
       if (ref.read(publishProphecyProvider) != null) {
         ref.read(publishProphecyProvider.notifier).clear();
         ref.invalidate(propheciesListProvider);
@@ -394,6 +447,7 @@ class PublishNotifier extends Notifier<PublishDraft> {
       ref.read(publishEventProvider.notifier).clear();
       // La référence ne doit pas suivre le témoignage suivant.
       ref.read(bibleVerseRefProvider.notifier).clear();
+      _conversionPublished();
       if (ref.read(publishProphecyProvider) != null) {
         ref.read(publishProphecyProvider.notifier).clear();
         ref.invalidate(propheciesListProvider);
@@ -421,7 +475,8 @@ class PublishNotifier extends Notifier<PublishDraft> {
         // Erreur serveur (4xx/5xx) — informer l'utilisateur
         final serverMsg = (e.response?.data as Map?)?['message'] as String?;
         final msg = serverMsg ??
-            'Erreur serveur (${e.response?.statusCode ?? 'inconnue'}). Réessaie plus tard.';
+            L10n.current.publishServerErrorRetry(
+                '${e.response?.statusCode ?? L10n.current.publishUnknownCode}');
         state = state.copyWith(status: PublishStatus.draft, errorMessage: msg);
         return;
       }
@@ -490,7 +545,7 @@ class PublishNotifier extends Notifier<PublishDraft> {
           durationSeconds: durationSec,
           transcriptPreview: transcript.isNotEmpty
               ? transcript.substring(0, math.min(180, transcript.length))
-              : 'Écoutez mon témoignage…',
+              : L10n.current.publishListenToMyTestimony,
           mediaPath: mediaUrl,
           coverImageUrl: coverUrl,
         );
@@ -546,6 +601,14 @@ class PublishNotifier extends Notifier<PublishDraft> {
     );
   }
 
+  /// Témoignage de conversion envoyé : mode quitté, profil et section rechargés.
+  void _conversionPublished() {
+    if (ref.read(publishConversionProvider) == null) return;
+    ref.read(publishConversionProvider.notifier).clear();
+    ref.invalidate(myConversionProvider);
+    ref.invalidate(latestConversionsProvider);
+  }
+
   static Map<String, dynamic> _buildRow({
     required String id,
     required String userId,
@@ -594,15 +657,15 @@ class PublishNotifier extends Notifier<PublishDraft> {
 
 // Mappe les libellés français → enum TestimonyCategory
 TestimonyCategory _categoryFromString(String? s) => switch (s) {
-      'Délivrance' => TestimonyCategory.delivrance,
-      'Conversion' => TestimonyCategory.conversion,
-      'Mariage' => TestimonyCategory.mariage,
-      'Famille' => TestimonyCategory.famille,
-      'Finances' => TestimonyCategory.finances,
-      'Miracles' => TestimonyCategory.miracles,
-      'Protection divine' => TestimonyCategory.protection,
-      'Ministère' => TestimonyCategory.ministere,
-      'Salut' => TestimonyCategory.salut,
+      'Délivrance' => TestimonyCategory.delivrance, // i18n-ignore
+      'Conversion' => TestimonyCategory.conversion, // i18n-ignore
+      'Mariage' => TestimonyCategory.mariage, // i18n-ignore
+      'Famille' => TestimonyCategory.famille, // i18n-ignore
+      'Finances' => TestimonyCategory.finances, // i18n-ignore
+      'Miracles' => TestimonyCategory.miracles, // i18n-ignore
+      'Protection divine' => TestimonyCategory.protection, // i18n-ignore
+      'Ministère' => TestimonyCategory.ministere, // i18n-ignore
+      'Salut' => TestimonyCategory.salut, // i18n-ignore
       _ => TestimonyCategory.guerison,
     };
 

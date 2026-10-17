@@ -11,6 +11,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../data/events_repository.dart';
 import '../models/event_models.dart';
 import 'event_widgets.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Nombre d'événements montrés par liste sur le profil.
 const _perList = 5;
@@ -59,10 +60,10 @@ class OrganizerEventsSection extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (data.upcoming.isNotEmpty) list('Événements à venir et en cours', Icons.event_rounded, data.upcoming),
+          if (data.upcoming.isNotEmpty) list(context.l10n.eventsUpcomingAndOngoing, Icons.event_rounded, data.upcoming),
           if (data.past.isNotEmpty) ...[
             if (data.upcoming.isNotEmpty) const SizedBox(height: 8),
-            list('Événements passés', Icons.history_rounded, data.past),
+            list(context.l10n.eventsPastEvents, Icons.history_rounded, data.past),
           ],
         ],
       ),

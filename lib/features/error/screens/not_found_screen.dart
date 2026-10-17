@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../l10n/app_localizations.dart';
+
 class NotFoundScreen extends StatelessWidget {
   const NotFoundScreen({super.key});
 
@@ -18,18 +20,18 @@ class NotFoundScreen extends StatelessWidget {
               color: Color(0xFF184797),
             ),
             const SizedBox(height: 16),
-            const Text(
-              'Page introuvable',
-              style: TextStyle(
+            Text(
+              context.l10n.errorNotFoundTitle,
+              style: const TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w600,
                 color: Color(0xFF263238),
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Cette page n\'existe pas ou a été déplacée.',
-              style: TextStyle(color: Color(0xFF667085)),
+            Text(
+              context.l10n.errorNotFoundBody,
+              style: const TextStyle(color: Color(0xFF667085)),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
@@ -38,7 +40,7 @@ class NotFoundScreen extends StatelessWidget {
               style: FilledButton.styleFrom(
                 backgroundColor: const Color(0xFF184797),
               ),
-              child: const Text('Retour à l\'accueil'),
+              child: Text(context.l10n.errorBackHome),
             ),
           ],
         ),

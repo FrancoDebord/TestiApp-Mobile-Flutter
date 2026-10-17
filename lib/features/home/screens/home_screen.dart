@@ -1,3 +1,6 @@
+import '../../events/widgets/past_events_widgets.dart' show PastEventsStrip;
+import '../../conversion/providers/conversion_providers.dart' show latestConversionsProvider;
+import '../../conversion/widgets/conversion_widgets.dart' show HomeConversionSection;
 import '../../../shared/widgets/app_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,7 +17,7 @@ import '../../../shared/widgets/app_logo.dart';
 import '../../../shared/widgets/encouragement_card.dart';
 import '../../../shared/widgets/guest_gate.dart';
 import '../../../shared/widgets/why_testify_card.dart';
-import '../../events/providers/events_providers.dart' show upcomingEventsProvider;
+import '../../events/providers/events_providers.dart' show pastEventsHomeProvider, upcomingEventsProvider;
 import '../../events/widgets/upcoming_events_strip.dart';
 import '../../live/data/live_repository.dart' show livesIndexProvider;
 import '../../live/widgets/live_now_strip.dart';
@@ -57,8 +60,10 @@ import '../../location/nearby_widgets.dart' show NearbyCardLabel, NearbyFeedBann
 ///       ├─ SliverToBoxAdapter → _BibleBanner
 ///       ├─ SliverToBoxAdapter → LiveNowStrip (directs en cours, masqué sinon)
 ///       ├─ SliverToBoxAdapter → UpcomingEventsStrip
+///       ├─ SliverToBoxAdapter → PastEventsStrip (revivre les témoignages, masqué sinon)
 ///       ├─ SliverToBoxAdapter → UpcomingPrayerSessionsStrip (masqué sinon)
 ///       ├─ SliverToBoxAdapter → FeaturedCarousel
+///       ├─ SliverToBoxAdapter → HomeConversionSection (masqué s'il n'y en a aucun)
 ///       ├─ SliverToBoxAdapter → WhyTestifyCard (replié)
 ///       ├─ SliverToBoxAdapter → _FeedHeader
 ///       └─ SliverList → _FeedBody
@@ -83,9 +88,11 @@ class HomeScreen extends ConsumerWidget {
         onRefresh: () {
           ref
             ..invalidate(upcomingEventsProvider)
+            ..invalidate(pastEventsHomeProvider)
             ..invalidate(livesIndexProvider)
             ..invalidate(upcomingPrayerSessionsProvider)
             ..invalidate(featuredFromApiProvider)
+            ..invalidate(latestConversionsProvider)
             ..invalidate(prayerRequestsPageProvider(homePrayerRequests));
           return ref.read(feedNotifierProvider.notifier).refresh();
         },
@@ -153,6 +160,9 @@ class HomeScreen extends ConsumerWidget {
             // ── Événements à venir (masqué s'il n'y en a pas) ──────────────────
             const SliverToBoxAdapter(child: UpcomingEventsStrip()),
 
+            // ── Événements passés : revivre les témoignages (masqué s'il n'y en a aucun) ──
+            const SliverToBoxAdapter(child: PastEventsStrip()),
+
             // ── Sessions de prière à venir (masqué s'il n'y en a pas) ─────────
             const SliverToBoxAdapter(child: UpcomingPrayerSessionsStrip()),
 
@@ -161,6 +171,13 @@ class HomeScreen extends ConsumerWidget {
               child: Padding(
                 padding: EdgeInsets.only(top: 20, bottom: 4),
                 child: FeaturedCarousel(),
+              ),
+            ),
+
+            // ── Témoignages de conversion : 3 derniers et « Tout voir » (masqué s'il n'y en a aucun) ──
+            const SliverToBoxAdapter(
+              child: HomeConversionSection(
+                padding: EdgeInsets.fromLTRB(AppSpacing.screen, 16, AppSpacing.screen, 0),
               ),
             ),
 
@@ -219,7 +236,7 @@ class _HomeAppBarContent extends StatelessWidget {
       child: Row(
         children: [
           IconButton(
-            tooltip: 'Menu',
+            tooltip: context.l10n.homeMenu,
             icon: const Icon(Icons.menu_rounded, color: AppColors.textPrimary),
             onPressed: () => Scaffold.of(context).openDrawer(),
           ),
@@ -251,7 +268,7 @@ class _LiveButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = AppLocalizations.of(context).homeLive;
+    final label = context.l10n.homeLive;
     return Tooltip(
       message: label,
       child: InkWell(
@@ -303,7 +320,7 @@ class _SearchButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return IconButton(
-      tooltip: 'Rechercher',
+      tooltip: context.l10n.commonSearch,
       icon: const Icon(Icons.search_rounded, color: AppColors.primary),
       onPressed: () {
         ref.read(searchBarActiveProvider.notifier).update(true);
@@ -322,11 +339,13 @@ class _NotificationBell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final count = ref.watch(unreadCountProvider);
     return IconButton(
-      tooltip: count > 0 ? 'Notifications ($count non lues)' : 'Notifications',
+      tooltip: count > 0
+          ? context.l10n.homeNotificationsUnread(count)
+          : context.l10n.notifTitle,
       onPressed: () async {
         if (ref.read(isGuestProvider) &&
             !await requireAccount(context, ref,
-                reason: 'recevoir vos notifications')) {
+                reason: context.l10n.homeReasonNotifications)) {
           return;
         }
         if (context.mounted) context.pushNamed(AppRoutes.notifications);
@@ -418,11 +437,11 @@ class _LayoutToggle extends StatelessWidget {
     Widget button(FeedLayout l, IconData icon, String label) {
       final selected = value == l;
       return Tooltip(
-        message: 'Affichage : $label',
+        message: context.l10n.homeLayoutTooltip(label),
         child: Semantics(
           button: true,
           selected: selected,
-          label: 'Affichage $label',
+          label: context.l10n.homeLayoutSemantics(label),
           excludeSemantics: true,
           child: InkWell(
             onTap: selected ? null : () => onChanged(l),
@@ -458,8 +477,10 @@ class _LayoutToggle extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          button(FeedLayout.cards, Icons.view_agenda_rounded, 'Cartes'),
-          button(FeedLayout.compact, Icons.view_list_rounded, 'Liste'),
+          button(FeedLayout.cards, Icons.view_agenda_rounded,
+              context.l10n.homeLayoutCards),
+          button(FeedLayout.compact, Icons.view_list_rounded,
+              context.l10n.homeLayoutList),
         ],
       ),
     );
@@ -596,7 +617,7 @@ class _EmptyFeed extends StatelessWidget {
             size: 56, color: AppColors.textSecondary.withAlpha(80)),
         const SizedBox(height: 12),
         Text(
-          'Aucun témoignage pour ce filtre',
+          context.l10n.homeEmptyFilter,
           style: AppTextStyles.bodyMedium.copyWith(
             color: AppColors.textSecondary,
           ),
@@ -646,7 +667,7 @@ class _BibleBanner extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Bible',
+                        context.l10n.homeBibleTitle,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
@@ -657,7 +678,7 @@ class _BibleBanner extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        'Télécharger et lire hors connexion',
+                        context.l10n.homeBibleSubtitle,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(

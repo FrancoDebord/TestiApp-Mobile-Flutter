@@ -14,6 +14,7 @@ import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../l10n/app_localizations.dart';
 import '../models/daily_verse_models.dart' show VerseVersion;
 import 'verse_background_painter.dart';
 import 'verse_design.dart';
@@ -21,7 +22,7 @@ import 'verse_layout.dart';
 import 'verse_style_prefs.dart';
 
 /// Nom de l'application, en pied de l'image.
-const String kVerseShareAppName = 'Témoignages';
+String get kVerseShareAppName => L10n.current.commonAppName;
 
 /// Taille logique de l'image (× 3 → 1080 × 1350 px, format 4:5).
 const Size kVerseShareSize = Size(360, 450);
@@ -72,7 +73,7 @@ class VerseShareCard extends StatelessWidget {
               crossAxisAlignment: cross,
               children: [
                 Text(
-                  'VERSET DU JOUR',
+                  context.l10n.verseOfTheDayUpper,
                   style: verseLabelStyle(r.ink),
                   textScaler: TextScaler.noScaling,
                 ),
@@ -102,7 +103,7 @@ class VerseShareCard extends StatelessWidget {
                     Icon(Icons.auto_stories_rounded, size: 13, color: r.ink),
                     const SizedBox(width: 6),
                     Text(
-                      kVerseShareAppName,
+                      context.l10n.commonAppName,
                       style: verseLabelStyle(
                         r.ink,
                       ).copyWith(fontSize: 11, letterSpacing: 0.3),

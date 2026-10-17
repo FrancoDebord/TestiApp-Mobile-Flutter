@@ -1,0 +1,552 @@
+{
+  "@@locale": "fr",
+  "categoryHealing": "Guérison",
+  "categoryDeliverance": "Délivrance",
+  "categoryConversion": "Conversion",
+  "categoryMarriage": "Mariage",
+  "categoryFamily": "Famille",
+  "categoryFinances": "Finances",
+  "categoryMiracles": "Miracles",
+  "categoryProtection": "Protection divine",
+  "categoryMinistry": "Ministère",
+  "categorySalvation": "Salut",
+  "homeProofDefaultName": "Preuve",
+  "homeReactionLove": "J'adore Dieu",
+  "homeReactionGlory": "Gloire à Dieu !",
+  "homeReactionInspiring": "Inspirant",
+  "homeReactionPowerful": "Puissant",
+  "homeReactionTouched": "Touché",
+  "homeSortForYou": "Pour vous",
+  "homeSortRecent": "Récents",
+  "homeSortPopular": "Populaires",
+  "homeSortMostViewed": "Plus vus",
+  "homeMenu": "Menu",
+  "homeNotificationsUnread": "Notifications ({count} non lues)",
+  "@homeNotificationsUnread": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeReasonNotifications": "recevoir vos notifications",
+  "homeLayoutTooltip": "Affichage : {label}",
+  "@homeLayoutTooltip": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "homeLayoutSemantics": "Affichage {label}",
+  "@homeLayoutSemantics": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "homeLayoutCards": "Cartes",
+  "homeLayoutList": "Liste",
+  "homeEmptyFilter": "Aucun témoignage pour ce filtre",
+  "homeBibleTitle": "Bible",
+  "homeBibleSubtitle": "Télécharger et lire hors connexion",
+  "homeFeaturedTab": "À la une",
+  "homeMostPrayed": "Plus priés",
+  "homeTabAll": "Tous",
+  "homeTabVideos": "Vidéos",
+  "homeTabAudios": "Audios",
+  "homeTabTexts": "Textes",
+  "homeEmptyFeatured": "Aucun témoignage à la une",
+  "homeEmptyTrending": "Aucune tendance disponible",
+  "homeEmptyRecent": "Aucun témoignage récent",
+  "homeEmptyPrayed": "Aucun témoignage prié",
+  "homeEmptyVideos": "Aucune vidéo disponible",
+  "homeEmptyAudios": "Aucun audio disponible",
+  "homeEmptyTexts": "Aucun texte disponible",
+  "homeEmptyShorts": "Aucun short disponible",
+  "homeCategoryAll": "Toutes",
+  "homeReasonSave": "enregistrer vos favoris",
+  "homeReasonReact": "réagir aux témoignages",
+  "homeFilterApproved": "Approuvés",
+  "homeFilterApprovedTooltip": "Seulement les témoignages vérifiés par l'équipe de modération",
+  "homeSortTooltip": "Trier les témoignages",
+  "homeSortWithoutApproved": "{sort} (sans « Approuvés »)",
+  "@homeSortWithoutApproved": {
+    "placeholders": {
+      "sort": {
+        "type": "String"
+      }
+    }
+  },
+  "homeSortLabel": "Tri : {sort}",
+  "@homeSortLabel": {
+    "placeholders": {
+      "sort": {
+        "type": "String"
+      }
+    }
+  },
+  "homeStatsAndOthers": "{total} · et {others} autres",
+  "@homeStatsAndOthers": {
+    "placeholders": {
+      "total": {
+        "type": "String"
+      },
+      "others": {
+        "type": "String"
+      }
+    }
+  },
+  "homeTypeText": "Témoignage écrit",
+  "homeCompactSemantics": "{type} : {title}, par {author}. ",
+  "@homeCompactSemantics": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      },
+      "title": {
+        "type": "String"
+      },
+      "author": {
+        "type": "String"
+      }
+    }
+  },
+  "homeTapToCollapse": "Appuyer pour replier",
+  "homeTapToExpand": "Appuyer pour déplier",
+  "homePlayVideo": "Lire la vidéo",
+  "homeListenAudio": "Écouter l'audio",
+  "homeCollapse": "Replier",
+  "homeExpand": "Déplier",
+  "homeViewTestimony": "Voir le témoignage",
+  "homeDaysAgoLong": "{count, plural, =1{il y a 1 jour} other{il y a {count} jours}}",
+  "@homeDaysAgoLong": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeVerseOfTheDayPrefix": "Verset du jour · ",
+  "homeVerseExpand": "Déplier le verset",
+  "homeVerseCollapse": "Replier le verset",
+  "homeVerseSemantics": "Verset du jour, {reference}, {text}",
+  "@homeVerseSemantics": {
+    "placeholders": {
+      "reference": {
+        "type": "String"
+      },
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "homeVerseOpenHint": "Touchez pour ouvrir en plein écran",
+  "homeVerseOpenFullScreen": "Ouvrir en plein écran",
+  "verseOfTheDay": "Verset du jour",
+  "verseReadInFull": "Lire en entier",
+  "verseShare": "Partager le verset",
+  "homeUnsave": "Enlever des sauvegardes",
+  "homeMoreOptions": "Plus d’options",
+  "prophecyDayAtTime": "{date} à {time}",
+  "@prophecyDayAtTime": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "prophecyToday": "aujourd'hui",
+  "prophecyYesterday": "hier",
+  "prophecyOnDate": "le {date}",
+  "@prophecyOnDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "prophecyStatusFulfilled": "Accomplie",
+  "prophecyStatusOverdue": "Échéance passée",
+  "prophecyStatusPending": "En attente",
+  "prophecyDueOn": "Échéance : {date}",
+  "@prophecyDueOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "prophecyFulfilledOn": "Accomplie le {date}",
+  "@prophecyFulfilledOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "prophecyPrayedCount": "{count, plural, =0{Pas encore priée} other{Priée {count} fois}}",
+  "@prophecyPrayedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prophecyAudioPause": "Pause",
+  "prophecyAudioListen": "Écouter",
+  "prophecyAudioUnavailable": "Audio indisponible",
+  "prophecyDeleteRecording": "Supprimer l'enregistrement",
+  "prophecyEveryDay": "Chaque jour",
+  "prophecyEveryWeek": "Chaque semaine",
+  "prophecyMonday": "lundi",
+  "prophecyTuesday": "mardi",
+  "prophecyWednesday": "mercredi",
+  "prophecyThursday": "jeudi",
+  "prophecyFriday": "vendredi",
+  "prophecySaturday": "samedi",
+  "prophecySunday": "dimanche",
+  "prophecyReminderDaily": "Chaque jour à {time}",
+  "@prophecyReminderDaily": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "prophecyReminderWeekly": "Chaque {day} à {time}",
+  "@prophecyReminderWeekly": {
+    "placeholders": {
+      "day": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "prophecyWordOf": "Parole du {date}",
+  "@prophecyWordOf": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "prophecyNetworkError": "Connexion impossible. Vérifiez votre accès à Internet.",
+  "prophecyReminderChannel": "Rappels de prière",
+  "prophecyReminderTitle": "Temps de prière",
+  "prophecyReminderBody": "Priez pour la parole : « {title} »",
+  "@prophecyReminderBody": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "prophecyReminderChannelDesc": "Rappels pour prier sur vos paroles prophétiques.",
+  "prophecyReminderLabel": "Rappel de prière",
+  "prophecyReminderSheetIntro": "Une notification sur ce téléphone pour prier sur la parole, jusqu'à son accomplissement.",
+  "prophecyReminderNone": "Aucun",
+  "prophecyReminderTime": "Heure",
+  "prophecyListTitle": "Paroles prophétiques",
+  "prophecyTabPending": "En attente ({count})",
+  "@prophecyTabPending": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prophecyTabFulfilled": "Accomplies ({count})",
+  "@prophecyTabFulfilled": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prophecyNew": "Nouvelle parole",
+  "prophecyLoadError": "Impossible de charger vos paroles.",
+  "prophecyPrivateNotice": "Visibles de vous seul. Gardez-les, priez, puis témoignez de leur accomplissement.",
+  "prophecyEmptyFulfilled": "Aucune parole accomplie pour le moment. Quand une parole s'accomplit, ouvrez-la et touchez « Elle s'est accomplie ».",
+  "prophecyEmptyPending": "Une parole reçue lors d'un culte, d'une prière, d'un rêve ? Notez-la ici (texte ou audio) pour la garder et prier dessus.",
+  "prophecyPrayerSaved": "Prière enregistrée. Dieu veille sur sa parole pour l'accomplir.",
+  "prophecyReminderRemoved": "Rappel supprimé.",
+  "prophecyReminderSet": "Rappel : {label}.",
+  "@prophecyReminderSet": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "prophecyFulfilledSheetTitle": "Gloire à Dieu ! La parole s'est accomplie",
+  "prophecyTestify": "Témoigner de son accomplissement",
+  "prophecyTestifySubtitle": "Publiez votre témoignage ; vous choisirez de montrer la parole avec lui.",
+  "prophecyMarkFulfilledOnly": "Marquer accomplie, sans témoigner pour l'instant",
+  "prophecyMarkedFulfilled": "Parole marquée comme accomplie.",
+  "prophecyDeleteTitle": "Supprimer cette parole ?",
+  "prophecyDeleteBody": "La parole et son journal de prière seront supprimés. Un témoignage déjà publié reste publié.",
+  "prophecyDeleted": "Parole supprimée.",
+  "prophecyDetailTitle": "Parole prophétique",
+  "prophecyOptions": "Options",
+  "prophecyBackToPending": "Parole remise en attente.",
+  "prophecyMarkPending": "Remettre en attente",
+  "prophecyNotFound": "Parole introuvable.",
+  "prophecyReceivedOn": "Reçue le {date}",
+  "@prophecyReceivedOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "prophecyGivenByCap": "Donnée par {name}",
+  "@prophecyGivenByCap": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "prophecyIPrayed": "J'ai prié",
+  "prophecyProclaim": "Proclamer",
+  "prophecyItIsFulfilled": "Elle s'est accomplie",
+  "prophecyViewMyTestimonyPublic": "Voir mon témoignage (parole publiée)",
+  "prophecyViewMyTestimony": "Voir mon témoignage",
+  "prophecyNoReminder": "Aucun rappel de prière",
+  "prophecyNotificationOnPhone": "Notification sur ce téléphone",
+  "prophecyPrayerJournal": "Journal de prière",
+  "prophecyNoPrayerYet": "Pas encore de prière enregistrée.",
+  "prophecyLastPrayed": " · dernière fois {when}",
+  "@prophecyLastPrayed": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "prophecyPrayerRemoved": "Prière retirée du journal.",
+  "prophecyRemoveFromJournal": "Retirer du journal",
+  "prophecyPrayedForWord": "J'ai prié pour cette parole",
+  "prophecyNoteLabel": "Note (facultative)",
+  "prophecyNoteHint": "Ce que Dieu vous a mis à cœur…",
+  "prophecyPublicFulfilledTitle": "Parole prophétique accomplie",
+  "prophecyGivenBy": "donnée par {name}",
+  "@prophecyGivenBy": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "prophecyQuoted": "« {text} »",
+  "@prophecyQuoted": {
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "prophecyRecordedAsAudio": "Parole enregistrée en audio",
+  "prophecyReadTestimony": "Lire le témoignage : {title}",
+  "@prophecyReadTestimony": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "prophecyMicPermission": "Autorisez le micro dans les réglages du téléphone.",
+  "prophecyDateLabel": "Date de la parole",
+  "prophecyTimeLabel": "Heure de la parole",
+  "prophecyDueLabel": "Échéance (facultative)",
+  "prophecyEmptyContent": "Écrivez la parole ou enregistrez-la en audio.",
+  "prophecyUpdated": "Parole mise à jour.",
+  "prophecySaved": "Parole gardée dans votre carnet.",
+  "prophecyEditTitle": "Modifier la parole",
+  "prophecyNewTitle": "Nouvelle parole prophétique",
+  "prophecyKeepWord": "Garder cette parole",
+  "prophecySectionWord": "La parole",
+  "prophecyModeText": "Texte",
+  "prophecyModeAudio": "Audio",
+  "prophecyTextHint": "Écrivez la parole telle que vous l'avez reçue…",
+  "prophecySectionContext": "Contexte",
+  "prophecyTimeOptionalLabel": "Heure de la parole (facultatif)",
+  "prophecyTimeUnspecified": "Non précisée",
+  "prophecyGivenByLabel": "Qui l'a donnée ? (facultatif)",
+  "prophecyGivenByHint": "Ex. : Pasteur Jean, lors du culte de jeudi",
+  "prophecyTitleLabel": "Titre (facultatif)",
+  "prophecyTitleHint": "Ex. : Une porte ouverte",
+  "prophecyDueNone": "Aucune",
+  "prophecyNoReminderShort": "Aucun rappel",
+  "prophecyReminderSubtitle": "Une notification pour prier sur cette parole.",
+  "prophecyAudioMobileOnly": "L'enregistrement audio se fait depuis l'application mobile.",
+  "prophecyStopRecording": "Arrêter l'enregistrement",
+  "prophecyRecordHint": "Enregistrez la parole de vive voix, ou faites écouter l'enregistrement reçu.",
+  "prophecyRecord": "Enregistrer",
+  "verseServerError": "Erreur du serveur ({status}).",
+  "@verseServerError": {
+    "placeholders": {
+      "status": {
+        "type": "int"
+      }
+    }
+  },
+  "verseOfflineError": "Pas de connexion. Réessayez une fois en ligne.",
+  "verseMoodDeep": "Sombre profond",
+  "verseMoodLight": "Clair et lumineux",
+  "verseMoodDawn": "Aube",
+  "verseMoodNight": "Nuit",
+  "verseMoodMinimal": "Sobre",
+  "verseMoodWarm": "Chaleureux",
+  "verseDesignAube": "Aube",
+  "verseDesignNuit": "Nuit étoilée",
+  "verseDesignOcean": "Océan profond",
+  "verseDesignLumiere": "Lumière douce",
+  "verseDesignBraise": "Braise",
+  "verseDesignMinimal": "Minimal",
+  "verseDesignVitrail": "Vitrail",
+  "verseDesignCrepuscule": "Crépuscule",
+  "verseDesignMatin": "Matin clair",
+  "verseDesignOr": "Or doux",
+  "verseDesignEncre": "Encre",
+  "verseDesignArdoise": "Ardoise",
+  "verseDesignChangeSemantics": "Changer le design du verset. Design actuel : {name}",
+  "@verseDesignChangeSemantics": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "verseDesignsAndText": "Designs et texte",
+  "verseTabBackgrounds": "Fonds",
+  "verseAlwaysMine": "Toujours utiliser mon design",
+  "verseAlwaysMineOn": "Le même design chaque jour.",
+  "verseAlwaysMineOff": "Sinon, votre choix vaut jusqu’à demain, puis un nouveau design s’affiche.",
+  "verseDesignTileSemantics": "Design {name}, {mood}",
+  "@verseDesignTileSemantics": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "mood": {
+        "type": "String"
+      }
+    }
+  },
+  "verseDesignTileSemanticsDaily": "Design {name}, {mood}, design du jour",
+  "@verseDesignTileSemanticsDaily": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "mood": {
+        "type": "String"
+      }
+    }
+  },
+  "verseDesignOfTheDayShort": "{name} · du jour",
+  "@verseDesignOfTheDayShort": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "verseFontTitle": "Police",
+  "verseSizeTitle": "Taille",
+  "verseAlignTitle": "Alignement",
+  "verseSizeSmall": "Petit",
+  "verseSizeMedium": "Moyen",
+  "verseSizeLarge": "Grand",
+  "verseAlignLeft": "Gauche",
+  "verseAlignCenter": "Centré",
+  "verseOfTheDayUpper": "VERSET DU JOUR",
+  "verseMember": "Membre",
+  "verseTodayText": "Texte du jour",
+  "verseTtsUnavailable": "La lecture à voix haute n'est pas disponible sur cet appareil.",
+  "verseReasonPray": "prier avec ce verset",
+  "verseReasonLike": "aimer ce verset",
+  "verseReasonTestify": "témoigner sur ce verset",
+  "verseReasonPrayerTopic": "confier un sujet de prière",
+  "verseReasonComment": "commenter le verset du jour",
+  "verseBackToVerse": "Revenir au verset",
+  "verseStopReading": "Arrêter la lecture",
+  "verseExitReadingMode": "Quitter le mode lecture",
+  "verseReadingMode": "Mode lecture",
+  "verseSemantics": "Verset du jour, {reference}",
+  "@verseSemantics": {
+    "placeholders": {
+      "reference": {
+        "type": "String"
+      }
+    }
+  },
+  "verseMissingInVersion": "Passage absent de la version « {version} » : texte du jour affiché.",
+  "@verseMissingInVersion": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "verseScrollHintSemantics": "Faire défiler : versions, prière, commentaires",
+  "verseScrollHint": "Faire défiler",
+  "verseLikeCount": "J'aime · {count}",
+  "@verseLikeCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "versePrayCount": "Je prie · {count}",
+  "@versePrayCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "verseVersionsSearching": "Recherche des versions…",
+  "verseVersionsUnavailable": "Versions indisponibles pour le moment.",
+  "verseReferenceUnrecognized": "Référence non reconnue : seul le texte du jour est proposé.",
+  "verseOfflineDownloadBible": "Hors connexion : téléchargez une Bible (onglet Bible) pour lire d'autres versions.",
+  "verseNoOtherVersion": "Aucune autre version installée.",
+  "verseOfflineDownloaded": "Hors connexion : versions téléchargées sur l'appareil.",
+  "verseBibleVersions": "Versions de la Bible",
+  "verseVersionMissingTooltip": "{name} : passage absent de cette version",
+  "@verseVersionMissingTooltip": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "verseCompare": "Comparer",
+  "verseVersionUnavailable": "Ce passage n'est pas disponible dans cette version.",
+  "verseParticipationOffline": "Les sujets de prière, commentaires et témoignages seront disponibles une fois en ligne.",
+  "versePrayerIntro": "Confiez un sujet de prière inspiré par ce verset ; d'autres prieront avec vous.",
+  "versePrayerCreate": "Confier un sujet de prière",
+  "versePrayerEmpty": "Aucun sujet de prière pour le moment. Soyez le premier !",
+  "versePrayerSheetTitle": "Sujet de prière sur le verset du jour",
+  "versePrayerHint": "Seigneur, à la lumière de ce verset, je te confie…",
+  "verseAnonymousSubtitle": "Votre nom reste visible de vous et de la modération.",
+  "verseCommentDeleteTitle": "Supprimer le commentaire ?",
+  "verseCommentReportTitle": "Signaler ce commentaire",
+  "verseCommentReported": "Merci, le commentaire a été signalé à la modération.",
+  "verseCommentHint": "Ce que ce verset vous dit aujourd'hui…",
+  "verseCommentHintMention": "Ce que ce verset vous dit aujourd'hui… (@ pour mentionner)",
+  "verseCommentsEmpty": "Aucun commentaire. Partagez ce que ce verset vous inspire.",
+  "verseCommentHidden": "Retiré après signalement",
+  "verseTestifyIntro": "Ce verset s'est accompli dans votre vie ? Racontez-le.",
+  "verseTestify": "Témoigner sur ce verset",
+  "verseTestimoniesEmpty": "Aucun témoignage ne cite encore ce verset."
+}

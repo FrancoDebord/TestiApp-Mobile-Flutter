@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/guest_gate.dart' show requireAccount;
 import '../../../shared/widgets/mention_text.dart';
 import '../../../shared/widgets/mention_text_field.dart';
@@ -59,31 +60,32 @@ class _PrayerRequestDetailScreenState extends ConsumerState<PrayerRequestDetailS
   }
 
   Future<void> _togglePray(PrayerRequest r) async {
-    if (!await requireAccount(context, ref, reason: 'prier pour cette requête')) return;
+    if (!await requireAccount(context, ref, reason: context.l10n.prayerReasonPray)) return;
     ref.read(prayerRequestProvider(_id).notifier).replace(r.withPrayed(!r.hasPrayed));
     await _run(() => _repo.pray(_id, prayed: !r.hasPrayed));
   }
 
   Future<void> _markAnswered() async {
     final note = TextEditingController();
+    final success = context.l10n.prayerAnsweredSuccess;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Elle est exaucée !'),
+        title: Text(context.l10n.prayerAnsweredDialogTitle),
         content: TextField(
           controller: note,
           maxLines: 4,
           maxLength: 1000,
-          decoration: const InputDecoration(hintText: "Ce que Dieu a fait (facultatif)"),
+          decoration: InputDecoration(hintText: context.l10n.prayerAnsweredNoteHint),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Enregistrer')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(context.l10n.commonCancel)),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(context.l10n.commonSave)),
         ],
       ),
     );
     if (ok == true) {
-      await _run(() => _repo.setAnswered(_id, true, note: note.text), 'Gloire à Dieu ! Pensez à témoigner de cet exaucement.');
+      await _run(() => _repo.setAnswered(_id, true, note: note.text), success);
     }
     note.dispose();
   }
@@ -92,14 +94,14 @@ class _PrayerRequestDetailScreenState extends ConsumerState<PrayerRequestDetailS
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Supprimer la requête ?'),
-        content: const Text("La requête et ses messages d'encouragement seront supprimés."),
+        title: Text(context.l10n.prayerDeleteRequestTitle),
+        content: Text(context.l10n.prayerDeleteRequestBody),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(context.l10n.commonCancel)),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Supprimer'),
+            child: Text(context.l10n.commonDelete),
           ),
         ],
       ),
@@ -110,7 +112,7 @@ class _PrayerRequestDetailScreenState extends ConsumerState<PrayerRequestDetailS
       ref.invalidate(prayerRequestListProvider);
       ref.invalidate(prayerRequestsPageProvider);
       if (!mounted) return;
-      _snack('Requête supprimée.');
+      _snack(context.l10n.prayerRequestDeleted);
       context.pop();
     } on PrayerFailure catch (e) {
       if (mounted) _snack(e.message);
@@ -118,8 +120,9 @@ class _PrayerRequestDetailScreenState extends ConsumerState<PrayerRequestDetailS
   }
 
   Future<void> _report() async {
-    if (!await requireAccount(context, ref, reason: 'signaler un contenu')) return;
+    if (!await requireAccount(context, ref, reason: context.l10n.prayerReasonReport)) return;
     if (!mounted) return;
+    final saved = context.l10n.prayerReportSaved;
     final result = await showModalBottomSheet<(PrayerReportReason, String)>(
       context: context,
       isScrollControlled: true,
@@ -130,20 +133,22 @@ class _PrayerRequestDetailScreenState extends ConsumerState<PrayerRequestDetailS
     await _run(() async {
       await _repo.report(_id, result.$1, comment: result.$2);
       return null;
-    }, 'Signalement enregistré. Merci pour votre vigilance.');
+    }, saved);
   }
 
   Future<void> _sendMessage() async {
     if (_message.text.trim().length < 2) return;
     final text = _message.encodedText;
-    if (!await requireAccount(context, ref, reason: 'encourager cette personne')) return;
+    if (!await requireAccount(context, ref, reason: context.l10n.prayerReasonEncourage)) return;
+    if (!mounted) return;
+    final thanks = context.l10n.prayerEncouragementThanks;
     await _run(() async {
       await _repo.addMessage(_id, text, bibleReference: _verse.text);
       _message.clear();
       _verse.clear();
       ref.invalidate(prayerMessagesProvider(_id));
       return _repo.request(_id); // compteur à jour
-    }, 'Merci pour votre encouragement !');
+    }, thanks);
   }
 
   @override
@@ -154,7 +159,7 @@ class _PrayerRequestDetailScreenState extends ConsumerState<PrayerRequestDetailS
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Requête de prière'),
+        title: Text(context.l10n.prayerRequestLabel),
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.textPrimary,
         surfaceTintColor: AppColors.surface,
@@ -165,11 +170,15 @@ class _PrayerRequestDetailScreenState extends ConsumerState<PrayerRequestDetailS
               onSelected: (v) => v == 'delete' ? _delete() : _report(),
               itemBuilder: (_) => [
                 if (r.canReport && !r.isHidden)
-                  const PopupMenuItem(value: 'report', child: ListTile(leading: Icon(Icons.flag_outlined), title: Text('Signaler'))),
+                  PopupMenuItem(
+                      value: 'report',
+                      child: ListTile(leading: const Icon(Icons.flag_outlined), title: Text(context.l10n.commonReport))),
                 if (r.canDelete)
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'delete',
-                    child: ListTile(leading: Icon(Icons.delete_outline, color: AppColors.danger), title: Text('Supprimer')),
+                    child: ListTile(
+                        leading: const Icon(Icons.delete_outline, color: AppColors.danger),
+                        title: Text(context.l10n.commonDelete)),
                   ),
               ],
             ),
@@ -191,11 +200,11 @@ class _PrayerRequestDetailScreenState extends ConsumerState<PrayerRequestDetailS
                     request: value,
                     busy: _busy,
                     onAnswered: _markAnswered,
-                    onReopen: () => _run(() => _repo.setAnswered(_id, false), 'Requête remise en attente.'),
+                    onReopen: () => _run(() => _repo.setAnswered(_id, false), context.l10n.prayerRequestReopened),
                   ),
                 ],
                 const SizedBox(height: AppSpacing.xl),
-                Text('Encouragements (${value.messageCount})', style: AppTextStyles.h4),
+                Text(context.l10n.prayerEncouragementsCount(value.messageCount), style: AppTextStyles.h4),
                 const SizedBox(height: AppSpacing.md),
                 _Messages(requestId: _id),
                 if (value.canMessage) ...[
@@ -204,9 +213,9 @@ class _PrayerRequestDetailScreenState extends ConsumerState<PrayerRequestDetailS
                 ] else if (!value.isHidden && value.visibility != PrayerVisibility.private) ...[
                   const SizedBox(height: AppSpacing.md),
                   OutlinedButton.icon(
-                    onPressed: () => requireAccount(context, ref, reason: 'encourager cette personne'),
+                    onPressed: () => requireAccount(context, ref, reason: context.l10n.prayerReasonEncourage),
                     icon: const Icon(Icons.chat_bubble_outline_rounded),
-                    label: const Text('Laisser un encouragement'),
+                    label: Text(context.l10n.prayerLeaveEncouragement),
                   ),
                 ],
               ],
@@ -218,9 +227,10 @@ class _PrayerRequestDetailScreenState extends ConsumerState<PrayerRequestDetailS
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 const Icon(Icons.search_off_rounded, size: 56, color: AppColors.textSecondary),
                 const SizedBox(height: 12),
-                Text(error is PrayerFailure ? error.message : 'Impossible de charger la requête.',
+                Text(error is PrayerFailure ? error.message : context.l10n.prayerLoadRequestError,
                     textAlign: TextAlign.center, style: AppTextStyles.bodyMedium),
-                TextButton(onPressed: () => ref.invalidate(prayerRequestProvider(_id)), child: const Text('Réessayer')),
+                TextButton(
+                    onPressed: () => ref.invalidate(prayerRequestProvider(_id)), child: Text(context.l10n.commonRetry)),
               ]),
             ),
           ),
@@ -259,7 +269,8 @@ class _RequestBody extends StatelessWidget {
                   if (r.author?.isVerified ?? false) OrganizationBadge(isOrganization: r.author!.isOrganization, isVerified: true, size: 14),
                 ]),
                 Text(
-                  [prayerTimeAgo(r.createdAt), r.visibility.label, if (r.isAnonymous) 'anonyme'].join(' · '),
+                  [prayerTimeAgo(r.createdAt), r.visibility.label, if (r.isAnonymous) context.l10n.prayerAnonymousLower]
+                      .join(' · '),
                   style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
                 ),
               ]),
@@ -272,7 +283,7 @@ class _RequestBody extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(AppSpacing.sm),
               decoration: BoxDecoration(color: AppColors.warningSoft, borderRadius: BorderRadius.circular(AppRadius.sm)),
-              child: Text("${r.hiddenReason ?? 'Retirée par la modération.'} Elle n'est plus visible des autres.",
+              child: Text(context.l10n.prayerHiddenNotice(r.hiddenReason ?? context.l10n.prayerHiddenByModeration),
                   style: AppTextStyles.bodySmall.copyWith(color: AppColors.textPrimary)),
             ),
           ],
@@ -303,7 +314,7 @@ class _RequestBody extends StatelessWidget {
               padding: const EdgeInsets.all(AppSpacing.md),
               decoration: BoxDecoration(color: AppColors.successSoft, borderRadius: BorderRadius.circular(AppRadius.md)),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Exaucée — gloire à Dieu !', style: AppTextStyles.labelMedium.copyWith(color: AppColors.success)),
+                Text(context.l10n.prayerAnsweredGlory, style: AppTextStyles.labelMedium.copyWith(color: AppColors.success)),
                 if (r.answerNote != null) ...[
                   const SizedBox(height: 4),
                   Text(r.answerNote!, style: AppTextStyles.bodyMedium),
@@ -311,7 +322,7 @@ class _RequestBody extends StatelessWidget {
                 if (r.testimonyId != null)
                   TextButton(
                     onPressed: () => context.push('/testimony/${r.testimonyId}'),
-                    child: const Text('Lire le témoignage'),
+                    child: Text(context.l10n.prayerReadTestimony),
                   ),
               ]),
             ),
@@ -325,7 +336,7 @@ class _RequestBody extends StatelessWidget {
             children: [
               PrayButton(prayed: r.hasPrayed, count: r.prayerCount, onPressed: r.isHidden ? null : onPray, large: true),
               Text(
-                r.prayerCount > 1 ? '${r.prayerCount} personnes prient' : (r.prayerCount == 1 ? '1 personne prie' : 'Soyez le premier à prier'),
+                context.l10n.prayerPeoplePraying(r.prayerCount < 0 ? 0 : r.prayerCount),
                 style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
               ),
             ],
@@ -337,7 +348,7 @@ class _RequestBody extends StatelessWidget {
               kind: ContentKind.prayerRequest,
               id: r.id,
               initial: r.reactions,
-              title: 'Requête de prière de ${r.authorName}',
+              title: context.l10n.prayerShareTitle(r.authorName),
               webUrl: r.webUrl,
               showPray: false,
             ),
@@ -362,12 +373,10 @@ class _AnswerCard extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: AppShadows.cardDecoration,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(answered ? 'Témoignez de cet exaucement' : 'Dieu a répondu ?', style: AppTextStyles.h4),
+        Text(answered ? context.l10n.prayerTestifyAnswer : context.l10n.prayerGodAnswered, style: AppTextStyles.h4),
         const SizedBox(height: 4),
         Text(
-          answered
-              ? 'Racontez ce que Dieu a fait : votre témoignage fortifiera ceux qui prient encore.'
-              : 'Marquez la requête exaucée : ceux qui ont prié avec vous le verront.',
+          answered ? context.l10n.prayerTestifyAnswerDesc : context.l10n.prayerMarkAnsweredDesc,
           style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
         ),
         const SizedBox(height: AppSpacing.md),
@@ -376,7 +385,7 @@ class _AnswerCard extends StatelessWidget {
             FilledButton.icon(
               onPressed: busy ? null : onAnswered,
               icon: const Icon(Icons.check_circle_rounded),
-              label: const Text('Elle est exaucée'),
+              label: Text(context.l10n.prayerItIsAnswered),
               style: FilledButton.styleFrom(backgroundColor: AppColors.success),
             )
           else ...[
@@ -384,11 +393,11 @@ class _AnswerCard extends StatelessWidget {
               FilledButton.icon(
                 onPressed: () => context.go('/publish'),
                 icon: const Icon(Icons.edit_rounded),
-                label: const Text('Témoigner'),
+                label: Text(context.l10n.prayerTestify),
                 style: FilledButton.styleFrom(backgroundColor: AppColors.secondary),
               ),
             if (request.testimonyId == null)
-              TextButton(onPressed: busy ? null : onReopen, child: const Text('Remettre en attente')),
+              TextButton(onPressed: busy ? null : onReopen, child: Text(context.l10n.prayerSetPending)),
           ],
         ]),
       ]),
@@ -405,7 +414,7 @@ class _Messages extends ConsumerWidget {
     final async = ref.watch(prayerMessagesProvider(requestId));
     return switch (async) {
       AsyncValue(:final value?) when value.isEmpty => Text(
-          "Aucun message pour le moment. Un verset, une parole d'encouragement peuvent fortifier.",
+          context.l10n.prayerNoMessages,
           style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
         ),
       AsyncValue(:final value?) => Column(children: [
@@ -444,9 +453,10 @@ class _Messages extends ConsumerWidget {
                                 }
                               }
                             },
-                            child: const Padding(
-                              padding: EdgeInsets.all(4),
-                              child: Icon(Icons.delete_outline, size: 18, color: AppColors.textSecondary, semanticLabel: 'Supprimer le message'),
+                            child: Padding(
+                              padding: const EdgeInsets.all(4),
+                              child: Icon(Icons.delete_outline,
+                                  size: 18, color: AppColors.textSecondary, semanticLabel: context.l10n.prayerDeleteMessage),
                             ),
                           ),
                       ]),
@@ -469,7 +479,7 @@ class _Messages extends ConsumerWidget {
               ]),
             ),
         ]),
-      AsyncValue(:final error?) => Text(error is PrayerFailure ? error.message : 'Messages indisponibles.'),
+      AsyncValue(:final error?) => Text(error is PrayerFailure ? error.message : context.l10n.prayerMessagesUnavailable),
       _ => const Center(child: Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator())),
     };
   }
@@ -492,19 +502,20 @@ class _Composer extends StatelessWidget {
             minLines: 2,
             maxLines: 5,
             maxLength: 1000,
-            decoration: const InputDecoration(hintText: 'Je prie avec vous… (@ pour mentionner)', labelText: "Message d'encouragement"),
+            decoration: InputDecoration(
+                hintText: context.l10n.prayerMessageHintMention, labelText: context.l10n.prayerMessageLabel),
           ),
           TextField(
             controller: verse,
             maxLength: 100,
-            decoration: const InputDecoration(labelText: 'Verset (facultatif)', hintText: 'Ex. : Philippiens 4:6-7'),
+            decoration: InputDecoration(labelText: context.l10n.prayerVerseLabel, hintText: context.l10n.prayerVerseHint),
           ),
           Align(
             alignment: Alignment.centerRight,
             child: FilledButton.icon(
               onPressed: busy ? null : onSend,
               icon: const Icon(Icons.send_rounded, size: 18),
-              label: const Text('Envoyer'),
+              label: Text(context.l10n.commonSend),
             ),
           ),
         ]),
@@ -534,9 +545,9 @@ class _ReportSheetState extends State<_ReportSheet> {
       padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + MediaQuery.viewInsetsOf(context).bottom),
       child: SingleChildScrollView(
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Signaler la requête', style: AppTextStyles.h4),
+          Text(context.l10n.prayerReportTitle, style: AppTextStyles.h4),
           const SizedBox(height: 4),
-          Text('Au 3e signalement, la requête est retirée en attendant la modération.',
+          Text(context.l10n.prayerReportInfo,
               style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
           RadioGroup<PrayerReportReason>(
             groupValue: _reason,
@@ -550,14 +561,14 @@ class _ReportSheetState extends State<_ReportSheet> {
             controller: _comment,
             maxLength: 500,
             maxLines: 2,
-            decoration: const InputDecoration(hintText: 'Précisions (facultatif)'),
+            decoration: InputDecoration(hintText: context.l10n.prayerReportDetailsHint),
           ),
           const SizedBox(height: 8),
           SizedBox(
             width: double.infinity,
             child: FilledButton(
               onPressed: () => Navigator.pop(context, (_reason, _comment.text)),
-              child: const Text('Envoyer le signalement'),
+              child: Text(context.l10n.prayerReportSend),
             ),
           ),
         ]),

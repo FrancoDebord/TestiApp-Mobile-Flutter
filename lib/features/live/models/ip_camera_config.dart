@@ -8,21 +8,28 @@
 
 import 'dart:convert' show utf8;
 
+import '../../../l10n/app_localizations.dart';
+
 /// Protocole du flux lu par le service vidéo (LiveKit Ingress, entrée URL).
 enum IpCameraProtocol {
   rtsp('rtsp', 'RTSP', 554),
-  rtsps('rtsps', 'RTSPS (chiffré)', 322),
+  rtsps('rtsps', 'RTSPS', 322),
   rtmp('rtmp', 'RTMP', 1935),
-  rtmps('rtmps', 'RTMPS (chiffré)', 443),
-  http('http', 'HTTP (HLS)', 80),
-  https('https', 'HTTPS (HLS)', 443),
+  rtmps('rtmps', 'RTMPS', 443),
+  http('http', 'HTTP (HLS)', 80), // i18n-ignore
+  https('https', 'HTTPS (HLS)', 443), // i18n-ignore
   srt('srt', 'SRT', 9000);
 
-  const IpCameraProtocol(this.scheme, this.label, this.defaultPort);
+  const IpCameraProtocol(this.scheme, this._name, this.defaultPort);
 
   final String scheme;
-  final String label;
+  final String _name;
   final int defaultPort;
+
+  /// Libellé affiché (« RTSPS (chiffré) »).
+  String get label => this == rtsps || this == rtmps
+      ? L10n.current.liveProtocolEncrypted(_name)
+      : _name;
 
   /// SRT : pas d'identifiant / mot de passe dans l'adresse, mais `streamid`
   /// et `passphrase` en paramètres.
@@ -45,23 +52,46 @@ enum IpCameraStream { main, sub }
 class IpCameraPreset {
   const IpCameraPreset({
     required this.id,
-    required this.label,
+    this.brand,
     this.protocol = IpCameraProtocol.rtsp,
     this.port,
     this.mainPath,
     this.subPath,
-    this.hint,
   });
 
   final String id;
-  final String label;
+
+  /// Nom de marque (non traduit) ; null : libellé traduit d'après [id].
+  final String? brand;
   final IpCameraProtocol protocol;
 
   /// null : port par défaut du protocole.
   final int? port;
   final String? mainPath;
   final String? subPath;
-  final String? hint;
+
+  /// Libellé affiché dans la langue courante.
+  String get label => switch (id) {
+        'hikvision' => L10n.current.liveCamHikvision,
+        'dahua' => L10n.current.liveCamDahua,
+        'onvif' => L10n.current.liveCamOnvif,
+        'other' => L10n.current.liveCamOther,
+        _ => brand ?? id,
+      };
+
+  /// Conseil affiché sous le choix du modèle.
+  String? get hint => switch (id) {
+        'hikvision' => L10n.current.liveCamHikvisionHint,
+        'dahua' => L10n.current.liveCamDahuaHint,
+        'amcrest' => L10n.current.liveCamAmcrestHint,
+        'reolink' => L10n.current.liveCamReolinkHint,
+        'axis' => L10n.current.liveCamAxisHint,
+        'tapo' => L10n.current.liveCamTapoHint,
+        'foscam' => L10n.current.liveCamFoscamHint,
+        'onvif' => L10n.current.liveCamOnvifHint,
+        'other' => L10n.current.liveCamOtherHint,
+        _ => null,
+      };
 
   bool get hasSubStream => subPath != null;
 
@@ -70,66 +100,50 @@ class IpCameraPreset {
 
   static const hikvision = IpCameraPreset(
     id: 'hikvision',
-    label: 'Hikvision (et HiLook)',
     mainPath: '/Streaming/Channels/101',
     subPath: '/Streaming/Channels/102',
-    hint: 'Canal 1 : 101 (principal), 102 (secondaire). Canal 2 : 201, 202…',
   );
   static const dahua = IpCameraPreset(
     id: 'dahua',
-    label: 'Dahua (et Imou)',
     mainPath: '/cam/realmonitor?channel=1&subtype=0',
     subPath: '/cam/realmonitor?channel=1&subtype=1',
-    hint: 'subtype=0 : flux principal, subtype=1 : flux secondaire.',
   );
   static const amcrest = IpCameraPreset(
     id: 'amcrest',
-    label: 'Amcrest',
+    brand: 'Amcrest', // i18n-ignore
     mainPath: '/cam/realmonitor?channel=1&subtype=0',
     subPath: '/cam/realmonitor?channel=1&subtype=1',
-    hint: 'Même format que Dahua.',
   );
   static const reolink = IpCameraPreset(
     id: 'reolink',
-    label: 'Reolink',
+    brand: 'Reolink', // i18n-ignore
     mainPath: '/h264Preview_01_main',
     subPath: '/h264Preview_01_sub',
-    hint: 'Activez RTSP dans Réglages → Réseau → Avancé → Ports. '
-        'Modèles 4K / H.265 : /h265Preview_01_main.',
   );
   static const axis = IpCameraPreset(
     id: 'axis',
-    label: 'Axis',
+    brand: 'Axis', // i18n-ignore
     mainPath: '/axis-media/media.amp',
     subPath: '/axis-media/media.amp?resolution=640x360',
-    hint: 'Paramètres possibles : ?videocodec=h264&resolution=1280x720.',
   );
   static const tapo = IpCameraPreset(
     id: 'tapo',
-    label: 'TP-Link Tapo',
+    brand: 'TP-Link Tapo', // i18n-ignore
     mainPath: '/stream1',
     subPath: '/stream2',
-    hint: "Créez d'abord un « Compte de la caméra » dans l'application Tapo "
-        '(Paramètres avancés) : ce sont cet identifiant et ce mot de passe.',
   );
   static const foscam = IpCameraPreset(
     id: 'foscam',
-    label: 'Foscam',
+    brand: 'Foscam', // i18n-ignore
     port: 88,
     mainPath: '/videoMain',
     subPath: '/videoSub',
-    hint: 'Port RTSP 88 sur la plupart des modèles récents (vérifiez dans Réglages → Réseau → Port).',
   );
   static const onvif = IpCameraPreset(
     id: 'onvif',
-    label: 'ONVIF générique',
-    hint: "Le chemin dépend du modèle : lisez-le dans l'interface de la caméra "
-        'ou avec ONVIF Device Manager (profil de flux).',
   );
   static const other = IpCameraPreset(
     id: 'other',
-    label: 'Autre',
-    hint: 'Indiquez le chemin donné par la documentation de la caméra.',
   );
 
   static const all = [hikvision, dahua, amcrest, reolink, axis, tapo, foscam, onvif, other];
@@ -395,19 +409,19 @@ class IpCameraConfig {
   /// Message d'erreur pour l'hôte, ou null.
   static String? validateHost(String value) {
     final h = value.trim();
-    if (h.isEmpty) return "Indiquez l'adresse IP ou le nom d'hôte de la caméra.";
-    if (h.contains('://')) return 'Indiquez seulement l\'adresse, sans « rtsp:// ».';
+    if (h.isEmpty) return L10n.current.liveCamHostRequired;
+    if (h.contains('://')) return L10n.current.liveCamHostNoScheme;
     if (h.contains(RegExp(r'[\s/@?#]'))) {
-      return 'Adresse non valide (pas d\'espace, de « / », « @ » ni « ? »).';
+      return L10n.current.liveCamHostInvalidChars;
     }
     final bare = h.startsWith('[') && h.endsWith(']') ? h.substring(1, h.length - 1) : h;
     if (bare.contains(':')) {
-      return Uri.tryParse('http://[$bare]/') == null ? 'Adresse IPv6 non valide.' : null;
+      return Uri.tryParse('http://[$bare]/') == null ? L10n.current.liveCamIpv6Invalid : null;
     }
     if (RegExp(r'^\d+(\.\d+){3}$').hasMatch(bare)) {
-      return _ipv4(bare) == null ? 'Adresse IP non valide.' : null;
+      return _ipv4(bare) == null ? L10n.current.liveCamIpInvalid : null;
     }
-    return _hostname.hasMatch(bare) ? null : "Nom d'hôte non valide.";
+    return _hostname.hasMatch(bare) ? null : L10n.current.liveCamHostnameInvalid;
   }
 
   /// Message d'erreur pour le port, ou null (vide : port par défaut).
@@ -415,18 +429,18 @@ class IpCameraConfig {
     final v = value.trim();
     if (v.isEmpty) return null;
     final n = int.tryParse(v);
-    if (n == null || n < 1 || n > 65535) return 'Port entre 1 et 65535.';
+    if (n == null || n < 1 || n > 65535) return L10n.current.liveCamPortRange;
     return null;
   }
 
   /// Message d'erreur pour le chemin, ou null.
   static String? validatePath(String value) =>
-      value.contains(RegExp(r'\s')) ? 'Le chemin ne doit pas contenir d\'espace.' : null;
+      value.contains(RegExp(r'\s')) ? L10n.current.liveCamPathNoSpace : null;
 
   /// Phrase secrète SRT : 10 à 79 caractères si renseignée.
   static String? validatePassphrase(String value) =>
       value.isNotEmpty && (value.length < 10 || value.length > 79)
-          ? 'La phrase secrète SRT compte 10 à 79 caractères.'
+          ? L10n.current.liveCamPassphraseLength
           : null;
 
   /// Toutes les erreurs de la configuration (vide : valide).
@@ -435,7 +449,7 @@ class IpCameraConfig {
         ?validatePort(port?.toString() ?? ''),
         ?validatePath(path),
         if (protocol.isSrt) ?validatePassphrase(passphrase),
-        if (toUrl().length > maxLength) 'Adresse trop longue (500 caractères au plus).',
+        if (toUrl().length > maxLength) L10n.current.liveCamUrlTooLong,
       ];
 
   bool get isValid => errors().isEmpty;

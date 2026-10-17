@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../shared/models/user_model.dart' show UserRole;
 import '../models/admin_models.dart';
+import '../../../l10n/app_localizations.dart';
 
 // =============================================================================
 // AdminUserRow
@@ -260,20 +261,20 @@ class _ActionsMenu extends StatelessWidget {
       elevation: 8,
       itemBuilder: (_) => [
         if (user.status != UserAccountStatus.active)
-          _menuItem('restore', Icons.restore_rounded, 'Réactiver',
+          _menuItem('restore', Icons.restore_rounded, context.l10n.adminRestore,
               const Color(0xFF12B76A)),
         if (user.status == UserAccountStatus.active)
-          _menuItem('suspend', Icons.pause_circle_outline_rounded, 'Suspendre',
+          _menuItem('suspend', Icons.pause_circle_outline_rounded, context.l10n.adminSuspend,
               const Color(0xFFF79009)),
         if (user.status != UserAccountStatus.banned)
-          _menuItem('ban', Icons.block_rounded, 'Bannir',
+          _menuItem('ban', Icons.block_rounded, context.l10n.adminBan,
               const Color(0xFFD92D20)),
         if (user.role == UserRole.utilisateur)
           _menuItem('promote', Icons.admin_panel_settings_outlined,
-              'Promouvoir modérateur', const Color(0xFF184797)),
+              context.l10n.adminPromoteModerator, const Color(0xFF184797)),
         if (user.role == UserRole.moderateur)
           _menuItem('promote_admin', Icons.shield_outlined,
-              'Promouvoir admin', const Color(0xFF184797)),
+              context.l10n.adminPromoteAdmin, const Color(0xFF184797)),
       ],
       onSelected: (value) {
         switch (value) {

@@ -38,14 +38,16 @@ import '../features/testimony/providers/testimony_refresh.dart'
     show kVideoPushTypes, testimonyReloaderProvider, videoPushTestimonyId;
 import 'api_service.dart';
 import 'sync_service.dart';
+import '../l10n/app_localizations.dart';
 
 // ── Android notification channel ──────────────────────────────────────────────
 
 /// Canal Android des notifications : même identifiant que le serveur (FCM_ANDROID_CHANNEL)
 /// et que `default_notification_channel_id` dans AndroidManifest.xml.
 const kPushChannelId = 'testi_notifications';
-const _kChannelName = 'Notifications Témoignages';
-const _kChannelDesc = 'Commentaires, réactions, approbations et prières.';
+// Nom et description du canal : lus dans la langue affichée à la création du canal.
+String get _kChannelName => L10n.current.pushChannelName;
+String get _kChannelDesc => L10n.current.pushChannelDescription;
 
 // ── Local notifications plugin (singleton for background handler access) ──────
 
@@ -175,18 +177,65 @@ class PushService {
     if (accessToken == null || accessToken == 'offline_mode' || accessToken == 'local_auth') {
       return;
     }
+    // Suivi du renouvellement d'abord : un jeton émis pendant l'attente du
+    // jeton APNs (iOS) n'est pas perdu.
+    await _tokenRefresh?.cancel();
+    _tokenRefresh = _messaging.onTokenRefresh.listen(_sendToken);
     try {
-      final token = await _messaging.getToken();
+      final token = await currentToken();
       if (token == null) {
-        debugPrint('Push : aucun jeton FCM (Google Play Services indisponibles ?)');
+        debugPrint('Push : aucun jeton FCM (Google Play Services / APNs indisponibles ?)');
         return;
       }
       await _sendToken(token);
     } catch (e, stack) {
       _log('getToken', e, stack);
     }
-    await _tokenRefresh?.cancel();
-    _tokenRefresh = _messaging.onTokenRefresh.listen(_sendToken);
+  }
+
+  /// Jeton FCM de l'appareil. Sur iOS, getToken échoue tant qu'APNs n'a pas
+  /// fourni son jeton (« apns-token-not-set ») : on l'attend jusqu'à ~10 s.
+  Future<String?> currentToken() async {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+      String? apns;
+      for (var i = 0; i < 10 && apns == null; i++) {
+        apns = await _messaging.getAPNSToken();
+        if (apns == null) await Future<void>.delayed(const Duration(seconds: 1));
+      }
+      if (apns == null) {
+        debugPrint('Push : pas de jeton APNs (simulateur, capacité Push absente ?)');
+        return null;
+      }
+    }
+    return _messaging.getToken();
+  }
+
+  /// « Tester les notifications » (Paramètres) : vérifie l'autorisation,
+  /// réenregistre le jeton de l'appareil, puis POST /me/push-test.
+  Future<PushTestResult> sendTestPush() async {
+    try {
+      final settings = await _messaging.requestPermission(alert: true, badge: true, sound: true);
+      if (settings.authorizationStatus == AuthorizationStatus.denied) {
+        return const PushTestResult(PushTestOutcome.permissionDenied);
+      }
+      final token = await currentToken();
+      if (token == null) return const PushTestResult(PushTestOutcome.noToken);
+      await _sendToken(token);
+      final res = await _r.read(apiServiceProvider).post<dynamic>(AppConstants.pushTest);
+      final data = res.data;
+      final sent = data is Map ? (data['sent'] ?? data['devices'] ?? data['count']) : null;
+      return PushTestResult(
+        PushTestOutcome.sent,
+        serverMessage: res.message,
+        devices: sent is num ? sent.toInt() : int.tryParse('${sent ?? ''}'),
+      );
+    } on LaravelApiException catch (e) {
+      if (e.statusCode == 404) return const PushTestResult(PushTestOutcome.notDeployed);
+      return PushTestResult(PushTestOutcome.serverError, serverMessage: e.displayMessage);
+    } catch (e, stack) {
+      _log('push-test', e, stack);
+      return PushTestResult(PushTestOutcome.networkError, serverMessage: '$e');
+    }
   }
 
   /// Dissocie l'appareil du compte : DELETE /devices/token, puis suppression du jeton local
@@ -270,7 +319,7 @@ class PushService {
 
     // Create the Android channel once (same id as the server: FCM_ANDROID_CHANNEL,
     // and as default_notification_channel_id in AndroidManifest.xml).
-    const channel = AndroidNotificationChannel(
+    final channel = AndroidNotificationChannel(
       kPushChannelId, _kChannelName,
       description: _kChannelDesc,
       importance: Importance.high,
@@ -327,8 +376,10 @@ class PushService {
     // 1. Refresh local data immediately.
     await _deltaSync();
 
-    // 2. Show local notification if user has the preference enabled.
-    if (_shouldShow(message) && message.notification != null) {
+    // 2. Show local notification if user has the preference enabled
+    //    (bloc « notification », ou title/body dans les données).
+    if (_shouldShow(message) && foregroundContent(message.notification?.title,
+            message.notification?.body, message.data) != null) {
       await _showLocalNotif(message);
     }
   }
@@ -365,12 +416,13 @@ class PushService {
   // ── Show local notification ───────────────────────────────────────────────
 
   Future<void> _showLocalNotif(RemoteMessage message) async {
-    final n = message.notification!;
+    final content = foregroundContent(message.notification?.title,
+        message.notification?.body, message.data)!;
     await localNotificationsPlugin.show(
       (message.messageId ?? '${DateTime.now().microsecondsSinceEpoch}').hashCode,
-      n.title ?? 'Témoignages',
-      n.body,
-      const NotificationDetails(
+      content.title,
+      content.body,
+      NotificationDetails(
         android: AndroidNotificationDetails(
           kPushChannelId, _kChannelName,
           channelDescription: _kChannelDesc,
@@ -378,7 +430,7 @@ class PushService {
           priority:   Priority.high,
           icon:       '@mipmap/ic_launcher',
         ),
-        iOS: DarwinNotificationDetails(
+        iOS: const DarwinNotificationDetails(
           presentAlert: true,
           presentBadge: true,
           presentSound: true,
@@ -438,6 +490,49 @@ class PushService {
     debugPrint('Push ✗ $step : $error');
     if (kDebugMode && stack != null) debugPrint('$stack');
   }
+}
+
+// ── Contenu affiché au premier plan ──────────────────────────────────────────
+
+/// Titre et texte d'un push reçu application ouverte : bloc « notification »,
+/// sinon `title` / `body` des données (message « data » seul). `null` : rien
+/// à afficher (message silencieux).
+({String title, String? body})? foregroundContent(
+    String? title, String? body, Map<String, dynamic> data) {
+  String? s(Object? v) => v is String && v.trim().isNotEmpty ? v.trim() : null;
+  final t = s(title) ?? s(data['title']);
+  final b = s(body) ?? s(data['body']) ?? s(data['message']);
+  if (t == null && b == null) return null;
+  return (title: t ?? L10n.current.pushFallbackTitle, body: b);
+}
+
+// ── Test des notifications ───────────────────────────────────────────────────
+
+enum PushTestOutcome {
+  /// Push de test demandé au serveur : il doit arriver dans quelques secondes.
+  sent,
+
+  /// Notifications refusées dans les réglages du téléphone.
+  permissionDenied,
+
+  /// Pas de jeton FCM (Google Play Services, APNs, simulateur).
+  noToken,
+
+  /// POST /me/push-test absent (serveur pas encore mis à jour).
+  notDeployed,
+  serverError,
+  networkError,
+}
+
+class PushTestResult {
+  const PushTestResult(this.outcome, {this.serverMessage, this.devices});
+  final PushTestOutcome outcome;
+  final String? serverMessage;
+
+  /// Nombre d'appareils visés, si le serveur l'indique.
+  final int? devices;
+
+  bool get ok => outcome == PushTestOutcome.sent;
 }
 
 // ── Rafraîchissements liés à un push ─────────────────────────────────────────

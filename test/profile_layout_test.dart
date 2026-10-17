@@ -26,6 +26,8 @@ import 'package:testi_app/features/profile/screens/settings_screen.dart';
 import 'package:testi_app/l10n/app_localizations.dart';
 import 'package:testi_app/shared/models/user_model.dart';
 import 'package:testi_app/shared/widgets/guest_gate.dart' show isGuestProvider;
+import 'package:testi_app/features/conversion/providers/conversion_providers.dart';
+import 'package:testi_app/features/conversion/data/conversion_repository.dart';
 
 const _longName =
     'Ministère International Lumière du Monde pour la Restauration des Nations';
@@ -78,11 +80,6 @@ List<AppNotification> _notifs() {
   ];
 }
 
-class _FixedLocale extends LocaleNotifier {
-  @override
-  Locale build() => const Locale('fr');
-}
-
 class _Prefs extends PlaybackPreferencesNotifier {
   @override
   PlaybackPreferences build() => const PlaybackPreferences();
@@ -97,13 +94,14 @@ Widget _app(Widget child,
         {double textScale = 1.0, bool org = false, bool guest = false}) =>
     ProviderScope(
       overrides: [
-        localeProvider.overrideWith(_FixedLocale.new),
+        localeProvider.overrideWithValue(const Locale('fr')),
         playbackPreferencesProvider.overrideWith(_Prefs.new),
         notificationsNotifierProvider.overrideWith(_Notifs.new),
         isGuestProvider.overrideWithValue(guest),
         currentUserProvider.overrideWithValue(guest ? null : _user(org: org)),
         userProfileProvider.overrideWithValue(guest ? null : _profile()),
         myTestimoniesProvider.overrideWithValue(const <Testimony>[]),
+        myConversionProvider.overrideWith((ref) async => const MyConversion(canCreate: true)),
         // Événements organisés (section du profil) : aucun, sans appel réseau.
         organizerEventsProvider.overrideWith((ref, id) async => (upcoming: <ChristianEvent>[], past: <ChristianEvent>[])),
       ],
@@ -216,6 +214,10 @@ void main() {
     expect(find.text('Abonnés'), findsOneWidget);
     expect(find.textContaining('Membre depuis 3 mois'), findsOneWidget);
     expect(find.text('Modifier le profil'), findsOneWidget);
+    // Bouton du témoignage de conversion, sous « Modifier le profil ».
+    expect(find.text('Enregistrer mon témoignage de conversion'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Mes téléchargements'), 200,
+        scrollable: find.byType(Scrollable).first);
     expect(find.text('Mes téléchargements'), findsOneWidget);
   });
 

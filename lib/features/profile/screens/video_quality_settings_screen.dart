@@ -13,6 +13,7 @@ import '../../../core/media/playback_preferences.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
+import '../../../l10n/app_localizations.dart';
 import '../widgets/profile_menu.dart';
 
 class VideoQualitySettingsScreen extends ConsumerWidget {
@@ -23,11 +24,12 @@ class VideoQualitySettingsScreen extends ConsumerWidget {
     final prefs = ref.watch(playbackPreferencesProvider);
     final ctl = ref.read(playbackPreferencesProvider.notifier);
     final metered = ref.watch(isMeteredConnectionProvider).value;
+    final l10n = context.l10n;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text('Qualité vidéo',
+        title: Text(l10n.settingsVideoQuality,
             style: AppTextStyles.h4.copyWith(fontSize: 18)),
         backgroundColor: AppColors.background,
         surfaceTintColor: Colors.transparent,
@@ -55,8 +57,8 @@ class VideoQualitySettingsScreen extends ConsumerWidget {
                   Expanded(
                     child: Text(
                       metered
-                          ? 'Connexion actuelle : données mobiles'
-                          : 'Connexion actuelle : Wi-Fi',
+                          ? l10n.settingsCurrentConnectionMobile
+                          : l10n.settingsCurrentConnectionWifi,
                       style: AppTextStyles.bodySmall,
                     ),
                   ),
@@ -64,25 +66,23 @@ class VideoQualitySettingsScreen extends ConsumerWidget {
               ),
             ),
           _QualityGroup(
-            title: 'Sur données mobiles',
+            title: l10n.settingsOnMobileData,
             choices: VideoQuality.mobileChoices,
             selected: prefs.videoQualityMobile,
             onSelected: ctl.setVideoQualityMobile,
-            footer: 'Sur données mobiles, les vidéos ne démarrent jamais seules : '
-                'la miniature s’affiche avec un bouton de lecture.',
+            footer: l10n.settingsMobileDataFooter,
           ),
           const SizedBox(height: AppSpacing.xxl),
           _QualityGroup(
-            title: 'En Wi-Fi',
+            title: l10n.settingsOnWifi,
             choices: VideoQuality.wifiChoices,
             selected: prefs.videoQualityWifi,
             onSelected: ctl.setVideoQualityWifi,
-            footer: 'Auto adapte la qualité à votre connexion pendant la lecture.',
+            footer: l10n.settingsWifiFooter,
           ),
           const SizedBox(height: AppSpacing.lg),
           Text(
-            'Vous pouvez changer de qualité pendant une lecture avec le bouton '
-            '« Qualité » du lecteur ; ce choix ne vaut que pour la lecture en cours.',
+            l10n.settingsQualityDuringPlayback,
             style: AppTextStyles.bodySmall,
           ),
         ],

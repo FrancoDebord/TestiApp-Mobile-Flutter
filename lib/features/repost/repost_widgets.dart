@@ -11,6 +11,7 @@ import '../home/providers/home_providers.dart' show testimonyFromApiJson;
 import '../home/widgets/testimony_feed_item.dart';
 import '../../shared/widgets/guest_gate.dart';
 import 'repost.dart';
+import '../../l10n/app_localizations.dart';
 
 /// En-tête « X a partagé » au-dessus de la carte du témoignage d'origine (qui garde son auteur).
 class RepostHeader extends StatelessWidget {
@@ -20,11 +21,12 @@ class RepostHeader extends StatelessWidget {
 
   static String _ago(DateTime at) {
     final d = DateTime.now().difference(at);
-    if (d.inMinutes < 1) return 'à l’instant';
-    if (d.inHours < 1) return 'il y a ${d.inMinutes} min';
-    if (d.inDays < 1) return 'il y a ${d.inHours} h';
-    if (d.inDays < 30) return 'il y a ${d.inDays} j';
-    return 'le ${at.day.toString().padLeft(2, '0')}/${at.month.toString().padLeft(2, '0')}/${at.year}';
+    final l = L10n.current;
+    if (d.inMinutes < 1) return l.repostJustNow;
+    if (d.inHours < 1) return l.timeMinutesAgo(d.inMinutes);
+    if (d.inDays < 1) return l.timeHoursAgo(d.inHours);
+    if (d.inDays < 30) return l.timeDaysAgo(d.inDays);
+    return l.repostOnDate('${at.day.toString().padLeft(2, '0')}/${at.month.toString().padLeft(2, '0')}/${at.year}');
   }
 
   @override
@@ -43,7 +45,7 @@ class RepostHeader extends StatelessWidget {
                 child: Text.rich(
                   TextSpan(children: [
                     TextSpan(text: r.byName, style: const TextStyle(fontWeight: FontWeight.w800)),
-                    const TextSpan(text: ' a partagé'),
+                    TextSpan(text: context.l10n.repostHasShared),
                     if (r.at != null) TextSpan(text: ' · ${_ago(r.at!)}', style: const TextStyle(fontWeight: FontWeight.w400)),
                   ]),
                   maxLines: 1,
@@ -77,7 +79,7 @@ Future<void> showRepostSheet(
   required String authorName,
 }) async {
   if (ref.read(isGuestProvider) &&
-      !await requireAccount(context, ref, reason: 'partager ce témoignage avec vos abonnés')) {
+      !await requireAccount(context, ref, reason: context.l10n.repostReasonShareTestimony)) {
     return;
   }
   if (!context.mounted) return;
@@ -122,7 +124,7 @@ class _RepostSheetState extends ConsumerState<RepostSheet> {
     } catch (e) {
       if (mounted) setState(() => _busy = false);
       messenger.showSnackBar(SnackBar(
-        content: Text(e is LaravelApiException ? e.message : 'Le partage a échoué. Réessayez.'),
+        content: Text(e is LaravelApiException ? e.message : L10n.current.repostFailed),
         behavior: SnackBarBehavior.floating,
       ));
     }
@@ -149,12 +151,11 @@ class _RepostSheetState extends ConsumerState<RepostSheet> {
                 Row(children: [
                   const Icon(Icons.repeat_rounded, color: AppColors.primary),
                   const SizedBox(width: 8),
-                  Expanded(child: Text('Partager sur TestiApp', style: AppTextStyles.h4)),
+                  Expanded(child: Text(context.l10n.repostShareOnTestiApp, style: AppTextStyles.h4)),
                 ]),
                 const SizedBox(height: 8),
                 Text(
-                  'Le témoignage de ${widget.authorName} apparaîtra dans le fil de vos abonnés, '
-                  'avec son auteur. Il sera prévenu.',
+                  context.l10n.repostTestimonyExplain(widget.authorName),
                   style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary, height: 1.4),
                 ),
                 const SizedBox(height: 14),
@@ -165,9 +166,9 @@ class _RepostSheetState extends ConsumerState<RepostSheet> {
                   maxLines: 5,
                   enabled: !_busy,
                   textCapitalization: TextCapitalization.sentences,
-                  decoration: const InputDecoration(
-                    labelText: 'Votre commentaire (facultatif)',
-                    hintText: 'Pourquoi ce témoignage vous a touché…',
+                  decoration: InputDecoration(
+                    labelText: context.l10n.repostCommentLabel,
+                    hintText: context.l10n.repostCommentHintTestimony,
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -179,12 +180,12 @@ class _RepostSheetState extends ConsumerState<RepostSheet> {
                   icon: _busy
                       ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                       : const Icon(Icons.repeat_rounded),
-                  label: Text(reposted ? 'Mettre à jour mon partage' : 'Partager avec mes abonnés'),
+                  label: Text(reposted ? context.l10n.repostUpdate : context.l10n.repostShareWithFollowers),
                 ),
                 const SizedBox(height: 4),
                 TextButton(
                   onPressed: _busy ? null : () => _run((repo) => repo.remove(widget.testimonyId)),
-                  child: const Text('Annuler mon partage'),
+                  child: Text(context.l10n.repostUndo),
                 ),
               ],
             ),
@@ -230,7 +231,7 @@ class UserRepostsSection extends ConsumerWidget {
           child: Row(children: [
             const Icon(Icons.repeat_rounded, size: 18, color: AppColors.secondary),
             const SizedBox(width: 6),
-            Expanded(child: Text('Partages', style: AppTextStyles.h4)),
+            Expanded(child: Text(context.l10n.repostSharesTitle, style: AppTextStyles.h4)),
           ]),
         ),
         for (final e in items)

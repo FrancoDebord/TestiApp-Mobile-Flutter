@@ -13,6 +13,7 @@ import '../../services/api_service.dart' show LaravelApiException;
 import '../events/widgets/event_location_widgets.dart' show LocationFailure;
 import 'location_providers.dart';
 import 'user_location.dart';
+import '../../l10n/app_localizations.dart';
 
 class LocationSettingsScreen extends ConsumerStatefulWidget {
   const LocationSettingsScreen({super.key});
@@ -38,6 +39,7 @@ class _LocationSettingsScreenState
     if (_busy) return;
     setState(() => _busy = true);
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = context.l10n;
     try {
       await action();
       if (done != null) messenger.showSnackBar(SnackBar(content: Text(done)));
@@ -47,7 +49,7 @@ class _LocationSettingsScreenState
           content: Text(e.message),
           action: e.canOpenSettings
               ? SnackBarAction(
-                  label: 'Réglages',
+                  label: l10n.locationOpenSettings,
                   onPressed: Geolocator.openAppSettings,
                 )
               : null,
@@ -57,8 +59,8 @@ class _LocationSettingsScreenState
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
     } catch (_) {
       messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Action impossible pour le moment. Réessayez.'),
+        SnackBar(
+          content: Text(l10n.locationActionFailed),
         ),
       );
     } finally {
@@ -70,6 +72,7 @@ class _LocationSettingsScreenState
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final async = ref.watch(userLocationProvider);
     final s = async.value ?? const UserLocationSettings();
     if (!_cityLoaded && async.hasValue) {
@@ -81,7 +84,7 @@ class _LocationSettingsScreenState
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text(
-          'Localisation',
+          l10n.locationTitle,
           style: AppTextStyles.h4.copyWith(fontSize: 18),
         ),
         backgroundColor: AppColors.background,
@@ -111,18 +114,17 @@ class _LocationSettingsScreenState
                           : (v) => _run(
                               v ? _notifier.enableAndLocate : _notifier.disable,
                               done: v
-                                  ? 'Position enregistrée.'
-                                  : 'Position effacée.',
+                                  ? l10n.locationSaved
+                                  : l10n.locationCleared,
                             ),
                       title: Text(
-                        'Utiliser ma position pour personnaliser mes fils',
+                        l10n.locationUseGpsTitle,
                         style: AppTextStyles.bodyMedium.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       subtitle: Text(
-                        'Les témoignages, prières et événements proches de vous d’abord. '
-                        'Position arrondie (environ 1 km), jamais montrée aux autres.',
+                        l10n.locationUseGpsSubtitle,
                         style: AppTextStyles.bodySmall.copyWith(
                           color: AppColors.textSecondary,
                         ),
@@ -160,10 +162,10 @@ class _LocationSettingsScreenState
                             ? null
                             : () => _run(
                                 _notifier.enableAndLocate,
-                                done: 'Position mise à jour.',
+                                done: l10n.locationUpdated,
                               ),
                         icon: const Icon(Icons.my_location_rounded, size: 18),
-                        label: const Text('Mettre à jour ma position'),
+                        label: Text(l10n.locationUpdate),
                       ),
                     ),
                   ],
@@ -172,14 +174,14 @@ class _LocationSettingsScreenState
                 _Card(
                   children: [
                     Text(
-                      'Ma ville (sans position)',
+                      l10n.locationHomeCityTitle,
                       style: AppTextStyles.bodyMedium.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Utilisée quand la position est désactivée ; le pays est celui de votre profil.',
+                      l10n.locationHomeCityHelp,
                       style: AppTextStyles.bodySmall.copyWith(
                         color: AppColors.textSecondary,
                       ),
@@ -189,13 +191,13 @@ class _LocationSettingsScreenState
                       controller: _city,
                       maxLength: 120,
                       textCapitalization: TextCapitalization.words,
-                      decoration: const InputDecoration(
-                        hintText: 'Ex. Cotonou',
+                      decoration: InputDecoration(
+                        hintText: l10n.locationHomeCityHint,
                         counterText: '',
                       ),
                       onSubmitted: (v) => _run(
                         () => _notifier.setHomeCity(v),
-                        done: 'Ville enregistrée.',
+                        done: l10n.locationCitySaved,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -206,9 +208,9 @@ class _LocationSettingsScreenState
                             ? null
                             : () => _run(
                                 () => _notifier.setHomeCity(_city.text),
-                                done: 'Ville enregistrée.',
+                                done: l10n.locationCitySaved,
                               ),
-                        child: const Text('Enregistrer'),
+                        child: Text(l10n.commonSave),
                       ),
                     ),
                   ],
@@ -224,9 +226,9 @@ class _LocationSettingsScreenState
                         : () => _run(() async {
                             await _notifier.erase();
                             _city.clear();
-                          }, done: 'Votre position a été supprimée.'),
+                          }, done: l10n.locationErased),
                     icon: const Icon(Icons.location_off_outlined, size: 18),
-                    label: const Text('Supprimer ma position'),
+                    label: Text(l10n.locationErase),
                   ),
                 ),
               ],

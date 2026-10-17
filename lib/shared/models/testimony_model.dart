@@ -1,5 +1,6 @@
 // lib/shared/models/testimony_model.dart — Dart pur, sans génération de code.
 
+import '../../l10n/app_localizations.dart';
 import 'user_model.dart';
 
 // ── Enums ─────────────────────────────────────────────────────────────────────
@@ -69,16 +70,16 @@ enum TestimonyCategory {
   };
 
   String get label => switch (this) {
-    TestimonyCategory.guerison        => 'Guérison',
-    TestimonyCategory.delivrance      => 'Délivrance',
-    TestimonyCategory.conversion      => 'Conversion',
-    TestimonyCategory.mariage         => 'Mariage',
-    TestimonyCategory.famille         => 'Famille',
-    TestimonyCategory.finances        => 'Finances',
-    TestimonyCategory.miracles        => 'Miracles',
-    TestimonyCategory.protectionDivine=> 'Protection divine',
-    TestimonyCategory.ministere       => 'Ministère',
-    TestimonyCategory.salut           => 'Salut',
+    TestimonyCategory.guerison        => L10n.current.sharedCategoryHealing,
+    TestimonyCategory.delivrance      => L10n.current.sharedCategoryDeliverance,
+    TestimonyCategory.conversion      => L10n.current.sharedCategoryConversion,
+    TestimonyCategory.mariage         => L10n.current.sharedCategoryMarriage,
+    TestimonyCategory.famille         => L10n.current.sharedCategoryFamily,
+    TestimonyCategory.finances        => L10n.current.sharedCategoryFinances,
+    TestimonyCategory.miracles        => L10n.current.sharedCategoryMiracles,
+    TestimonyCategory.protectionDivine=> L10n.current.sharedCategoryProtection,
+    TestimonyCategory.ministere       => L10n.current.sharedCategoryMinistry,
+    TestimonyCategory.salut           => L10n.current.sharedCategorySalvation,
   };
 }
 

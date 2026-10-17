@@ -7,6 +7,7 @@ import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/app_tokens.dart';
 import '../content/encouragements.dart';
 import 'guest_gate.dart' show requireAccount;
+import '../../l10n/app_localizations.dart';
 
 /// « Pourquoi témoigner ? » : raisons bibliques de témoigner, en accordéon
 /// ([whyTestifyReasons], même contenu que le site : composant `<x-why-testify />`).
@@ -55,7 +56,7 @@ class _WhyTestifyCardState extends ConsumerState<WhyTestifyCard> {
   int get _verseCount => whyTestifyReasons.fold(0, (n, r) => n + r.verses.length);
 
   Future<void> _testify() async {
-    if (!await requireAccount(context, ref, reason: 'partager votre témoignage')) return;
+    if (!await requireAccount(context, ref, reason: context.l10n.sharedReasonShareTestimony)) return;
     if (mounted) context.go('/publish');
   }
 
@@ -72,7 +73,7 @@ class _WhyTestifyCardState extends ConsumerState<WhyTestifyCard> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _Header(
-            subtitle: '${whyTestifyReasons.length} raisons et $_verseCount versets de la Bible',
+            subtitle: context.l10n.sharedWhyTestifyCount(whyTestifyReasons.length, _verseCount),
             collapsible: widget.collapsible,
             expanded: _expanded,
             onTap: widget.collapsible ? () => setState(() => _expanded = !_expanded) : null,
@@ -139,7 +140,7 @@ class _Header extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Pourquoi témoigner ?',
+                  context.l10n.sharedWhyTestifyTitle,
                   style: AppTextStyles.h4.copyWith(color: AppColors.primary, height: 1.2),
                 ),
                 const SizedBox(height: 2),
@@ -350,7 +351,7 @@ class _ActionFooter extends StatelessWidget {
         runSpacing: 10,
         children: [
           Text(
-            "Dieu a agi dans votre vie ? Votre histoire peut fortifier quelqu'un.",
+            context.l10n.sharedWhyTestifyPrompt,
             style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary, height: 1.4),
           ),
           FilledButton.icon(
@@ -361,7 +362,7 @@ class _ActionFooter extends StatelessWidget {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.button)),
             ),
             icon: const Icon(Icons.edit_rounded, size: 18),
-            label: const Text('Témoigner'),
+            label: Text(context.l10n.sharedTestify),
           ),
         ],
       ),

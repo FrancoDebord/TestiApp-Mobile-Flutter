@@ -3,6 +3,7 @@ import 'package:testi_app/core/theme/app_colors.dart';
 import 'package:testi_app/core/theme/app_text_styles.dart';
 import 'package:testi_app/shared/widgets/testimony_card.dart'
     show TestimonyCategory, TestimonyCategoryX;
+import '../../l10n/app_localizations.dart';
 
 // ── Category metadata ──────────────────────────────────────────────────────────
 
@@ -117,7 +118,7 @@ class _AllChip extends StatelessWidget {
           ),
           alignment: Alignment.center,
           child: Text(
-            'Tout',
+            context.l10n.sharedAll,
             style: AppTextStyles.labelMedium.copyWith(
               color: isActive ? Colors.white : AppColors.textSecondary,
               fontSize: 13,

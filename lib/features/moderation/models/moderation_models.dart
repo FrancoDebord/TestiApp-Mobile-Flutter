@@ -3,6 +3,7 @@
 // =============================================================================
 
 import '../../../core/media/video_source.dart';
+import '../../../l10n/app_localizations.dart';
 
 enum ModerationStatus { pending, inReview, approved, rejected }
 
@@ -20,15 +21,15 @@ extension RejectionReasonLabel on RejectionReason {
   String get label {
     switch (this) {
       case RejectionReason.inappropriateContent:
-        return 'Contenu inapproprié';
+        return L10n.current.moderationReasonInappropriate;
       case RejectionReason.falseTestimony:
-        return 'Faux témoignage';
+        return L10n.current.moderationReasonFalseTestimony;
       case RejectionReason.hateSpeech:
-        return 'Discours haineux';
+        return L10n.current.moderationReasonHateSpeech;
       case RejectionReason.spam:
-        return 'Spam';
+        return L10n.current.moderationReasonSpam;
       case RejectionReason.other:
-        return 'Autre';
+        return L10n.current.moderationReasonOther;
     }
   }
 }

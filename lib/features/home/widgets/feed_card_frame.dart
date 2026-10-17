@@ -23,6 +23,7 @@ import '../providers/home_providers.dart';
 import 'testimony_action_bar.dart';
 import 'testimony_card_header.dart';
 import 'testimony_labels.dart';
+import '../../../l10n/app_localizations.dart';
 
 class FeedCardFrame extends ConsumerWidget {
   const FeedCardFrame({
@@ -60,17 +61,17 @@ class FeedCardFrame extends ConsumerWidget {
     final interactions = ref.read(interactionProvider.notifier);
 
     Future<void> toggleSave() async {
-      if (!await ensureMember(context, ref, 'enregistrer vos favoris')) return;
+      if (!await ensureMember(context, ref, context.l10n.homeReasonSave)) return;
       interactions.toggleSave(t.id);
     }
 
     Future<void> react(ReactionType? type) async {
-      if (!await ensureMember(context, ref, 'réagir aux témoignages')) return;
+      if (!await ensureMember(context, ref, context.l10n.homeReasonReact)) return;
       interactions.react(t, type);
     }
 
     Future<void> pray() async {
-      if (!await ensureMember(context, ref, 'réagir aux témoignages')) return;
+      if (!await ensureMember(context, ref, context.l10n.homeReasonReact)) return;
       interactions.togglePray(t);
     }
 

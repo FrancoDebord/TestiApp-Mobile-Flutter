@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../l10n/app_localizations.dart';
 import '../events/models/event_models.dart';
 import '../events/widgets/event_widgets.dart';
 import '../prayer/models/prayer_models.dart';
@@ -24,15 +25,16 @@ class FeedInsertCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return switch (item) {
       final ChristianEvent e => _Labeled(
           icon: e.phase == EventPhase.past ? Icons.history_rounded : Icons.event_rounded,
           // À venir, en cours, ou passé (à revivre : témoignages et commentaires).
           label: [
             switch (e.phase) {
-              EventPhase.past => 'Événement passé · à revivre',
-              EventPhase.ongoing => 'En cours',
-              EventPhase.upcoming => 'Événement à venir',
+              EventPhase.past => l10n.feedEventPast,
+              EventPhase.ongoing => l10n.feedEventOngoing,
+              EventPhase.upcoming => l10n.feedEventUpcoming,
             },
             if (e.organizer.displayName.isNotEmpty) e.organizer.displayName,
           ].join(' · '),
@@ -50,14 +52,14 @@ class FeedInsertCard extends StatelessWidget {
         ),
       final PrayerRequest r => _Labeled(
           icon: Icons.volunteer_activism_rounded,
-          label: r.event == null ? 'Requête de prière' : 'Requête de prière · ${r.event!.title}',
+          label: r.event == null ? l10n.feedPrayerRequest : l10n.feedPrayerRequestEvent(r.event!.title),
           repost: r.repost,
           reactions: ContentReactionBar(
             key: ValueKey('rx-r-${r.id}'),
             kind: ContentKind.prayerRequest,
             id: r.id,
             initial: r.reactions,
-            title: 'Requête de prière de ${r.authorName}',
+            title: l10n.feedPrayerRequestBy(r.authorName),
             webUrl: r.webUrl,
             showPray: false, // « Je prie » : bouton de la carte
             dense: true,
@@ -67,8 +69,8 @@ class FeedInsertCard extends StatelessWidget {
       final PrayerSession s => _Labeled(
           icon: Icons.groups_2_rounded,
           label: s.host.displayName.isEmpty
-              ? 'Session de prière'
-              : 'Session de prière · ${s.host.displayName}',
+              ? l10n.feedPrayerSession
+              : l10n.feedPrayerSessionHost(s.host.displayName),
           repost: s.repost,
           reactions: ContentReactionBar(
             key: ValueKey('rx-s-${s.id}'),
@@ -83,7 +85,7 @@ class FeedInsertCard extends StatelessWidget {
         ),
       final PublicProphecy p => _Labeled(
           icon: Icons.record_voice_over_rounded,
-          label: 'Parole prophétique accomplie · ${p.authorName}',
+          label: l10n.feedProphecyFulfilled(p.authorName),
           child: PublicProphecyFeedCard(key: ValueKey('pp-${p.id}'), prophecy: p),
         ),
       _ => const SizedBox.shrink(),

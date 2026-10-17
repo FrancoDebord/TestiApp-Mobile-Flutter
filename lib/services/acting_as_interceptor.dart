@@ -15,6 +15,7 @@
 // de la personne.
 
 import 'package:dio/dio.dart';
+import '../l10n/app_localizations.dart';
 
 /// En-tête envoyé au serveur.
 const kActingAsHeader = 'X-Act-As';
@@ -106,7 +107,7 @@ class ActingAsInterceptor extends Interceptor {
       if (code == kActingAsForbiddenCode && sent != null && sent == _store.accountId) {
         final message = body is Map && body['message'] is String
             ? body['message'] as String
-            : "Vous n'administrez plus ce compte.";
+            : L10n.current.apiActingAsRevoked;
         _store.onForbidden?.call(message);
       }
     }

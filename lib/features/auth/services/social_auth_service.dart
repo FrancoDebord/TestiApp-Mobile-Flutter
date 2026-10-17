@@ -8,6 +8,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../../core/app_constants.dart';
 import '../../../services/api_service.dart' show LaravelApiException;
+import '../../../l10n/app_localizations.dart';
 
 /// Result of a social authentication attempt.
 sealed class SocialAuthResult {
@@ -57,16 +58,14 @@ String googleSignInErrorMessage(Object error, [StackTrace? stack]) {
   if (kDebugMode) debugPrint('Connexion Google ✗ $error${stack != null ? '\n$stack' : ''}');
   return switch (error) {
     GoogleSignInFailure(:final message) => message,
-    LaravelApiException(statusCode: 401) =>
-      'Google n’a pas pu confirmer votre identité. Réessayez.',
+    LaravelApiException(statusCode: 401) => L10n.current.authGoogleIdentityRejected,
     LaravelApiException(statusCode: 403, :final message) =>
-      message.isNotEmpty ? message : 'Ce compte ne peut pas se connecter.',
+      message.isNotEmpty ? message : L10n.current.authAccountCannotSignIn,
     LaravelApiException(:final statusCode) when statusCode >= 500 =>
-      'Le serveur est indisponible pour le moment. Réessayez plus tard.',
-    LaravelApiException(statusCode: 0) =>
-      'Pas de connexion Internet. Vérifiez votre réseau et réessayez.',
+      L10n.current.authServerUnavailable,
+    LaravelApiException(statusCode: 0) => L10n.current.authNoInternet,
     LaravelApiException(:final message) when message.isNotEmpty => message,
-    _ => 'La connexion avec Google a échoué. Réessayez.',
+    _ => L10n.current.authGoogleFailed,
   };
 }
 
@@ -103,8 +102,7 @@ class SocialAuthService {
     try {
       await _ensureGoogleInitialized();
       if (!GoogleSignIn.instance.supportsAuthenticate()) {
-        return const SocialAuthError(
-            'La connexion avec Google n’est pas disponible sur cet appareil.');
+        return SocialAuthError(L10n.current.authGoogleUnavailable);
       }
 
       final account = await GoogleSignIn.instance
@@ -113,9 +111,9 @@ class SocialAuthService {
       if (idToken == null || idToken.isEmpty) {
         if (kDebugMode) {
           debugPrint('Connexion Google ✗ idToken absent : vérifiez serverClientId '
-              '(${AppConstants.googleServerClientId}) et l’empreinte SHA-1 dans Firebase.');
+              '(${AppConstants.googleServerClientId}) et l’empreinte SHA-1 dans Firebase.'); // i18n-ignore
         }
-        return const SocialAuthError('La connexion avec Google a échoué. Réessayez.');
+        return SocialAuthError(L10n.current.authGoogleFailed);
       }
 
       return SocialAuthSuccess(
@@ -132,18 +130,16 @@ class SocialAuthService {
         debugPrint('Connexion Google ✗ ${e.code.name} : ${e.description} ${e.details ?? ''}\n$stack');
       }
       return SocialAuthError(switch (e.code) {
-        GoogleSignInExceptionCode.interrupted =>
-          'La connexion avec Google a été interrompue. Réessayez.',
+        GoogleSignInExceptionCode.interrupted => L10n.current.authGoogleInterrupted,
         GoogleSignInExceptionCode.clientConfigurationError ||
         GoogleSignInExceptionCode.providerConfigurationError =>
-          'La connexion avec Google est mal configurée. Contactez le support.',
-        GoogleSignInExceptionCode.uiUnavailable =>
-          'Impossible d’ouvrir la fenêtre de connexion Google. Réessayez.',
-        _ => 'La connexion avec Google a échoué. Réessayez.',
+          L10n.current.authGoogleMisconfigured,
+        GoogleSignInExceptionCode.uiUnavailable => L10n.current.authGoogleUiUnavailable,
+        _ => L10n.current.authGoogleFailed,
       });
     } catch (e, stack) {
       if (kDebugMode) debugPrint('Connexion Google ✗ $e\n$stack');
-      return const SocialAuthError('La connexion avec Google a échoué. Réessayez.');
+      return SocialAuthError(L10n.current.authGoogleFailed);
     }
   }
 

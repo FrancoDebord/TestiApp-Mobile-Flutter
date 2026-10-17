@@ -28,7 +28,7 @@ class NotificationsScreen extends ConsumerWidget {
     final filtered = ref.watch(filteredNotificationsProvider);
     final async = ref.watch(notificationsNotifierProvider);
     final notifier = ref.read(notificationsNotifierProvider.notifier);
-    final l10n = AppLocalizations.of(context);
+    final l10n = context.l10n;
     final hasUnread = (async.value ?? const []).any((n) => !n.isRead);
 
     Widget body;
@@ -106,7 +106,7 @@ class _FilterPills extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final current = ref.watch(notificationFilterProvider);
     final notifier = ref.read(notificationFilterProvider.notifier);
-    final l10n = AppLocalizations.of(context);
+    final l10n = context.l10n;
 
     String label(NotificationFilterTab t) => switch (t) {
           NotificationFilterTab.all => l10n.notifTabAll,
@@ -216,17 +216,10 @@ class _NotificationTile extends ConsumerWidget {
 
   static String _timeAgo(AppLocalizations l10n, DateTime dt) {
     final diff = DateTime.now().difference(dt);
-    final fr = l10n.isFr;
-    if (diff.inMinutes < 1) return fr ? "à l'instant" : 'just now';
-    if (diff.inMinutes < 60) {
-      return fr ? 'il y a ${diff.inMinutes} min' : '${diff.inMinutes} min ago';
-    }
-    if (diff.inHours < 24) {
-      return fr ? 'il y a ${diff.inHours} h' : '${diff.inHours} h ago';
-    }
-    if (diff.inDays < 30) {
-      return fr ? 'il y a ${diff.inDays} j' : '${diff.inDays} d ago';
-    }
+    if (diff.inMinutes < 1) return l10n.timeJustNow;
+    if (diff.inMinutes < 60) return l10n.timeMinutesAgo(diff.inMinutes);
+    if (diff.inHours < 24) return l10n.timeHoursAgo(diff.inHours);
+    if (diff.inDays < 30) return l10n.timeDaysAgo(diff.inDays);
     String two(int v) => v.toString().padLeft(2, '0');
     return '${two(dt.day)}/${two(dt.month)}/${dt.year}';
   }
@@ -237,7 +230,7 @@ class _NotificationTile extends ConsumerWidget {
         ref.read(notificationsNotifierProvider.notifier).markRead;
     final (icon, color, soft) = _style(notification.type);
     final unread = !notification.isRead;
-    final l10n = AppLocalizations.of(context);
+    final l10n = context.l10n;
 
     final bubble = Container(
       width: 44,
@@ -398,7 +391,7 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+    final l10n = context.l10n;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 48),
       child: Column(

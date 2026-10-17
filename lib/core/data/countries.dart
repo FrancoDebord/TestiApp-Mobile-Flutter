@@ -1,9 +1,15 @@
+// i18n-ignore-file
 // Pays proposés à l'inscription et dans le profil, en français et en toutes lettres,
 // avec leur code ISO et leur indicatif téléphonique.
 //
 // GÉNÉRÉ depuis le serveur (App\Support\Countries, TestiApp-Backend-Laravel) : mêmes noms
 // que le site, pour des données homogènes. Ne pas modifier à la main ; régénérer en cas d'ajout.
 // Backend : docs/fonctionnalites/telephone.md
+//
+// Noms anglais : table _kCountryNamesEn (par code ISO) ; [Country.displayName] donne
+// le nom dans la langue affichée. [Country.name] (français) reste la valeur enregistrée.
+
+import '../../l10n/app_localizations.dart';
 
 /// Un pays : nom affiché (et enregistré), code ISO 3166-1 (« bj »), indicatif (« 229 »).
 class Country {
@@ -19,6 +25,12 @@ class Country {
 
   /// « +229 »
   String get dialLabel => '+$dial';
+
+  /// Nom anglais (« Benin »).
+  String get nameEn => _kCountryNamesEn[code] ?? name;
+
+  /// Nom dans la langue affichée (« Bénin » / « Benin »). [name] reste la valeur enregistrée.
+  String get displayName => L10n.languageCode == 'en' ? nameEn : name;
 }
 
 /// Ordre alphabétique français, sans tenir compte des accents (comme le site).
@@ -229,6 +241,214 @@ const List<Country> kCountries = [
   Country('Zimbabwe', 'zw', '263'),
 ];
 
+/// Noms anglais, par code ISO (le nom français [Country.name] reste la valeur enregistrée).
+const Map<String, String> _kCountryNamesEn = {
+  'af': 'Afghanistan',
+  'za': 'South Africa',
+  'al': 'Albania',
+  'dz': 'Algeria',
+  'de': 'Germany',
+  'ad': 'Andorra',
+  'ao': 'Angola',
+  'ag': 'Antigua and Barbuda',
+  'sa': 'Saudi Arabia',
+  'ar': 'Argentina',
+  'am': 'Armenia',
+  'au': 'Australia',
+  'at': 'Austria',
+  'az': 'Azerbaijan',
+  'bs': 'Bahamas',
+  'bh': 'Bahrain',
+  'bd': 'Bangladesh',
+  'bb': 'Barbados',
+  'be': 'Belgium',
+  'bz': 'Belize',
+  'bj': 'Benin',
+  'bt': 'Bhutan',
+  'by': 'Belarus',
+  'mm': 'Myanmar',
+  'bo': 'Bolivia',
+  'ba': 'Bosnia and Herzegovina',
+  'bw': 'Botswana',
+  'br': 'Brazil',
+  'bn': 'Brunei',
+  'bg': 'Bulgaria',
+  'bf': 'Burkina Faso',
+  'bi': 'Burundi',
+  'kh': 'Cambodia',
+  'cm': 'Cameroon',
+  'ca': 'Canada',
+  'cv': 'Cape Verde',
+  'cl': 'Chile',
+  'cn': 'China',
+  'cy': 'Cyprus',
+  'co': 'Colombia',
+  'km': 'Comoros',
+  'cg': 'Congo (Brazzaville)',
+  'cd': 'Congo (DRC)',
+  'kp': 'North Korea',
+  'kr': 'South Korea',
+  'cr': 'Costa Rica',
+  'ci': "Côte d'Ivoire",
+  'hr': 'Croatia',
+  'cu': 'Cuba',
+  'dk': 'Denmark',
+  'dj': 'Djibouti',
+  'dm': 'Dominica',
+  'eg': 'Egypt',
+  'ae': 'United Arab Emirates',
+  'ec': 'Ecuador',
+  'er': 'Eritrea',
+  'es': 'Spain',
+  'ee': 'Estonia',
+  'us': 'United States',
+  'et': 'Ethiopia',
+  'fj': 'Fiji',
+  'fi': 'Finland',
+  'fr': 'France',
+  'ga': 'Gabon',
+  'gm': 'Gambia',
+  'ge': 'Georgia',
+  'gh': 'Ghana',
+  'gr': 'Greece',
+  'gd': 'Grenada',
+  'gp': 'Guadeloupe',
+  'gt': 'Guatemala',
+  'gn': 'Guinea',
+  'gq': 'Equatorial Guinea',
+  'gw': 'Guinea-Bissau',
+  'gy': 'Guyana',
+  'gf': 'French Guiana',
+  'ht': 'Haiti',
+  'hn': 'Honduras',
+  'hu': 'Hungary',
+  'mh': 'Marshall Islands',
+  'sb': 'Solomon Islands',
+  'in': 'India',
+  'id': 'Indonesia',
+  'iq': 'Iraq',
+  'ir': 'Iran',
+  'ie': 'Ireland',
+  'is': 'Iceland',
+  'il': 'Israel',
+  'it': 'Italy',
+  'jm': 'Jamaica',
+  'jp': 'Japan',
+  'jo': 'Jordan',
+  'kz': 'Kazakhstan',
+  'ke': 'Kenya',
+  'kg': 'Kyrgyzstan',
+  'ki': 'Kiribati',
+  'xk': 'Kosovo',
+  'kw': 'Kuwait',
+  're': 'Réunion',
+  'la': 'Laos',
+  'ls': 'Lesotho',
+  'lv': 'Latvia',
+  'lb': 'Lebanon',
+  'lr': 'Liberia',
+  'ly': 'Libya',
+  'li': 'Liechtenstein',
+  'lt': 'Lithuania',
+  'lu': 'Luxembourg',
+  'mk': 'North Macedonia',
+  'mg': 'Madagascar',
+  'my': 'Malaysia',
+  'mw': 'Malawi',
+  'mv': 'Maldives',
+  'ml': 'Mali',
+  'mt': 'Malta',
+  'ma': 'Morocco',
+  'mq': 'Martinique',
+  'mu': 'Mauritius',
+  'mr': 'Mauritania',
+  'yt': 'Mayotte',
+  'mx': 'Mexico',
+  'fm': 'Micronesia',
+  'md': 'Moldova',
+  'mc': 'Monaco',
+  'mn': 'Mongolia',
+  'me': 'Montenegro',
+  'mz': 'Mozambique',
+  'na': 'Namibia',
+  'nr': 'Nauru',
+  'np': 'Nepal',
+  'ni': 'Nicaragua',
+  'ne': 'Niger',
+  'ng': 'Nigeria',
+  'no': 'Norway',
+  'nc': 'New Caledonia',
+  'nz': 'New Zealand',
+  'om': 'Oman',
+  'ug': 'Uganda',
+  'uz': 'Uzbekistan',
+  'pk': 'Pakistan',
+  'pw': 'Palau',
+  'ps': 'Palestine',
+  'pa': 'Panama',
+  'pg': 'Papua New Guinea',
+  'py': 'Paraguay',
+  'nl': 'Netherlands',
+  'pe': 'Peru',
+  'ph': 'Philippines',
+  'pl': 'Poland',
+  'pf': 'French Polynesia',
+  'pt': 'Portugal',
+  'qa': 'Qatar',
+  'cf': 'Central African Republic',
+  'do': 'Dominican Republic',
+  'cz': 'Czech Republic',
+  'ro': 'Romania',
+  'gb': 'United Kingdom',
+  'ru': 'Russia',
+  'rw': 'Rwanda',
+  'kn': 'Saint Kitts and Nevis',
+  'sm': 'San Marino',
+  'vc': 'Saint Vincent and the Grenadines',
+  'lc': 'Saint Lucia',
+  'sv': 'El Salvador',
+  'ws': 'Samoa',
+  'st': 'São Tomé and Príncipe',
+  'sn': 'Senegal',
+  'rs': 'Serbia',
+  'sc': 'Seychelles',
+  'sl': 'Sierra Leone',
+  'sg': 'Singapore',
+  'sk': 'Slovakia',
+  'si': 'Slovenia',
+  'so': 'Somalia',
+  'sd': 'Sudan',
+  'ss': 'South Sudan',
+  'lk': 'Sri Lanka',
+  'se': 'Sweden',
+  'ch': 'Switzerland',
+  'sr': 'Suriname',
+  'sz': 'Eswatini',
+  'sy': 'Syria',
+  'tj': 'Tajikistan',
+  'tw': 'Taiwan',
+  'tz': 'Tanzania',
+  'td': 'Chad',
+  'th': 'Thailand',
+  'tl': 'Timor-Leste',
+  'tg': 'Togo',
+  'to': 'Tonga',
+  'tt': 'Trinidad and Tobago',
+  'tn': 'Tunisia',
+  'tm': 'Turkmenistan',
+  'tr': 'Turkey',
+  'tv': 'Tuvalu',
+  'ua': 'Ukraine',
+  'uy': 'Uruguay',
+  'vu': 'Vanuatu',
+  'va': 'Vatican City',
+  've': 'Venezuela',
+  'vn': 'Vietnam',
+  'ye': 'Yemen',
+  'zm': 'Zambia',
+  'zw': 'Zimbabwe',
+};
+
 Country? countryByName(String? name) {
   if (name == null || name.trim().isEmpty) return null;
   for (final c in kCountries) {
@@ -259,18 +479,26 @@ String normalizeForSearch(String s) {
   return out.toString();
 }
 
-/// Pays correspondant à la recherche (nom ou indicatif) : ceux qui commencent
-/// par la saisie d'abord, puis ceux qui la contiennent.
+/// Pays dans l'ordre alphabétique de la langue affichée (sans tenir compte des accents).
+List<Country> get countriesForDisplay {
+  if (L10n.languageCode != 'en') return kCountries;
+  return [...kCountries]
+    ..sort((a, b) => normalizeForSearch(a.nameEn).compareTo(normalizeForSearch(b.nameEn)));
+}
+
+/// Pays correspondant à la recherche (nom affiché ou nom français, ou indicatif) :
+/// ceux qui commencent par la saisie d'abord, puis ceux qui la contiennent.
 List<Country> searchCountries(String query) {
   final q = normalizeForSearch(query).replaceFirst('+', '');
-  if (q.isEmpty) return kCountries;
+  final all = countriesForDisplay;
+  if (q.isEmpty) return all;
   final starts = <Country>[];
   final contains = <Country>[];
-  for (final c in kCountries) {
-    final n = normalizeForSearch(c.name);
-    if (n.startsWith(q) || c.dial.startsWith(q)) {
+  for (final c in all) {
+    final names = {normalizeForSearch(c.displayName), normalizeForSearch(c.name)};
+    if (names.any((n) => n.startsWith(q)) || c.dial.startsWith(q)) {
       starts.add(c);
-    } else if (n.contains(q) || c.dial.contains(q)) {
+    } else if (names.any((n) => n.contains(q)) || c.dial.contains(q)) {
       contains.add(c);
     }
   }

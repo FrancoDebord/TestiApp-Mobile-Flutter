@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/router/app_routes.dart';
 import '../widgets/auth_widgets.dart';
+import '../../../l10n/app_localizations.dart';
 
 // =============================================================================
 // EMAIL VERIFICATION SCREEN
@@ -159,8 +160,7 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
       if (mounted) context.goNamed(AppRoutes.home);
     } catch (e) {
       if (mounted) {
-        setState(() =>
-            _errorMessage = 'Code incorrect ou expiré. Veuillez réessayer.');
+        setState(() => _errorMessage = context.l10n.authCodeInvalidOrExpired);
         _clearAllCells();
       }
     } finally {
@@ -216,9 +216,9 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
                         color: AppColors.primary, size: 30),
                   ),
                   const SizedBox(height: 12),
-                  const Text(
-                    'Vérifiez votre e-mail',
-                    style: TextStyle(
+                  Text(
+                    context.l10n.authCheckEmailTitle,
+                    style: const TextStyle(
                       fontFamily: AppFonts.family,
                       fontWeight: FontWeight.w600,
                       fontSize: 22,
@@ -227,7 +227,7 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Code envoyé à $maskedEmail',
+                    context.l10n.authCodeSentToEmail(maskedEmail),
                     style: TextStyle(
                       fontFamily: AppFonts.family,
                       fontSize: 13,
@@ -254,10 +254,10 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     // Instructional text.
-                    const Text(
-                      'Saisissez le code à 6 chiffres que nous venons de vous envoyer.',
+                    Text(
+                      context.l10n.authEnterSixDigitCode,
                       textAlign: TextAlign.center,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontFamily: AppFonts.family,
                         fontSize: 14,
                         color: AppColors.textSecondary,
@@ -285,7 +285,7 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
 
                     // Confirm button.
                     AuthPrimaryButton(
-                      label: 'Confirmer',
+                      label: context.l10n.commonConfirm,
                       isLoading: isLoading,
                       onPressed: (_isComplete && !isLoading) ? _submit : null,
                     ),
@@ -305,17 +305,17 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
                       child: GestureDetector(
                         onTap: _signOut,
                         child: RichText(
-                          text: const TextSpan(
-                            style: TextStyle(
+                          text: TextSpan(
+                            style: const TextStyle(
                               fontFamily: AppFonts.family,
                               fontSize: 13,
                               color: AppColors.textSecondary,
                             ),
                             children: [
-                              TextSpan(text: "Ce n'est pas mon compte ? "),
+                              TextSpan(text: context.l10n.authNotMyAccount),
                               TextSpan(
-                                text: 'Se déconnecter',
-                                style: TextStyle(
+                                text: context.l10n.authSignOut,
+                                style: const TextStyle(
                                   color: AppColors.primary,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -462,10 +462,10 @@ class _ResendRow extends StatelessWidget {
   final VoidCallback? onResend;
 
   String get _timerLabel {
-    if (secondsLeft <= 0) return 'Renvoyer le code';
+    if (secondsLeft <= 0) return L10n.current.authResend;
     final m = secondsLeft ~/ 60;
     final s = secondsLeft % 60;
-    return 'Renvoyer dans $m:${s.toString().padLeft(2, '0')}';
+    return L10n.current.authResendIn('$m:${s.toString().padLeft(2, '0')}');
   }
 
   @override
@@ -473,9 +473,9 @@ class _ResendRow extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Text(
-          "Vous n'avez pas reçu de code ? ",
-          style: TextStyle(
+        Text(
+          context.l10n.authNoCodeReceived,
+          style: const TextStyle(
             fontFamily: AppFonts.family,
             fontSize: 13,
             color: AppColors.textSecondary,

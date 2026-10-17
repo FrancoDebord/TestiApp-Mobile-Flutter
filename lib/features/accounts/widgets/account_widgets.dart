@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/organization_badge.dart';
 import '../../auth/providers/auth_notifier.dart' show realUserProvider;
 import '../../events/widgets/manager_widgets.dart' show PersonAvatar;
@@ -16,7 +17,7 @@ import '../models/account_models.dart';
 import '../providers/acting_account_provider.dart';
 
 /// Message des écrans réservés au titulaire quand on agit pour un autre compte.
-const kOwnerOnlyMessage = 'Revenez sur votre compte pour cette action.';
+String get kOwnerOnlyMessage => L10n.current.accountsOwnerOnlyMessage;
 
 // ── Bascule ─────────────────────────────────────────────────────────────────
 
@@ -37,8 +38,8 @@ Future<bool> switchToAccount(
     messenger?.showSnackBar(SnackBar(behavior: SnackBarBehavior.floating, content: Text(e.message)));
     return false;
   } catch (_) {
-    messenger?.showSnackBar(const SnackBar(
-        behavior: SnackBarBehavior.floating, content: Text('Bascule impossible. Réessayez.')));
+    messenger?.showSnackBar(SnackBar(
+        behavior: SnackBarBehavior.floating, content: Text(L10n.current.accountsSwitchFailed)));
     return false;
   }
   final acting = ref.read(actingAccountProvider);
@@ -49,8 +50,8 @@ Future<bool> switchToAccount(
     ..showSnackBar(SnackBar(
       behavior: SnackBarBehavior.floating,
       content: Text(acting == null
-          ? 'Vous êtes revenu sur votre compte.'
-          : 'Vous agissez au nom de ${acting.displayName}'),
+          ? L10n.current.accountsBackToOwn
+          : L10n.current.accountsActingAs(acting.displayName)),
     ));
   return true;
 }
@@ -63,8 +64,8 @@ Future<void> returnToOwnAccount(BuildContext context, WidgetRef ref, {bool goHom
   router?.go('/home');
   messenger
     ?..hideCurrentSnackBar()
-    ..showSnackBar(const SnackBar(
-        behavior: SnackBarBehavior.floating, content: Text('Vous êtes revenu sur votre compte.')));
+    ..showSnackBar(SnackBar(
+        behavior: SnackBarBehavior.floating, content: Text(L10n.current.accountsBackToOwn)));
 }
 
 /// Ouvre la feuille « Mes comptes ».
@@ -109,6 +110,7 @@ class _AccountSwitcherSheetState extends ConsumerState<AccountSwitcherSheet> {
     final async = ref.watch(myAccountsProvider);
     final acting = ref.watch(actingAccountProvider);
     final realId = ref.watch(realUserProvider)?.id;
+    final l10n = context.l10n;
 
     return SafeArea(
       child: ConstrainedBox(
@@ -127,13 +129,12 @@ class _AccountSwitcherSheetState extends ConsumerState<AccountSwitcherSheet> {
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 14, 20, 4),
-              child: Text('Mes comptes', style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w800)),
+              child: Text(l10n.accountsMyAccounts, style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w800)),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
               child: Text(
-                'Choisissez le compte au nom duquel vous agissez : publications, commentaires, '
-                'réactions et abonnements seront faits en son nom.',
+                l10n.accountsSwitcherIntro,
                 style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary, height: 1.35),
               ),
             ),
@@ -151,11 +152,11 @@ class _AccountSwitcherSheetState extends ConsumerState<AccountSwitcherSheet> {
                           onTap: () => _pick(a, acting?.id ?? value.owner?.id ?? realId ?? ''),
                         ),
                       if (value.managed.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.fromLTRB(20, 8, 20, 4),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
                           child: Text(
-                            "Vous n'administrez aucun autre compte pour le moment.",
-                            style: TextStyle(color: AppColors.textSecondary),
+                            l10n.accountsNoOtherManaged,
+                            style: const TextStyle(color: AppColors.textSecondary),
                           ),
                         ),
                     ],
@@ -164,7 +165,7 @@ class _AccountSwitcherSheetState extends ConsumerState<AccountSwitcherSheet> {
               AsyncValue(:final error?) => Padding(
                   padding: const EdgeInsets.all(20),
                   child: Text(
-                    error is AccountsFailure ? error.message : 'Chargement impossible.',
+                    error is AccountsFailure ? error.message : l10n.accountsLoadFailed,
                     textAlign: TextAlign.center,
                   ),
                 ),
@@ -176,7 +177,7 @@ class _AccountSwitcherSheetState extends ConsumerState<AccountSwitcherSheet> {
             const Divider(height: 1),
             ListTile(
               leading: const Icon(Icons.manage_accounts_outlined, color: AppColors.primary),
-              title: const Text('Administrateurs du compte'),
+              title: Text(l10n.accountsManagersTitle),
               onTap: () {
                 final router = GoRouter.maybeOf(context);
                 Navigator.of(context).pop();
@@ -208,10 +209,11 @@ class _AccountTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final subtitle = isMine
-        ? 'Vous'
+        ? l10n.commonYou
         : [
-            if (account.isOrganization) 'Organisation',
+            if (account.isOrganization) l10n.accountsOrganization,
             if (account.username != null) '@${account.username}',
           ].join(' · ');
     return ListTile(
@@ -233,7 +235,7 @@ class _AccountTile extends StatelessWidget {
       trailing: busy
           ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))
           : active
-              ? const Icon(Icons.check_circle_rounded, color: AppColors.primary, semanticLabel: 'Compte actif')
+              ? Icon(Icons.check_circle_rounded, color: AppColors.primary, semanticLabel: l10n.accountsActive)
               : null,
       onTap: onTap,
     );
@@ -267,7 +269,7 @@ class ActingAsBanner extends ConsumerWidget {
                 liveRegion: true,
                 child: Text.rich(
                   TextSpan(children: [
-                    const TextSpan(text: 'Vous agissez au nom de '),
+                    TextSpan(text: context.l10n.accountsActingAsPrefix),
                     TextSpan(text: acting.displayName, style: const TextStyle(fontWeight: FontWeight.w800)),
                   ]),
                   maxLines: 2,
@@ -287,7 +289,7 @@ class ActingAsBanner extends ConsumerWidget {
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
                 child: Text(
-                  'Revenir à mon compte',
+                  context.l10n.accountsReturnToMine,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
@@ -333,7 +335,7 @@ class OwnerOnlyNotice extends ConsumerWidget {
                 child: Text(
                   acting == null
                       ? kOwnerOnlyMessage
-                      : 'Vous agissez au nom de ${acting.displayName}. $kOwnerOnlyMessage',
+                      : context.l10n.accountsActingAsOwnerOnly(acting.displayName, kOwnerOnlyMessage),
                   style: AppTextStyles.bodySmall.copyWith(color: AppColors.textPrimary, height: 1.4),
                 ),
               ),
@@ -346,7 +348,7 @@ class OwnerOnlyNotice extends ConsumerWidget {
               child: FilledButton.icon(
                 onPressed: () => returnToOwnAccount(context, ref),
                 icon: const Icon(Icons.undo_rounded, size: 18),
-                label: const Text('Revenir à mon compte'),
+                label: Text(context.l10n.accountsReturnToMine),
               ),
             ),
           ],
@@ -392,8 +394,8 @@ bool ensureOwnerAction(BuildContext context, WidgetRef ref) {
     ?..hideCurrentSnackBar()
     ..showSnackBar(SnackBar(
       behavior: SnackBarBehavior.floating,
-      content: const Text(kOwnerOnlyMessage),
-      action: SnackBarAction(label: 'Revenir', onPressed: () => returnToOwnAccount(context, ref)),
+      content: Text(kOwnerOnlyMessage),
+      action: SnackBarAction(label: context.l10n.accountsReturn, onPressed: () => returnToOwnAccount(context, ref)),
     ));
   return false;
 }

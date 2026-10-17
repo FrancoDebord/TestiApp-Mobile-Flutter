@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/providers/auth_notifier.dart' show currentUserProvider;
 import 'journal_offline_store.dart';
 import 'journal_repository.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Hors ligne indisponible sur le web (pas d'espace de fichiers).
 const bool kJournalOfflineSupported = !kIsWeb;
@@ -140,7 +141,7 @@ class JournalOfflineController extends Notifier<JournalOfflineState> {
       state = state.copyWith(syncing: false, error: e.message);
     } catch (_) {
       state = state.copyWith(
-          syncing: false, error: 'La copie hors ligne n\'a pas pu être mise à jour.');
+          syncing: false, error: L10n.current.journalOfflineUpdateFailed);
     }
   }
 }

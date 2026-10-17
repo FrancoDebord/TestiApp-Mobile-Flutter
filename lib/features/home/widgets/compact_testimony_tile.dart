@@ -15,6 +15,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../shared/utils/rich_text_utils.dart';
 import '../../../shared/widgets/organization_badge.dart';
+import '../../conversion/widgets/conversion_widgets.dart' show ConversionLabel;
 import '../../../shared/widgets/youtube_video_player.dart' show YouTubeBadge;
 import '../../../shared/widgets/video_status_views.dart';
 import '../../publish/upload/video_resend.dart' show resendVideoAction;
@@ -27,6 +28,7 @@ import '../providers/home_providers.dart';
 import 'feed_card_frame.dart' show ensureMember;
 import 'testimony_action_bar.dart';
 import '../../../core/media/video_source.dart' show mediaHttpHeaders;
+import '../../../l10n/app_localizations.dart';
 
 /// Ouvre le lecteur plein écran (Shorts) sur [testimony], dans l'ordre des
 /// vidéos du fil principal — même comportement que la grande carte vidéo.
@@ -117,18 +119,19 @@ class _CompactTestimonyTileState extends ConsumerState<CompactTestimonyTile> {
 
   static String _timeAgo(DateTime dt) {
     final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 1) return "à l'instant";
-    if (diff.inMinutes < 60) return 'il y a ${diff.inMinutes} min';
-    if (diff.inHours < 24) return 'il y a ${diff.inHours} h';
-    if (diff.inDays < 30) return 'il y a ${diff.inDays} j';
-    if (diff.inDays < 365) return 'il y a ${diff.inDays ~/ 30} mois';
-    return 'il y a ${diff.inDays ~/ 365} an${diff.inDays >= 730 ? 's' : ''}';
+    final l10n = L10n.current;
+    if (diff.inMinutes < 1) return l10n.timeJustNow;
+    if (diff.inMinutes < 60) return l10n.timeMinutesAgo(diff.inMinutes);
+    if (diff.inHours < 24) return l10n.timeHoursAgo(diff.inHours);
+    if (diff.inDays < 30) return l10n.timeDaysAgo(diff.inDays);
+    if (diff.inDays < 365) return l10n.timeMonthsAgo(diff.inDays ~/ 30);
+    return l10n.timeYearsAgo(diff.inDays ~/ 365);
   }
 
   String get _typeLabel => switch (_t) {
-        TextTestimony() => 'Témoignage écrit',
-        AudioTestimony() => 'Témoignage audio',
-        VideoTestimony() => 'Témoignage vidéo',
+        TextTestimony() => context.l10n.homeTypeText,
+        AudioTestimony() => context.l10n.publishAudio,
+        VideoTestimony() => context.l10n.publishVideo,
       };
 
   @override
@@ -150,8 +153,11 @@ class _CompactTestimonyTileState extends ConsumerState<CompactTestimonyTile> {
           Semantics(
             button: true,
             expanded: _expanded,
-            label: '$_typeLabel : ${t.title}, par ${t.author.displayName}. '
-                '${_expanded ? 'Appuyer pour replier' : 'Appuyer pour déplier'}',
+            label: context.l10n.homeCompactSemantics(
+                    _typeLabel, t.title, t.author.displayName) +
+                (_expanded
+                    ? context.l10n.homeTapToCollapse
+                    : context.l10n.homeTapToExpand),
             child: InkWell(
               onTap: _toggle,
               child: ConstrainedBox(
@@ -166,8 +172,8 @@ class _CompactTestimonyTileState extends ConsumerState<CompactTestimonyTile> {
                       if (hasPlay)
                         IconButton(
                           tooltip: t is VideoTestimony
-                              ? 'Lire la vidéo'
-                              : "Écouter l'audio",
+                              ? context.l10n.homePlayVideo
+                              : context.l10n.homeListenAudio,
                           onPressed: _play,
                           constraints:
                               const BoxConstraints(minWidth: 44, minHeight: 44),
@@ -186,7 +192,9 @@ class _CompactTestimonyTileState extends ConsumerState<CompactTestimonyTile> {
                           ),
                         ),
                       IconButton(
-                        tooltip: _expanded ? 'Replier' : 'Déplier',
+                        tooltip: _expanded
+                            ? context.l10n.homeCollapse
+                            : context.l10n.homeExpand,
                         onPressed: _toggle,
                         constraints:
                             const BoxConstraints(minWidth: 44, minHeight: 44),
@@ -375,6 +383,8 @@ class _TitleBlock extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
+        if (t.isConversion)
+          const Padding(padding: EdgeInsets.only(bottom: 3), child: ConversionLabel(compact: true)),
         Text(
           t.title,
           maxLines: 1,
@@ -513,7 +523,7 @@ class _ExpandedDetails extends ConsumerWidget {
             isSaved: saved,
             onSave: () async {
               if (!await ensureMember(
-                  context, ref, 'enregistrer vos favoris')) {
+                  context, ref, context.l10n.homeReasonSave)) {
                 return;
               }
               ref.read(interactionProvider.notifier).toggleSave(t.id);
@@ -523,14 +533,14 @@ class _ExpandedDetails extends ConsumerWidget {
             prayersCount: state.prayersOf(t),
             onReact: (type) async {
               if (!await ensureMember(
-                  context, ref, 'réagir aux témoignages')) {
+                  context, ref, context.l10n.homeReasonReact)) {
                 return;
               }
               ref.read(interactionProvider.notifier).react(t, type);
             },
             onPray: () async {
               if (!await ensureMember(
-                  context, ref, 'réagir aux témoignages')) {
+                  context, ref, context.l10n.homeReasonReact)) {
                 return;
               }
               ref.read(interactionProvider.notifier).togglePray(t);
@@ -547,7 +557,7 @@ class _ExpandedDetails extends ConsumerWidget {
                 minimumSize: const Size(44, 44),
               ),
               icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-              label: const Text('Voir le témoignage'),
+              label: Text(context.l10n.homeViewTestimony),
             ),
           ),
         ],
@@ -581,7 +591,7 @@ class _VideoPreview extends ConsumerWidget {
     }
     return Semantics(
       button: true,
-      label: 'Lire la vidéo',
+      label: context.l10n.homePlayVideo,
       child: GestureDetector(
         onTap: onPlay,
         child: ClipRRect(

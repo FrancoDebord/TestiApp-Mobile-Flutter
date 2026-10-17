@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../l10n/app_localizations.dart';
 import '../models/testimony_model.dart';
 import '../providers/home_providers.dart';
 import '../widgets/audio_testimony_card.dart';
@@ -18,19 +19,21 @@ import '../widgets/video_testimony_card.dart';
 class TrendingScreen extends ConsumerWidget {
   const TrendingScreen({super.key});
 
-  static const _tabs = <Tab>[
-    Tab(text: 'À la une'),
-    Tab(text: 'Tendances'),
-    Tab(text: 'Récents'),
-    Tab(text: 'Plus priés'),
-    Tab(text: 'Vidéos'),
-    Tab(text: 'Audios'),
-    Tab(text: 'Textes'),
-    Tab(text: 'Shorts'),
-  ];
+  static List<Tab> _tabs(AppLocalizations l10n) => <Tab>[
+        Tab(text: l10n.homeFeaturedTab),
+        Tab(text: l10n.homeTrending),
+        Tab(text: l10n.homeSortRecent),
+        Tab(text: l10n.homeMostPrayed),
+        Tab(text: l10n.homeTabVideos),
+        Tab(text: l10n.homeTabAudios),
+        Tab(text: l10n.homeTabTexts),
+        Tab(text: l10n.navShorts),
+      ];
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
+    final tabs = _tabs(l10n);
     final featured  = ref.watch(featuredProvider);
     final all       = ref.watch(feedNotifierProvider);
 
@@ -44,7 +47,7 @@ class TrendingScreen extends ConsumerWidget {
     final shorts    = videos.where((v) => v.durationSeconds <= 60).toList();
 
     return DefaultTabController(
-      length: _tabs.length,
+      length: tabs.length,
       child: Scaffold(
         backgroundColor: AppColors.background,
         body: NestedScrollView(
@@ -63,12 +66,12 @@ class TrendingScreen extends ConsumerWidget {
                 onPressed: () => Navigator.of(context).pop(),
               ),
               title: Text(
-                'Voir tout',
+                l10n.homeViewAll,
                 style: AppTextStyles.h3.copyWith(fontSize: 18),
               ),
               centerTitle: false,
               bottom: TabBar(
-                tabs: _tabs,
+                tabs: tabs,
                 isScrollable: true,
                 tabAlignment: TabAlignment.start,
                 labelStyle: AppTextStyles.labelMedium.copyWith(
@@ -89,14 +92,14 @@ class TrendingScreen extends ConsumerWidget {
           ],
           body: TabBarView(
             children: [
-              _TestimonyTab(testimonies: featured, emptyLabel: 'Aucun témoignage à la une'),
-              _TestimonyTab(testimonies: byViews,  emptyLabel: 'Aucune tendance disponible'),
-              _TestimonyTab(testimonies: byDate,   emptyLabel: 'Aucun témoignage récent'),
-              _TestimonyTab(testimonies: byPrayers, emptyLabel: 'Aucun témoignage prié'),
-              _TestimonyTab(testimonies: videos,   emptyLabel: 'Aucune vidéo disponible'),
-              _TestimonyTab(testimonies: audios,   emptyLabel: 'Aucun audio disponible'),
-              _TestimonyTab(testimonies: texts,    emptyLabel: 'Aucun texte disponible'),
-              _TestimonyTab(testimonies: shorts,   emptyLabel: 'Aucun short disponible'),
+              _TestimonyTab(testimonies: featured, emptyLabel: l10n.homeEmptyFeatured),
+              _TestimonyTab(testimonies: byViews,  emptyLabel: l10n.homeEmptyTrending),
+              _TestimonyTab(testimonies: byDate,   emptyLabel: l10n.homeEmptyRecent),
+              _TestimonyTab(testimonies: byPrayers, emptyLabel: l10n.homeEmptyPrayed),
+              _TestimonyTab(testimonies: videos,   emptyLabel: l10n.homeEmptyVideos),
+              _TestimonyTab(testimonies: audios,   emptyLabel: l10n.homeEmptyAudios),
+              _TestimonyTab(testimonies: texts,    emptyLabel: l10n.homeEmptyTexts),
+              _TestimonyTab(testimonies: shorts,   emptyLabel: l10n.homeEmptyShorts),
             ],
           ),
         ),

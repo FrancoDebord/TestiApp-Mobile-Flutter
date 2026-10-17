@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/mention_text.dart';
 import '../../../shared/widgets/mention_text_field.dart';
 import '../controllers/live_room_controller.dart';
@@ -19,9 +20,10 @@ String formatLiveDuration(Duration d) {
 // ── Pastilles ───────────────────────────────────────────────────────────────
 
 class LiveBadge extends StatelessWidget {
-  const LiveBadge({this.label = 'EN DIRECT', this.color = kLiveRed, super.key});
+  const LiveBadge({this.label, this.color = kLiveRed, super.key});
 
-  final String label;
+  /// null : « EN DIRECT ».
+  final String? label;
   final Color color;
 
   @override
@@ -38,7 +40,7 @@ class LiveBadge extends StatelessWidget {
           const _PulsingDot(),
           const SizedBox(width: 5),
           Text(
-            label,
+            label ?? context.l10n.liveBadge,
             style: const TextStyle(
               color: Colors.white,
               fontFamily: 'Plus Jakarta Sans',
@@ -171,10 +173,10 @@ class LiveConnectionBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final (text, color) = switch (link) {
       LiveLinkState.reconnecting => (
-        'Connexion instable… reconnexion en cours',
+        context.l10n.liveConnectionUnstable,
         AppColors.secondary,
       ),
-      LiveLinkState.disconnected => ('Connexion perdue', AppColors.danger),
+      LiveLinkState.disconnected => (context.l10n.liveConnectionLost, AppColors.danger),
       _ => (null, null),
     };
     if (text == null) return const SizedBox.shrink();
@@ -369,9 +371,9 @@ class _LiveCommentsListState extends State<LiveCommentsList> {
                                   color: AppColors.secondary,
                                   borderRadius: BorderRadius.circular(6),
                                 ),
-                                child: const Text(
-                                  'Diffuseur',
-                                  style: TextStyle(
+                                child: Text(
+                                  context.l10n.liveHostTag,
+                                  style: const TextStyle(
                                     color: Colors.black,
                                     fontFamily: 'Plus Jakarta Sans',
                                     fontWeight: FontWeight.w700,
@@ -439,7 +441,7 @@ class _LightCommentRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const font = 'Plus Jakarta Sans';
+    const font = 'Plus Jakarta Sans'; // i18n-ignore
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 7),
       child: Row(
@@ -487,9 +489,9 @@ class _LightCommentRow extends StatelessWidget {
                           color: AppColors.primary,
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: const Text(
-                          'Diffuseur',
-                          style: TextStyle(
+                        child: Text(
+                          context.l10n.liveHostTag,
+                          style: const TextStyle(
                             color: Colors.white,
                             fontFamily: font,
                             fontWeight: FontWeight.w700,
@@ -534,7 +536,7 @@ class LiveCommentInput extends StatefulWidget {
     this.enabled = true,
     this.disabledHint,
     this.showPinOption = false,
-    this.hint = 'Écrire un commentaire…',
+    this.hint,
     this.light = false,
     super.key,
   });
@@ -547,7 +549,8 @@ class LiveCommentInput extends StatefulWidget {
   final Future<String?> Function(String text, {bool pin}) onSend;
   final bool enabled;
   final String? disabledHint;
-  final String hint;
+  /// null : « Écrire un commentaire… ».
+  final String? hint;
 
   /// Affiche le bouton 📌 « épingler ce message » (diffuseur / modérateurs).
   final bool showPinOption;
@@ -662,10 +665,10 @@ class _LiveCommentInputState extends State<LiveCommentInput> {
                 isDense: true,
                 contentPadding: const EdgeInsets.symmetric(vertical: 10),
                 hintText: !widget.enabled
-                    ? (widget.disabledHint ?? 'Commentaires désactivés')
+                    ? (widget.disabledHint ?? context.l10n.liveCommentsDisabled)
                     : pin
-                    ? 'Message à épingler…'
-                    : widget.hint,
+                    ? context.l10n.livePinMessageHint
+                    : (widget.hint ?? context.l10n.liveCommentHint),
                 hintMaxLines: 1,
                 hintStyle: TextStyle(
                   color: light
@@ -693,8 +696,8 @@ class _LiveCommentInputState extends State<LiveCommentInput> {
           if (widget.showPinOption)
             IconButton(
               tooltip: pin
-                  ? 'Ne pas épingler ce message'
-                  : 'Épingler ce message en haut du direct',
+                  ? context.l10n.liveDontPinMessage
+                  : context.l10n.livePinMessage,
               visualDensity: VisualDensity.compact,
               onPressed: enabled ? () => setState(() => _pin = !_pin) : null,
               icon: Icon(
@@ -728,7 +731,7 @@ class _LiveCommentInputState extends State<LiveCommentInput> {
                           ),
                         )
                       : Semantics(
-                          label: 'Envoyer',
+                          label: context.l10n.commonSend,
                           child: Icon(
                             Icons.send_rounded,
                             color: canSend
@@ -823,8 +826,8 @@ class _LivePinnedBannerState extends State<LivePinnedBanner> {
                   children: [
                     Text(
                       byHost
-                          ? 'Épinglé · ${c.user.displayName} (diffuseur)'
-                          : 'Épinglé · ${c.user.displayName}',
+                          ? context.l10n.livePinnedByHost(c.user.displayName)
+                          : context.l10n.livePinnedBy(c.user.displayName),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -855,7 +858,7 @@ class _LivePinnedBannerState extends State<LivePinnedBanner> {
               ),
               if (widget.onUnpin != null)
                 IconButton(
-                  tooltip: 'Désépingler',
+                  tooltip: context.l10n.liveUnpin,
                   visualDensity: VisualDensity.compact,
                   onPressed: widget.onUnpin,
                   icon: Icon(
@@ -884,7 +887,7 @@ Future<void> unpinWithFeedback(
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
       behavior: SnackBarBehavior.floating,
-      content: Text(error ?? 'Commentaire désépinglé.'),
+      content: Text(error ?? context.l10n.liveCommentUnpinned),
     ),
   );
 }
@@ -1069,23 +1072,24 @@ class LiveEndedView extends StatelessWidget {
   Widget build(BuildContext context) {
     final r = reactions;
     final totalReactions = r?.total ?? 0;
+    final l10n = context.l10n;
     final tiles = <(IconData, String, String)>[
       if (duration != null)
-        (Icons.timer_outlined, formatLiveDuration(duration!), 'Durée'),
+        (Icons.timer_outlined, formatLiveDuration(duration!), l10n.liveStatDuration),
       if (peakViewers != null)
         (
           Icons.visibility_outlined,
           _compact(peakViewers!),
-          'Spectateurs au plus fort',
+          l10n.liveStatPeakViewers,
         ),
       if (commentCount != null)
         (
           Icons.chat_bubble_outline_rounded,
           _compact(commentCount!),
-          'Commentaires',
+          l10n.liveStatComments,
         ),
       if (r != null)
-        (Icons.favorite_border_rounded, _compact(totalReactions), 'Réactions'),
+        (Icons.favorite_border_rounded, _compact(totalReactions), l10n.liveStatReactions),
     ];
     final sorted = [...LiveReactionType.values]
       ..sort((a, b) => (r?[b] ?? 0).compareTo(r?[a] ?? 0));
@@ -1104,7 +1108,7 @@ class LiveEndedView extends StatelessWidget {
             Align(
               alignment: Alignment.topRight,
               child: IconButton(
-                tooltip: 'Fermer',
+                tooltip: l10n.commonClose,
                 onPressed: onClose,
                 icon: const Icon(Icons.close_rounded, color: Colors.white70),
               ),
@@ -1158,9 +1162,9 @@ class LiveEndedView extends StatelessWidget {
                                     borderRadius: BorderRadius.circular(6),
                                     border: Border.all(color: _ink, width: 2),
                                   ),
-                                  child: const Text(
-                                    'TERMINÉ',
-                                    style: TextStyle(
+                                  child: Text(
+                                    l10n.liveBadgeEnded,
+                                    style: const TextStyle(
                                       color: Colors.white,
                                       fontFamily: 'Plus Jakarta Sans',
                                       fontWeight: FontWeight.w800,
@@ -1176,8 +1180,8 @@ class LiveEndedView extends StatelessWidget {
                         const SizedBox(height: 22),
                         Text(
                           asHost
-                              ? 'Votre direct est terminé'
-                              : 'Direct terminé',
+                              ? l10n.liveYourLiveEnded
+                              : l10n.liveEnded,
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             color: Colors.white,
@@ -1216,7 +1220,7 @@ class LiveEndedView extends StatelessWidget {
                         if (tiles.isNotEmpty) ...[
                           const SizedBox(height: 26),
                           _SectionLabel(
-                            asHost ? 'Bilan de votre direct' : 'En chiffres',
+                            asHost ? l10n.liveSummaryHost : l10n.liveSummaryNumbers,
                           ),
                           const SizedBox(height: 10),
                           LayoutBuilder(
@@ -1244,7 +1248,7 @@ class LiveEndedView extends StatelessWidget {
                         // ── Détail des réactions ────────────────────────────
                         if (r != null && totalReactions > 0) ...[
                           const SizedBox(height: 22),
-                          const _SectionLabel('Réactions'),
+                          _SectionLabel(l10n.liveStatReactions),
                           const SizedBox(height: 10),
                           Container(
                             padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
@@ -1282,7 +1286,7 @@ class LiveEndedView extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(14),
                               ),
                             ),
-                            child: const Text('Fermer'),
+                            child: Text(l10n.commonClose),
                           ),
                         ),
                       ],
@@ -1489,35 +1493,35 @@ Future<void> showCommentModerationSheet(
                 color: AppColors.secondary,
               ),
               title: Text(
-                isPinned ? 'Désépingler' : 'Épingler en haut du direct',
+                isPinned ? context.l10n.liveUnpin : context.l10n.livePinTop,
               ),
               subtitle: isPinned || controller.pinnedComment == null
                   ? null
-                  : const Text('Remplace le commentaire actuellement épinglé.'),
+                  : Text(context.l10n.livePinReplaces),
               onTap: () => Navigator.pop(context, isPinned ? 'unpin' : 'pin'),
             ),
           if (!canPin && controller.pinnedComment != null)
-            const ListTile(
-              leading: Icon(Icons.push_pin_outlined),
-              title: Text('Le diffuseur a épinglé un message'),
-              subtitle: Text('Lui seul peut le retirer ou le remplacer.'),
+            ListTile(
+              leading: const Icon(Icons.push_pin_outlined),
+              title: Text(context.l10n.liveHostPinnedMessage),
+              subtitle: Text(context.l10n.liveHostPinnedOnlyHost),
             ),
           if (canHide)
             ListTile(
               leading: const Icon(Icons.visibility_off_outlined),
-              title: const Text('Masquer ce commentaire'),
+              title: Text(context.l10n.liveHideComment),
               onTap: () => Navigator.pop(context, 'hide'),
             ),
           // Le diffuseur et les modérateurs ne peuvent pas être exclus.
           if (!isHostComment)
             ListTile(
               leading: const Icon(Icons.block_rounded, color: AppColors.danger),
-              title: const Text(
-                'Exclure du direct',
-                style: TextStyle(color: AppColors.danger),
+              title: Text(
+                context.l10n.liveBan,
+                style: const TextStyle(color: AppColors.danger),
               ),
-              subtitle: const Text(
-                'Ses commentaires sont masqués ; plus de commentaires ni de réactions.',
+              subtitle: Text(
+                context.l10n.liveBanHint,
               ),
               onTap: () => Navigator.pop(context, 'ban'),
             ),
@@ -1540,11 +1544,10 @@ Future<void> showCommentModerationSheet(
       content: Text(
         error ??
             switch (action) {
-              'pin' => 'Commentaire épinglé.',
-              'unpin' => 'Commentaire désépinglé.',
-              'hide' => 'Commentaire masqué.',
-              _ =>
-                '${comment.user.displayName} ne peut plus commenter ni réagir.',
+              'pin' => context.l10n.liveCommentPinned,
+              'unpin' => context.l10n.liveCommentUnpinned,
+              'hide' => context.l10n.liveCommentHidden,
+              _ => context.l10n.liveUserBanned(comment.user.displayName),
             },
       ),
     ),
@@ -1559,21 +1562,21 @@ Future<bool> confirmEndLive(
   final ok = await showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(
-      title: Text(asHost ? 'Terminer le direct ?' : 'Couper ce direct ?'),
+      title: Text(asHost ? context.l10n.liveEndConfirmTitle : context.l10n.liveCutConfirmTitle),
       content: Text(
         asHost
-            ? 'Les spectateurs verront « Direct terminé ». Cette action est définitive.'
-            : 'Le direct sera arrêté immédiatement pour tout le monde.',
+            ? context.l10n.liveEndConfirmBody
+            : context.l10n.liveCutConfirmBody,
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
-          child: const Text('Annuler'),
+          child: Text(context.l10n.commonCancel),
         ),
         FilledButton(
           onPressed: () => Navigator.pop(context, true),
           style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
-          child: Text(asHost ? 'Terminer' : 'Couper le direct'),
+          child: Text(asHost ? context.l10n.liveEndAction : context.l10n.liveCutAction),
         ),
       ],
     ),

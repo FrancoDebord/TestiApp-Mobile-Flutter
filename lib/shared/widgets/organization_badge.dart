@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 
 import '../models/account_approval.dart';
 import 'approval_badges.dart';
+import '../../l10n/app_localizations.dart';
 
 class OrganizationBadge extends StatelessWidget {
   const OrganizationBadge({
@@ -37,14 +38,14 @@ class OrganizationBadge extends StatelessWidget {
     if (!isOrganization) return const SizedBox.shrink();
     final cs = Theme.of(context).colorScheme;
     return Tooltip(
-      message: 'Organisation',
+      message: context.l10n.sharedOrganization,
       child: Padding(
         padding: const EdgeInsets.only(left: 4),
         child: Icon(
           Icons.apartment_rounded,
           size: size,
           color: cs.onSurfaceVariant,
-          semanticLabel: 'Organisation',
+          semanticLabel: context.l10n.sharedOrganization,
         ),
       ),
     );

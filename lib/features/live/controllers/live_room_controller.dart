@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:livekit_client/livekit_client.dart' as lk;
+import '../../../l10n/app_localizations.dart';
 
 import '../data/live_repository.dart';
 import '../models/live_models.dart';
@@ -194,7 +195,7 @@ class LiveRoomController extends ChangeNotifier {
         _fail(e.message);
       }
     } catch (e) {
-      _fail('Impossible de rejoindre le direct.');
+      _fail(L10n.current.liveJoinFailed);
       debugPrint('[Live] joinAsViewer: $e');
     }
   }
@@ -249,7 +250,7 @@ class LiveRoomController extends ChangeNotifier {
     } on LiveFailure catch (e) {
       _fail(e.message);
     } catch (e) {
-      _fail("La caméra n'a pas pu être diffusée. Réessayez.");
+      _fail(L10n.current.liveCameraBroadcastFailed);
       debugPrint('[Live] connectAsHost: $e');
     }
     return false;
@@ -277,7 +278,7 @@ class LiveRoomController extends ChangeNotifier {
 
   Future<void> _connect(LiveCredentials creds) async {
     if (creds.url.isEmpty || creds.token.isEmpty) {
-      throw const LiveFailure('Le service vidéo n\'est pas configuré.',
+      throw LiveFailure(L10n.current.liveVideoNotConfigured,
           statusCode: 503);
     }
     final room = lk.Room(
@@ -445,7 +446,7 @@ class LiveRoomController extends ChangeNotifier {
           unawaited(_stopStageLocally(reason));
         }
         if (event == 'requested' && canModerate && speaker != null) {
-          _stageNotice = '${speaker.user.displayName} demande à intervenir.';
+          _stageNotice = L10n.current.liveSpeakerRequested(speaker.user.displayName);
         }
         // Le message ne contient pas tout (ni le sujet ni la file) : état rechargé.
         unawaited(_loadStage());
@@ -557,7 +558,7 @@ class LiveRoomController extends ChangeNotifier {
       return null;
     } on LiveFailure catch (e) {
       return e.statusCode == 429
-          ? 'Doucement ! Trop de réactions en peu de temps.'
+          ? L10n.current.liveTooManyReactions
           : e.message;
     }
   }
@@ -678,7 +679,7 @@ class LiveRoomController extends ChangeNotifier {
   /// Renvoie un message d'erreur, ou null.
   Future<String?> acceptInvitation({required bool camera, bool mic = true}) async {
     final local = _room?.localParticipant;
-    if (local == null) return 'Vous n\'êtes pas connecté au direct.';
+    if (local == null) return L10n.current.liveNotConnected;
     final err = await _stageAction(() =>
         _repo.acceptStage(_live.id, identity: local.identity, camera: camera));
     if (err != null) return err;
@@ -688,7 +689,7 @@ class LiveRoomController extends ChangeNotifier {
       await Future<void>.delayed(const Duration(milliseconds: 250));
     }
     if (!local.permissions.canPublish) {
-      return 'Le service vidéo n\'a pas encore ouvert votre micro. Réessayez.';
+      return L10n.current.liveMicNotOpenedYet;
     }
     try {
       _onStage = true;
@@ -709,7 +710,7 @@ class LiveRoomController extends ChangeNotifier {
       debugPrint('[Live] acceptInvitation: $e');
       await _stopStageLocally(null, silent: true);
       await _repo.withdrawStage(_live.id).catchError((_) => _stage);
-      return 'Micro inaccessible. Autorisez-le dans les réglages du téléphone.';
+      return L10n.current.liveMicInaccessible;
     }
   }
 
@@ -757,10 +758,10 @@ class LiveRoomController extends ChangeNotifier {
     }
     if (!silent) {
       _stageNotice = switch (reason) {
-        'removed' => 'Le diffuseur a terminé votre intervention. Merci pour votre témoignage !',
-        'banned' => 'Un modérateur vous a retiré de l\'antenne.',
-        'disconnected' => 'Connexion perdue : vous n\'êtes plus à l\'antenne.',
-        _ => 'Votre intervention est terminée. Merci pour votre témoignage !',
+        'removed' => L10n.current.liveStageEndedByHost,
+        'banned' => L10n.current.liveStageRemovedByModerator,
+        'disconnected' => L10n.current.liveStageConnectionLost,
+        _ => L10n.current.liveStageEnded,
       };
     }
     _notify();

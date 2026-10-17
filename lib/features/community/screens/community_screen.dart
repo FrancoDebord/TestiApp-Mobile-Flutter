@@ -7,6 +7,7 @@ import '../models/community_account.dart';
 import '../providers/suggestions_provider.dart';
 import '../widgets/account_tile.dart';
 import '../widgets/paged_account_list.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// « Communauté » : tous les comptes (onglet ouvert par défaut, chargé au défilement sans
 /// attendre de recherche), suggestions personnalisées, organisations (vérifiées d'abord) et personnes.
@@ -21,7 +22,7 @@ class CommunityScreen extends StatelessWidget {
       child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
-          title: const Text('Communauté'),
+          title: Text(context.l10n.communityTitle),
           backgroundColor: AppColors.surface,
           surfaceTintColor: Colors.transparent,
           bottom: TabBar(
@@ -31,10 +32,10 @@ class CommunityScreen extends StatelessWidget {
             isScrollable: true,
             tabAlignment: TabAlignment.start,
             tabs: [
-              const Tab(text: 'Tous', icon: Icon(Icons.groups_rounded, size: 18)),
-              const Tab(text: 'Suggestions', icon: Icon(Icons.auto_awesome_rounded, size: 18)),
-              const Tab(text: 'Organisations', icon: Icon(Icons.church_rounded, size: 18)),
-              const Tab(text: 'Personnes', icon: Icon(Icons.person_rounded, size: 18)),
+              Tab(text: context.l10n.communityTabAll, icon: const Icon(Icons.groups_rounded, size: 18)),
+              Tab(text: context.l10n.communityTabSuggestions, icon: const Icon(Icons.auto_awesome_rounded, size: 18)),
+              Tab(text: context.l10n.communityTabOrganizations, icon: const Icon(Icons.church_rounded, size: 18)),
+              Tab(text: context.l10n.communityTabPeople, icon: const Icon(Icons.person_rounded, size: 18)),
             ],
           ),
         ),
@@ -66,7 +67,7 @@ class _SuggestionsList extends ConsumerWidget {
             Text(text, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textSecondary, height: 1.4)),
             if (retry) ...[
               const SizedBox(height: 12),
-              Center(child: OutlinedButton(onPressed: refresh, child: const Text('Réessayer'))),
+              Center(child: OutlinedButton(onPressed: refresh, child: Text(context.l10n.commonRetry))),
             ],
           ],
         );
@@ -75,9 +76,9 @@ class _SuggestionsList extends ConsumerWidget {
       onRefresh: refresh,
       child: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, _) => message('Impossible de charger les suggestions. Vérifiez votre connexion.', retry: true),
+        error: (_, _) => message(context.l10n.communitySuggestionsError, retry: true),
         data: (items) => items.isEmpty
-            ? message("Aucune suggestion pour le moment. Parcourez l'onglet « Tous » pour découvrir la communauté.")
+            ? message(context.l10n.communitySuggestionsEmpty)
             : ListView.separated(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 itemCount: items.length,
@@ -122,15 +123,15 @@ class _AccountList extends ConsumerWidget {
       key: PageStorageKey('community-${tab.apiValue}'),
       loader: (q, page) => repo.community(tab, query: q, page: page),
       searchHint: switch (tab) {
-        CommunityTab.people => 'Rechercher une personne',
-        CommunityTab.organizations => 'Rechercher une organisation, une ville…',
-        CommunityTab.all => 'Rechercher un compte, une ville…',
+        CommunityTab.people => context.l10n.communitySearchPeople,
+        CommunityTab.organizations => context.l10n.communitySearchOrganizations,
+        CommunityTab.all => context.l10n.communitySearchAll,
       },
       searchRecentKey: 'community',
       emptyText: switch (tab) {
-        CommunityTab.people => 'Les personnes inscrites apparaîtront ici.',
-        CommunityTab.organizations => 'Les églises, ministères et associations inscrits apparaîtront ici.',
-        CommunityTab.all => 'Les personnes et organisations inscrites apparaîtront ici.',
+        CommunityTab.people => context.l10n.communityEmptyPeople,
+        CommunityTab.organizations => context.l10n.communityEmptyOrganizations,
+        CommunityTab.all => context.l10n.communityEmptyAll,
       },
     );
   }

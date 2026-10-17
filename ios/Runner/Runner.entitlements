@@ -8,5 +8,9 @@
 	<array>
 		<string>applinks:temoignage.as-krea.com</string>
 	</array>
+	<!-- Notifications push (APNs) : « development » est remplacé par « production »
+	     lors de la signature pour l'App Store / TestFlight. -->
+	<key>aps-environment</key>
+	<string>development</string>
 </dict>
 </plist>

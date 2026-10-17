@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../l10n/app_localizations.dart';
 import '../data/live_repository.dart';
 import '../models/live_models.dart';
 import 'live_widgets.dart';
@@ -19,7 +20,7 @@ class LiveViewersChip extends ConsumerWidget {
     final repository = ref.read(liveRepositoryProvider);
     return Semantics(
       button: true,
-      label: '$viewers spectateurs : voir qui regarde',
+      label: context.l10n.liveViewersSemantics(viewers),
       excludeSemantics: true,
       child: InkWell(
         borderRadius: BorderRadius.circular(8),
@@ -51,7 +52,7 @@ Future<void> showLiveViewersSheet(BuildContext context, {required String liveId,
             return SizedBox(
               height: 160,
               child: Center(
-                child: Text(snap.error is LiveFailure ? '${snap.error}' : 'La liste n\'a pas pu être chargée.',
+                child: Text(snap.error is LiveFailure ? '${snap.error}' : context.l10n.liveViewersLoadError,
                     style: const TextStyle(color: AppColors.textSecondary)),
               ),
             );
@@ -63,14 +64,14 @@ Future<void> showLiveViewersSheet(BuildContext context, {required String liveId,
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-                child: Text('Qui regarde · ${v.total}',
+                child: Text(context.l10n.liveViewersTitle(v.total),
                     style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w700, fontSize: 17)),
               ),
               if (v.people.isEmpty)
                 Padding(
                   padding: const EdgeInsets.all(24),
                   child: Text(
-                    v.anonymous > 0 ? 'Aucun compte connecté ne regarde pour le moment.' : 'Personne ne regarde pour le moment.',
+                    v.anonymous > 0 ? context.l10n.liveViewersNoAccount : context.l10n.liveViewersNobody,
                     textAlign: TextAlign.center,
                     style: const TextStyle(color: AppColors.textSecondary),
                   ),
@@ -97,7 +98,7 @@ Future<void> showLiveViewersSheet(BuildContext context, {required String liveId,
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
                   child: Text(
-                    v.anonymous > 1 ? '+ ${v.anonymous} visiteurs non connectés' : '+ 1 visiteur non connecté',
+                    context.l10n.liveViewersAnonymous(v.anonymous),
                     style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
                   ),
                 ),

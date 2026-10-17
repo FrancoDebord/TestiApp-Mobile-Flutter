@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/organization_badge.dart';
 import '../../auth/providers/auth_notifier.dart' show realUserProvider;
 import '../../events/providers/events_providers.dart' show managedOrganizationsProvider;
@@ -54,7 +55,7 @@ class _AccountManagersScreenState extends ConsumerState<AccountManagersScreen> {
         title: Text(title, style: AppTextStyles.h4),
         content: Text(body, style: AppTextStyles.bodyMedium),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dialog, false), child: const Text('Annuler')),
+          TextButton(onPressed: () => Navigator.pop(dialog, false), child: Text(context.l10n.commonCancel)),
           TextButton(
             onPressed: () => Navigator.pop(dialog, true),
             style: TextButton.styleFrom(foregroundColor: AppColors.danger),
@@ -80,37 +81,36 @@ class _AccountManagersScreenState extends ConsumerState<AccountManagersScreen> {
     final me = ref.read(realUserProvider)?.id;
     final picked = await pickPerson(
       context,
-      title: 'Ajouter un administrateur',
+      title: context.l10n.accountsAddManager,
       exclude: {...current.managers.map((m) => m.id), ?me},
     );
     if (picked == null || !mounted) return;
     await _run(() async {
       await ref.read(accountsRepositoryProvider).addManager(picked.id);
       ref.invalidate(accountManagersProvider);
-      _snack('${picked.displayName} peut maintenant agir en votre nom.');
+      _snack(L10n.current.accountsManagerAdded(picked.displayName));
     });
   }
 
   Future<void> _remove(AccountSummary m) async {
     final ok = await _confirm(
-      title: 'Retirer cet administrateur ?',
-      body: '${m.displayName} ne pourra plus agir au nom de votre compte.',
-      action: 'Retirer',
+      title: context.l10n.accountsRemoveManagerTitle,
+      body: context.l10n.accountsRemoveManagerBody(m.displayName),
+      action: context.l10n.commonRemove,
     );
     if (!ok || !mounted) return;
     await _run(() async {
       await ref.read(accountsRepositoryProvider).removeManager(m.id);
       ref.invalidate(accountManagersProvider);
-      _snack('Administrateur retiré.');
+      _snack(L10n.current.accountsManagerRemoved);
     });
   }
 
   Future<void> _leave(AccountSummary a) async {
     final ok = await _confirm(
-      title: 'Ne plus administrer ce compte ?',
-      body: 'Vous ne pourrez plus agir au nom de ${a.displayName}. Seul son titulaire pourra vous '
-          'nommer à nouveau.',
-      action: 'Me retirer',
+      title: context.l10n.accountsLeaveTitle,
+      body: context.l10n.accountsLeaveBody(a.displayName),
+      action: context.l10n.accountsLeaveAction,
     );
     if (!ok || !mounted) return;
     await _run(() async {
@@ -122,7 +122,7 @@ class _AccountManagersScreenState extends ConsumerState<AccountManagersScreen> {
         ..invalidate(managedAccountsProvider)
         ..invalidate(myAccountsProvider)
         ..invalidate(managedOrganizationsProvider);
-      _snack('Vous n\'administrez plus ${a.displayName}.');
+      _snack(L10n.current.accountsLeft(a.displayName));
     });
   }
 
@@ -132,7 +132,7 @@ class _AccountManagersScreenState extends ConsumerState<AccountManagersScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Administrateurs du compte'),
+        title: Text(context.l10n.accountsManagersTitle),
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.textPrimary,
         surfaceTintColor: AppColors.surface,
@@ -182,11 +182,7 @@ class _Explanation extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Désignez jusqu\'à deux personnes de confiance : avec leur propre compte, elles '
-              'agissent en votre nom (témoignages, événements, prière, commentaires, réactions, '
-              'abonnements). Elles ne peuvent pas changer vos identifiants, supprimer le compte, '
-              'nommer d\'autres administrateurs, ni voir votre carnet privé. Vous pouvez les '
-              'retirer à tout moment.',
+              context.l10n.accountsManagersExplanation,
               style: AppTextStyles.bodySmall.copyWith(color: AppColors.textPrimary, height: 1.4),
             ),
           ),
@@ -216,7 +212,7 @@ Widget _muted(String text) => Padding(
     );
 
 Widget _errorText(Object error) =>
-    _muted(error is AccountsFailure ? error.message : 'Chargement impossible.');
+    _muted(error is AccountsFailure ? error.message : L10n.current.accountsLoadFailed);
 
 const _loading = Padding(
   padding: EdgeInsets.all(16),
@@ -233,21 +229,22 @@ class _ManagersSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(accountManagersProvider);
+    final l10n = context.l10n;
     return switch (async) {
       AsyncValue(:final value?) => Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _sectionTitle('Administrateurs (${value.managers.length}/${value.max})'),
-            if (value.managers.isEmpty) _muted('Aucun administrateur pour le moment.'),
+            _sectionTitle(l10n.accountsManagersCount(value.managers.length, value.max)),
+            if (value.managers.isEmpty) _muted(l10n.accountsNoManagers),
             for (final m in value.managers)
               _card(ListTile(
                 leading: PersonAvatar(name: m.displayName, url: m.avatarUrl, initials: m.initials),
                 title: Text(m.displayName, maxLines: 1, overflow: TextOverflow.ellipsis),
-                subtitle: m.since == null ? null : Text('Depuis le ${_formatDate(m.since!)}'),
+                subtitle: m.since == null ? null : Text(l10n.accountsManagerSince(_formatDate(m.since!))),
                 trailing: TextButton(
                   onPressed: busy ? null : () => onRemove(m),
                   style: TextButton.styleFrom(foregroundColor: AppColors.danger),
-                  child: const Text('Retirer'),
+                  child: Text(l10n.commonRemove),
                 ),
               )),
             const SizedBox(height: 8),
@@ -255,13 +252,13 @@ class _ManagersSection extends ConsumerWidget {
               onPressed: busy || value.isFull ? null : () => onAdd(value),
               style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
               icon: const Icon(Icons.person_add_alt_1_rounded),
-              label: Text(value.isFull ? 'Deux administrateurs au plus' : 'Ajouter un administrateur'),
+              label: Text(value.isFull ? l10n.accountsManagersFull : l10n.accountsAddManager),
             ),
           ],
         ),
       AsyncValue(:final error?) => Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [_sectionTitle('Administrateurs'), _errorText(error)],
+          children: [_sectionTitle(l10n.accountsManagersSection), _errorText(error)],
         ),
       _ => _loading,
     };
@@ -277,10 +274,10 @@ class _ActivitySection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _sectionTitle('Journal des actions'),
+        _sectionTitle(context.l10n.accountsActivityLog),
         switch (async) {
           AsyncValue(:final value?) when value.isEmpty =>
-            _muted('Aucune action faite en votre nom pour le moment.'),
+            _muted(context.l10n.accountsNoActivity),
           AsyncValue(:final value?) => _card(Column(
               children: [
                 for (final (i, a) in value.indexed) ...[
@@ -315,12 +312,13 @@ class _ManagedAccountsSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(managedAccountsProvider);
     final actingId = ref.watch(actingAccountProvider)?.id;
+    final l10n = context.l10n;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _sectionTitle('Comptes que j\'administre'),
+        _sectionTitle(l10n.accountsManagedTitle),
         switch (async) {
-          AsyncValue(:final value?) when value.isEmpty => _muted('Vous n\'administrez aucun compte.'),
+          AsyncValue(:final value?) when value.isEmpty => _muted(l10n.accountsNoneManaged),
           AsyncValue(:final value?) => Column(
               children: [
                 for (final a in value)
@@ -349,19 +347,19 @@ class _ManagedAccountsSection extends ConsumerWidget {
                             TextButton(
                               onPressed: busy ? null : () => onLeave(a),
                               style: TextButton.styleFrom(foregroundColor: AppColors.danger),
-                              child: const Text('Me retirer'),
+                              child: Text(l10n.accountsLeaveAction),
                             ),
                             if (actingId == a.id)
-                              const Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                                child: Text('Compte actif',
-                                    style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700)),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                child: Text(l10n.accountsActive,
+                                    style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700)),
                               )
                             else
                               TextButton.icon(
                                 onPressed: busy ? null : () => switchToAccount(context, ref, a),
                                 icon: const Icon(Icons.swap_horiz_rounded),
-                                label: const Text('Agir en son nom'),
+                                label: Text(l10n.accountsActOnBehalf),
                               ),
                           ],
                         ),
@@ -382,10 +380,10 @@ String _two(int v) => v.toString().padLeft(2, '0');
 
 String _formatDate(DateTime d) {
   final l = d.toLocal();
-  return '${_two(l.day)}/${_two(l.month)}/${l.year}';
+  return L10n.current.accountsDateNumeric(_two(l.day), _two(l.month), '${l.year}');
 }
 
 String _formatDateTime(DateTime d) {
   final l = d.toLocal();
-  return '${_formatDate(l)} à ${_two(l.hour)}h${_two(l.minute)}';
+  return L10n.current.accountsDateTimeAt(_formatDate(l), _two(l.hour), _two(l.minute));
 }

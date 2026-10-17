@@ -5,6 +5,8 @@
 import '../../../shared/models/mention.dart';
 import '../../repost/content_interactions.dart' show ContentReactions;
 import '../../repost/repost.dart' show RepostInfo, repostInfoFromContent;
+import '../../../core/media/youtube.dart' show extractYouTubeId;
+import '../../../l10n/app_localizations.dart';
 
 export '../../../shared/models/mention.dart' show MentionRef;
 
@@ -25,18 +27,31 @@ double? _double(Object? v) => v is num ? v.toDouble() : (v is String ? double.tr
 
 /// Nature de l'événement (`type`).
 enum EventType {
-  crusade('crusade', "Croisade d'évangélisation"),
-  conference('conference', 'Conférence'),
-  seminar('seminar', 'Séminaire'),
-  camp('camp', 'Camp'),
-  tour('tour', 'Tournée'),
-  worship('worship', 'Concert de louange'),
-  retreat('retreat', 'Retraite spirituelle'),
-  other('other', 'Autre événement');
+  crusade('crusade'),
+  conference('conference'),
+  seminar('seminar'),
+  camp('camp'),
+  tour('tour'),
+  worship('worship'),
+  retreat('retreat'),
+  other('other');
 
-  const EventType(this.apiValue, this.label);
+  const EventType(this.apiValue);
   final String apiValue;
-  final String label;
+
+  String get label {
+    final l = L10n.current;
+    return switch (this) {
+      EventType.crusade => l.eventsTypeCrusade,
+      EventType.conference => l.eventsTypeConference,
+      EventType.seminar => l.eventsTypeSeminar,
+      EventType.camp => l.eventsTypeCamp,
+      EventType.tour => l.eventsTypeTour,
+      EventType.worship => l.eventsTypeWorship,
+      EventType.retreat => l.eventsTypeRetreat,
+      EventType.other => l.eventsTypeOther,
+    };
+  }
 
   static EventType parse(Object? raw) =>
       values.firstWhere((t) => t.apiValue == raw, orElse: () => EventType.other);
@@ -45,14 +60,23 @@ enum EventType {
 /// Publication : brouillon (gestionnaires seulement), publié, reporté (date à
 /// confirmer), annulé. Un report avec nouvelle date repasse en « publié ».
 enum EventStatus {
-  draft('draft', 'Brouillon'),
-  published('published', 'Publié'),
-  postponed('postponed', 'Reporté — date à confirmer'),
-  cancelled('cancelled', 'Annulé');
+  draft('draft'),
+  published('published'),
+  postponed('postponed'),
+  cancelled('cancelled');
 
-  const EventStatus(this.apiValue, this.label);
+  const EventStatus(this.apiValue);
   final String apiValue;
-  final String label;
+
+  String get label {
+    final l = L10n.current;
+    return switch (this) {
+      EventStatus.draft => l.eventsStatusDraft,
+      EventStatus.published => l.eventsStatusPublished,
+      EventStatus.postponed => l.eventsStatusPostponedTbc,
+      EventStatus.cancelled => l.eventsStatusCancelled,
+    };
+  }
 
   static EventStatus parse(Object? raw) => values
       .firstWhere((s) => s.apiValue == raw, orElse: () => EventStatus.published);
@@ -121,7 +145,7 @@ class EventPerson {
   });
 
   factory EventPerson.fromJson(Map<String, dynamic> m) {
-    final name = _str(m['displayName']) ?? 'Anonyme';
+    final name = _str(m['displayName']) ?? L10n.current.commonAnonymous;
     return EventPerson(
       id: '${m['id'] ?? ''}',
       displayName: name,
@@ -149,13 +173,21 @@ class EventPerson {
 
 /// Réponse à « L'événement a-t-il eu lieu ? ».
 enum EventAttendance {
-  yes('yes', 'Oui, il a eu lieu'),
-  no('no', "Non, il n'a pas eu lieu"),
-  absent('absent', "Je n'y étais pas");
+  yes('yes'),
+  no('no'),
+  absent('absent');
 
-  const EventAttendance(this.apiValue, this.label);
+  const EventAttendance(this.apiValue);
   final String apiValue;
-  final String label;
+
+  String get label {
+    final l = L10n.current;
+    return switch (this) {
+      EventAttendance.yes => l.eventsAttendanceYes,
+      EventAttendance.no => l.eventsAttendanceNo,
+      EventAttendance.absent => l.eventsAttendanceAbsent,
+    };
+  }
 
   static EventAttendance? parse(Object? raw) {
     for (final a in values) {
@@ -167,15 +199,25 @@ enum EventAttendance {
 
 /// Motifs de signalement d'un événement (`Event::REPORT_REASONS`).
 enum EventReportReason {
-  notChristian('not_christian', 'Pas un événement chrétien'),
-  fake('fake', "Événement faux / n'existe pas"),
-  inappropriate('inappropriate_content', 'Contenu inapproprié'),
-  scam('scam', "Arnaque / demande d'argent"),
-  other('other', 'Autre');
+  notChristian('not_christian'),
+  fake('fake'),
+  inappropriate('inappropriate_content'),
+  scam('scam'),
+  other('other');
 
-  const EventReportReason(this.apiValue, this.label);
+  const EventReportReason(this.apiValue);
   final String apiValue;
-  final String label;
+
+  String get label {
+    final l = L10n.current;
+    return switch (this) {
+      EventReportReason.notChristian => l.eventsReportNotChristian,
+      EventReportReason.fake => l.eventsReportFake,
+      EventReportReason.inappropriate => l.eventsReportInappropriate,
+      EventReportReason.scam => l.eventsReportScam,
+      EventReportReason.other => l.eventsReportOther,
+    };
+  }
 }
 
 /// Ma réponse au sondage (`survey.mine`).
@@ -245,11 +287,15 @@ class EventSurvey {
   final EventMyReview? mine;
 
   /// « 87 % confirment qu'il a eu lieu · ★ 4,6 · 23 avis ».
-  String get summary => [
-        if (confirmedPercent != null) "$confirmedPercent % confirment qu'il a eu lieu",
-        if (ratingAverage != null) '★ ${ratingAverage!.toStringAsFixed(1).replaceAll('.', ',')}',
-        '$total avis',
-      ].join(' · ');
+  String get summary {
+    final l = L10n.current;
+    final rating = ratingAverage?.toStringAsFixed(1);
+    return [
+      if (confirmedPercent != null) l.eventsSurveyConfirmedPercent(confirmedPercent!),
+      if (rating != null) '★ ${l.isFr ? rating.replaceAll('.', ',') : rating}',
+      l.eventsReviewCount(total),
+    ].join(' · ');
+  }
 }
 
 /// Avis d'un participant (`GET /events/{id}/reviews`).
@@ -363,6 +409,7 @@ class ChristianEvent {
     this.repost,
     this.managers = const [],
     this.live,
+    this.youtubeLiveId,
     this.webUrl,
     this.isPostponed = false,
     this.dateTbd = false,
@@ -386,7 +433,7 @@ class ChristianEvent {
     final live = _map(m['live']);
     return ChristianEvent(
       id: '${m['id']}',
-      title: _str(m['title']) ?? 'Événement',
+      title: _str(m['title']) ?? L10n.current.eventsDefaultTitle,
       description: _str(m['description']),
       type: EventType.parse(m['type']),
       status: EventStatus.parse(m['status']),
@@ -415,7 +462,8 @@ class ChristianEvent {
       goingCount: _int(stats['going']),
       notGoingCount: _int(stats['notGoing']),
       commentCount: _int(stats['comments']),
-      testimonyCount: _int(stats['testimonies']),
+      // Listes d'événements passés : `testimonies_count` (témoignages publiés).
+      testimonyCount: stats['testimonies'] != null ? _int(stats['testimonies']) : _int(m['testimonies_count']),
       myParticipation: EventParticipation.parse(m['myParticipation']),
       acceptsParticipation: m['acceptsParticipation'] == true,
       canManage: m['canManage'] == true,
@@ -434,6 +482,7 @@ class ChristianEvent {
               isOnAir: live['status'] == 'live',
               title: _str(live['title']),
             ),
+      youtubeLiveId: _youtubeLiveId(m['youtubeLive']),
       webUrl: _str(m['webUrl']),
       isPostponed: m['isPostponed'] == true,
       dateTbd: m['dateTbd'] == true,
@@ -501,6 +550,16 @@ class ChristianEvent {
   /// Co-gestionnaires (2 au plus), fournis aux seuls gestionnaires.
   final List<EventPerson> managers;
   final EventLiveRef? live;
+
+  /// Direct de l'événement sur YouTube (identifiant de la vidéo) : remplace les directs de l'application.
+  final String? youtubeLiveId;
+
+  /// En direct : direct de l'application à l'antenne, ou direct YouTube pendant l'événement.
+  bool get isLiveNow => live?.isOnAir == true || (youtubeLiveId != null && phase == EventPhase.ongoing);
+
+  /// Lien public du direct YouTube.
+  String? get youtubeLiveUrl =>
+      youtubeLiveId == null ? null : 'https://www.youtube.com/watch?v=$youtubeLiveId'; // i18n-ignore
   final String? webUrl;
 
   /// Reporté (nouvelle date fixée, ou date à confirmer).
@@ -564,13 +623,14 @@ class ChristianEvent {
 
   /// Libellé de l'état : Annulé, Brouillon, En cours, Terminé, À venir.
   String get phaseLabel {
-    if (isCancelled) return 'Annulé';
-    if (isDraft) return 'Brouillon';
-    if (dateTbd) return 'Reporté — date à confirmer';
+    final l = L10n.current;
+    if (isCancelled) return l.eventsStatusCancelled;
+    if (isDraft) return l.eventsStatusDraft;
+    if (dateTbd) return l.eventsStatusPostponedTbc;
     return switch (phase) {
-      EventPhase.ongoing => 'En cours',
-      EventPhase.past => 'Terminé',
-      EventPhase.upcoming => 'À venir',
+      EventPhase.ongoing => l.eventsPhaseOngoing,
+      EventPhase.past => l.eventsPhasePast,
+      EventPhase.upcoming => l.eventsPhaseUpcoming,
     };
   }
 }
@@ -681,6 +741,7 @@ class EventDraft {
     this.longitude,
     this.commentsEnabled = true,
     this.organizationId,
+    this.youtubeLiveUrl = '',
     List<EventGuest>? guests,
   }) : guests = guests ?? [];
 
@@ -698,6 +759,7 @@ class EventDraft {
         latitude: e.hasCoordinates ? e.latitude : null,
         longitude: e.hasCoordinates ? e.longitude : null,
         commentsEnabled: e.commentsEnabled,
+        youtubeLiveUrl: e.youtubeLiveUrl ?? '',
         guests: [...e.guests],
       );
 
@@ -721,6 +783,9 @@ class EventDraft {
   /// Création au nom d'une organisation gérée (null : soi-même ou choix du serveur).
   String? organizationId;
 
+  /// Lien YouTube du direct (vide : aucun ; toujours envoyé pour pouvoir l'effacer).
+  String youtubeLiveUrl;
+
   Map<String, dynamic> toJson() => {
         'title': title.trim(),
         'description': description.trim().isEmpty ? null : description.trim(),
@@ -736,6 +801,7 @@ class EventDraft {
         'latitude': latitude != null && longitude != null ? _round7(latitude!) : null,
         'longitude': latitude != null && longitude != null ? _round7(longitude!) : null,
         'comments_enabled': commentsEnabled,
+        'youtube_live_url': youtubeLiveUrl.trim().isEmpty ? null : youtubeLiveUrl.trim(),
         'organization_id': ?organizationId,
         'guests': guests
             .where((g) => g.name.trim().isNotEmpty)
@@ -745,6 +811,12 @@ class EventDraft {
                 ).toJson())
             .toList(),
       };
+}
+
+/// `youtubeLive: { id, url, embedUrl, thumbnailUrl }` (ou null) → identifiant de la vidéo.
+String? _youtubeLiveId(Object? v) {
+  if (v is Map) return _str(v['id']) ?? extractYouTubeId(_str(v['url']));
+  return null;
 }
 
 /// Coordonnée arrondie à 7 décimales (précision de la colonne decimal(10,7)).

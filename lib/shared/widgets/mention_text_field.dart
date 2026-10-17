@@ -22,6 +22,7 @@ import '../../services/api_service.dart';
 import 'mention_text.dart';
 import '../models/account_approval.dart';
 import 'approval_badges.dart';
+import '../../l10n/app_localizations.dart';
 
 /// Compte proposé après « @ ».
 class MentionCandidate {
@@ -366,11 +367,11 @@ class _MentionPanel extends StatelessWidget {
         );
 
     final Widget body = switch (status) {
-      _Status.loading => message('Recherche…',
+      _Status.loading => message(context.l10n.sharedMentionSearching,
           leading: const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))),
-      _Status.error => message('Recherche indisponible. Réessayez.'),
+      _Status.error => message(context.l10n.sharedMentionSearchError),
       _ when results.isEmpty =>
-        message(query.isEmpty ? 'Tapez un nom après « @ ».' : 'Aucun compte trouvé pour « $query ».'),
+        message(query.isEmpty ? context.l10n.sharedMentionTypeName : context.l10n.sharedMentionNoMatch(query)),
       _ => ListView.builder(
           shrinkWrap: true,
           padding: EdgeInsets.zero,
@@ -386,7 +387,7 @@ class _MentionPanel extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: ConstrainedBox(
         constraints: BoxConstraints(maxHeight: maxHeight),
-        child: Semantics(container: true, label: 'Suggestions de mentions', child: body),
+        child: Semantics(container: true, label: context.l10n.sharedMentionSuggestions, child: body),
       ),
     );
   }
@@ -444,7 +445,7 @@ class _MentionTile extends StatelessWidget {
             if (candidate.approvalBadge case final badge?) AccountApprovalIcon(badge: badge, size: 15),
             const Spacer(),
             if (candidate.isFollowing)
-              const Text('Abonné', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+              Text(context.l10n.sharedMentionFollowing, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
           ],
         ),
       ),

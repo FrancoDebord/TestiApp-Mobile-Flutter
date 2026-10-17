@@ -8,6 +8,7 @@ import '../../../core/theme/app_tokens.dart';
 import '../../../services/api_service.dart';
 import 'prophecy_widgets.dart';
 import '../models/prophecy.dart' show parseClockTime;
+import '../../../l10n/app_localizations.dart';
 
 /// Parole prophétique accomplie d'un témoignage (champ `prophecy` de l'API),
 /// présente si l'auteur l'a rendue publique (ou pour l'auteur lui-même).
@@ -56,7 +57,7 @@ class PublicProphecyCard extends ConsumerWidget {
                 const Icon(Icons.record_voice_over_rounded, color: AppColors.sunText, size: 20),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text('Parole prophétique accomplie',
+                  child: Text(context.l10n.prophecyPublicFulfilledTitle,
                       style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w800, color: AppColors.sunText)),
                 ),
               ],
@@ -68,14 +69,15 @@ class PublicProphecyCard extends ConsumerWidget {
             const SizedBox(height: 6),
             Text(
               [
-                if (received != null) 'Reçue le ${prophecyReceived(received, parseClockTime(p['receivedTime']))}',
-                if (p['givenBy'] is String) 'donnée par ${p['givenBy']}',
+                if (received != null)
+                  context.l10n.prophecyReceivedOn(prophecyReceived(received, parseClockTime(p['receivedTime']))),
+                if (p['givenBy'] is String) context.l10n.prophecyGivenBy(p['givenBy'] as String),
               ].join(', '),
               style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
             ),
             if (text != null) ...[
               const SizedBox(height: 10),
-              Text('« $text »', style: AppTextStyles.bodyMedium.copyWith(fontStyle: FontStyle.italic, height: 1.5)),
+              Text(context.l10n.prophecyQuoted(text), style: AppTextStyles.bodyMedium.copyWith(fontStyle: FontStyle.italic, height: 1.5)),
             ],
             if (audio != null) ...[
               const SizedBox(height: 10),
@@ -87,7 +89,7 @@ class PublicProphecyCard extends ConsumerWidget {
                 children: [
                   const Icon(Icons.verified_rounded, size: 16, color: AppColors.success),
                   const SizedBox(width: 6),
-                  Text('Accomplie le ${prophecyDay(fulfilled)}',
+                  Text(context.l10n.prophecyFulfilledOn(prophecyDay(fulfilled)),
                       style: const TextStyle(color: AppColors.success, fontWeight: FontWeight.w700, fontSize: 13)),
                 ],
               ),

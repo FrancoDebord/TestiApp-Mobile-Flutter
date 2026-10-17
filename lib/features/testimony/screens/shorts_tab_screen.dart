@@ -10,6 +10,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../home/models/testimony_model.dart';
 import '../../home/providers/home_providers.dart';
 import 'shorts_screen.dart';
+import '../../../l10n/app_localizations.dart';
 
 class ShortsTabScreen extends ConsumerWidget {
   const ShortsTabScreen({super.key});
@@ -34,8 +35,8 @@ class ShortsTabScreen extends ConsumerWidget {
               Icon(Icons.videocam_off_rounded,
                   size: 64, color: Colors.white38),
               const SizedBox(height: 16),
-              const Text(
-                'Aucun Short disponible',
+              Text(
+                context.l10n.shortsEmptyTitle,
                 style: TextStyle(
                   color: Colors.white54,
                   fontFamily: AppFonts.family,
@@ -43,8 +44,8 @@ class ShortsTabScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Publiez une vidéo courte pour commencer.',
+              Text(
+                context.l10n.shortsEmptyBody,
                 style: TextStyle(
                   color: Colors.white38,
                   fontFamily: AppFonts.family,

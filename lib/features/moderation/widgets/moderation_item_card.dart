@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/media/video_source.dart';
 import '../models/moderation_models.dart';
 import 'testimony_type_badge.dart';
+import '../../../l10n/app_localizations.dart';
 
 // =============================================================================
 // ModerationItemCard
@@ -27,9 +28,10 @@ class ModerationItemCard extends StatelessWidget {
 
   String _timeAgo(DateTime dt) {
     final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 60) return 'il y a ${diff.inMinutes} min';
-    if (diff.inHours < 24) return 'il y a ${diff.inHours} h';
-    return 'il y a ${diff.inDays} j';
+    final l = L10n.current;
+    if (diff.inMinutes < 60) return l.timeMinutesAgo(diff.inMinutes);
+    if (diff.inHours < 24) return l.timeHoursAgo(diff.inHours);
+    return l.timeDaysAgo(diff.inDays);
   }
 
   @override
@@ -137,9 +139,9 @@ class ModerationItemCard extends StatelessWidget {
                     GestureDetector(
                       onTap: onPreview,
                       behavior: HitTestBehavior.opaque,
-                      child: const Text(
-                        'Prévisualiser',
-                        style: TextStyle(
+                      child: Text(
+                        context.l10n.moderationPreviewAction,
+                        style: const TextStyle(
                           fontFamily: 'Plus Jakarta Sans',
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
@@ -163,7 +165,7 @@ class ModerationItemCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: _ActionButton(
-                    label: 'Approuver',
+                    label: context.l10n.moderationApproveShort,
                     icon: Icons.check_circle_outline_rounded,
                     color: const Color(0xFF12B76A),
                     onTap: onApprove,
@@ -172,7 +174,7 @@ class ModerationItemCard extends StatelessWidget {
                 const SizedBox(width: 6),
                 Expanded(
                   child: _ActionButton(
-                    label: 'Modif.',
+                    label: context.l10n.moderationEditShort,
                     icon: Icons.edit_outlined,
                     color: const Color(0xFFF79009),
                     onTap: onRequestEdit,
@@ -181,7 +183,7 @@ class ModerationItemCard extends StatelessWidget {
                 const SizedBox(width: 6),
                 Expanded(
                   child: _ActionButton(
-                    label: 'Rejeter',
+                    label: context.l10n.moderationRejectShort,
                     icon: Icons.cancel_outlined,
                     color: const Color(0xFFD92D20),
                     onTap: onReject,

@@ -19,6 +19,7 @@ import '../providers/auth_notifier.dart'
         AuthStateOtpSent,
         AuthStateUnauthenticated,
         authStateProvider;
+import '../../../l10n/app_localizations.dart';
 
 // =============================================================================
 // SPLASH SCREEN
@@ -198,8 +199,7 @@ class _LogoBlock extends StatelessWidget {
     );
 
     return Semantics(
-      label: 'Témoignages de Gloire. Des vies transformées pour la gloire '
-          'de Dieu.',
+      label: context.l10n.authSplashSemantics,
       excludeSemantics: true,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -212,13 +212,13 @@ class _LogoBlock extends StatelessWidget {
             fit: BoxFit.scaleDown,
             child: Column(
               children: [
-                const Text('Témoignages', style: titleStyle),
+                const Text('Témoignages', style: titleStyle), // i18n-ignore
                 Text.rich(
                   TextSpan(
                     children: [
-                      const TextSpan(text: 'de '),
+                      const TextSpan(text: 'de '), // i18n-ignore
                       TextSpan(
-                        text: 'Gloire',
+                        text: 'Gloire', // i18n-ignore
                         style: titleStyle.copyWith(
                             color: AppColors.secondary),
                       ),
@@ -230,12 +230,12 @@ class _LogoBlock extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-          const FittedBox(
+          FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(
-              'Des vies transformées\npour la gloire de Dieu',
+              context.l10n.authSplashTagline,
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontFamily: 'Plus Jakarta Sans',
                 fontWeight: FontWeight.w600,
                 fontSize: 17,
@@ -266,9 +266,9 @@ class _LoadingBar extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Text(
-          'Chargement…',
-          style: TextStyle(
+        Text(
+          context.l10n.commonLoading,
+          style: const TextStyle(
             fontFamily: 'Plus Jakarta Sans',
             fontWeight: FontWeight.w500,
             fontSize: 14,
@@ -284,8 +284,8 @@ class _LoadingBar extends StatelessWidget {
             child: AnimatedBuilder(
               animation: eased,
               builder: (_, _) => Semantics(
-                label: 'Chargement',
-                value: '${(eased.value * 90).round()} %',
+                label: context.l10n.authLoadingSemantics,
+                value: context.l10n.authLoadingProgress((eased.value * 90).round()),
                 child: Container(
                   height: 8,
                   color: Colors.white.withAlpha(60),

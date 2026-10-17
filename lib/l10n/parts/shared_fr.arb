@@ -1,0 +1,284 @@
+{
+  "@@locale": "fr",
+  "apiActingAsRevoked": "Vous n'administrez plus ce compte.",
+  "apiFeatureNotDeployed": "Cette fonctionnalité n'est pas encore disponible sur le serveur. Réessayez après sa mise à jour.",
+  "apiNotDownloadedOffline": "Ce témoignage n'est pas téléchargé (mode hors ligne).",
+  "apiServerError": "Erreur serveur ({statusCode}).",
+  "@apiServerError": {
+    "placeholders": {
+      "statusCode": {
+        "type": "int"
+      }
+    }
+  },
+  "apiUnexpectedResponse": "Réponse inattendue du serveur.",
+  "appCategoryCareer": "Emploi & Carrière",
+  "appCategoryProtection": "Protection",
+  "appCategoryProvision": "Provision",
+  "appCategoryStudies": "Études",
+  "appSecurityAndPassword": "Sécurité et mot de passe",
+  "mediaFeedLayoutCards": "Grandes cartes",
+  "mediaFeedLayoutCompact": "Liste compacte",
+  "mediaOffline": "Hors ligne",
+  "mediaOriginal": "Originale",
+  "mediaPlayVideo": "Lire la vidéo",
+  "mediaProcessingShort": "En traitement",
+  "mediaRepeatAll": "Répéter la liste",
+  "mediaRepeatOff": "Pas de répétition",
+  "mediaRepeatOne": "Répéter ce témoignage",
+  "mediaVideoFailed": "La vidéo n’a pas pu être traitée",
+  "mediaVideoProcessing": "Vidéo en cours de traitement",
+  "mediaVideoResend": "Renvoyer la vidéo",
+  "qualityAudioHigh": "Haute",
+  "qualityAudioHighHint": "Meilleur son · plus de données",
+  "qualityAudioLow": "Faible",
+  "qualityAudioLowHint": "Économique (≈64 kbps)",
+  "qualityAudioStandard": "Standard",
+  "qualityAudioStandardHint": "Bon compromis (≈128 kbps)",
+  "qualityAudioVeryLow": "Très faible",
+  "qualityAudioVeryLowHint": "Minimum de données (≈32 kbps)",
+  "qualityAuto": "Auto",
+  "qualityAutoCurrent": "Auto ({current})",
+  "@qualityAutoCurrent": {
+    "placeholders": {
+      "current": {
+        "type": "String"
+      }
+    }
+  },
+  "qualityAutoHint": "S'adapte à votre connexion",
+  "qualityVideoDataSaver": "Économie",
+  "qualityVideoDataSaverHint": "Minimum de données · ≈ 4,5 Mo par minute",
+  "qualityVideoFullLabel": "{label} ({height}p)",
+  "@qualityVideoFullLabel": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "height": {
+        "type": "int"
+      }
+    }
+  },
+  "qualityVideoHd": "HD",
+  "qualityVideoHdHint": "Haute qualité · plus de données",
+  "qualityVideoStandard": "Standard",
+  "qualityVideoStandardHint": "Bon compromis · ≈ 6 Mo par minute",
+  "sharedAll": "Tout",
+  "sharedApprovedAccount": "Compte approuvé",
+  "sharedApprovedOrganization": "Organisation approuvée",
+  "sharedApprovedTooltip": "Vérifié par l'équipe de modération",
+  "sharedCategoryConversion": "Conversion",
+  "sharedCategoryDeliverance": "Délivrance",
+  "sharedCategoryFamily": "Famille",
+  "sharedCategoryFinances": "Finances",
+  "sharedCategoryHealing": "Guérison",
+  "sharedCategoryMarriage": "Mariage",
+  "sharedCategoryMinistry": "Ministère",
+  "sharedCategoryMiracles": "Miracles",
+  "sharedCategoryProtection": "Protection divine",
+  "sharedCategorySalvation": "Salut",
+  "sharedCountryNoMatch": "Aucun pays ne correspond à votre recherche.",
+  "sharedCountryNoMatchWithDial": "Aucun pays ni indicatif ne correspond.",
+  "sharedCountrySearch": "Rechercher un pays",
+  "sharedCountrySearchWithDial": "Rechercher un pays ou un indicatif",
+  "sharedCoverHint": "Format large conseillé (1500 × 500 pixels).",
+  "sharedCoverPickGallery": "Choisir dans la galerie",
+  "sharedCoverRemove": "Retirer la couverture",
+  "sharedCoverRemoved": "Photo de couverture retirée",
+  "sharedCoverSaveFailed": "La photo de couverture n'a pas pu être enregistrée.",
+  "sharedCoverSaveFailedNetwork": "La photo de couverture n'a pas pu être enregistrée. Vérifiez votre connexion.",
+  "sharedCoverTitle": "Photo de couverture",
+  "sharedCoverUpdated": "Photo de couverture mise à jour",
+  "sharedDrawerAdministration": "Administration",
+  "sharedDrawerBible": "Bible",
+  "sharedDrawerBibleSubtitle": "Lire, rechercher, comparer les versions",
+  "sharedDrawerCommunitySubtitle": "Organisations et personnes à suivre",
+  "sharedDrawerEventsSubtitle": "Croisades, conférences, camps…",
+  "sharedDrawerFeedSubtitle": "Vos abonnements et des témoignages pour vous",
+  "sharedDrawerFollowers": "Mes abonnés",
+  "sharedDrawerFollowing": "Mes abonnements",
+  "sharedDrawerGuestSubtitle": "Pour suivre des comptes et témoigner",
+  "sharedDrawerJournal": "Mon carnet privé",
+  "sharedDrawerLives": "Directs",
+  "sharedDrawerManagedAccount": "Compte administré · voir le profil",
+  "sharedDrawerManagers": "Administrateurs du compte",
+  "sharedDrawerManagersSubtitle": "Deux personnes au plus agissent en votre nom",
+  "sharedDrawerModeration": "Modération",
+  "sharedDrawerPrayerRequestsSubtitle": "Confiez un besoin, priez pour les autres",
+  "sharedDrawerPrayerSessionsSubtitle": "Priez ensemble, en direct",
+  "sharedDrawerProphecies": "Paroles prophétiques",
+  "sharedDrawerPropheciesSubtitle": "Gardez-les, priez, témoignez de leur accomplissement",
+  "sharedDrawerSaved": "Sauvegardés",
+  "sharedDrawerSwitchAccount": "Changer de compte",
+  "sharedDrawerSwitchAccountSubtitle": "Agir au nom d'un compte que vous administrez",
+  "sharedDrawerViewProfile": "Voir mon profil",
+  "sharedEmptyNoFavoritesSubtitle": "Les témoignages que vous sauvegardez apparaîtront ici.",
+  "sharedEmptyNoFavoritesTitle": "Aucun favori",
+  "sharedEmptyNoInternetSubtitle": "Vérifiez votre connexion internet et réessayez.",
+  "sharedEmptyNoInternetTitle": "Pas de connexion",
+  "sharedEmptyNoNotificationsSubtitle": "Vous êtes à jour ! Revenez plus tard.",
+  "sharedEmptyNoNotificationsTitle": "Pas de notifications",
+  "sharedEmptyNoResultsSubtitle": "Essayez d'autres mots-clés ou changez de catégorie.",
+  "sharedEmptyNoTestimoniesSubtitle": "Soyez le premier à partager comment Dieu a agi dans votre vie.",
+  "sharedEmptyNoTestimoniesTitle": "Aucun témoignage",
+  "sharedEmptyNothingTitle": "Rien à afficher",
+  "sharedFeatured": "À la une",
+  "sharedFeaturedTestimony": "Témoignage mis en avant",
+  "sharedGuestCreateAccountFor": "Créez un compte pour {reason}",
+  "@sharedGuestCreateAccountFor": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "sharedGuestDefaultReason": "profiter de toutes les fonctionnalités",
+  "sharedGuestLater": "Plus tard",
+  "sharedGuestSheetBody": "C'est gratuit et rapide. Vous pourrez partager, réagir et retrouver vos témoignages sur tous vos appareils.",
+  "sharedMediaAudio": "Audio",
+  "sharedMediaVideo": "Vidéo",
+  "sharedMentionFollowing": "Abonné",
+  "sharedMentionNoMatch": "Aucun compte trouvé pour « {query} ».",
+  "@sharedMentionNoMatch": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "sharedMentionSearchError": "Recherche indisponible. Réessayez.",
+  "sharedMentionSearching": "Recherche…",
+  "sharedMentionSuggestions": "Suggestions de mentions",
+  "sharedMentionTypeName": "Tapez un nom après « @ ».",
+  "sharedOrgTypeAssociation": "Association",
+  "sharedOrgTypeChurch": "Église",
+  "sharedOrgTypeMedia": "Média chrétien",
+  "sharedOrgTypeMinistry": "Ministère",
+  "sharedOrgTypeNgo": "ONG",
+  "sharedOrgTypeOther": "Autre",
+  "sharedOrganization": "Organisation",
+  "sharedPhoneDial": "Indicatif",
+  "sharedPhoneDialRequired": "Choisissez l'indicatif du pays.",
+  "sharedPhoneDialSemantics": "Indicatif du pays",
+  "sharedPhoneInvalid": "Numéro de téléphone invalide.",
+  "sharedPhoneLabelRequired": "Téléphone *",
+  "sharedPhoneNumberHint": "Numéro",
+  "sharedPhonePrivacyNote": "Sert uniquement à vérifier votre compte : il n'est jamais affiché publiquement.",
+  "sharedPhoneRequired": "Le numéro de téléphone est obligatoire.",
+  "sharedProofDownloadFailed": "La preuve n'a pas pu être téléchargée.",
+  "sharedProofDownloading": "Téléchargement de la preuve…",
+  "sharedProofLabel": "Preuve {position}",
+  "@sharedProofLabel": {
+    "placeholders": {
+      "position": {
+        "type": "int"
+      }
+    }
+  },
+  "sharedProofsPublicNote": "Documents partagés par l'auteur pour confirmer ce témoignage.",
+  "sharedProofsStaffNote": "Visibles de l'auteur et de l'équipe de modération ; aussi du public si l'auteur a accepté leur publication (une fois le témoignage publié).",
+  "sharedProofsTitle": "Preuves du témoignage",
+  "sharedReasonPublishTestimony": "publier votre témoignage",
+  "sharedReasonShareTestimony": "partager votre témoignage",
+  "sharedSearchClear": "Effacer",
+  "sharedSearchClearAll": "Tout effacer",
+  "sharedSearchClearAllSemantics": "Effacer toutes les recherches récentes",
+  "sharedSearchComplete": "Compléter avec « {text} »",
+  "@sharedSearchComplete": {
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "sharedSearchDirectAccess": "Accès direct",
+  "sharedSearchHint": "Rechercher…",
+  "sharedSearchLoadingSuggestions": "Recherche de suggestions…",
+  "sharedSearchRecent": "Récentes",
+  "sharedSearchRecentSearches": "Recherches récentes",
+  "sharedSearchRecentSemantics": "Recherche récente : {text}",
+  "@sharedSearchRecentSemantics": {
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "sharedSearchRemoveRecent": "Retirer « {text} » des recherches récentes",
+  "@sharedSearchRemoveRecent": {
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "sharedSearchResultSemantics": "{type} : {text}",
+  "@sharedSearchResultSemantics": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      },
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "sharedSearchSuggestionCount": "{count, plural, =0{0 proposition} =1{1 proposition} other{{count} propositions}}",
+  "@sharedSearchSuggestionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sharedSearchSuggestionSemantics": "Suggestion : {text}",
+  "@sharedSearchSuggestionSemantics": {
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "sharedSearchSuggestions": "Suggestions",
+  "sharedSearchTypeAccount": "Compte",
+  "sharedSearchTypeBibleBook": "Livre de la Bible",
+  "sharedSearchTypeCategory": "Catégorie",
+  "sharedSearchTypeResult": "Résultat",
+  "sharedSearchVerifiedSuffix": ", vérifié",
+  "sharedTestify": "Témoigner",
+  "sharedTestifyInvitation": "Invitation à témoigner",
+  "sharedTestimonyApproved": "Témoignage approuvé",
+  "sharedTestimonyApprovedSemantics": "Témoignage approuvé. {tooltip}",
+  "@sharedTestimonyApprovedSemantics": {
+    "placeholders": {
+      "tooltip": {
+        "type": "String"
+      }
+    }
+  },
+  "sharedTextCollapse": "Réduire ‹",
+  "sharedTextReadEnd": "Lire la fin ›",
+  "sharedTextReadMore": "Lire la suite ›",
+  "sharedVerseSemantics": "Verset {reference}",
+  "@sharedVerseSemantics": {
+    "placeholders": {
+      "reference": {
+        "type": "String"
+      }
+    }
+  },
+  "sharedWhyTestifyCount": "{reasons} raisons et {verses} versets de la Bible",
+  "@sharedWhyTestifyCount": {
+    "placeholders": {
+      "reasons": {
+        "type": "int"
+      },
+      "verses": {
+        "type": "int"
+      }
+    }
+  },
+  "sharedWhyTestifyPrompt": "Dieu a agi dans votre vie ? Votre histoire peut fortifier quelqu'un.",
+  "sharedWhyTestifyTitle": "Pourquoi témoigner ?"
+}

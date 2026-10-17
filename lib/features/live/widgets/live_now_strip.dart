@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../l10n/app_localizations.dart';
 import '../data/live_repository.dart' show livesIndexProvider;
 import '../models/live_models.dart';
 import 'live_widgets.dart';
@@ -36,13 +37,13 @@ class LiveNowStrip extends ConsumerWidget {
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    lives.length > 1 ? '${lives.length} directs en cours' : 'Un direct en cours',
+                    context.l10n.liveNowCount(lives.length),
                     style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w800, color: AppColors.textPrimary),
                   ),
                 ),
                 TextButton(
                   onPressed: () => context.push('/lives'),
-                  child: const Text('Tout voir'),
+                  child: Text(context.l10n.liveSeeAll),
                 ),
               ],
             ),

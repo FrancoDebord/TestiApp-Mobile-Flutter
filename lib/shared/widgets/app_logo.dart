@@ -59,10 +59,10 @@ class AppLogo extends StatelessWidget {
     );
     final name = Text.rich(
       TextSpan(children: [
-        const TextSpan(text: 'Témoignages\n'),
-        const TextSpan(text: 'de '),
+        const TextSpan(text: 'Témoignages\n'), // i18n-ignore (nom de l'application)
+        const TextSpan(text: 'de '), // i18n-ignore
         TextSpan(
-            text: 'Gloire',
+            text: 'Gloire', // i18n-ignore
             style: style.copyWith(color: AppColors.secondary)),
       ]),
       style: style,
@@ -71,7 +71,7 @@ class AppLogo extends StatelessWidget {
     );
 
     return Semantics(
-      label: 'Témoignages de Gloire',
+      label: 'Témoignages de Gloire', // i18n-ignore (nom de l'application)
       excludeSemantics: true,
       child: horizontal
           ? LayoutBuilder(builder: (context, constraints) {

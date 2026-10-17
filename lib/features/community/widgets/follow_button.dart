@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../auth/providers/auth_notifier.dart' show currentUserProvider;
 import '../providers/follow_provider.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Bouton « Suivre » / « Abonné » (docs/fonctionnalites/abonnements.md).
 /// Rien pour son propre compte ; personne non connectée : ouvre la connexion.
@@ -15,7 +16,7 @@ class FollowButton extends ConsumerWidget {
     this.displayName,
     this.compact = false,
     this.onCountChanged,
-    this.idleLabel = 'Suivre',
+    this.idleLabel,
     super.key,
   });
 
@@ -25,7 +26,7 @@ class FollowButton extends ConsumerWidget {
   final ValueChanged<int>? onCountChanged;
 
   /// Texte tant qu'on ne suit pas le compte (« Suivre en retour » dans Mes abonnés).
-  final String idleLabel;
+  final String? idleLabel;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -35,7 +36,8 @@ class FollowButton extends ConsumerWidget {
     final state = ref.watch(followProvider);
     final following = state.isFollowing(userId);
     final busy = state.pending.contains(userId);
-    final label = following ? 'Abonné' : idleLabel;
+    final l10n = context.l10n;
+    final label = following ? l10n.communityFollowing : (idleLabel ?? l10n.communityFollow);
     final name = displayName == null ? '' : ' $displayName';
 
     Future<void> onTap() async {
@@ -71,7 +73,7 @@ class FollowButton extends ConsumerWidget {
 
     return Semantics(
       button: true,
-      label: following ? 'Ne plus suivre$name' : 'Suivre$name',
+      label: following ? l10n.communityUnfollowSemantics(name) : l10n.communityFollowSemantics(name),
       excludeSemantics: true,
       child: following
           ? OutlinedButton.icon(onPressed: busy ? null : onTap, style: style, icon: icon, label: text)

@@ -6,6 +6,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../providers/events_providers.dart';
 import 'event_widgets.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Bandeau « Événements à venir » de l'accueil (masqué s'il n'y en a aucun).
 class UpcomingEventsStrip extends ConsumerWidget {
@@ -29,14 +30,14 @@ class UpcomingEventsStrip extends ConsumerWidget {
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    'Événements à venir',
+                    context.l10n.eventsUpcomingTitle,
                     style: AppTextStyles.h4.copyWith(
                         fontWeight: FontWeight.w800, color: AppColors.textPrimary),
                   ),
                 ),
                 TextButton(
                   onPressed: () => context.push('/events'),
-                  child: const Text('Tout voir'),
+                  child: Text(context.l10n.eventsSeeAll),
                 ),
               ],
             ),

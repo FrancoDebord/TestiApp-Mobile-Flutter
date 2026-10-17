@@ -5,6 +5,7 @@ import 'package:just_audio/just_audio.dart';
 import '../core/media/media_quality.dart';
 import '../core/media/playback_preferences.dart';
 import '../features/home/models/testimony_model.dart';
+import '../l10n/app_localizations.dart';
 
 // ---------------------------------------------------------------------------
 // State
@@ -348,7 +349,7 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
     if (list.isEmpty) {
       if (offline) {
         state = state.copyWith(
-          error: "Ce témoignage n'est pas téléchargé (mode hors ligne).",
+          error: L10n.current.apiNotDownloadedOffline,
         );
       }
       return;

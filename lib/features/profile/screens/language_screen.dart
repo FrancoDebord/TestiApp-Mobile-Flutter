@@ -8,7 +8,9 @@ import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_logo.dart';
 
-/// Écran 11 de la maquette : « Langue » (Français / English uniquement).
+/// Écran 11 de la maquette : « Langue » — langue du système (par défaut),
+/// Français ou English. Le choix est enregistré sur l'appareil et envoyé au
+/// serveur (PUT /me { locale }) ; chaque requête porte Accept-Language.
 class LanguageScreen extends ConsumerStatefulWidget {
   const LanguageScreen({super.key});
 
@@ -17,20 +19,16 @@ class LanguageScreen extends ConsumerStatefulWidget {
 }
 
 class _LanguageScreenState extends ConsumerState<LanguageScreen> {
-  String? _selected;
+  AppLanguage? _selected;
 
   Future<void> _apply() async {
-    final code = _selected ?? ref.read(localeProvider).languageCode;
-    final notifier = ref.read(localeProvider.notifier);
-    if (code == 'en') {
-      await notifier.setEnglish();
-    } else {
-      await notifier.setFrench();
-    }
+    final AppLanguage current = ref.read(appLanguageProvider);
+    final choice = _selected ?? current;
+    await ref.read(appLanguageProvider.notifier).choose(choice);
     if (!mounted) return;
-    final l10n = AppLocalizations.of(context);
+    // Message dans la nouvelle langue.
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(l10n.isFr ? 'Langue : Français' : 'Language: English'),
+      content: Text(lookupAppLocalizations(ref.read(localeProvider)).languageChanged),
       behavior: SnackBarBehavior.floating,
     ));
     if (Navigator.of(context).canPop()) Navigator.of(context).pop();
@@ -38,9 +36,12 @@ class _LanguageScreenState extends ConsumerState<LanguageScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final current = ref.watch(localeProvider).languageCode;
+    final current = ref.watch(appLanguageProvider);
     final selected = _selected ?? current;
-    final l10n = AppLocalizations.of(context);
+    final l10n = context.l10n;
+    final system = L10n.resolveSystem(ref.watch(systemLocalesProvider));
+    final systemName =
+        system.languageCode == 'en' ? l10n.languageEnglish : l10n.languageFrench;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -67,19 +68,32 @@ class _LanguageScreenState extends ConsumerState<LanguageScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         _LanguageOption(
-                          flag: const _FlagFrance(),
-                          label: 'Français',
-                          selected: selected == 'fr',
-                          onTap: () => setState(() => _selected = 'fr'),
+                          key: const ValueKey('language-system'),
+                          flag: const _SystemIcon(),
+                          label: l10n.languageSystem,
+                          subtitle: l10n.languageSystemCurrent(systemName),
+                          selected: selected == AppLanguage.system,
+                          onTap: () => setState(() => _selected = AppLanguage.system),
                         ),
                         const SizedBox(height: AppSpacing.md),
                         _LanguageOption(
-                          flag: const _FlagUk(),
-                          label: 'English',
-                          selected: selected == 'en',
-                          onTap: () => setState(() => _selected = 'en'),
+                          key: const ValueKey('language-fr'),
+                          flag: const _FlagFrance(),
+                          label: l10n.languageFrench,
+                          selected: selected == AppLanguage.fr,
+                          onTap: () => setState(() => _selected = AppLanguage.fr),
                         ),
-                        const SizedBox(height: AppSpacing.xxl),
+                        const SizedBox(height: AppSpacing.md),
+                        _LanguageOption(
+                          key: const ValueKey('language-en'),
+                          flag: const _FlagUk(),
+                          label: l10n.languageEnglish,
+                          selected: selected == AppLanguage.en,
+                          onTap: () => setState(() => _selected = AppLanguage.en),
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
+                        Text(l10n.languageHint, style: AppTextStyles.bodySmall),
+                        const SizedBox(height: AppSpacing.xl),
                         AppButton(
                           label: l10n.languageChange,
                           fullWidth: true,
@@ -102,16 +116,32 @@ class _LanguageScreenState extends ConsumerState<LanguageScreen> {
   }
 }
 
+class _SystemIcon extends StatelessWidget {
+  const _SystemIcon();
+
+  @override
+  Widget build(BuildContext context) => Container(
+        decoration: const BoxDecoration(
+          color: AppColors.primarySoft,
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(Icons.smartphone_rounded, size: 18, color: AppColors.primary),
+      );
+}
+
 class _LanguageOption extends StatelessWidget {
   const _LanguageOption({
     required this.flag,
     required this.label,
     required this.selected,
     required this.onTap,
+    this.subtitle,
+    super.key,
   });
 
   final Widget flag;
   final String label;
+  final String? subtitle;
   final bool selected;
   final VoidCallback onTap;
 
@@ -140,14 +170,21 @@ class _LanguageOption extends StatelessWidget {
                 SizedBox(width: 32, height: 32, child: flag),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
-                  child: Text(
-                    label,
-                    style: AppTextStyles.bodyLarge.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        label,
+                        style: AppTextStyles.bodyLarge.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (subtitle != null)
+                        Text(subtitle!, style: AppTextStyles.bodySmall),
+                    ],
                   ),
                 ),
                 _Radio(selected: selected),

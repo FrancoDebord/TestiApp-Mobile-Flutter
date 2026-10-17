@@ -11,6 +11,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../l10n/app_localizations.dart' show formatNumber;
 import '../../../services/api_service.dart' show secureStorageProvider;
 import '../../../services/tts_service.dart';
 
@@ -18,13 +19,15 @@ enum TtsStatus { idle, playing, paused }
 
 /// Vitesses proposées dans le lecteur.
 enum TtsSpeed {
-  slow(0.75, '0,75×'),
-  normal(1.0, '1×'),
-  fast(1.25, '1,25×');
+  slow(0.75),
+  normal(1.0),
+  fast(1.25);
 
-  const TtsSpeed(this.value, this.label);
+  const TtsSpeed(this.value);
   final double value;
-  final String label;
+
+  /// « 0,75× » / « 0.75× ».
+  String get label => '${formatNumber(value)}×';
 
   TtsSpeed get next => TtsSpeed.values[(index + 1) % TtsSpeed.values.length];
 }

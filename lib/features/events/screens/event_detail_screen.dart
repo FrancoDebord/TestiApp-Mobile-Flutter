@@ -5,12 +5,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/providers/categories_provider.dart' show categoriesListProvider;
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/guest_gate.dart' show requireAccount;
+import '../../../shared/widgets/youtube_video_player.dart';
 import '../../../shared/widgets/mention_text.dart';
 import '../../../shared/widgets/mention_text_field.dart';
 import '../../auth/providers/auth_notifier.dart' show currentUserProvider;
@@ -53,7 +56,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
   }
 
   Future<void> _answer(EventParticipation answer) async {
-    if (!await requireAccount(context, ref, reason: 'indiquer votre participation')) return;
+    if (!await requireAccount(context, ref, reason: context.l10n.eventsReasonParticipate)) return;
     setState(() => _answering = true);
     final err = await ref.read(eventDetailProvider(_id).notifier).answer(answer);
     if (!mounted) return;
@@ -77,6 +80,20 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
     );
   }
 
+  /// « Raconter ce que j'ai vécu » : formulaire de témoignage. Un gestionnaire publie un témoignage
+  /// officiel rattaché ; un participant écrit son témoignage sous l'événement (onglet Témoignages des
+  /// participants), ou publie un témoignage classique si les commentaires sont fermés.
+  Future<void> _tellExperience(ChristianEvent e) async {
+    if (e.canManage) return _manage(e, 'testimony');
+    if (!e.commentsEnabled) {
+      if (!await requireAccount(context, ref, reason: context.l10n.eventsReasonComment)) return;
+      if (mounted) context.go('/publish');
+      return;
+    }
+    setState(() => _tab = _Tab.comments);
+    await openEventComposer(context, ref, e);
+  }
+
   // ── Gestion ────────────────────────────────────────────────────────────────
 
   Future<void> _manage(ChristianEvent e, String action) async {
@@ -84,8 +101,6 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
       case 'edit':
         await context.push('/events/${e.id}/edit');
         if (mounted) unawaited(ref.read(eventDetailProvider(_id).notifier).reload());
-      case 'live':
-        context.push('/lives/new?event=${e.id}');
       case 'testimony':
         ref.read(publishEventProvider.notifier).attach(e.id, e.title);
         context.go('/publish');
@@ -103,20 +118,20 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
         );
       case 'postpone':
         final ok = await showPostponeSheet(context, e);
-        if (ok == true) _snack('Événement reporté. Les participants sont prévenus.');
+        if (ok == true && mounted) _snack(context.l10n.eventsPostponedNotified);
       case 'cancel':
         final reason = await showCancelEventDialog(context);
         if (reason == null || !mounted) return;
         final err = await ref
             .read(eventDetailProvider(_id).notifier)
             .apply((repo) => repo.cancelEvent(e.id, reason: reason));
-        _snack(err ?? 'Événement annulé. Les participants sont prévenus.');
+        if (mounted) _snack(err ?? context.l10n.eventsCancelledNotified);
       case 'report':
         if (e.hasReported) {
-          _snack('Vous avez déjà signalé cet événement. Merci.');
+          _snack(context.l10n.eventsAlreadyReportedThanks);
           return;
         }
-        if (!await requireAccount(context, ref, reason: 'signaler un événement')) return;
+        if (!await requireAccount(context, ref, reason: context.l10n.eventsReasonReport)) return;
         if (!mounted) return;
         final msg = await showReportEventSheet(context, e);
         if (msg != null) _snack(msg);
@@ -133,16 +148,14 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
         final ok = await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
-            title: const Text("Supprimer l'événement ?"),
-            content: const Text(
-                'La page, les images, les réponses et les commentaires seront supprimés. '
-                'Les témoignages déjà enregistrés restent publiés.'),
+            title: Text(context.l10n.eventsDeleteConfirmTitle),
+            content: Text(context.l10n.eventsDeleteConfirmText),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
+              TextButton(onPressed: () => Navigator.pop(context, false), child: Text(context.l10n.commonCancel)),
               FilledButton(
                 onPressed: () => Navigator.pop(context, true),
                 style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
-                child: const Text('Supprimer'),
+                child: Text(context.l10n.commonDelete),
               ),
             ],
           ),
@@ -153,7 +166,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
           ref.invalidate(eventListProvider);
           ref.invalidate(upcomingEventsProvider);
           if (!mounted) return;
-          _snack('Événement supprimé.');
+          _snack(context.l10n.eventsDeleted);
           context.canPop() ? context.pop() : context.go('/events');
         } on EventFailure catch (err) {
           _snack(err.message);
@@ -169,7 +182,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
       body: switch (async) {
         AsyncValue(:final value?) => _content(value),
         AsyncValue(:final error?) => _ErrorView(
-            message: error is EventFailure ? error.message : "Impossible de charger l'événement.",
+            message: error is EventFailure ? error.message : context.l10n.eventsDetailLoadError,
             onRetry: () => ref.invalidate(eventDetailProvider(_id)),
           ),
         _ => const Center(child: CircularProgressIndicator()),
@@ -200,6 +213,11 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                     const SizedBox(height: 14),
                     _LiveBanner(event: e),
                   ],
+                  // Direct sur YouTube (lien fourni par l'organisateur).
+                  if (e.youtubeLiveId != null) ...[
+                    const SizedBox(height: 14),
+                    _YouTubeLiveCard(event: e),
+                  ],
                   const SizedBox(height: 14),
                   _ParticipationCard(
                     event: e,
@@ -223,7 +241,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                     EventSurveyCard(
                       key: ValueKey('survey-${e.id}-${e.survey.mine?.attended}'),
                       event: e,
-                      onLoginRequired: () => requireAccount(context, ref, reason: 'donner votre avis'),
+                      onLoginRequired: () => requireAccount(context, ref, reason: context.l10n.eventsReasonSurvey),
                     ),
                   ],
                   if (e.moderation != null) ...[
@@ -241,13 +259,13 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                   ],
                   if (e.guests.isNotEmpty) ...[
                     const SizedBox(height: 22),
-                    const _SectionTitle('Invités principaux'),
+                    _SectionTitle(context.l10n.eventsFormGuests),
                     const SizedBox(height: 10),
                     _Guests(guests: e.guests),
                   ],
                   if (e.description != null) ...[
                     const SizedBox(height: 22),
-                    const _SectionTitle("À propos de l'événement"),
+                    _SectionTitle(context.l10n.eventsAbout),
                     const SizedBox(height: 8),
                     _Description(text: e.description!),
                   ],
@@ -276,8 +294,8 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
               padding: const EdgeInsets.fromLTRB(AppSpacing.screen, 20, AppSpacing.screen, 0),
               child: EncouragementCard(
                 message: encouragementVerses.first,
-                actionLabel: 'Raconter ce que j\'ai vécu',
-                onAction: () => setState(() => _tab = _Tab.comments),
+                actionLabel: context.l10n.eventsTellExperience,
+                onAction: () => _tellExperience(e),
               ),
             ),
           ),
@@ -308,10 +326,10 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
       backgroundColor: AppColors.primary,
       foregroundColor: Colors.white,
       automaticallyImplyLeading: false,
-      leading: roundButton(Icons.arrow_back_rounded, 'Retour',
+      leading: roundButton(Icons.arrow_back_rounded, context.l10n.commonBack,
           () => context.canPop() ? context.pop() : context.go('/events')),
       actions: [
-        roundButton(Icons.share_rounded, 'Partager', () => _share(e)),
+        roundButton(Icons.share_rounded, context.l10n.commonShare, () => _share(e)),
         // Menu ⋮ : signaler (pas les gestionnaires).
         if (!e.canManage && !e.isDraft)
           Padding(
@@ -320,7 +338,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
               color: Colors.black.withAlpha(90),
               shape: const CircleBorder(),
               child: PopupMenuButton<String>(
-                tooltip: 'Plus d\'options',
+                tooltip: context.l10n.eventsMoreOptions,
                 icon: const Icon(Icons.more_vert_rounded, color: Colors.white, size: 20),
                 onSelected: (a) => _manage(e, a),
                 itemBuilder: (_) => [
@@ -329,7 +347,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                     child: ListTile(
                       contentPadding: EdgeInsets.zero,
                       leading: const Icon(Icons.flag_outlined),
-                      title: Text(e.hasReported ? 'Déjà signalé' : 'Signaler'),
+                      title: Text(e.hasReported ? context.l10n.eventsAlreadyReported : context.l10n.commonReport),
                     ),
                   ),
                 ],
@@ -405,7 +423,7 @@ class _Summary extends StatelessWidget {
               ),
             ),
             EventPhaseBadge(event: e),
-            if (e.live?.isOnAir == true) const EventLiveBadge(),
+            if (e.isLiveNow) const EventLiveBadge(),
             ...EventFlagBadge.forEvent(e),
           ],
         ),
@@ -420,7 +438,7 @@ class _Summary extends StatelessWidget {
           title: eventScheduleText(e),
           subtitle: !e.dateTbd && e.startsAt != null && e.endsAt != null &&
                   e.endsAt!.difference(e.startsAt!).inHours >= 24
-              ? 'Du ${formatEventDay(e.startsAt!)} au ${formatEventDay(e.endsAt!)}'
+              ? context.l10n.eventsDateRangeDays(formatEventDay(e.startsAt!), formatEventDay(e.endsAt!))
               : null,
           below: e.isPostponed && e.originalStartsAt != null ? EventOriginalDate(event: e) : null,
         ),
@@ -428,11 +446,11 @@ class _Summary extends StatelessWidget {
         _InfoRow(
           icon: Icons.apartment_rounded,
           title: e.organizer.displayName,
-          subtitle: e.organizer.isReliable ? 'Organisateur fiable' : 'Organisateur',
+          subtitle: e.organizer.isReliable ? context.l10n.eventsReliableOrganizer : context.l10n.eventsOrganizer,
           trailing: e.organizer.isVerified
-              ? const Tooltip(
-                  message: 'Organisation vérifiée',
-                  child: Icon(Icons.verified_rounded, size: 18, color: AppColors.primary),
+              ? Tooltip(
+                  message: context.l10n.eventsVerifiedOrganization,
+                  child: const Icon(Icons.verified_rounded, size: 18, color: AppColors.primary),
                 )
               : null,
         ),
@@ -526,7 +544,7 @@ class _LiveBanner extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      onAir ? "L'événement est en direct" : 'Direct en préparation',
+                      onAir ? context.l10n.eventsLiveOnAir : context.l10n.eventsLivePreparing,
                       style: const TextStyle(
                         color: Colors.white,
                         fontFamily: AppFonts.family,
@@ -536,8 +554,8 @@ class _LiveBanner extends StatelessWidget {
                     ),
                     Text(
                       onAir
-                          ? (event.canManage ? 'Ouvrir le studio' : 'Rejoignez la diffusion maintenant')
-                          : 'Visible de vous seul jusqu\'au passage à l\'antenne',
+                          ? (event.canManage ? context.l10n.eventsOpenStudio : context.l10n.eventsJoinBroadcast)
+                          : context.l10n.eventsLivePrivateUntilOnAir,
                       style: TextStyle(color: Colors.white.withAlpha(220), fontSize: 12.5),
                     ),
                   ],
@@ -547,6 +565,63 @@ class _LiveBanner extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ── Direct YouTube ───────────────────────────────────────────────────────────
+
+class _YouTubeLiveCard extends StatelessWidget {
+  const _YouTubeLiveCard({required this.event});
+  final ChristianEvent event;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final subtitle = switch (event.phase) {
+      EventPhase.upcoming => l10n.eventsYoutubeLiveUpcoming,
+      EventPhase.ongoing => l10n.eventsYoutubeLiveOngoing,
+      EventPhase.past => l10n.eventsYoutubeLivePast,
+    };
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: AppRadius.cardRadius,
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 6, 8),
+            child: Row(
+              children: [
+                const Icon(Icons.smart_display_rounded, color: Color(0xFFE11D48), size: 26),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(l10n.eventsYoutubeLiveTitle,
+                          style: AppTextStyles.labelMedium.copyWith(
+                              color: AppColors.primary, fontWeight: FontWeight.w800)),
+                      Text(subtitle,
+                          style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
+                    ],
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => launchUrl(Uri.parse(event.youtubeLiveUrl!),
+                      mode: LaunchMode.externalApplication),
+                  child: Text(l10n.eventsOpenOnYoutube),
+                ),
+              ],
+            ),
+          ),
+          YouTubeVideoPlayer(videoId: event.youtubeLiveId!, autoPlay: false),
+        ],
       ),
     );
   }
@@ -602,12 +677,12 @@ class _ParticipationCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   !open
-                      ? (e.isCancelled ? 'Cet événement est annulé' : 'Cet événement est terminé')
+                      ? (e.isCancelled ? context.l10n.eventsIsCancelled : context.l10n.eventsIsOver)
                       : mine == EventParticipation.going
-                          ? 'Vous participez à cet événement 🙌'
+                          ? context.l10n.eventsYouAreGoing
                           : mine == EventParticipation.notGoing
-                              ? 'Vous ne participez pas'
-                              : 'Allez-vous participer ?',
+                              ? context.l10n.eventsYouAreNotGoing
+                              : context.l10n.eventsAreYouGoing,
                   style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w700),
                 ),
               ),
@@ -618,24 +693,24 @@ class _ParticipationCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             e.goingCount == 0
-                ? 'Soyez le premier à répondre.'
-                : '${e.goingCount} personne${e.goingCount > 1 ? 's' : ''} participe${e.goingCount > 1 ? 'nt' : ''}',
+                ? context.l10n.eventsBeFirstToAnswer
+                : context.l10n.eventsGoingCount(e.goingCount),
             style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
           ),
           if (open) ...[
             const SizedBox(height: 12),
             Row(
               children: [
-                choice(EventParticipation.going, Icons.event_available_rounded, 'Je participe'),
+                choice(EventParticipation.going, Icons.event_available_rounded, context.l10n.eventsGoing),
                 const SizedBox(width: 10),
-                choice(EventParticipation.notGoing, Icons.event_busy_rounded, 'Je ne participe pas'),
+                choice(EventParticipation.notGoing, Icons.event_busy_rounded, context.l10n.eventsNotGoing),
               ],
             ),
             if (mine != null)
               Padding(
                 padding: const EdgeInsets.only(top: 6),
                 child: Text(
-                  'Touchez de nouveau votre réponse pour la retirer.',
+                  context.l10n.eventsTapAgainToRemove,
                   textAlign: TextAlign.center,
                   style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary, fontSize: 11.5),
                 ),
@@ -658,21 +733,23 @@ class _ManagerPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final e = event;
-    final canLive = e.status == EventStatus.published && e.live == null && e.phase != EventPhase.past;
+    // Direct : lien YouTube saisi dans le formulaire (plus de direct dans l'application).
+    final canLive = e.youtubeLiveId == null && e.phase != EventPhase.past;
+    final l10n = context.l10n;
     final actions = <(IconData, String, String, Color?)>[
-      (Icons.edit_rounded, 'Modifier', 'edit', null),
-      if (canLive) (Icons.sensors_rounded, 'Lancer un direct', 'live', const Color(0xFFE11D48)),
-      (Icons.post_add_rounded, 'Publier un témoignage', 'testimony', null),
-      (Icons.groups_rounded, 'Participants (${e.goingCount})', 'participants', null),
+      (Icons.edit_rounded, l10n.commonEdit, 'edit', null),
+      if (canLive) (Icons.smart_display_outlined, l10n.eventsAddYoutubeLive, 'edit', const Color(0xFFE11D48)),
+      (Icons.post_add_rounded, l10n.profilePublishTestimony, 'testimony', null),
+      (Icons.groups_rounded, l10n.eventsParticipantsCount(e.goingCount), 'participants', null),
       (Icons.manage_accounts_outlined,
-          'Co-gestionnaires (${e.managers.length}/${ChristianEvent.maxManagers})', 'managers', null),
+          l10n.eventsManagersTitle(e.managers.length, ChristianEvent.maxManagers), 'managers', null),
       // Reporter / annuler : événement publié (ou reporté) pas encore terminé.
       if (e.canChangeSchedule) ...[
-        (Icons.event_repeat_rounded, 'Reporter', 'postpone', null),
-        (Icons.event_busy_rounded, "Annuler l'événement", 'cancel', AppColors.danger),
+        (Icons.event_repeat_rounded, l10n.eventsPostpone, 'postpone', null),
+        (Icons.event_busy_rounded, l10n.eventsCancelEvent, 'cancel', AppColors.danger),
       ],
       // Supprimer : organisateur, gestionnaires de l'organisation, admin (ni les co-gestionnaires ni les modérateurs).
-      if (e.canDelete) (Icons.delete_outline_rounded, 'Supprimer', 'delete', AppColors.danger),
+      if (e.canDelete) (Icons.delete_outline_rounded, l10n.commonDelete, 'delete', AppColors.danger),
     ];
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
@@ -690,7 +767,7 @@ class _ManagerPanel extends StatelessWidget {
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  e.isDraft ? 'Gestion · brouillon (invisible du public)' : 'Gestion de la page',
+                  e.isDraft ? l10n.eventsManageDraft : l10n.eventsManagePage,
                   style: AppTextStyles.labelMedium.copyWith(
                       color: AppColors.primary, fontWeight: FontWeight.w700),
                 ),
@@ -719,8 +796,7 @@ class _ManagerPanel extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Enregistrez un commentaire comme témoignage avec « Enregistrer comme témoignage » '
-            'dans l\'onglet Commentaires.',
+            l10n.eventsManageHelp,
             style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary, fontSize: 11.5),
           ),
         ],
@@ -749,7 +825,7 @@ class _ParticipantsSheet extends ConsumerWidget {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
                   child: Text(
-                    'Participants (${event.goingCount})',
+                    context.l10n.eventsParticipantsCount(event.goingCount),
                     style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w800),
                   ),
                 ),
@@ -758,13 +834,14 @@ class _ParticipantsSheet extends ConsumerWidget {
                 else if (snap.hasError)
                   Padding(
                     padding: const EdgeInsets.all(24),
-                    child: Text('${snap.error}', textAlign: TextAlign.center),
+                    child: Text(snap.error is EventFailure ? '${snap.error}' : context.l10n.commonError,
+                        textAlign: TextAlign.center),
                   )
                 else if (items.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Text('Personne n\'a encore répondu « Je participe ».',
-                        textAlign: TextAlign.center, style: TextStyle(color: AppColors.textSecondary)),
+                  Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Text(context.l10n.eventsNoParticipants,
+                        textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textSecondary)),
                   )
                 else
                   Flexible(
@@ -776,7 +853,7 @@ class _ParticipantsSheet extends ConsumerWidget {
                         title: Text(items[i].person.displayName),
                         subtitle: items[i].respondedAt == null
                             ? null
-                            : Text('Réponse le ${formatEventDay(items[i].respondedAt!)}'),
+                            : Text(context.l10n.eventsRespondedOn(formatEventDay(items[i].respondedAt!))),
                       ),
                     ),
                   ),
@@ -889,7 +966,7 @@ class _DescriptionState extends State<_Description> {
           TextButton(
             onPressed: () => setState(() => _expanded = !_expanded),
             style: TextButton.styleFrom(padding: EdgeInsets.zero),
-            child: Text(_expanded ? 'Voir moins' : 'Lire la suite'),
+            child: Text(_expanded ? context.l10n.commonSeeLess : context.l10n.eventsReadMore),
           ),
       ],
     );
@@ -919,12 +996,12 @@ class _Tabs extends StatelessWidget {
         ButtonSegment(
           value: _Tab.testimonies,
           icon: const Icon(Icons.auto_awesome_rounded, size: 18),
-          label: Text('Témoignages ($testimonies)'),
+          label: Text(context.l10n.eventsTabTestimonies(testimonies)),
         ),
         ButtonSegment(
           value: _Tab.comments,
           icon: const Icon(Icons.forum_outlined, size: 18),
-          label: Text('Commentaires ($comments)'),
+          label: Text(context.l10n.eventsTabComments(comments)),
         ),
       ],
       selected: {selected},
@@ -947,13 +1024,13 @@ class _TestimoniesSliver extends ConsumerWidget {
           child: _Empty(
             icon: Icons.auto_awesome_outlined,
             text: event.canManage
-                ? 'Aucun témoignage enregistré. Publiez-en un, ou enregistrez un commentaire de participant.'
-                : 'Les témoignages de cet événement seront publiés ici par les organisateurs.',
+                ? context.l10n.eventsNoTestimoniesManager
+                : context.l10n.eventsNoTestimoniesPublic,
             action: event.canManage
                 ? TextButton.icon(
                     onPressed: onPublish,
                     icon: const Icon(Icons.post_add_rounded),
-                    label: const Text('Publier un témoignage'),
+                    label: Text(context.l10n.profilePublishTestimony),
                   )
                 : null,
           ),
@@ -969,7 +1046,7 @@ class _TestimoniesSliver extends ConsumerWidget {
       AsyncValue(:final error?) => SliverToBoxAdapter(
           child: _Empty(
             icon: Icons.wifi_off_rounded,
-            text: error is EventFailure ? error.message : 'Impossible de charger les témoignages.',
+            text: error is EventFailure ? error.message : context.l10n.eventsTestimoniesLoadError,
           ),
         ),
       _ => const SliverToBoxAdapter(
@@ -979,22 +1056,25 @@ class _TestimoniesSliver extends ConsumerWidget {
   }
 }
 
+/// Formulaire « Racontez ce que Dieu a fait pour vous » (témoignage d'un participant sous l'événement).
+Future<void> openEventComposer(BuildContext context, WidgetRef ref, ChristianEvent event) async {
+  if (!await requireAccount(context, ref, reason: context.l10n.eventsReasonComment)) return;
+  if (!context.mounted) return;
+  await showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: AppColors.surface,
+    shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+    builder: (_) => _Composer(eventId: event.id),
+  );
+}
+
 class _CommentsSliver extends ConsumerWidget {
   const _CommentsSliver({required this.event});
   final ChristianEvent event;
 
-  Future<void> _compose(BuildContext context, WidgetRef ref) async {
-    if (!await requireAccount(context, ref, reason: 'partager ce que vous avez vécu')) return;
-    if (!context.mounted) return;
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-      builder: (_) => _Composer(eventId: event.id),
-    );
-  }
+  Future<void> _compose(BuildContext context, WidgetRef ref) => openEventComposer(context, ref, event);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1016,21 +1096,21 @@ class _CommentsSliver extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(AppRadius.pill),
                     border: Border.all(color: AppColors.inputBorder),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
-                      Icon(Icons.edit_note_rounded, color: AppColors.primary),
-                      SizedBox(width: 10),
+                      const Icon(Icons.edit_note_rounded, color: AppColors.primary),
+                      const SizedBox(width: 10),
                       Expanded(
-                        child: Text('Racontez ce que Dieu a fait pour vous…',
-                            style: TextStyle(color: AppColors.textSecondary)),
+                        child: Text(context.l10n.eventsCommentPrompt,
+                            style: const TextStyle(color: AppColors.textSecondary)),
                       ),
                     ],
                   ),
                 ),
               ),
             )
-          : const Text('Les commentaires sont fermés pour cet événement.',
-              textAlign: TextAlign.center, style: TextStyle(color: AppColors.textSecondary)),
+          : Text(context.l10n.eventsCommentsClosed,
+              textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textSecondary)),
     );
 
     return switch (async) {
@@ -1040,9 +1120,9 @@ class _CommentsSliver extends ConsumerWidget {
             if (i == 0) return composer;
             if (i == value.items.length + 1) {
               if (value.items.isEmpty) {
-                return const _Empty(
+                return _Empty(
                   icon: Icons.forum_outlined,
-                  text: 'Aucun commentaire pour le moment. Partagez le premier témoignage !',
+                  text: context.l10n.eventsNoComments,
                 );
               }
               return value.hasMore
@@ -1051,7 +1131,7 @@ class _CommentsSliver extends ConsumerWidget {
                         onPressed: () => ref.read(eventCommentsProvider(event.id).notifier).loadMore(),
                         child: value.loadingMore
                             ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                            : const Text('Voir plus de commentaires'),
+                            : Text(context.l10n.eventsMoreComments),
                       ),
                     )
                   : const SizedBox.shrink();
@@ -1065,7 +1145,7 @@ class _CommentsSliver extends ConsumerWidget {
       AsyncValue(:final error?) => SliverToBoxAdapter(
           child: _Empty(
             icon: Icons.wifi_off_rounded,
-            text: error is EventFailure ? error.message : 'Impossible de charger les commentaires.',
+            text: error is EventFailure ? error.message : context.l10n.eventsCommentsLoadError,
           ),
         ),
       _ => const SliverToBoxAdapter(
@@ -1106,8 +1186,8 @@ class _ComposerState extends ConsumerState<_Composer> {
       return;
     }
     Navigator.pop(context);
-    messenger.showSnackBar(const SnackBar(
-        behavior: SnackBarBehavior.floating, content: Text('Merci pour votre témoignage !')));
+    messenger.showSnackBar(SnackBar(
+        behavior: SnackBarBehavior.floating, content: Text(context.l10n.eventsCommentThanks)));
   }
 
   @override
@@ -1118,11 +1198,10 @@ class _ComposerState extends ConsumerState<_Composer> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('Votre témoignage', style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w800)),
+          Text(context.l10n.publishYourTestimony, style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w800)),
           const SizedBox(height: 4),
           Text(
-            'Racontez ce que vous avez vécu pendant l\'événement. Les organisateurs pourront '
-            'l\'enregistrer comme témoignage officiel.',
+            context.l10n.eventsComposerHelp,
             style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: 14),
@@ -1133,8 +1212,7 @@ class _ComposerState extends ConsumerState<_Composer> {
             maxLines: 10,
             maxLength: 3000,
             onChanged: (_) => setState(() {}),
-            decoration: const InputDecoration(
-                hintText: 'Ex. : pendant la prière, j\'ai été guéri… (@ pour mentionner)'),
+            decoration: InputDecoration(hintText: context.l10n.eventsComposerHint),
           ),
           const SizedBox(height: 8),
           FilledButton.icon(
@@ -1146,7 +1224,7 @@ class _ComposerState extends ConsumerState<_Composer> {
             icon: _sending
                 ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                 : const Icon(Icons.send_rounded),
-            label: const Text('Publier'),
+            label: Text(context.l10n.commonPublish),
           ),
         ],
       ),
@@ -1177,22 +1255,23 @@ class _CommentCard extends ConsumerWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Supprimer ce commentaire ?'),
+        title: Text(context.l10n.eventsDeleteCommentTitle),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(context.l10n.commonCancel)),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
-            child: const Text('Supprimer'),
+            child: Text(context.l10n.commonDelete),
           ),
         ],
       ),
     );
     if (ok != true || !context.mounted) return;
     final messenger = ScaffoldMessenger.of(context);
+    final deleted = context.l10n.eventsCommentDeleted;
     final err = await ref.read(eventCommentsProvider(event.id).notifier).delete(comment);
     messenger.showSnackBar(
-        SnackBar(behavior: SnackBarBehavior.floating, content: Text(err ?? 'Commentaire supprimé.')));
+        SnackBar(behavior: SnackBarBehavior.floating, content: Text(err ?? deleted)));
   }
 
   @override
@@ -1254,13 +1333,13 @@ class _CommentCard extends ConsumerWidget {
                         color: AppColors.sunSoft,
                         borderRadius: BorderRadius.circular(6),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.auto_awesome_rounded, size: 13, color: AppColors.sunText),
-                          SizedBox(width: 4),
-                          Text('Enregistré comme témoignage',
-                              style: TextStyle(
+                          const Icon(Icons.auto_awesome_rounded, size: 13, color: AppColors.sunText),
+                          const SizedBox(width: 4),
+                          Text(context.l10n.eventsSavedAsTestimony,
+                              style: const TextStyle(
                                   color: AppColors.sunText, fontWeight: FontWeight.w700, fontSize: 11.5)),
                         ],
                       ),
@@ -1275,7 +1354,7 @@ class _CommentCard extends ConsumerWidget {
                       visualDensity: VisualDensity.compact,
                     ),
                     icon: const Icon(Icons.auto_awesome_outlined, size: 17),
-                    label: const Text('Enregistrer comme témoignage'),
+                    label: Text(context.l10n.eventsSaveAsTestimony),
                   ),
                 ],
               ],
@@ -1283,7 +1362,7 @@ class _CommentCard extends ConsumerWidget {
           ),
           if (canDelete)
             IconButton(
-              tooltip: 'Supprimer',
+              tooltip: context.l10n.commonDelete,
               visualDensity: VisualDensity.compact,
               onPressed: () => _delete(context, ref),
               icon: const Icon(Icons.delete_outline_rounded, size: 19, color: AppColors.textSecondary),
@@ -1317,15 +1396,14 @@ class _PromoteDialogState extends ConsumerState<_PromoteDialog> {
   Widget build(BuildContext context) {
     final categories = ref.watch(categoriesListProvider);
     return AlertDialog(
-      title: const Text('Enregistrer comme témoignage'),
+      title: Text(context.l10n.eventsSaveAsTestimony),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Le témoignage de ${widget.comment.user.displayName} sera publié sous son nom, '
-              'rattaché à l\'événement.',
+              context.l10n.eventsPromoteHelp(widget.comment.user.displayName),
               style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
             ),
             const SizedBox(height: 14),
@@ -1333,16 +1411,16 @@ class _PromoteDialogState extends ConsumerState<_PromoteDialog> {
               controller: _title,
               maxLength: 200,
               textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
-                labelText: 'Titre (facultatif)',
-                hintText: 'Ex. : Guéri pendant la croisade',
+              decoration: InputDecoration(
+                labelText: context.l10n.prophecyTitleLabel,
+                hintText: context.l10n.eventsPromoteTitleHint,
               ),
             ),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
               initialValue: _category,
               isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Catégorie'),
+              decoration: InputDecoration(labelText: context.l10n.exploreFilterCategory),
               items: [
                 for (final c in categories)
                   DropdownMenuItem(value: c.slug, child: Text(c.name, overflow: TextOverflow.ellipsis)),
@@ -1353,10 +1431,10 @@ class _PromoteDialogState extends ConsumerState<_PromoteDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(context.l10n.commonCancel)),
         FilledButton(
           onPressed: () => Navigator.pop(context, (title: _title.text, category: _category)),
-          child: const Text('Enregistrer'),
+          child: Text(context.l10n.commonSave),
         ),
       ],
     );
@@ -1367,10 +1445,11 @@ class _PromoteDialogState extends ConsumerState<_PromoteDialog> {
 
 String _ago(DateTime d) {
   final diff = DateTime.now().difference(d);
-  if (diff.inMinutes < 1) return "à l'instant";
-  if (diff.inMinutes < 60) return '${diff.inMinutes} min';
-  if (diff.inHours < 24) return '${diff.inHours} h';
-  if (diff.inDays < 30) return '${diff.inDays} j';
+  final l = L10n.current;
+  if (diff.inMinutes < 1) return l.timeJustNow;
+  if (diff.inMinutes < 60) return l.eventsAgoMinutes(diff.inMinutes);
+  if (diff.inHours < 24) return l.eventsAgoHours(diff.inHours);
+  if (diff.inDays < 30) return l.eventsAgoDays(diff.inDays);
   return formatEventDay(d);
 }
 
@@ -1440,7 +1519,7 @@ class _ErrorView extends StatelessWidget {
                   const SizedBox(height: 12),
                   Text(message, textAlign: TextAlign.center),
                   const SizedBox(height: 12),
-                  OutlinedButton(onPressed: onRetry, child: const Text('Réessayer')),
+                  OutlinedButton(onPressed: onRetry, child: Text(context.l10n.commonRetry)),
                 ],
               ),
             ),

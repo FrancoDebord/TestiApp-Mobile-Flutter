@@ -4,14 +4,17 @@
 // des fichiers locaux), persisté dans l'index JSON.
 // [DownloadTask] : téléchargement en attente / en cours / en échec.
 
+import '../../../l10n/app_localizations.dart' as i18n;
 import '../../home/models/testimony_model.dart';
 
 /// État d'un témoignage vis-à-vis des téléchargements.
 enum DownloadStatus { none, queued, downloading, done, failed }
 
-/// Taille lisible en français : « 820 Ko », « 3,4 Mo », « 1,2 Go ».
+/// Taille lisible : « 820 Ko », « 3,4 Mo », « 1,2 Go » en français ; en
+/// anglais, formatBytes de lib/l10n/formatters.dart (« 3.4 MB »).
 String formatBytes(int bytes) {
-  if (bytes <= 0) return '0 Mo';
+  if (!i18n.L10n.current.isFr) return i18n.formatBytes(bytes < 0 ? 0 : bytes);
+  if (bytes <= 0) return '0 Mo'; // i18n-ignore
   const ko = 1024;
   const mo = ko * 1024;
   const go = mo * 1024;
@@ -25,9 +28,9 @@ String formatBytes(int bytes) {
 }
 
 String typeLabel(TestimonyType t) => switch (t) {
-      TestimonyType.video => 'Vidéo',
-      TestimonyType.audio => 'Audio',
-      TestimonyType.text => 'Texte',
+      TestimonyType.video => i18n.L10n.current.downloadsTypeVideo,
+      TestimonyType.audio => i18n.L10n.current.downloadsTypeAudio,
+      TestimonyType.text => i18n.L10n.current.downloadsTypeText,
     };
 
 /// Témoignage téléchargé.

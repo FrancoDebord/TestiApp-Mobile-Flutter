@@ -98,6 +98,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  # Traductions générées depuis lib/l10n/arb (l10n.yaml).
+  generate: true
 
   # Charte ARISE & SHINE Krea : logo et police Plus Jakarta Sans (SIL OFL, assets/fonts/OFL.txt).
   assets:

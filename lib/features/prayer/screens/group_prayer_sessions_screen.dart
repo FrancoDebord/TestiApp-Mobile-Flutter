@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_tokens.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/guest_gate.dart' show requireAccount;
 import '../../auth/providers/auth_notifier.dart' show currentUserProvider;
 import '../data/prayer_repository.dart';
@@ -20,10 +21,10 @@ class GroupPrayerSessionsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final loggedIn = ref.watch(currentUserProvider) != null;
     final tabs = <(String, PrayerSessionScope)>[
-      ('À venir', PrayerSessionScope.upcoming),
-      if (loggedIn) ('Mes inscriptions', PrayerSessionScope.joined),
-      if (loggedIn) ("Que j'anime", PrayerSessionScope.mine),
-      ('Passées', PrayerSessionScope.past),
+      (context.l10n.prayerSessionsTabUpcoming, PrayerSessionScope.upcoming),
+      if (loggedIn) (context.l10n.prayerSessionsTabJoined, PrayerSessionScope.joined),
+      if (loggedIn) (context.l10n.prayerSessionsTabHosting, PrayerSessionScope.mine),
+      (context.l10n.prayerSessionsTabPast, PrayerSessionScope.past),
     ];
 
     return DefaultTabController(
@@ -31,14 +32,14 @@ class GroupPrayerSessionsScreen extends ConsumerWidget {
       child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
-          title: const Text('Sessions de prière'),
+          title: Text(context.l10n.prayerGroupTitle),
           backgroundColor: AppColors.surface,
           foregroundColor: AppColors.textPrimary,
           surfaceTintColor: AppColors.surface,
           elevation: 0,
           actions: [
             IconButton(
-              tooltip: 'Requêtes de prière',
+              tooltip: context.l10n.prayerTitle,
               icon: const Icon(Icons.volunteer_activism_outlined),
               onPressed: () => context.push('/prayer-requests'),
             ),
@@ -51,13 +52,13 @@ class GroupPrayerSessionsScreen extends ConsumerWidget {
         ),
         floatingActionButton: FloatingActionButton.extended(
           onPressed: () async {
-            if (!await requireAccount(context, ref, reason: 'programmer une session de prière')) return;
+            if (!await requireAccount(context, ref, reason: context.l10n.prayerReasonSchedule)) return;
             if (context.mounted) context.push('/prayer-sessions/new');
           },
           backgroundColor: AppColors.secondary,
           foregroundColor: Colors.white,
           icon: const Icon(Icons.event_available_rounded),
-          label: const Text('Programmer'),
+          label: Text(context.l10n.prayerSchedule),
         ),
         body: TabBarView(
           children: [for (final (_, scope) in tabs) _SessionList(listKey: (scope: scope, eventId: null))],
@@ -75,10 +76,10 @@ class _SessionList extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(prayerSessionListProvider(listKey));
     final empty = switch (listKey.scope) {
-      PrayerSessionScope.joined => "Vous n'êtes inscrit à aucune session.\nTouchez « Je serai là » sur une session à venir.",
-      PrayerSessionScope.mine => "Vous n'animez aucune session.\nProgrammez un temps de prière : les inscrits seront prévenus.",
-      PrayerSessionScope.past => 'Aucune session passée.',
-      _ => 'Aucune session de prière programmée pour le moment.',
+      PrayerSessionScope.joined => context.l10n.prayerSessionsEmptyJoined,
+      PrayerSessionScope.mine => context.l10n.prayerSessionsEmptyHosting,
+      PrayerSessionScope.past => context.l10n.prayerSessionsEmptyPast,
+      _ => context.l10n.prayerSessionsEmpty,
     };
 
     return RefreshIndicator(
@@ -102,10 +103,10 @@ class _SessionList extends ConsumerWidget {
           ),
         AsyncValue(:final error?) => PrayerMessageView(
             icon: Icons.wifi_off_rounded,
-            text: error is PrayerFailure ? error.message : 'Impossible de charger les sessions.',
+            text: error is PrayerFailure ? error.message : context.l10n.prayerLoadSessionsError,
             action: TextButton(
               onPressed: () => ref.invalidate(prayerSessionListProvider(listKey)),
-              child: const Text('Réessayer'),
+              child: Text(context.l10n.commonRetry),
             ),
           ),
         _ => const Center(child: CircularProgressIndicator()),

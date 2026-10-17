@@ -1,4 +1,5 @@
 import '../../home/models/testimony_model.dart';
+import '../../../l10n/app_localizations.dart';
 
 // ── Filter / sort enums ───────────────────────────────────────────────────────
 
@@ -6,26 +7,26 @@ enum ExploreTypeFilter { all, text, audio, video }
 
 extension ExploreTypeFilterLabel on ExploreTypeFilter {
   String get label => switch (this) {
-        ExploreTypeFilter.all => 'Tout',
-        ExploreTypeFilter.text => 'Texte',
-        ExploreTypeFilter.audio => 'Audio',
-        ExploreTypeFilter.video => 'Vidéo',
+        ExploreTypeFilter.all => L10n.current.exploreTypeAll,
+        ExploreTypeFilter.text => L10n.current.exploreTypeText,
+        ExploreTypeFilter.audio => L10n.current.exploreTypeAudio,
+        ExploreTypeFilter.video => L10n.current.exploreTypeVideo,
       };
 
   /// Libellé des onglets en pilule (maquette « Recherche & filtres »).
   String get tabLabel => switch (this) {
-        ExploreTypeFilter.all => 'Tous',
-        ExploreTypeFilter.text => 'Textes',
-        ExploreTypeFilter.audio => 'Audios',
-        ExploreTypeFilter.video => 'Vidéos',
+        ExploreTypeFilter.all => L10n.current.exploreTabAll,
+        ExploreTypeFilter.text => L10n.current.exploreTabTexts,
+        ExploreTypeFilter.audio => L10n.current.exploreTabAudios,
+        ExploreTypeFilter.video => L10n.current.exploreTabVideos,
       };
 
   /// Libellé de la liste déroulante « Type ».
   String get dropdownLabel => switch (this) {
-        ExploreTypeFilter.all => 'Tous les types',
-        ExploreTypeFilter.text => 'Textes',
-        ExploreTypeFilter.audio => 'Audios',
-        ExploreTypeFilter.video => 'Vidéos',
+        ExploreTypeFilter.all => L10n.current.exploreTypeAllTypes,
+        ExploreTypeFilter.text => L10n.current.exploreTabTexts,
+        ExploreTypeFilter.audio => L10n.current.exploreTabAudios,
+        ExploreTypeFilter.video => L10n.current.exploreTabVideos,
       };
 }
 
@@ -41,18 +42,18 @@ enum ExploreSortOrder { recent, popular, liked, recommended }
 
 extension ExploreSortOrderLabel on ExploreSortOrder {
   String get label => switch (this) {
-        ExploreSortOrder.recent => 'Récent',
-        ExploreSortOrder.popular => 'Populaire',
-        ExploreSortOrder.liked => 'Plus aimés',
-        ExploreSortOrder.recommended => 'Recommandé',
+        ExploreSortOrder.recent => L10n.current.exploreSortRecent,
+        ExploreSortOrder.popular => L10n.current.exploreSortPopular,
+        ExploreSortOrder.liked => L10n.current.exploreSortLiked,
+        ExploreSortOrder.recommended => L10n.current.exploreSortRecommended,
       };
 
   /// Libellé de la liste déroulante « Popularité ».
   String get popularityLabel => switch (this) {
-        ExploreSortOrder.recent => 'Plus récents',
-        ExploreSortOrder.popular => 'Plus vus',
-        ExploreSortOrder.liked => 'Plus aimés',
-        ExploreSortOrder.recommended => 'Plus priés',
+        ExploreSortOrder.recent => L10n.current.exploreSortNewest,
+        ExploreSortOrder.popular => L10n.current.exploreSortMostViewed,
+        ExploreSortOrder.liked => L10n.current.exploreSortLiked,
+        ExploreSortOrder.recommended => L10n.current.exploreSortMostPrayed,
       };
 }
 

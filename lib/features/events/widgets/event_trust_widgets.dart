@@ -11,6 +11,7 @@ import '../../../core/theme/app_tokens.dart';
 import '../data/events_repository.dart';
 import '../models/event_models.dart';
 import '../providers/events_providers.dart';
+import '../../../l10n/app_localizations.dart';
 import 'event_widgets.dart';
 
 const _postponedColor = Color(0xFFB54708);
@@ -26,38 +27,39 @@ class EventStatusBanners extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final e = event;
-    final reason = e.statusReason == null ? '' : ' Motif : ${e.statusReason}';
+    final reason = e.statusReason == null ? '' : ' ${l10n.eventsReasonLabel(e.statusReason!)}';
     final banners = <Widget>[
       if (e.isHidden)
         _Banner(
           icon: Icons.visibility_off_outlined,
           color: const Color(0xFF475467),
-          title: 'Masqué par la modération',
-          text: e.hiddenReason ?? "L'événement n'apparaît plus au public.",
+          title: l10n.eventsHiddenByModeration,
+          text: e.hiddenReason ?? l10n.eventsHiddenText,
         ),
       if (e.isCancelled)
         _Banner(
           icon: Icons.event_busy_rounded,
           color: AppColors.danger,
-          title: 'Événement annulé',
-          text: 'Les réponses ne sont plus possibles.$reason',
+          title: l10n.eventsCancelledTitle,
+          text: '${l10n.eventsCancelledText}$reason',
         )
       else if (e.isPostponed)
         _Banner(
           icon: Icons.event_repeat_rounded,
           color: _postponedColor,
-          title: e.dateTbd ? 'Reporté — date à confirmer' : 'Événement reporté',
+          title: e.dateTbd ? l10n.eventsStatusPostponedTbc : l10n.eventsPostponedTitle,
           text: [
-            if (!e.dateTbd) 'Nouvelle date : ${formatEventRange(e.startsAt, e.endsAt)}.',
-            'Votre réponse « Je participe » est conservée.',
-            if (e.statusReason != null) 'Motif : ${e.statusReason}',
+            if (!e.dateTbd) l10n.eventsNewDate(formatEventRange(e.startsAt, e.endsAt)),
+            l10n.eventsGoingKept,
+            if (e.statusReason != null) l10n.eventsReasonLabel(e.statusReason!),
           ].join(' '),
           footer: e.originalStartsAt == null
               ? null
               : Text.rich(
                   TextSpan(children: [
-                    const TextSpan(text: 'Date initiale : '),
+                    TextSpan(text: l10n.eventsOriginalDate('')),
                     TextSpan(
                       text: formatEventRange(e.originalStartsAt, e.originalEndsAt),
                       style: const TextStyle(decoration: TextDecoration.lineThrough),
@@ -67,12 +69,11 @@ class EventStatusBanners extends StatelessWidget {
                 ),
         ),
       if (e.isUnconfirmed)
-        const _Banner(
+        _Banner(
           icon: Icons.help_outline_rounded,
-          color: Color(0xFFB42318),
-          title: 'Non confirmé',
-          text: "La majorité des personnes qui ont répondu au sondage disent que cet "
-              "événement n'a pas eu lieu. La modération vérifie.",
+          color: const Color(0xFFB42318),
+          title: l10n.eventsFlagUnconfirmed,
+          text: l10n.eventsUnconfirmedText,
         ),
     ];
     if (banners.isEmpty) return const SizedBox.shrink();
@@ -178,11 +179,11 @@ class _PostponeSheetState extends ConsumerState<_PostponeSheet> {
 
   Future<void> _submit() async {
     if (!_tbd && (_start == null || _end == null)) {
-      setState(() => _error = 'Choisissez les nouvelles dates, ou « Date à confirmer ».');
+      setState(() => _error = context.l10n.eventsPostponeChooseDates);
       return;
     }
     if (!_tbd && _end!.isBefore(_start!)) {
-      setState(() => _error = 'La fin doit être après le début.');
+      setState(() => _error = context.l10n.eventsEndAfterStart);
       return;
     }
     setState(() {
@@ -208,6 +209,7 @@ class _PostponeSheetState extends ConsumerState<_PostponeSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     Widget dateButton(String label, DateTime? value, ValueChanged<DateTime> onPicked) => OutlinedButton.icon(
           onPressed: _busy
               ? null
@@ -217,8 +219,7 @@ class _PostponeSheetState extends ConsumerState<_PostponeSheet> {
                 },
           icon: const Icon(Icons.calendar_month_rounded, size: 18),
           label: Text(
-            value == null ? label : '$label : ${formatEventDay(value)} '
-                '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}',
+            value == null ? label : l10n.eventsLabeledValue(label, '${formatEventDay(value)} ${formatTime(value)}'),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
@@ -232,19 +233,19 @@ class _PostponeSheetState extends ConsumerState<_PostponeSheet> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text("Reporter l'événement", style: AppTextStyles.h3.copyWith(color: AppColors.primary)),
+              Text(l10n.eventsPostponeTitle, style: AppTextStyles.h3.copyWith(color: AppColors.primary)),
               const SizedBox(height: 6),
-              Text('Les personnes qui participent sont prévenues. La date initiale reste affichée, barrée.',
+              Text(l10n.eventsPostponeHelp,
                   style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 value: _tbd,
                 onChanged: _busy ? null : (v) => setState(() => _tbd = v),
-                title: const Text('Date à confirmer'),
-                subtitle: const Text('La nouvelle date sera annoncée plus tard.'),
+                title: Text(l10n.eventsDateTbc),
+                subtitle: Text(l10n.eventsPostponeTbdHelp),
               ),
               if (!_tbd) ...[
-                dateButton('Nouveau début', _start, (d) {
+                dateButton(l10n.eventsNewStart, _start, (d) {
                   _start = d;
                   if (_end == null || _end!.isBefore(d)) {
                     final length = widget.event.endsAt != null && widget.event.startsAt != null
@@ -254,14 +255,14 @@ class _PostponeSheetState extends ConsumerState<_PostponeSheet> {
                   }
                 }),
                 const SizedBox(height: 8),
-                dateButton('Nouvelle fin', _end, (d) => _end = d),
+                dateButton(l10n.eventsNewEnd, _end, (d) => _end = d),
                 const SizedBox(height: 12),
               ],
               TextField(
                 controller: _reason,
                 maxLength: 500,
                 enabled: !_busy,
-                decoration: const InputDecoration(labelText: 'Motif (facultatif)'),
+                decoration: InputDecoration(labelText: l10n.eventsReasonOptional),
               ),
               if (_error != null)
                 Padding(
@@ -273,7 +274,7 @@ class _PostponeSheetState extends ConsumerState<_PostponeSheet> {
                 icon: _busy
                     ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                     : const Icon(Icons.event_repeat_rounded),
-                label: const Text('Reporter'),
+                label: Text(l10n.eventsPostpone),
               ),
             ],
           ),
@@ -289,29 +290,28 @@ Future<String?> showCancelEventDialog(BuildContext context) {
   return showDialog<String>(
     context: context,
     builder: (context) => AlertDialog(
-      title: const Text("Annuler l'événement ?"),
+      title: Text(context.l10n.eventsCancelConfirmTitle),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('La page reste visible avec la mention « Annulé ». '
-                'Les personnes qui participent sont prévenues.'),
+            Text(context.l10n.eventsCancelConfirmText),
             const SizedBox(height: 12),
             TextField(
               controller: controller,
               maxLength: 500,
-              decoration: const InputDecoration(labelText: 'Motif (facultatif)'),
+              decoration: InputDecoration(labelText: context.l10n.eventsReasonOptional),
             ),
           ],
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Fermer')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(context.l10n.commonClose)),
         FilledButton(
           onPressed: () => Navigator.pop(context, controller.text),
           style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
-          child: const Text("Annuler l'événement"),
+          child: Text(context.l10n.eventsCancelEvent),
         ),
       ],
     ),
@@ -353,7 +353,7 @@ class _ReportSheetState extends ConsumerState<_ReportSheet> {
   Future<void> _send() async {
     final reason = _reason;
     if (reason == null) {
-      setState(() => _error = 'Choisissez la raison du signalement.');
+      setState(() => _error = context.l10n.eventsReportChooseReason);
       return;
     }
     setState(() {
@@ -384,9 +384,9 @@ class _ReportSheetState extends ConsumerState<_ReportSheet> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text("Signaler l'événement", style: AppTextStyles.h3.copyWith(color: AppColors.primary)),
+              Text(context.l10n.eventsReportTitle, style: AppTextStyles.h3.copyWith(color: AppColors.primary)),
               const SizedBox(height: 4),
-              Text('Votre signalement est anonyme pour l\'organisateur et examiné par la modération.',
+              Text(context.l10n.eventsReportHelp,
                   style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
               const SizedBox(height: 8),
               RadioGroup<EventReportReason>(
@@ -412,7 +412,7 @@ class _ReportSheetState extends ConsumerState<_ReportSheet> {
                 maxLines: 3,
                 minLines: 1,
                 enabled: !_busy,
-                decoration: const InputDecoration(labelText: 'Commentaire (facultatif)'),
+                decoration: InputDecoration(labelText: context.l10n.eventsCommentOptional),
               ),
               if (_error != null)
                 Padding(
@@ -423,7 +423,7 @@ class _ReportSheetState extends ConsumerState<_ReportSheet> {
                 onPressed: _busy ? null : _send,
                 child: _busy
                     ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Text('Envoyer le signalement'),
+                    : Text(context.l10n.eventsReportSend),
               ),
             ],
           ),
@@ -475,11 +475,11 @@ class _EventSurveyCardState extends ConsumerState<EventSurveyCard> {
   Future<void> _submit() async {
     final attended = _attended;
     if (attended == null) {
-      setState(() => _error = "Dites-nous si l'événement a eu lieu.");
+      setState(() => _error = context.l10n.eventsSurveyTellUs);
       return;
     }
     if (attended == EventAttendance.yes && _rating == null) {
-      setState(() => _error = 'Donnez une note de 1 à 5.');
+      setState(() => _error = context.l10n.eventsSurveyGiveRating);
       return;
     }
     setState(() {
@@ -497,12 +497,13 @@ class _EventSurveyCardState extends ConsumerState<EventSurveyCard> {
     });
     if (err == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(behavior: SnackBarBehavior.floating, content: Text('Merci pour votre avis !')));
+          SnackBar(behavior: SnackBarBehavior.floating, content: Text(context.l10n.eventsSurveyThanks)));
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final e = widget.event;
     final s = e.survey;
     final mine = s.mine;
@@ -523,27 +524,27 @@ class _EventSurveyCardState extends ConsumerState<EventSurveyCard> {
               const Icon(Icons.how_to_vote_outlined, size: 20, color: AppColors.primary),
               const SizedBox(width: 8),
               Expanded(
-                child: Text('Votre avis',
+                child: Text(l10n.eventsSurveyTitle,
                     style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w800)),
               ),
             ],
           ),
           const SizedBox(height: 4),
           Text(
-            s.total == 0 ? 'Aucun avis pour le moment.' : s.summary,
+            s.total == 0 ? l10n.eventsSurveyNoReviews : s.summary,
             style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
           ),
           if (e.canManage)
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(
-                'Les organisateurs et gestionnaires ne répondent pas au sondage de leur propre événement.',
+                l10n.eventsSurveyManagersExcluded,
                 style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary, fontSize: 11.5),
               ),
             )
           else if (showForm) ...[
             const SizedBox(height: 12),
-            Text("L'événement a-t-il eu lieu ?",
+            Text(l10n.eventsSurveyQuestion,
                 style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w700)),
             RadioGroup<EventAttendance>(
               groupValue: _attended,
@@ -567,7 +568,7 @@ class _EventSurveyCardState extends ConsumerState<EventSurveyCard> {
               ),
             ),
             if (_attended == EventAttendance.yes) ...[
-              Text('Votre note', style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w700)),
+              Text(l10n.eventsSurveyYourRating, style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w700)),
               const SizedBox(height: 4),
               EventStarPicker(value: _rating, onChanged: _busy ? null : (v) => setState(() => _rating = v)),
               const SizedBox(height: 8),
@@ -578,7 +579,7 @@ class _EventSurveyCardState extends ConsumerState<EventSurveyCard> {
               maxLines: 4,
               minLines: 2,
               enabled: !_busy,
-              decoration: const InputDecoration(labelText: 'Votre avis (facultatif)'),
+              decoration: InputDecoration(labelText: l10n.eventsSurveyBodyOptional),
             ),
             if (_error != null)
               Padding(
@@ -589,12 +590,12 @@ class _EventSurveyCardState extends ConsumerState<EventSurveyCard> {
               onPressed: _busy ? null : _submit,
               child: _busy
                   ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                  : Text(mine == null ? 'Envoyer mon avis' : 'Enregistrer'),
+                  : Text(mine == null ? l10n.eventsSurveySend : l10n.commonSave),
             ),
           ] else if (mine != null) ...[
             const SizedBox(height: 10),
             Text(
-              'Votre réponse : ${mine.attended.label}${mine.rating != null ? ' · ${mine.rating}/5' : ''}',
+              '${l10n.eventsSurveyYourAnswer(mine.attended.label)}${mine.rating != null ? ' · ${mine.rating}/5' : ''}',
               style: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.w600),
             ),
             if (s.canAnswer && mine.canEdit) ...[
@@ -603,18 +604,18 @@ class _EventSurveyCardState extends ConsumerState<EventSurveyCard> {
                 child: TextButton.icon(
                   onPressed: () => setState(() => _editing = true),
                   icon: const Icon(Icons.edit_outlined, size: 18),
-                  label: const Text('Modifier mon avis'),
+                  label: Text(l10n.eventsSurveyEdit),
                 ),
               ),
               if (mine.editableUntil != null)
-                Text("Modifiable jusqu'au ${formatEventDay(mine.editableUntil!)}.",
+                Text(l10n.eventsSurveyEditableUntil(formatEventDay(mine.editableUntil!)),
                     style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary, fontSize: 11.5)),
             ],
           ] else if (s.open && widget.onLoginRequired != null && !s.canAnswer) ...[
             const SizedBox(height: 8),
             OutlinedButton(
               onPressed: () => widget.onLoginRequired!(),
-              child: const Text('Se connecter pour donner son avis'),
+              child: Text(l10n.eventsSurveyLoginToReview),
             ),
           ],
           if (s.total > 0) ...[
@@ -640,7 +641,7 @@ class EventStarPicker extends StatelessWidget {
       children: [
         for (var i = 1; i <= 5; i++)
           IconButton(
-            tooltip: '$i sur 5',
+            tooltip: context.l10n.eventsRatingOutOf5(i),
             visualDensity: VisualDensity.compact,
             onPressed: onChanged == null ? null : () => onChanged!(i),
             icon: Icon(
@@ -683,7 +684,7 @@ class EventReviewsList extends ConsumerWidget {
                         style: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.w700)),
                     if (r.rating != null)
                       Semantics(
-                        label: '${r.rating} sur 5',
+                        label: context.l10n.eventsRatingOutOf5(r.rating!),
                         excludeSemantics: true,
                         child: Text('★' * r.rating! + '☆' * (5 - r.rating!),
                             style: const TextStyle(color: AppColors.secondary, fontSize: 12)),
@@ -715,6 +716,7 @@ class EventModerationCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
     final m = event.moderation!;
     Future<void> run(String action) async {
       final messenger = ScaffoldMessenger.of(context);
@@ -725,9 +727,9 @@ class EventModerationCard extends ConsumerWidget {
         behavior: SnackBarBehavior.floating,
         content: Text(err ??
             switch (action) {
-              'hide' => 'Événement masqué.',
-              'restore' => 'Événement rétabli.',
-              _ => 'Signalements classés.',
+              'hide' => l10n.eventsModHidden,
+              'restore' => l10n.eventsModRestored,
+              _ => l10n.eventsModDismissed,
             }),
       ));
     }
@@ -753,22 +755,22 @@ class EventModerationCard extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('Modération', style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w800)),
+          Text(l10n.eventsModeration, style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w800)),
           const SizedBox(height: 4),
           Text(
-            '${m.reportCount} signalement${m.reportCount > 1 ? 's' : ''}'
-            '${m.pendingReports > 0 ? ' · ${m.pendingReports} à traiter' : ''}',
+            '${l10n.eventsModReportCount(m.reportCount)}'
+            '${m.pendingReports > 0 ? ' · ${l10n.eventsModPending(m.pendingReports)}' : ''}',
             style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: 10),
-          Text("Fiabilité de l'organisateur (${m.total} événement${m.total > 1 ? 's' : ''})",
+          Text(l10n.eventsModReliability(l10n.eventsModEventCount(m.total)),
               style: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.w600)),
           const SizedBox(height: 6),
           Row(
             children: [
-              stat('Confirmés', m.confirmed, AppColors.success),
-              stat('Non confirmés', m.unconfirmed, m.unconfirmed > 0 ? AppColors.danger : AppColors.textPrimary),
-              stat('Signalés', m.reported, m.reported > 0 ? _postponedColor : AppColors.textPrimary),
+              stat(l10n.eventsModConfirmed, m.confirmed, AppColors.success),
+              stat(l10n.eventsModUnconfirmed, m.unconfirmed, m.unconfirmed > 0 ? AppColors.danger : AppColors.textPrimary),
+              stat(l10n.eventsModReported, m.reported, m.reported > 0 ? _postponedColor : AppColors.textPrimary),
             ],
           ),
           const SizedBox(height: 10),
@@ -780,20 +782,20 @@ class EventModerationCard extends ConsumerWidget {
                 OutlinedButton.icon(
                   onPressed: () => run('restore'),
                   icon: const Icon(Icons.visibility_outlined, size: 18),
-                  label: const Text('Rétablir'),
+                  label: Text(l10n.eventsModRestore),
                 )
               else
                 OutlinedButton.icon(
                   onPressed: () => run('hide'),
                   style: OutlinedButton.styleFrom(foregroundColor: AppColors.danger),
                   icon: const Icon(Icons.visibility_off_outlined, size: 18),
-                  label: const Text('Masquer'),
+                  label: Text(l10n.eventsModHide),
                 ),
               if (m.pendingReports > 0 || event.isUnconfirmed)
                 TextButton.icon(
                   onPressed: () => run('dismiss'),
                   icon: const Icon(Icons.done_rounded, size: 18),
-                  label: const Text('Rejeter les signalements'),
+                  label: Text(l10n.eventsModDismiss),
                 ),
             ],
           ),

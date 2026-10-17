@@ -30,7 +30,7 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+    final l10n = context.l10n;
     final results = filterTestimonies(
       ref.watch(feedNotifierProvider),
       query: widget.query,
@@ -69,7 +69,7 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
               child: Text(
-                '${results.length} témoignage${results.length > 1 ? 's' : ''}',
+                l10n.exploreTestimonyCount(results.length),
                 style: AppTextStyles.bodySmall
                     .copyWith(color: AppColors.textSecondary),
               ),

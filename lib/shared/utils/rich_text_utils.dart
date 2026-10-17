@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../models/mention.dart';
+import '../../l10n/app_localizations.dart';
 
 // ── Syntaxe de mise en forme (saisie via la barre d'outils de publication) ────
 //
@@ -406,11 +407,11 @@ class _ProgressiveRichTextState extends State<ProgressiveRichText> {
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 child: Text(
                   complete
-                      ? 'Réduire ‹'
+                      ? context.l10n.sharedTextCollapse
                       // Dernier morceau : inutile d'annoncer une « suite ».
                       : remaining <= widget.stepChars
-                          ? 'Lire la fin ›'
-                          : 'Lire la suite ›',
+                          ? context.l10n.sharedTextReadEnd
+                          : context.l10n.sharedTextReadMore,
                   style: linkStyle,
                 ),
               ),

@@ -280,6 +280,86 @@ void main() {
       expect(p.getString('verse_font'), 'inter');
     });
 
+    // Bug du 2026-10-15 : setAlwaysMine lisait currentVerseDesignProvider
+    // depuis le notifier dont il dépend → CircularDependencyError, option
+    // sans effet (rien d'enregistré, aucun PUT).
+    group('« Toujours utiliser mon design »', () {
+      Future<ProviderContainer> launch(_Api api, DateTime now, {required String dayDesign}) async {
+        final c = _container(api,
+            verse: _verse(userStyle: Map<String, dynamic>.from(api.serverStyle), day: dayDesign));
+        await c.read(authStateProvider.future);
+        c.read(verseStylePrefsProvider.notifier).now = () => now;
+        c.listen(verseStylePrefsProvider, (_, _) {});
+        c.listen(currentVerseDesignProvider, (_, _) {});
+        await _settle();
+        return c;
+      }
+
+      Map<String, dynamic> noChoice() => {
+            'design_id': null,
+            'design_chosen_on': null,
+            'design_always': false,
+            'font': 'lora',
+            'text_size': 'medium',
+            'text_align': 'start',
+          };
+
+      test('activée : envoyée, enregistrée, gardée au redémarrage et le lendemain', () async {
+        final api = _Api()..serverStyle = noChoice();
+        // Jour 1 : design du jour « nuit », l'utilisateur choisit « or » puis active l'option.
+        final day1 = DateTime.utc(2026, 10, 14, 9);
+        final c = await launch(api, day1, dayDesign: 'nuit');
+        final n = c.read(verseStylePrefsProvider.notifier);
+        n.chooseDesign(verseDesignById('or')!);
+        expect(() => n.setAlwaysMine(true), returnsNormally);
+        expect(c.read(verseStylePrefsProvider).alwaysMine, isTrue);
+        expect(c.read(currentVerseDesignProvider).id, 'or');
+
+        await _settle(const Duration(milliseconds: 1300));
+        expect(api.puts.last['design_always'], isTrue);
+        expect(api.puts.last['design_id'], 'or');
+        final p = await SharedPreferences.getInstance();
+        expect(p.getBool('verse_design_always'), isTrue);
+        c.dispose();
+
+        // Redémarrage le lendemain : design du jour « aube », le choix reste « or ».
+        final day2 = DateTime.utc(2026, 10, 15, 9);
+        final c2 = await launch(api, day2, dayDesign: 'aube');
+        expect(c2.read(verseStylePrefsProvider).alwaysMine, isTrue);
+        expect(c2.read(currentVerseDesignProvider).id, 'or');
+
+        c2.dispose();
+        await _settle();
+      });
+
+      test('sans choix préalable : fige le design affiché ce jour-là', () async {
+        // Catalogue simulé : « or » et « aube » seulement.
+        final api = _Api()..serverStyle = noChoice();
+        final c = await launch(api, DateTime.utc(2026, 10, 14, 9), dayDesign: 'aube');
+        expect(c.read(currentVerseDesignProvider).id, 'aube');
+        c.read(verseStylePrefsProvider.notifier).setAlwaysMine(true);
+        expect(c.read(verseStylePrefsProvider).designId, 'aube');
+        await _settle(const Duration(milliseconds: 1300));
+        c.dispose();
+        final c2 = await launch(api, DateTime.utc(2026, 10, 16, 9), dayDesign: 'or');
+        expect(c2.read(currentVerseDesignProvider).id, 'aube');
+      });
+
+      test('désactivée : le lendemain, retour au design du jour', () async {
+        final api = _Api()..serverStyle = noChoice();
+        final c = await launch(api, DateTime.utc(2026, 10, 14, 9), dayDesign: 'nuit');
+        final n = c.read(verseStylePrefsProvider.notifier);
+        n.chooseDesign(verseDesignById('or')!);
+        n.setAlwaysMine(true);
+        n.setAlwaysMine(false);
+        await _settle(const Duration(milliseconds: 1300));
+        expect(api.puts.last['design_always'], isFalse);
+        c.dispose();
+        final c2 = await launch(api, DateTime.utc(2026, 10, 15, 9), dayDesign: 'aube');
+        expect(c2.read(currentVerseDesignProvider).id, 'aube');
+      });
+    });
+
     test('déconnexion : préférences locales effacées', () async {
       final api = _Api();
       final c = _container(api, verse: _verse(userStyle: api.serverStyle));

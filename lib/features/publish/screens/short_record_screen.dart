@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../l10n/app_localizations.dart';
 
 // ---------------------------------------------------------------------------
 // Entry-point widget
@@ -24,22 +25,39 @@ class ShortRecordScreen extends StatefulWidget {
 // ---------------------------------------------------------------------------
 
 class _Category {
-  const _Category(this.label, this.colors);
-  final String label;
+  const _Category(this.id, this.colors);
+  final String id;
   final List<Color> colors;
+
+  /// Libellé affiché, dans la langue courante.
+  String get label {
+    final l = L10n.current;
+    return switch (id) {
+      'guerison' => l.publishCategoryHealing,
+      'delivrance' => l.publishCategoryDeliverance,
+      'conversion' => l.publishCategoryConversion,
+      'mariage' => l.publishCategoryMarriage,
+      'famille' => l.publishCategoryFamily,
+      'finances' => l.publishCategoryFinances,
+      'miracles' => l.publishCategoryMiracles,
+      'protection' => l.publishCategoryProtection,
+      'ministere' => l.publishCategoryMinistry,
+      _ => l.publishCategorySalvation,
+    };
+  }
 }
 
 const _categories = <_Category>[
-  _Category('Guérison', AppColors.guerisonGradient),
-  _Category('Délivrance', AppColors.delivranceGradient),
-  _Category('Conversion', AppColors.conversionGradient),
-  _Category('Mariage', AppColors.mariageGradient),
-  _Category('Famille', AppColors.familleGradient),
-  _Category('Finances', AppColors.financesGradient),
-  _Category('Miracles', AppColors.miraclesGradient),
-  _Category('Protection', AppColors.protectionGradient),
-  _Category('Ministère', AppColors.ministereGradient),
-  _Category('Salut', AppColors.salutGradient),
+  _Category('guerison', AppColors.guerisonGradient),
+  _Category('delivrance', AppColors.delivranceGradient),
+  _Category('conversion', AppColors.conversionGradient),
+  _Category('mariage', AppColors.mariageGradient),
+  _Category('famille', AppColors.familleGradient),
+  _Category('finances', AppColors.financesGradient),
+  _Category('miracles', AppColors.miraclesGradient),
+  _Category('protection', AppColors.protectionGradient),
+  _Category('ministere', AppColors.ministereGradient),
+  _Category('salut', AppColors.salutGradient),
 ];
 
 // ---------------------------------------------------------------------------
@@ -114,8 +132,7 @@ class _ShortRecordScreenState extends State<ShortRecordScreen>
     if (!cameraStatus.isGranted || !micStatus.isGranted) {
       setState(() {
         _hasError = true;
-        _errorMessage =
-            'Accès à la caméra et au microphone requis.\nVeuillez autoriser ces permissions dans les paramètres.';
+        _errorMessage = L10n.current.publishShortPermissionsRequired;
       });
       return;
     }
@@ -125,7 +142,7 @@ class _ShortRecordScreenState extends State<ShortRecordScreen>
       if (_cameras.isEmpty) {
         setState(() {
           _hasError = true;
-          _errorMessage = 'Aucune caméra disponible sur cet appareil.';
+          _errorMessage = L10n.current.publishNoCamera;
         });
         return;
       }
@@ -140,7 +157,7 @@ class _ShortRecordScreenState extends State<ShortRecordScreen>
     } catch (e) {
       setState(() {
         _hasError = true;
-        _errorMessage = 'Erreur d\'initialisation de la caméra: $e';
+        _errorMessage = L10n.current.publishShortCameraInitError('$e');
       });
     }
   }
@@ -300,7 +317,7 @@ class _ShortRecordScreenState extends State<ShortRecordScreen>
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 32),
               child: Text(
-                _errorMessage ?? 'Une erreur s\'est produite.',
+                _errorMessage ?? context.l10n.publishShortGenericError,
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Colors.white70, fontSize: 15),
               ),
@@ -309,7 +326,7 @@ class _ShortRecordScreenState extends State<ShortRecordScreen>
             ElevatedButton.icon(
               onPressed: () => Navigator.of(context).pop(),
               icon: const Icon(Icons.arrow_back),
-              label: const Text('Retour'),
+              label: Text(context.l10n.commonBack),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
@@ -356,9 +373,9 @@ class _ShortRecordScreenState extends State<ShortRecordScreen>
               ),
             ),
             const SizedBox(height: 24),
-            const Text(
-              'Court Témoignage enregistré !',
-              style: TextStyle(
+            Text(
+              context.l10n.publishShortRecorded,
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -366,7 +383,7 @@ class _ShortRecordScreenState extends State<ShortRecordScreen>
             ),
             const SizedBox(height: 8),
             Text(
-              'Durée: $_elapsedSeconds seconde${_elapsedSeconds > 1 ? 's' : ''}',
+              context.l10n.publishShortDuration(_elapsedSeconds),
               style: const TextStyle(color: Colors.white54, fontSize: 14),
             ),
             const SizedBox(height: 48),
@@ -400,7 +417,7 @@ class _ShortRecordScreenState extends State<ShortRecordScreen>
                     child: OutlinedButton.icon(
                       onPressed: _resetRecording,
                       icon: const Icon(Icons.refresh),
-                      label: const Text('Reprendre'),
+                      label: Text(context.l10n.publishRetake),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.white,
                         side: const BorderSide(color: Colors.white54),
@@ -422,7 +439,7 @@ class _ShortRecordScreenState extends State<ShortRecordScreen>
                             'duration': _elapsedSeconds,
                           }),
                       icon: const Icon(Icons.check),
-                      label: const Text('Utiliser'),
+                      label: Text(context.l10n.publishUse),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.secondary,
                         foregroundColor: Colors.white,
@@ -552,9 +569,9 @@ class _ShortRecordScreenState extends State<ShortRecordScreen>
             const Spacer(),
 
             // Title
-            const Text(
-              'Short Témoignage',
-              style: TextStyle(
+            Text(
+              context.l10n.publishShortTitle,
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -627,8 +644,8 @@ class _ShortRecordScreenState extends State<ShortRecordScreen>
             // Hint text
             Text(
               _isRecording
-                  ? 'Appuyez pour arrêter'
-                  : 'Appuyez pour enregistrer',
+                  ? context.l10n.publishTapToStop
+                  : context.l10n.publishTapToRecord,
               style: const TextStyle(
                 color: Colors.white70,
                 fontSize: 12,

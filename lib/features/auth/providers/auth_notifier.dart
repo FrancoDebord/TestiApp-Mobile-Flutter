@@ -19,6 +19,7 @@ import '../../daily_verse/design/verse_style_prefs.dart' show VerseStylePrefsNot
 import '../../accounts/providers/acting_account_provider.dart'
     show actingAccountProvider, kActingAccountStorageKey, loadActingSnapshot;
 import '../services/social_auth_service.dart';
+import '../../../l10n/app_localizations.dart';
 
 const _kLocalDisplayName = 'local_display_name';
 
@@ -271,10 +272,10 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
 
       verificationFailed: (FirebaseAuthException e) {
         final message = switch (e.code) {
-          'invalid-phone-number'   => 'Numéro de téléphone invalide.',
-          'too-many-requests'      => 'Trop de tentatives. Réessayez dans quelques minutes.',
-          'quota-exceeded'         => 'Quota SMS dépassé. Réessayez plus tard.',
-          _                        => 'Erreur : ${e.message ?? e.code}',
+          'invalid-phone-number'   => L10n.current.authErrInvalidPhone,
+          'too-many-requests'      => L10n.current.authErrTooManyRequests,
+          'quota-exceeded'         => L10n.current.authErrSmsQuota,
+          _                        => L10n.current.authErrorWithDetail(e.message ?? e.code),
         };
         state = AsyncValue.error(message, StackTrace.current);
       },
@@ -648,7 +649,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     final userData     = data['user']          as Map<String, dynamic>?;
 
     if (accessToken == null || userData == null) {
-      throw Exception('Réponse serveur invalide.');
+      throw Exception(L10n.current.authErrInvalidServerResponse);
     }
 
     await _storage.write(key: AppConstants.keyAccessToken,  value: accessToken);
@@ -741,7 +742,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
 
     final user = UserModel(
       id: firebaseUser.uid,
-      displayName: firebaseUser.displayName ?? 'Utilisateur',
+      displayName: firebaseUser.displayName ?? L10n.current.authDefaultUserName,
       email: firebaseUser.email ?? '',
       phone: phoneNumber,
       role: UserRole.utilisateur,

@@ -2,6 +2,8 @@
 // Profile feature — domain models
 // =============================================================================
 
+import '../../../l10n/app_localizations.dart';
+
 // ---------------------------------------------------------------------------
 // Profil étendu (champs complémentaires stockés localement)
 // ---------------------------------------------------------------------------
@@ -33,7 +35,7 @@ class ProfileExtras {
 
   String get displayName {
     final name = '${firstName.trim()} ${lastName.trim()}'.trim();
-    return name.isEmpty ? 'Utilisateur' : name;
+    return name.isEmpty ? L10n.current.profileFallbackUser : name;
   }
 
   bool get hasPersonalInfo =>
@@ -104,13 +106,10 @@ class UserProfile {
   final bool         isPrivate;
   final ProfileExtras extras;
 
-  String get memberSinceLabel {
-    const months = [
-      'Janvier','Février','Mars','Avril','Mai','Juin',
-      'Juillet','Août','Septembre','Octobre','Novembre','Décembre',
-    ];
-    return 'Membre depuis ${months[memberSince.month - 1]} ${memberSince.year}';
-  }
+  String get memberSinceLabel => L10n.current.profileMemberSinceMonthYear(
+        '${memberSince.month}',
+        '${memberSince.year}',
+      );
 
   String get initials {
     final parts = displayName.trim().split(' ');
@@ -170,9 +169,9 @@ enum CommentPermission {
 
 extension CommentPermissionLabel on CommentPermission {
   String get label => switch (this) {
-    CommentPermission.everyone  => 'Tout le monde',
-    CommentPermission.followers => 'Mes abonnés',
-    CommentPermission.nobody    => 'Personne',
+    CommentPermission.everyone  => L10n.current.settingsCommentEveryone,
+    CommentPermission.followers => L10n.current.settingsCommentFollowers,
+    CommentPermission.nobody    => L10n.current.settingsCommentNobody,
   };
 }
 

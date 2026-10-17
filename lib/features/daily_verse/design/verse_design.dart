@@ -16,6 +16,8 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
+import '../../../l10n/app_localizations.dart';
+
 // ── Contraste (WCAG 2.x) ─────────────────────────────────────────────────────
 
 /// Rapport de contraste WCAG entre deux couleurs opaques (1 à 21).
@@ -408,14 +410,17 @@ enum VerseAccent {
 enum VerseMood { deep, light, dawn, night, minimal, warm }
 
 extension VerseMoodLabel on VerseMood {
-  String get label => switch (this) {
-        VerseMood.deep => 'Sombre profond',
-        VerseMood.light => 'Clair et lumineux',
-        VerseMood.dawn => 'Aube',
-        VerseMood.night => 'Nuit',
-        VerseMood.minimal => 'Sobre',
-        VerseMood.warm => 'Chaleureux',
-      };
+  String get label {
+    final l10n = L10n.current;
+    return switch (this) {
+      VerseMood.deep => l10n.verseMoodDeep,
+      VerseMood.light => l10n.verseMoodLight,
+      VerseMood.dawn => l10n.verseMoodDawn,
+      VerseMood.night => l10n.verseMoodNight,
+      VerseMood.minimal => l10n.verseMoodMinimal,
+      VerseMood.warm => l10n.verseMoodWarm,
+    };
+  }
 }
 
 /// Un design de verset : fond + mise en page. Les couleurs du texte sont
@@ -423,15 +428,37 @@ extension VerseMoodLabel on VerseMood {
 class VerseDesign {
   const VerseDesign({
     required this.id,
-    required this.name,
+    required String name,
     required this.mood,
     required this.layers,
     this.accent = VerseAccent.line,
-  });
+  }) : _name = name;
 
   /// Identifiant stable (préférences enregistrées).
   final String id;
-  final String name;
+
+  /// Nom français donné à la construction (repli d'un design inconnu).
+  final String _name;
+
+  /// Nom affiché, dans la langue courante (getter : suit un changement de langue).
+  String get name {
+    final l10n = L10n.current;
+    return switch (id) {
+      'aube' => l10n.verseDesignAube,
+      'nuit' => l10n.verseDesignNuit,
+      'ocean' => l10n.verseDesignOcean,
+      'lumiere' => l10n.verseDesignLumiere,
+      'braise' => l10n.verseDesignBraise,
+      'minimal' => l10n.verseDesignMinimal,
+      'vitrail' => l10n.verseDesignVitrail,
+      'crepuscule' => l10n.verseDesignCrepuscule,
+      'matin' => l10n.verseDesignMatin,
+      'or' => l10n.verseDesignOr,
+      'encre' => l10n.verseDesignEncre,
+      'ardoise' => l10n.verseDesignArdoise,
+      _ => _name,
+    };
+  }
   final VerseMood mood;
 
   /// Couches du fond, de la plus basse à la plus haute.
@@ -597,7 +624,7 @@ class ResolvedVerseDesign {
 final List<VerseDesign> kVerseDesigns = [
   VerseDesign(
     id: 'aube',
-    name: 'Aube',
+    name: 'Aube', // i18n-ignore : repli, voir [VerseDesign.name]
     mood: VerseMood.dawn,
     accent: VerseAccent.line,
     layers: (t) => [
@@ -610,7 +637,7 @@ final List<VerseDesign> kVerseDesigns = [
   ),
   VerseDesign(
     id: 'nuit',
-    name: 'Nuit étoilée',
+    name: 'Nuit étoilée', // i18n-ignore : repli, voir [VerseDesign.name]
     mood: VerseMood.night,
     accent: VerseAccent.none,
     layers: (t) => [
@@ -623,7 +650,7 @@ final List<VerseDesign> kVerseDesigns = [
   ),
   VerseDesign(
     id: 'ocean',
-    name: 'Océan profond',
+    name: 'Océan profond', // i18n-ignore : repli, voir [VerseDesign.name]
     mood: VerseMood.deep,
     accent: VerseAccent.quote,
     layers: (t) => [
@@ -636,7 +663,7 @@ final List<VerseDesign> kVerseDesigns = [
   ),
   VerseDesign(
     id: 'lumiere',
-    name: 'Lumière douce',
+    name: 'Lumière douce', // i18n-ignore : repli, voir [VerseDesign.name]
     mood: VerseMood.light,
     accent: VerseAccent.line,
     layers: (t) => [
@@ -648,7 +675,7 @@ final List<VerseDesign> kVerseDesigns = [
   ),
   VerseDesign(
     id: 'braise',
-    name: 'Braise',
+    name: 'Braise', // i18n-ignore : repli, voir [VerseDesign.name]
     mood: VerseMood.warm,
     accent: VerseAccent.quote,
     layers: (t) => [
@@ -663,7 +690,7 @@ final List<VerseDesign> kVerseDesigns = [
   ),
   VerseDesign(
     id: 'minimal',
-    name: 'Minimal',
+    name: 'Minimal', // i18n-ignore : repli, voir [VerseDesign.name]
     mood: VerseMood.minimal,
     accent: VerseAccent.line,
     layers: (t) => [
@@ -673,7 +700,7 @@ final List<VerseDesign> kVerseDesigns = [
   ),
   VerseDesign(
     id: 'vitrail',
-    name: 'Vitrail',
+    name: 'Vitrail', // i18n-ignore : repli, voir [VerseDesign.name]
     mood: VerseMood.deep,
     accent: VerseAccent.line,
     layers: (t) => [
@@ -685,7 +712,7 @@ final List<VerseDesign> kVerseDesigns = [
   ),
   VerseDesign(
     id: 'crepuscule',
-    name: 'Crépuscule',
+    name: 'Crépuscule', // i18n-ignore : repli, voir [VerseDesign.name]
     mood: VerseMood.dawn,
     accent: VerseAccent.none,
     layers: (t) => [
@@ -700,7 +727,7 @@ final List<VerseDesign> kVerseDesigns = [
   ),
   VerseDesign(
     id: 'matin',
-    name: 'Matin clair',
+    name: 'Matin clair', // i18n-ignore : repli, voir [VerseDesign.name]
     mood: VerseMood.light,
     accent: VerseAccent.quote,
     layers: (t) => [
@@ -712,7 +739,7 @@ final List<VerseDesign> kVerseDesigns = [
   ),
   VerseDesign(
     id: 'or',
-    name: 'Or doux',
+    name: 'Or doux', // i18n-ignore : repli, voir [VerseDesign.name]
     mood: VerseMood.warm,
     accent: VerseAccent.line,
     layers: (t) => [
@@ -725,7 +752,7 @@ final List<VerseDesign> kVerseDesigns = [
   ),
   VerseDesign(
     id: 'encre',
-    name: 'Encre',
+    name: 'Encre', // i18n-ignore : repli, voir [VerseDesign.name]
     mood: VerseMood.deep,
     accent: VerseAccent.quote,
     layers: (t) => [
@@ -736,7 +763,7 @@ final List<VerseDesign> kVerseDesigns = [
   ),
   VerseDesign(
     id: 'ardoise',
-    name: 'Ardoise',
+    name: 'Ardoise', // i18n-ignore : repli, voir [VerseDesign.name]
     mood: VerseMood.minimal,
     accent: VerseAccent.line,
     layers: (t) => [

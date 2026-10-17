@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_constants.dart';
 import '../../services/api_service.dart';
+import '../../l10n/app_localizations.dart';
 
 /// Informations d'un partage dans un fil (élément de GET /feed ou GET /users/{id}/reposts).
 class RepostInfo {
@@ -36,7 +37,7 @@ class RepostInfo {
     return RepostInfo(
       id: raw['repostId']?.toString(),
       byId: by['id']?.toString() ?? '',
-      byName: (by['displayName'] ?? by['display_name'])?.toString() ?? 'Quelqu’un',
+      byName: (by['displayName'] ?? by['display_name'])?.toString() ?? L10n.current.repostSomeone,
       byAvatarUrl: (by['avatarUrl'] ?? by['avatar_url'])?.toString(),
       comment: comment is String && comment.trim().isNotEmpty ? comment.trim() : null,
       at: raw['repostedAt'] is String ? DateTime.tryParse(raw['repostedAt'] as String) : null,
@@ -53,7 +54,7 @@ RepostInfo? repostInfoFromContent(Object? raw) {
   return RepostInfo(
     id: raw['id']?.toString(),
     byId: by['id']?.toString() ?? '',
-    byName: (by['displayName'] ?? by['display_name'])?.toString() ?? 'Quelqu’un',
+    byName: (by['displayName'] ?? by['display_name'])?.toString() ?? L10n.current.repostSomeone,
     byAvatarUrl: (by['avatarUrl'] ?? by['avatar_url'])?.toString(),
     comment: comment is String && comment.trim().isNotEmpty ? comment.trim() : null,
     at: raw['createdAt'] is String ? DateTime.tryParse(raw['createdAt'] as String) : null,
@@ -82,7 +83,7 @@ class RepostRepository {
       data: {if (c != null && c.isNotEmpty) 'comment': c},
     );
     return RepostResult(
-      message: (res.message ?? '').isNotEmpty ? res.message! : 'Témoignage partagé avec vos abonnés.',
+      message: (res.message ?? '').isNotEmpty ? res.message! : L10n.current.repostTestimonyShared,
       reposted: true,
       count: _count(res.data),
     );
@@ -92,7 +93,7 @@ class RepostRepository {
   Future<RepostResult> remove(String testimonyId) async {
     final res = await _api.delete<dynamic>(AppConstants.testimonyRepost(testimonyId));
     return RepostResult(
-      message: (res.message ?? '').isNotEmpty ? res.message! : 'Partage annulé.',
+      message: (res.message ?? '').isNotEmpty ? res.message! : L10n.current.repostCancelled,
       reposted: false,
       count: _count(res.data),
     );

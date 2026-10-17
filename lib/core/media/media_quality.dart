@@ -15,6 +15,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 
 import '../../features/home/models/testimony_model.dart';
 import 'playback_preferences.dart';
+import '../../l10n/app_localizations.dart';
 
 /// Résultat du choix : URL à lire + libellé de la version choisie.
 class ResolvedMedia {
@@ -49,7 +50,7 @@ abstract final class OfflineMedia {
   static LocalMediaLookup? lookup;
 
   /// Libellé de la version lue quand le fichier est local.
-  static const String label = 'Hors ligne';
+  static String get label => L10n.current.mediaOffline;
 
   /// `true` pour un chemin de fichier local absolu (pas une URL réseau).
   static bool isLocalPath(String? source) {
@@ -126,13 +127,13 @@ ResolvedMedia? _resolve({
   final r = _bestUnder(renditions, cap);
   if (r != null) return ResolvedMedia(url: r.url, label: r.label, rendition: r);
   if (original == null || original.isEmpty) return null;
-  return ResolvedMedia(url: original, label: 'Originale');
+  return ResolvedMedia(url: original, label: L10n.current.mediaOriginal);
 }
 
 // ── Vidéo ────────────────────────────────────────────────────────────────────
 
 /// Libellé de la version lue quand c'est le flux HLS adaptatif (mode Auto).
-const String kAdaptiveLabel = 'Auto';
+String get kAdaptiveLabel => L10n.current.qualityAuto;
 
 /// Choisit la version vidéo à lire. [override] = choix manuel ponctuel
 /// (menu « Qualité » du lecteur), prioritaire sur la préférence du réseau en

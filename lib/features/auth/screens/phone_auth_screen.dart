@@ -18,6 +18,8 @@ import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_logo.dart';
 import '../providers/auth_notifier.dart';
 import '../widgets/auth_widgets.dart';
+import '../../../core/data/countries.dart' show kCountries;
+import '../../../l10n/app_localizations.dart';
 
 // ── Constantes ─────────────────────────────────────────────────────────────────
 
@@ -27,33 +29,49 @@ const _kGold   = AppColors.secondary;
 // ── Indicatifs pays ─────────────────────────────────────────────────────────────
 
 class _Country {
-  const _Country(this.name, this.flag, this.code);
+  const _Country(this.name, this.flag, this.code, [this.iso]);
+
+  /// Nom français : valeur enregistrée (envoyée au serveur).
   final String name, flag, code;
+
+  /// Code ISO (« bj ») pour le nom anglais ; null pour « Autre ».
+  final String? iso;
+
+  /// Nom dans la langue affichée.
+  String get displayName {
+    final iso = this.iso;
+    if (iso == null) return L10n.current.authCountryOther;
+    if (L10n.languageCode != 'en') return name;
+    for (final c in kCountries) {
+      if (c.code == iso) return c.nameEn;
+    }
+    return name;
+  }
 }
 
 const _countries = [
-  _Country('Bénin',           '🇧🇯', '+229'),
-  _Country("Côte d'Ivoire",   '🇨🇮', '+225'),
-  _Country('Cameroun',        '🇨🇲', '+237'),
-  _Country('Sénégal',         '🇸🇳', '+221'),
-  _Country('Mali',            '🇲🇱', '+223'),
-  _Country('Burkina Faso',    '🇧🇫', '+226'),
-  _Country('Guinée',          '🇬🇳', '+224'),
-  _Country('Togo',            '🇹🇬', '+228'),
-  _Country('RDC',             '🇨🇩', '+243'),
-  _Country('Congo',           '🇨🇬', '+242'),
-  _Country('Gabon',           '🇬🇦', '+241'),
-  _Country('Nigeria',         '🇳🇬', '+234'),
-  _Country('Ghana',           '🇬🇭', '+233'),
-  _Country('Rwanda',          '🇷🇼', '+250'),
-  _Country('Kenya',           '🇰🇪', '+254'),
-  _Country('Éthiopie',        '🇪🇹', '+251'),
-  _Country('Madagascar',      '🇲🇬', '+261'),
-  _Country('France',          '🇫🇷', '+33'),
-  _Country('Belgique',        '🇧🇪', '+32'),
-  _Country('Canada',          '🇨🇦', '+1'),
-  _Country('États-Unis',      '🇺🇸', '+1'),
-  _Country('Autre',           '🌍', '+'),
+  _Country('Bénin',           '🇧🇯', '+229', 'bj'), // i18n-ignore
+  _Country("Côte d'Ivoire",   '🇨🇮', '+225', 'ci'), // i18n-ignore
+  _Country('Cameroun',        '🇨🇲', '+237', 'cm'), // i18n-ignore
+  _Country('Sénégal',         '🇸🇳', '+221', 'sn'), // i18n-ignore
+  _Country('Mali',            '🇲🇱', '+223', 'ml'), // i18n-ignore
+  _Country('Burkina Faso',    '🇧🇫', '+226', 'bf'), // i18n-ignore
+  _Country('Guinée',          '🇬🇳', '+224', 'gn'), // i18n-ignore
+  _Country('Togo',            '🇹🇬', '+228', 'tg'), // i18n-ignore
+  _Country('RDC',             '🇨🇩', '+243', 'cd'), // i18n-ignore
+  _Country('Congo',           '🇨🇬', '+242', 'cg'), // i18n-ignore
+  _Country('Gabon',           '🇬🇦', '+241', 'ga'), // i18n-ignore
+  _Country('Nigeria',         '🇳🇬', '+234', 'ng'), // i18n-ignore
+  _Country('Ghana',           '🇬🇭', '+233', 'gh'), // i18n-ignore
+  _Country('Rwanda',          '🇷🇼', '+250', 'rw'), // i18n-ignore
+  _Country('Kenya',           '🇰🇪', '+254', 'ke'), // i18n-ignore
+  _Country('Éthiopie',        '🇪🇹', '+251', 'et'), // i18n-ignore
+  _Country('Madagascar',      '🇲🇬', '+261', 'mg'), // i18n-ignore
+  _Country('France',          '🇫🇷', '+33', 'fr'), // i18n-ignore
+  _Country('Belgique',        '🇧🇪', '+32', 'be'), // i18n-ignore
+  _Country('Canada',          '🇨🇦', '+1', 'ca'), // i18n-ignore
+  _Country('États-Unis',      '🇺🇸', '+1', 'us'), // i18n-ignore
+  _Country('Autre',           '🌍', '+'), // i18n-ignore
 ];
 
 // ── Screen ─────────────────────────────────────────────────────────────────────
@@ -83,7 +101,7 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
   Future<void> _sendOtp() async {
     final number = _phoneCtrl.text.trim();
     if (number.isEmpty) {
-      setState(() => _error = 'Entrez votre numéro de téléphone');
+      setState(() => _error = context.l10n.authPhoneError);
       return;
     }
 
@@ -132,7 +150,7 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
                     const AppLogo(markSize: 72, titleSize: 24),
                     const SizedBox(height: 8),
                     Text(
-                      'Partagez les œuvres de Dieu',
+                      context.l10n.authTagline,
                       textAlign: TextAlign.center,
                       style: AppTextStyles.bodyMedium
                           .copyWith(color: AppColors.textSecondary),
@@ -156,16 +174,16 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text(
-                      'Entrez votre numéro',
-                      style: TextStyle(
+                    Text(
+                      context.l10n.authPhoneTitle,
+                      style: const TextStyle(
                         fontFamily: AppFonts.family, fontWeight: FontWeight.w600,
                         fontSize: 20, color: AppColors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'Nous vous enverrons un code de vérification par SMS.',
+                      context.l10n.authPhoneSubtitle,
                       style: TextStyle(
                         fontFamily: AppFonts.family, fontSize: 14,
                         color: AppColors.textSecondary, height: 1.5,
@@ -259,7 +277,7 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
                       child: _isLoading
                           ? const SizedBox(width: 22, height: 22,
                               child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                          : const Text('Continuer', style: TextStyle(
+                          : Text(context.l10n.authContinue, style: const TextStyle(
                               fontFamily: AppFonts.family, fontWeight: FontWeight.w600,
                               fontSize: 16, color: Colors.white)),
                     ),
@@ -270,7 +288,7 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
 
                     // ── Social ────────────────────────────────────────────────
                     AppButton(
-                      label: 'Continuer avec Google',
+                      label: context.l10n.authContinueWithGoogle,
                       variant: AppButtonVariant.outline,
                       leading: const GoogleGMark(size: 20),
                       fullWidth: true,
@@ -316,7 +334,7 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
                 decoration: BoxDecoration(color: AppColors.border,
                     borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 16),
-            const Text('Choisir un pays', style: TextStyle(
+            Text(context.l10n.authPickCountry, style: const TextStyle(
                 fontFamily: AppFonts.family, fontWeight: FontWeight.w600, fontSize: 16)),
             const SizedBox(height: 8),
             Expanded(
@@ -327,7 +345,7 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
                   final c = _countries[i];
                   return ListTile(
                     leading: Text(c.flag, style: const TextStyle(fontSize: 24)),
-                    title: Text(c.name, style: const TextStyle(fontFamily: AppFonts.family)),
+                    title: Text(c.displayName, style: const TextStyle(fontFamily: AppFonts.family)),
                     trailing: Text(c.code, style: const TextStyle(
                         color: AppColors.primary, fontWeight: FontWeight.w600)),
                     onTap: () {
@@ -429,7 +447,7 @@ class _OtpScreenState extends ConsumerState<_OtpScreen> {
       );
     } catch (e) {
       if (mounted) {
-        setState(() { _error = 'Code incorrect. Réessayez.'; _isLoading = false; });
+        setState(() { _error = context.l10n.authOtpError; _isLoading = false; });
         for (final c in _controllers) { c.clear(); }
         _focusNodes.first.requestFocus();
       }
@@ -460,9 +478,9 @@ class _OtpScreenState extends ConsumerState<_OtpScreen> {
       body: Column(
         children: [
           // Header
-          const Expanded(
+          Expanded(
             child: Center(
-              child: Text('Vérification', style: TextStyle(
+              child: Text(context.l10n.authVerification, style: const TextStyle(
                 fontFamily: AppFonts.family, fontWeight: FontWeight.w700,
                 fontSize: 26, color: AppColors.primary,
               )),
@@ -482,7 +500,7 @@ class _OtpScreenState extends ConsumerState<_OtpScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    'Code envoyé au ${widget.phoneNumber}',
+                    context.l10n.authCodeSentToPhone(widget.phoneNumber),
                     style: const TextStyle(fontFamily: AppFonts.family, fontSize: 14,
                         color: AppColors.textSecondary),
                     textAlign: TextAlign.center,
@@ -571,7 +589,7 @@ class _OtpScreenState extends ConsumerState<_OtpScreen> {
                     child: _isLoading
                         ? const SizedBox(width: 22, height: 22,
                             child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                        : const Text('Confirmer', style: TextStyle(
+                        : Text(context.l10n.commonConfirm, style: const TextStyle(
                             fontFamily: AppFonts.family, fontWeight: FontWeight.w600,
                             fontSize: 16, color: Colors.white)),
                   ),
@@ -583,8 +601,8 @@ class _OtpScreenState extends ConsumerState<_OtpScreen> {
                       onPressed: _secondsLeft == 0 ? _resend : null,
                       child: Text(
                         _secondsLeft > 0
-                            ? 'Renvoyer dans 0:${_secondsLeft.toString().padLeft(2, '0')}'
-                            : 'Renvoyer le code',
+                            ? context.l10n.authResendIn('0:${_secondsLeft.toString().padLeft(2, '0')}')
+                            : context.l10n.authResend,
                         style: TextStyle(
                           fontFamily: AppFonts.family, fontSize: 14,
                           color: _secondsLeft > 0 ? AppColors.textSecondary : _kPrimary,
@@ -621,7 +639,7 @@ class _ProfileScreen extends ConsumerStatefulWidget {
 class _ProfileScreenState extends ConsumerState<_ProfileScreen> {
   final _firstNameCtrl = TextEditingController();
   final _lastNameCtrl  = TextEditingController();
-  String _country = "Côte d'Ivoire";
+  String _country = "Côte d'Ivoire"; // i18n-ignore (valeur enregistrée)
   bool _isLoading = false;
   String? _error;
 
@@ -634,7 +652,7 @@ class _ProfileScreenState extends ConsumerState<_ProfileScreen> {
 
   Future<void> _submit() async {
     if (_firstNameCtrl.text.trim().isEmpty || _lastNameCtrl.text.trim().isEmpty) {
-      setState(() => _error = 'Entrez votre prénom et votre nom');
+      setState(() => _error = context.l10n.authNameError);
       return;
     }
 
@@ -675,11 +693,11 @@ class _ProfileScreenState extends ConsumerState<_ProfileScreen> {
                       child: const Center(child: Text('🙏', style: TextStyle(fontSize: 28))),
                     ),
                     const SizedBox(height: 12),
-                    const Text('Bienvenue !', style: TextStyle(
+                    Text(context.l10n.authWelcomeNew, style: const TextStyle(
                         fontFamily: AppFonts.family, fontWeight: FontWeight.w700,
                         fontSize: 24, color: AppColors.primary)),
                     const SizedBox(height: 4),
-                    Text('Complétez votre profil pour commencer',
+                    Text(context.l10n.authCompleteProfile,
                         style: TextStyle(fontFamily: AppFonts.family, fontSize: 13,
                             color: AppColors.textSecondary)),
                   ],
@@ -713,16 +731,18 @@ class _ProfileScreenState extends ConsumerState<_ProfileScreen> {
                       ),
                     ],
 
-                    _buildField('Prénom', _firstNameCtrl, 'Marie'),
+                    _buildField(context.l10n.authFirstNameLabel, _firstNameCtrl,
+                        context.l10n.authFirstNameHintFemale),
                     const SizedBox(height: 16),
-                    _buildField('Nom', _lastNameCtrl, 'Dupont'),
+                    _buildField(context.l10n.authLastNameLabel, _lastNameCtrl,
+                        context.l10n.authLastNameHint),
                     const SizedBox(height: 16),
 
                     // Pays
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Pays', style: TextStyle(
+                        Text(context.l10n.authCountryLabel, style: const TextStyle(
                             fontFamily: AppFonts.family, fontWeight: FontWeight.w500,
                             fontSize: 14, color: AppColors.textPrimary)),
                         const SizedBox(height: 6),
@@ -738,7 +758,7 @@ class _ProfileScreenState extends ConsumerState<_ProfileScreen> {
                           ),
                           items: _countries.map((c) => DropdownMenuItem(
                             value: c.name,
-                            child: Text('${c.flag}  ${c.name}'),
+                            child: Text('${c.flag}  ${c.displayName}'),
                           )).toList(),
                           onChanged: (v) => setState(() => _country = v!),
                         ),
@@ -757,7 +777,7 @@ class _ProfileScreenState extends ConsumerState<_ProfileScreen> {
                       child: _isLoading
                           ? const SizedBox(width: 22, height: 22,
                               child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                          : const Text("C'est parti !", style: TextStyle(
+                          : Text(context.l10n.authLetsGo, style: const TextStyle(
                               fontFamily: AppFonts.family, fontWeight: FontWeight.w600,
                               fontSize: 16, color: Colors.white)),
                     ),

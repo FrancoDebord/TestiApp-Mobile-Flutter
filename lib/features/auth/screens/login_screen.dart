@@ -14,6 +14,7 @@ import '../providers/auth_notifier.dart';
 import '../widgets/auth_widgets.dart';
 import 'forgot_password_screen.dart';
 import 'phone_auth_screen.dart';
+import '../../../l10n/app_localizations.dart';
 
 // =============================================================================
 // CONNEXION / INSCRIPTION (maquette, écran 3)
@@ -63,19 +64,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   String? _validateEmail(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Veuillez saisir votre adresse e-mail';
+      return context.l10n.authValidateEmail;
     }
     final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
-    if (!emailRegex.hasMatch(value.trim())) return 'Adresse e-mail invalide';
+    if (!emailRegex.hasMatch(value.trim())) return context.l10n.authInvalidEmail;
     return null;
   }
 
   String? _validatePassword(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Veuillez saisir votre mot de passe';
+      return context.l10n.authValidatePwd;
     }
     if (value.length < 8) {
-      return 'Le mot de passe doit contenir au moins 8 caractères';
+      return context.l10n.authPwdMin8;
     }
     return null;
   }
@@ -102,7 +103,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 : e.toString();
         setState(() => _errorMessage = msg.isNotEmpty
             ? msg
-            : 'Identifiants incorrects. Vérifiez votre e-mail et mot de passe.');
+            : context.l10n.authWrongCredentials);
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -225,7 +226,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         const Center(child: AppLogo(markSize: 90, titleSize: 30)),
         const SizedBox(height: AppSpacing.md),
         Text(
-          'Rejoignez une communauté qui partage la gloire de Dieu.',
+          context.l10n.authJoinTagline,
           textAlign: TextAlign.center,
           style: AppTextStyles.bodyMedium
               .copyWith(color: AppColors.textSecondary, height: 1.5),
@@ -233,14 +234,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         const SizedBox(height: AppSpacing.xxxl),
         _errorBanner(),
         AppButton(
-          label: 'Se connecter avec numéro',
+          label: context.l10n.authSignInWithPhone,
           leadingIcon: Icons.phone_rounded,
           fullWidth: true,
           onPressed: isLoading ? null : _openPhoneAuth,
         ),
         const SizedBox(height: AppSpacing.md),
         AppButton(
-          label: 'Se connecter avec Google',
+          label: context.l10n.authSignInWithGoogle,
           variant: AppButtonVariant.outline,
           leading: const GoogleGMark(size: 20),
           fullWidth: true,
@@ -249,7 +250,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
         const SizedBox(height: AppSpacing.md),
         AppButton(
-          label: 'Se connecter avec Email',
+          label: context.l10n.authSignInWithEmail,
           variant: AppButtonVariant.outline,
           leadingIcon: Icons.mail_outline_rounded,
           fullWidth: true,
@@ -275,10 +276,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         //   ),
         // ),
         const SizedBox(height: AppSpacing.md),
-        const AuthOrDivider(label: 'Ou continuer sans compte'),
+        AuthOrDivider(label: context.l10n.authOrContinueWithoutAccount),
         const SizedBox(height: AppSpacing.lg),
         AppButton(
-          label: 'Mode invité',
+          label: context.l10n.authGuestMode,
           variant: AppButtonVariant.accent,
           leadingIcon: Icons.explore_outlined,
           fullWidth: true,
@@ -302,8 +303,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           AuthScreenHeader(
-            title: 'Connexion par e-mail',
-            subtitle: 'Connectez-vous à votre compte',
+            title: context.l10n.authEmailSignInTitle,
+            subtitle: context.l10n.authSignInSubtitle,
             onBack: isLoading
                 ? null
                 : () => setState(() {
@@ -315,8 +316,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           _errorBanner(),
           AuthTextField(
             controller: _emailController,
-            label: 'Adresse e-mail',
-            hint: 'exemple@email.com',
+            label: context.l10n.authEmailLabel,
+            hint: context.l10n.authEmailHint,
             prefixIcon: Icons.mail_outline_rounded,
             keyboardType: TextInputType.emailAddress,
             textInputAction: TextInputAction.next,
@@ -326,7 +327,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           const SizedBox(height: AppSpacing.lg),
           AuthTextField(
             controller: _passwordController,
-            label: 'Mot de passe',
+            label: context.l10n.authPasswordLabel,
             hint: '••••••••',
             prefixIcon: Icons.lock_outline_rounded,
             obscureText: _obscurePassword,
@@ -335,8 +336,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             enabled: !isLoading,
             suffixIcon: IconButton(
               tooltip: _obscurePassword
-                  ? 'Afficher le mot de passe'
-                  : 'Masquer le mot de passe',
+                  ? context.l10n.authShowPassword
+                  : context.l10n.authHidePassword,
               icon: Icon(
                 _obscurePassword
                     ? Icons.visibility_off_outlined
@@ -355,7 +356,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             child: TextButton(
               onPressed: isLoading ? null : _openForgotPassword,
               child: Text(
-                'Mot de passe oublié ?',
+                context.l10n.authForgotPassword,
                 style: AppTextStyles.labelSmall.copyWith(
                     color: AppColors.primary, fontWeight: FontWeight.w600),
               ),
@@ -363,16 +364,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
           const SizedBox(height: AppSpacing.lg),
           AppButton(
-            label: 'Se connecter',
+            label: context.l10n.authSignIn,
             fullWidth: true,
             isLoading: isLoading && !_googleLoading,
             onPressed: isLoading ? null : _submit,
           ),
           const SizedBox(height: AppSpacing.lg),
-          const AuthOrDivider(label: 'ou'),
+          AuthOrDivider(label: context.l10n.authOr),
           const SizedBox(height: AppSpacing.lg),
           AppButton(
-            label: 'Continuer avec Google',
+            label: context.l10n.authContinueWithGoogle,
             variant: AppButtonVariant.outline,
             leading: const GoogleGMark(size: 20),
             fullWidth: true,
@@ -403,7 +404,7 @@ class _RegisterLink extends StatelessWidget {
       alignment: WrapAlignment.center,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        Text('Pas encore de compte ? ',
+        Text('${context.l10n.authNoAccount} ',
             style: AppTextStyles.bodyMedium
                 .copyWith(color: AppColors.textSecondary)),
         InkWell(
@@ -412,7 +413,7 @@ class _RegisterLink extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
             child: Text(
-              "S'inscrire",
+              context.l10n.authSignUp,
               style: AppTextStyles.bodyMedium.copyWith(
                   color: AppColors.secondary, fontWeight: FontWeight.w700),
             ),

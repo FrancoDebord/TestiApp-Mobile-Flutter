@@ -45,6 +45,7 @@ import '../../profile/providers/profile_provider.dart'
 import '../../testimony/providers/testimony_refresh.dart'
     show testimonyReloaderProvider;
 import 'video_upload_models.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Client TUS dont l'empreinte (clé du cache persistant) est la vidéo Bunny :
 /// stable d'un lancement à l'autre, quel que soit le nom du fichier.
@@ -132,7 +133,7 @@ class VideoUploadController extends Notifier<VideoUploadState?> {
     String? replacesTestimonyId,
   }) async {
     if (_job != null) {
-      throw StateError('Un envoi de vidéo est déjà en cours.');
+      throw StateError(L10n.current.uploadAlreadyRunning);
     }
     _job = VideoUploadJob(
       sourcePath: sourcePath,
@@ -215,7 +216,7 @@ class VideoUploadController extends Notifier<VideoUploadState?> {
         testimonyId: job.testimonyId,
         error: job.isInitialized
             ? null
-            : 'L’envoi de votre vidéo a été interrompu.',
+            : L10n.current.uploadInterrupted,
       );
       // Témoignage déjà créé : on reprend tout seul ; sinon « Réessayer ».
       if (job.isInitialized) unawaited(_run());
@@ -254,7 +255,7 @@ class VideoUploadController extends Notifier<VideoUploadState?> {
     } catch (e, st) {
       if (_cancelled) return;
       debugPrint('VideoUpload ✗ $e\n$st');
-      _fail('Une erreur inattendue est survenue.');
+      _fail(L10n.current.uploadUnexpectedError);
     } finally {
       _running = false;
     }
@@ -266,8 +267,7 @@ class VideoUploadController extends Notifier<VideoUploadState?> {
 
   void _waitForNetwork() {
     if (_autoRetries >= _maxAutoRetries) {
-      _fail('La connexion est trop instable pour envoyer la vidéo. '
-          'Vérifiez votre réseau puis réessayez : l’envoi reprendra là où il s’était arrêté.');
+      _fail(L10n.current.uploadConnectionUnstable);
       return;
     }
     state = state?.copyWith(phase: VideoUploadPhase.waitingNetwork, error: null);
@@ -313,8 +313,7 @@ class VideoUploadController extends Notifier<VideoUploadState?> {
     if (_cancelled) throw const _Cancelled();
     final out = info?.path;
     if (out == null || !await File(out).exists()) {
-      throw const _UploadFailure(
-          'La compression de la vidéo a échoué. Réessayez, ou choisissez une autre vidéo.');
+      throw _UploadFailure(L10n.current.uploadCompressionFailed);
     }
     // Compression inutile (vidéo déjà légère) : on envoie l'original.
     final source = File(job.sourcePath);
@@ -348,7 +347,7 @@ class VideoUploadController extends Notifier<VideoUploadState?> {
     }
     job.applyInit(data);
     if (!job.isInitialized) {
-      throw const _UploadFailure('Réponse inattendue du serveur.');
+      throw _UploadFailure(L10n.current.uploadUnexpectedResponse);
     }
     // Annulé pendant la création : le témoignage créé entre-temps est retiré.
     if (_cancelled) {
@@ -390,8 +389,7 @@ class VideoUploadController extends Notifier<VideoUploadState?> {
   Future<void> _upload(VideoUploadJob job) async {
     _setPhase(VideoUploadPhase.uploading, state?.progress ?? 0);
     if (!await File(job.uploadPath).exists()) {
-      throw const _UploadFailure(
-          'Le fichier vidéo est introuvable sur l’appareil. Annulez puis publiez-le à nouveau.');
+      throw _UploadFailure(L10n.current.uploadFileMissing);
     }
     if (job.signatureExpiresSoon) await _refreshSignature(job);
 
@@ -455,8 +453,8 @@ class VideoUploadController extends Notifier<VideoUploadState?> {
         throw const _NetworkInterruption();
       }
       throw _UploadFailure(code == 401 || code == 403
-          ? 'L’autorisation d’envoi a été refusée. Réessayez dans quelques instants.'
-          : 'Le serveur vidéo a refusé l’envoi (erreur $code).');
+          ? L10n.current.uploadAuthorizationRefused
+          : L10n.current.uploadServerRefused(code));
     }
     job.uploadDone = true;
     _tus?.close();
@@ -550,7 +548,7 @@ class VideoUploadController extends Notifier<VideoUploadState?> {
     if (network) return const _NetworkInterruption();
     final body = e.response?.data;
     final msg = body is Map ? body['message'] as String? : null;
-    return _UploadFailure(msg ?? 'Erreur du serveur ($code).');
+    return _UploadFailure(msg ?? L10n.current.journalServerError(code));
   }
 
   Future<String> _uploadDir() async {

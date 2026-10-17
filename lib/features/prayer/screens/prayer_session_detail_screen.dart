@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/guest_gate.dart' show requireAccount;
 import '../data/prayer_repository.dart';
 import '../models/prayer_models.dart';
@@ -48,9 +49,10 @@ class _PrayerSessionDetailScreenState extends ConsumerState<PrayerSessionDetailS
   }
 
   Future<void> _toggleRegistration(PrayerSession s) async {
-    if (!await requireAccount(context, ref, reason: "vous inscrire à la session")) return;
+    if (!await requireAccount(context, ref, reason: context.l10n.prayerReasonRegister)) return;
+    if (!mounted) return;
     await _run(() => _repo.setRegistered(_id, !s.isRegistered),
-        s.isRegistered ? 'Inscription retirée.' : "Inscription enregistrée : vous serez prévenu à l'ouverture de la salle.");
+        s.isRegistered ? context.l10n.prayerRegistrationRemoved : context.l10n.prayerRegistrationSaved);
   }
 
   /// Hôte : ouvre (ou reprend) la salle puis le studio du direct.
@@ -81,7 +83,7 @@ class _PrayerSessionDetailScreenState extends ConsumerState<PrayerSessionDetailS
           title: Text(title),
           content: Text(text),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Retour')),
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(context.l10n.commonBack)),
             FilledButton(
               style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
               onPressed: () => Navigator.pop(ctx, true),
@@ -93,20 +95,21 @@ class _PrayerSessionDetailScreenState extends ConsumerState<PrayerSessionDetailS
       true;
 
   Future<void> _menu(String action, PrayerSession s) async {
+    final l10n = context.l10n;
     switch (action) {
       case 'edit':
         await context.push('/prayer-sessions/${s.id}/edit');
       case 'cancel':
-        if (await _confirm('Annuler la session ?', 'Elle restera visible comme « Annulée » ; la salle sera fermée.', 'Annuler la session')) {
-          await _run(() => _repo.cancelSession(_id), 'Session annulée.');
+        if (await _confirm(l10n.prayerCancelSessionTitle, l10n.prayerCancelSessionBody, l10n.prayerCancelSession)) {
+          await _run(() => _repo.cancelSession(_id), l10n.prayerSessionCancelled);
         }
       case 'delete':
-        if (await _confirm('Supprimer la session ?', 'La session sera supprimée et sa salle fermée si elle est ouverte.', 'Supprimer')) {
+        if (await _confirm(l10n.prayerDeleteSessionTitle, l10n.prayerDeleteSessionBody, l10n.commonDelete)) {
           try {
             await _repo.deleteSession(_id);
             ref.invalidate(prayerSessionListProvider);
             if (!mounted) return;
-            _snack('Session supprimée.');
+            _snack(l10n.prayerSessionDeleted);
             context.pop();
           } on PrayerFailure catch (e) {
             if (mounted) _snack(e.message);
@@ -123,7 +126,7 @@ class _PrayerSessionDetailScreenState extends ConsumerState<PrayerSessionDetailS
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Session de prière'),
+        title: Text(context.l10n.prayerSessionDefaultTitle),
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.textPrimary,
         surfaceTintColor: AppColors.surface,
@@ -133,13 +136,21 @@ class _PrayerSessionDetailScreenState extends ConsumerState<PrayerSessionDetailS
             PopupMenuButton<String>(
               onSelected: (v) => _menu(v, s),
               itemBuilder: (_) => [
-                if (s.canEdit) const PopupMenuItem(value: 'edit', child: ListTile(leading: Icon(Icons.edit_outlined), title: Text('Modifier'))),
+                if (s.canEdit)
+                  PopupMenuItem(
+                      value: 'edit',
+                      child: ListTile(leading: const Icon(Icons.edit_outlined), title: Text(context.l10n.commonEdit))),
                 if (s.canDelete && !s.isOver)
-                  const PopupMenuItem(value: 'cancel', child: ListTile(leading: Icon(Icons.event_busy_outlined), title: Text('Annuler la session'))),
+                  PopupMenuItem(
+                      value: 'cancel',
+                      child: ListTile(
+                          leading: const Icon(Icons.event_busy_outlined), title: Text(context.l10n.prayerCancelSession))),
                 if (s.canDelete)
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'delete',
-                    child: ListTile(leading: Icon(Icons.delete_outline, color: AppColors.danger), title: Text('Supprimer')),
+                    child: ListTile(
+                        leading: const Icon(Icons.delete_outline, color: AppColors.danger),
+                        title: Text(context.l10n.commonDelete)),
                   ),
               ],
             ),
@@ -173,13 +184,13 @@ class _PrayerSessionDetailScreenState extends ConsumerState<PrayerSessionDetailS
                 ),
                 if (value.description != null) ...[
                   const SizedBox(height: AppSpacing.xl),
-                  Text('Présentation', style: AppTextStyles.h4),
+                  Text(context.l10n.prayerSessionDescriptionLabel, style: AppTextStyles.h4),
                   const SizedBox(height: AppSpacing.sm),
                   Text(value.description!, style: AppTextStyles.bodyMedium.copyWith(height: 1.5)),
                 ],
                 if (value.topics.isNotEmpty) ...[
                   const SizedBox(height: AppSpacing.xl),
-                  Text('Sujets de prière', style: AppTextStyles.h4),
+                  Text(context.l10n.prayerSessionTopics, style: AppTextStyles.h4),
                   const SizedBox(height: AppSpacing.sm),
                   for (final t in value.topics)
                     Padding(
@@ -203,8 +214,10 @@ class _PrayerSessionDetailScreenState extends ConsumerState<PrayerSessionDetailS
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 const Icon(Icons.search_off_rounded, size: 56, color: AppColors.textSecondary),
                 const SizedBox(height: 12),
-                Text(error is PrayerFailure ? error.message : 'Impossible de charger la session.', textAlign: TextAlign.center),
-                TextButton(onPressed: () => ref.invalidate(prayerSessionProvider(_id)), child: const Text('Réessayer')),
+                Text(error is PrayerFailure ? error.message : context.l10n.prayerLoadSessionError,
+                    textAlign: TextAlign.center),
+                TextButton(
+                    onPressed: () => ref.invalidate(prayerSessionProvider(_id)), child: Text(context.l10n.commonRetry)),
               ]),
             ),
           ),
@@ -225,18 +238,20 @@ class _Header extends StatelessWidget {
       Wrap(spacing: 6, runSpacing: 6, children: [
         PrayerSessionPhaseBadge(phase: s.phase),
         if (s.visibility == PrayerVisibility.followers)
-          Text('· Réservée aux abonnés', style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
+          Text(context.l10n.prayerFollowersOnly, style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
       ]),
       const SizedBox(height: AppSpacing.sm),
       Text(s.title, style: AppTextStyles.h2),
       const SizedBox(height: AppSpacing.md),
-      _Line(icon: Icons.schedule_rounded, text: '${formatPrayerDate(s.startsAt)} · ${s.durationMinutes} min'),
+      _Line(
+          icon: Icons.schedule_rounded,
+          text: context.l10n.prayerSessionWhen(formatPrayerDate(s.startsAt), s.durationMinutes)),
       _Line(
         icon: Icons.person_outline_rounded,
-        text: 'Animée par ${s.host.displayName}',
+        text: context.l10n.prayerHostedBy(s.host.displayName),
         onTap: () => context.push('/users/${s.host.id}'),
       ),
-      _Line(icon: Icons.groups_2_outlined, text: '${s.participantCount} ${s.participantCount > 1 ? 'inscrits' : 'inscrit'}'),
+      _Line(icon: Icons.groups_2_outlined, text: context.l10n.prayerRegisteredCount(s.participantCount)),
       if (s.event != null)
         _Line(icon: Icons.event_rounded, text: s.event!.title, color: AppColors.primary, onTap: () => context.push('/events/${s.event!.id}')),
     ]);
@@ -286,26 +301,27 @@ class _RoomCard extends StatelessWidget {
     final children = <Widget>[];
 
     if (s.phase == PrayerSessionPhase.cancelled) {
-      children.add(Text('Cette session a été annulée.', style: AppTextStyles.bodyMedium));
+      children.add(Text(context.l10n.prayerSessionWasCancelled, style: AppTextStyles.bodyMedium));
     } else if (s.isHost) {
       if (s.canStart) {
         children
           ..add(FilledButton.icon(
             onPressed: busy ? null : onOpen,
             icon: const Icon(Icons.sensors_rounded),
-            label: Text(s.hasRoom ? 'Retourner dans la salle' : 'Ouvrir la salle'),
+            label: Text(s.hasRoom ? context.l10n.prayerReturnToRoom : context.l10n.prayerOpenRoom),
             style: FilledButton.styleFrom(backgroundColor: AppColors.secondary, padding: const EdgeInsets.symmetric(vertical: 14)),
           ))
           ..add(const SizedBox(height: 6))
-          ..add(Text("Vous arrivez dans le studio : passez à l'antenne pour commencer. Les inscrits sont prévenus.",
+          ..add(Text(context.l10n.prayerOpenRoomInfo,
               style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)));
       } else if (s.phase == PrayerSessionPhase.upcoming) {
         children.add(Text(
-          'Vous pourrez ouvrir la salle à partir du ${formatPrayerDate(s.opensAt ?? s.startsAt.subtract(const Duration(minutes: 30)))}.',
+          context.l10n.prayerCanOpenRoomFrom(
+              formatPrayerDate(s.opensAt ?? s.startsAt.subtract(const Duration(minutes: 30)))),
           style: AppTextStyles.bodyMedium,
         ));
       } else {
-        children.add(Text('Cette session est terminée.', style: AppTextStyles.bodyMedium));
+        children.add(Text(context.l10n.prayerSessionEnded, style: AppTextStyles.bodyMedium));
       }
     } else {
       if (s.hasRoom && s.liveStatus == 'live') {
@@ -313,17 +329,17 @@ class _RoomCard extends StatelessWidget {
           ..add(FilledButton.icon(
             onPressed: onJoin,
             icon: const Icon(Icons.meeting_room_rounded),
-            label: const Text('Rejoindre la salle'),
+            label: Text(context.l10n.prayerJoinRoom),
             style: FilledButton.styleFrom(backgroundColor: AppColors.secondary, padding: const EdgeInsets.symmetric(vertical: 14)),
           ))
           ..add(const SizedBox(height: 6))
-          ..add(Text('Commentez et demandez à prendre la parole depuis la salle.',
+          ..add(Text(context.l10n.prayerJoinRoomInfo,
               style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)));
       } else if (s.phase == PrayerSessionPhase.ended) {
-        children.add(Text('Cette session est terminée.', style: AppTextStyles.bodyMedium));
+        children.add(Text(context.l10n.prayerSessionEnded, style: AppTextStyles.bodyMedium));
       } else {
         children.add(Text(
-          s.isRegistered ? "La salle s'ouvrira à l'heure prévue : vous serez prévenu." : "La salle s'ouvrira à l'heure prévue.",
+          s.isRegistered ? context.l10n.prayerRoomWillOpenNotified : context.l10n.prayerRoomWillOpen,
           style: AppTextStyles.bodyMedium,
         ));
       }
@@ -334,16 +350,16 @@ class _RoomCard extends StatelessWidget {
               ? FilledButton.icon(
                   onPressed: busy ? null : onToggleRegistration,
                   icon: const Icon(Icons.check_circle_rounded),
-                  label: const Text('Je serai là'),
+                  label: Text(context.l10n.prayerIWillBeThere),
                   style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
                 )
               : OutlinedButton.icon(
                   onPressed: busy ? null : onToggleRegistration,
                   icon: const Icon(Icons.notifications_active_outlined),
-                  label: const Text('Je serai là'),
+                  label: Text(context.l10n.prayerIWillBeThere),
                 ));
         if (s.isRegistered) {
-          children.add(Text("Toucher à nouveau pour retirer l'inscription.",
+          children.add(Text(context.l10n.prayerTapAgainToUnregister,
               textAlign: TextAlign.center, style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)));
         }
       }
@@ -353,7 +369,7 @@ class _RoomCard extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: AppShadows.cardDecoration,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Text('La salle de prière', style: AppTextStyles.h4),
+        Text(context.l10n.prayerRoomTitle, style: AppTextStyles.h4),
         const SizedBox(height: AppSpacing.md),
         ...children,
       ]),

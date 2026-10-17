@@ -4,6 +4,7 @@
 // Independent of the sealed Testimony hierarchy — avoids touching the feed model.
 
 import '../../../core/media/video_source.dart';
+import '../../../l10n/app_localizations.dart';
 
 class UserTestimony {
   const UserTestimony({
@@ -22,6 +23,7 @@ class UserTestimony {
     this.videoStatus,
     this.bodyText = '',
     this.hasApprovedLabel = false,
+    this.isConversion = false,
   });
 
   final String  id;
@@ -47,6 +49,9 @@ class UserTestimony {
   /// l'auteur modifie le témoignage.
   final bool hasApprovedLabel;
 
+  /// Témoignage de conversion (`kind: conversion`, docs serveur fonctionnalites/temoignage-de-conversion.md).
+  final bool isConversion;
+
   /// État de traitement de la vidéo (ready sans suivi d'état).
   VideoProcessingState get videoState => VideoProcessingState.parse(videoStatus);
 
@@ -59,9 +64,9 @@ class UserTestimony {
   /// Statut de modération (docs serveur fonctionnalites/gestion-des-temoignages.md) :
   /// pending → En attente, approved → Publié, rejected → Refusé.
   String get statusLabel => switch (status) {
-        'pending'   => 'En attente',
-        'published' => 'Publié',
-        'rejected'  => 'Refusé',
+        'pending'   => L10n.current.profileStatusPending,
+        'published' => L10n.current.profileStatusPublished,
+        'rejected'  => L10n.current.profileStatusRejected,
         _           => status,
       };
 
@@ -131,6 +136,7 @@ class UserTestimony {
       hasApprovedLabel: m['badges'] is List
           ? (m['badges'] as List).contains('verified')
           : (m['isVerified'] == true || m['is_verified'] == true),
+      isConversion: m['isConversion'] == true || m['kind'] == 'conversion',
     );
   }
 }

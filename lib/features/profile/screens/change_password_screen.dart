@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../features/auth/providers/auth_notifier.dart'
     show currentUserProvider;
 import '../../../services/api_service.dart';
@@ -40,15 +41,16 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
   }
 
   bool _validate() {
+    final l10n = context.l10n;
     String? current, next, confirm;
-    if (_currentCtrl.text.isEmpty) current = 'Saisissez votre mot de passe actuel.';
+    if (_currentCtrl.text.isEmpty) current = l10n.profilePwdEnterCurrent;
     if (_newCtrl.text.length < AppConstants.minPasswordLength) {
-      next = '${AppConstants.minPasswordLength} caractères au moins.';
+      next = l10n.profilePwdMinLengthError(AppConstants.minPasswordLength);
     } else if (_newCtrl.text == _currentCtrl.text) {
-      next = "Choisissez un mot de passe différent de l'actuel.";
+      next = l10n.profilePwdMustDiffer;
     }
     if (_confirmCtrl.text != _newCtrl.text) {
-      confirm = 'Les deux mots de passe ne correspondent pas.';
+      confirm = l10n.profilePwdMismatch;
     }
     setState(() {
       _currentError = current;
@@ -76,7 +78,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
       setState(() {
         _saving = false;
         if (e.statusCode == 403) {
-          _currentError = 'Mot de passe actuel incorrect.';
+          _currentError = context.l10n.profilePwdCurrentWrong;
         } else {
           _newError = e.fieldError('new_password');
           _error = _newError == null ? e.displayMessage : null;
@@ -87,16 +89,14 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
       if (!mounted) return;
       setState(() {
         _saving = false;
-        _error = 'Impossible de joindre le serveur. Réessayez.';
+        _error = context.l10n.profileServerUnreachable;
       });
       return;
     }
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Mot de passe modifié. Vos autres appareils devront se reconnecter.',
-        ),
+      SnackBar(
+        content: Text(context.l10n.profilePwdChanged),
       ),
     );
     Navigator.of(context).pop();
@@ -110,9 +110,9 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text(
-          'Sécurité',
-          style: TextStyle(
+        title: Text(
+          context.l10n.profileSecurity,
+          style: const TextStyle(
             fontFamily: AppFonts.family,
             fontWeight: FontWeight.w600,
             fontSize: 17,
@@ -129,14 +129,15 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
   }
 
   Widget _form() {
+    final l10n = context.l10n;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Changer le mot de passe',
-            style: TextStyle(
+          Text(
+            l10n.profileChangePassword,
+            style: const TextStyle(
               fontFamily: AppFonts.family,
               fontWeight: FontWeight.w700,
               fontSize: 20,
@@ -144,10 +145,9 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Les autres appareils connectés à votre compte devront se '
-            'reconnecter avec le nouveau mot de passe.',
-            style: TextStyle(
+          Text(
+            l10n.profilePwdOtherDevices,
+            style: const TextStyle(
               fontFamily: AppFonts.family,
               fontSize: 13,
               color: AppColors.textSecondary,
@@ -156,7 +156,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
           ),
           const SizedBox(height: 24),
           AppTextField(
-            label: 'Mot de passe actuel',
+            label: l10n.profilePwdCurrent,
             controller: _currentCtrl,
             isPassword: true,
             errorText: _currentError,
@@ -164,8 +164,8 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
           ),
           const SizedBox(height: 16),
           AppTextField(
-            label: 'Nouveau mot de passe',
-            helperText: '${AppConstants.minPasswordLength} caractères au moins',
+            label: l10n.profilePwdNew,
+            helperText: l10n.profilePwdMinLengthHelper(AppConstants.minPasswordLength),
             controller: _newCtrl,
             isPassword: true,
             errorText: _newError,
@@ -173,7 +173,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
           ),
           const SizedBox(height: 16),
           AppTextField(
-            label: 'Confirmer le nouveau mot de passe',
+            label: l10n.profilePwdConfirmNew,
             controller: _confirmCtrl,
             isPassword: true,
             errorText: _confirmError,
@@ -194,7 +194,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
           ],
           const SizedBox(height: 28),
           AppButton(
-            label: 'Enregistrer',
+            label: l10n.commonSave,
             size: AppButtonSize.large,
             fullWidth: true,
             isLoading: _saving,
@@ -206,6 +206,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
   }
 
   Widget _noPassword(BuildContext context) {
+    final l10n = context.l10n;
     return Center(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(32),
@@ -230,9 +231,9 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            const Text(
-              'Aucun mot de passe',
-              style: TextStyle(
+            Text(
+              l10n.profileNoPassword,
+              style: const TextStyle(
                 fontFamily: AppFonts.family,
                 fontWeight: FontWeight.w600,
                 fontSize: 20,
@@ -241,10 +242,9 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 12),
-            const Text(
-              'Votre compte se connecte par numéro de téléphone, Google ou '
-              "Facebook : il n'a pas de mot de passe à changer.",
-              style: TextStyle(
+            Text(
+              l10n.profileNoPasswordBody,
+              style: const TextStyle(
                 fontFamily: AppFonts.family,
                 fontSize: 14,
                 color: AppColors.textSecondary,
@@ -254,7 +254,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
             ),
             const SizedBox(height: 32),
             AppButton(
-              label: 'Retour',
+              label: l10n.commonBack,
               variant: AppButtonVariant.secondary,
               onPressed: () => Navigator.of(context).pop(),
             ),

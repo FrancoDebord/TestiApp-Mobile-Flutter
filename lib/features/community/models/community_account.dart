@@ -4,6 +4,7 @@
 import 'package:flutter/widgets.dart' show StringCharacters;
 
 import '../../../shared/models/user_model.dart' show OrganizationType;
+import '../../../l10n/app_localizations.dart';
 
 class CommunityAccount {
   const CommunityAccount({
@@ -33,7 +34,7 @@ class CommunityAccount {
 
     return CommunityAccount(
       id: '${m['id'] ?? ''}',
-      displayName: str(m['display_name']) ?? str(m['displayName']) ?? 'Anonyme',
+      displayName: str(m['display_name']) ?? str(m['displayName']) ?? L10n.current.commonAnonymous,
       avatarUrl: str(m['avatar_url']) ?? str(m['avatarUrl']),
       coverUrl: str(m['cover_url']) ?? str(m['coverUrl']),
       isOrganization: (m['account_type'] ?? m['accountType']) == 'organization',
@@ -102,11 +103,16 @@ class CommunityAccount {
 
 /// Onglets de « Communauté » (paramètre `tab` de l'API).
 enum CommunityTab {
-  all('all', 'Tous'),
-  organizations('organizations', 'Organisations'),
-  people('people', 'Personnes');
+  all('all'),
+  organizations('organizations'),
+  people('people');
 
-  const CommunityTab(this.apiValue, this.label);
+  const CommunityTab(this.apiValue);
   final String apiValue;
-  final String label;
+
+  String get label => switch (this) {
+        CommunityTab.all => L10n.current.communityTabAll,
+        CommunityTab.organizations => L10n.current.communityTabOrganizations,
+        CommunityTab.people => L10n.current.communityTabPeople,
+      };
 }

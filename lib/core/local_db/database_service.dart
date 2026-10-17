@@ -42,7 +42,7 @@ class DatabaseService {
       onCreate: DatabaseSchema.onCreate,
       onUpgrade: DatabaseSchema.onUpgrade,
       onOpen: (db) async {
-        await db.execute('PRAGMA foreign_keys = ON');
+        await db.execute('PRAGMA foreign_keys = ON'); // i18n-ignore
       },
     );
   }

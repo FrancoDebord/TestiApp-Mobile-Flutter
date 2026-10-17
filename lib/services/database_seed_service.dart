@@ -1,3 +1,4 @@
+// i18n-ignore-file (témoignages de démonstration : contenu utilisateur)
 // lib/services/database_seed_service.dart
 //
 // Peuple SQLite avec des données de démonstration au premier lancement.

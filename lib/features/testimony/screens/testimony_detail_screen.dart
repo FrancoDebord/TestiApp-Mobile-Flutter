@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../../conversion/widgets/conversion_widgets.dart' show ConversionBanner;
 import '../../prophecies/widgets/public_prophecy_card.dart';
 import '../testimony_delete.dart';
 import '../../home/widgets/compact_testimony_tile.dart';
@@ -76,15 +77,16 @@ class _LocalComment {
 
   String get timeAgo {
     final diff = DateTime.now().difference(createdAt);
-    if (diff.inMinutes < 1) return 'à l\'instant';
-    if (diff.inMinutes < 60) return 'il y a ${diff.inMinutes} min';
-    if (diff.inHours < 24) return 'il y a ${diff.inHours}h';
-    return 'il y a ${diff.inDays}j';
+    final l = L10n.current;
+    if (diff.inMinutes < 1) return l.timeJustNow;
+    if (diff.inMinutes < 60) return l.timeMinutesAgo(diff.inMinutes);
+    if (diff.inHours < 24) return l.commentsAgoHoursShort(diff.inHours);
+    return l.commentsAgoDaysShort(diff.inDays);
   }
 
   factory _LocalComment.fromModel(CommentModel m) => _LocalComment(
     id: m.id,
-    authorName: m.user?.displayName ?? 'Anonyme',
+    authorName: m.user?.displayName ?? L10n.current.commonAnonymous,
     authorId: m.userId,
     body: MentionCodec.encode(m.text, m.mentions),
     createdAt: DateTime.tryParse(m.createdAt ?? '') ?? DateTime.now(),
@@ -231,7 +233,7 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
               .map(
                 (r) => _LocalComment(
                   id: r['id'] as String,
-                  authorName: r['author_name'] as String? ?? 'Anonyme',
+                  authorName: r['author_name'] as String? ?? context.l10n.commonAnonymous,
                   authorId: r['user_id'] as String? ?? '',
                   body: r['body'] as String? ?? '',
                   createdAt:
@@ -293,7 +295,7 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
 
   Future<void> _addComment(String text) async {
     final user = ref.read(currentUserProvider);
-    final authorName = user?.displayName ?? 'Vous';
+    final authorName = user?.displayName ?? context.l10n.commonYou;
     final now = DateTime.now();
     final tempId = 'tmp_${now.millisecondsSinceEpoch}';
     final dao = CommentDao(DatabaseService());
@@ -408,7 +410,7 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
 
     final currentUser = ref.watch(currentUserProvider);
     final isOwnProfile = testimony.author.uid == (currentUser?.id ?? '');
-    final fr = AppLocalizations.of(context).isFr;
+    final fr = context.l10n.isFr;
     // Réactions : état du serveur, une « j'aime » et une « je prie » au plus.
     final rx = ref.watch(interactionProvider);
     final isLiked = rx.likedOf(testimony);
@@ -489,6 +491,16 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                     ),
 
+                    // Témoignage de conversion : année, lieu, verset ; « Modifier » pour l'auteur.
+                    if (testimony.conversion case final conversion?)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                        child: ConversionBanner(
+                          details: conversion,
+                          onEdit: isOwnProfile ? () => context.push('/conversions/mine/edit') : null,
+                        ),
+                      ),
+
                     // Titre
                     _TitleText(title: testimony.title),
 
@@ -562,7 +574,7 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
                       isLoading: _loadingComments,
                       onOpenAll: () => _showCommentsSheet(context),
                       currentUser:
-                          ref.read(currentUserProvider)?.displayName ?? 'Vous',
+                          ref.read(currentUserProvider)?.displayName ?? context.l10n.commonYou,
                     ),
 
                     _SimilarTestimonies(
@@ -593,7 +605,7 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
   // ── Actions réservées aux membres (mode invité : feuille « compte requis »)
 
   Future<void> _toggleLike(Testimony t) async {
-    if (!await requireAccount(context, ref, reason: 'réagir aux témoignages')) {
+    if (!await requireAccount(context, ref, reason: context.l10n.homeReasonReact)) {
       return;
     }
     if (!mounted) return;
@@ -601,7 +613,7 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
   }
 
   Future<void> _togglePray(Testimony t) async {
-    if (!await requireAccount(context, ref, reason: 'réagir aux témoignages')) {
+    if (!await requireAccount(context, ref, reason: context.l10n.homeReasonReact)) {
       return;
     }
     if (!mounted) return;
@@ -609,7 +621,7 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
   }
 
   Future<void> _toggleSave() async {
-    if (!await requireAccount(context, ref, reason: 'enregistrer vos favoris')) {
+    if (!await requireAccount(context, ref, reason: context.l10n.authGuestReasonSaved)) {
       return;
     }
     if (!mounted) return;
@@ -624,7 +636,7 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
 
   Future<void> _showCommentsSheet(BuildContext context) async {
     if (!await requireAccount(context, ref,
-        reason: 'commenter les témoignages')) {
+        reason: context.l10n.authGuestReasonComment)) {
       return;
     }
     if (!context.mounted) return;
@@ -635,7 +647,7 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
       builder: (_) => _CommentsBottomSheet(
         testimonyId: widget.testimonyId,
         comments: _comments,
-        currentUser: ref.read(currentUserProvider)?.displayName ?? 'Vous',
+        currentUser: ref.read(currentUserProvider)?.displayName ?? context.l10n.commonYou,
         onAdd: _addComment,
         // Auteur du commentaire ou administrateur (jamais un modérateur).
         canDelete: (c) {
@@ -739,7 +751,7 @@ class _HeroSliverAppBar extends StatelessWidget {
         if (onDelete != null) ...[
           const SizedBox(width: 6),
           Tooltip(
-            message: 'Supprimer le témoignage',
+            message: context.l10n.testimonyDeleteTooltip,
             child: _CircleIconButton(icon: Icons.delete_outline_rounded, onTap: onDelete!, color: AppColors.danger),
           ),
         ],
@@ -987,7 +999,7 @@ class _AudioPlayerEmbedState extends ConsumerState<_AudioPlayerEmbed> {
     final progress = isThisTrack ? player.progress : 0.0;
     final elapsed = isThisTrack ? _fmt(player.position) : '00:00';
     final isOffline = isThisTrack && player.qualityLabel == OfflineMedia.label;
-    final l10n = AppLocalizations.of(context);
+    final l10n = context.l10n;
 
     return GestureDetector(
       onTap: () => Navigator.of(context).push(
@@ -1168,7 +1180,7 @@ class _BibleVerseSection extends StatelessWidget {
       child: InsightVerseCard(
         verse: verse!,
         reference: verseRef,
-        title: AppLocalizations.of(context).detailBibleTitle,
+        title: context.l10n.detailBibleTitle,
       ),
     );
   }
@@ -1207,8 +1219,8 @@ class _CommentsSection extends StatelessWidget {
             children: [
               Text(
                 count == 0
-                    ? AppLocalizations.of(context).detailComments
-                    : '${AppLocalizations.of(context).detailComments} ($count)',
+                    ? context.l10n.detailComments
+                    : '${context.l10n.detailComments} ($count)',
                 style: AppTextStyles.h4,
               ),
               if (count > 2)
@@ -1221,7 +1233,7 @@ class _CommentsSection extends StatelessWidget {
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                   child: Text(
-                    AppLocalizations.of(context).detailSeeAll,
+                    context.l10n.detailSeeAll,
                     style: const TextStyle(fontFamily: AppFonts.family, fontSize: 13),
                   ),
                 ),
@@ -1262,7 +1274,7 @@ class _CommentsSection extends StatelessWidget {
                       border: Border.all(color: AppColors.border),
                     ),
                     child: Text(
-                      AppLocalizations.of(context).detailAddComment,
+                      context.l10n.detailAddComment,
                       style: const TextStyle(
                         fontFamily: AppFonts.family,
                         color: AppColors.textSecondary,
@@ -1292,7 +1304,7 @@ class _CommentsSection extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: Text(
-              AppLocalizations.of(context).detailFirstComment,
+              context.l10n.detailFirstComment,
               style: AppTextStyles.bodySmall,
             ),
           )
@@ -1411,7 +1423,7 @@ class _CommentItem extends StatelessWidget {
                     GestureDetector(
                       onTap: onReply,
                       child: Text(
-                        AppLocalizations.of(context).detailReply,
+                        context.l10n.detailReply,
                         style: const TextStyle(
                           fontFamily: AppFonts.family,
                           fontSize: 12,
@@ -1424,9 +1436,9 @@ class _CommentItem extends StatelessWidget {
                       const SizedBox(width: 16),
                       GestureDetector(
                         onTap: onDelete,
-                        child: const Text(
-                          'Supprimer',
-                          style: TextStyle(
+                        child: Text(
+                          context.l10n.commonDelete,
+                          style: const TextStyle(
                             fontFamily: AppFonts.family,
                             fontSize: 12,
                             color: AppColors.danger,
@@ -1480,7 +1492,7 @@ class _SimilarTestimonies extends ConsumerWidget {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
           child: Text(
-            AppLocalizations.of(context).detailSimilar,
+            context.l10n.detailSimilar,
             style: AppTextStyles.h4,
           ),
         ),
@@ -1530,7 +1542,7 @@ class _StickyReactionBar extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
           child: Builder(
             builder: (context) {
-              final l10n = AppLocalizations.of(context);
+              final l10n = context.l10n;
               return Row(
                 children: [
                   _ReactionButton(
@@ -1705,14 +1717,14 @@ class _CommentsBottomSheetState extends State<_CommentsBottomSheet> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Supprimer ce commentaire ?'),
-        content: const Text('Le commentaire sera définitivement supprimé.'),
+        title: Text(ctx.l10n.commentsDeleteTitle),
+        content: Text(ctx.l10n.commentsDeletePermanent),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Annuler')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(ctx.l10n.commonCancel)),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Supprimer'),
+            child: Text(ctx.l10n.commonDelete),
           ),
         ],
       ),
@@ -1724,7 +1736,7 @@ class _CommentsBottomSheetState extends State<_CommentsBottomSheet> {
       setState(() => _local.removeWhere((x) => x.id == c.id));
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Impossible de supprimer. Réessayez.')),
+        SnackBar(content: Text(context.l10n.testimonyDeleteError)),
       );
     }
   }
@@ -1793,8 +1805,8 @@ class _CommentsBottomSheetState extends State<_CommentsBottomSheet> {
               const _DragHandle(),
               _BottomSheetHeader(
                 title: _local.isEmpty
-                    ? AppLocalizations.of(context).detailComments
-                    : '${AppLocalizations.of(context).detailComments} (${_local.length})',
+                    ? context.l10n.detailComments
+                    : '${context.l10n.detailComments} (${_local.length})',
                 onClose: () => Navigator.of(context).pop(),
               ),
               const Divider(height: 1, color: AppColors.border),
@@ -1813,7 +1825,7 @@ class _CommentsBottomSheetState extends State<_CommentsBottomSheet> {
                             ),
                             const SizedBox(height: 12),
                             Text(
-                              AppLocalizations.of(context).detailNoComments,
+                              context.l10n.detailNoComments,
                               textAlign: TextAlign.center,
                               style: const TextStyle(
                                 fontFamily: AppFonts.family,
@@ -1867,7 +1879,7 @@ class _CommentsBottomSheetState extends State<_CommentsBottomSheet> {
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          '${AppLocalizations.of(context).detailReplyingTo} @$_replyingToName',
+                          '${context.l10n.detailReplyingTo} @$_replyingToName',
                           style: const TextStyle(
                             fontFamily: AppFonts.family,
                             fontSize: 12,
@@ -1998,7 +2010,7 @@ class _CommentInputBar extends StatelessWidget {
               minLines: 1,
               maxLines: 4,
               decoration: InputDecoration(
-                hintText: AppLocalizations.of(context).detailCommentHint,
+                hintText: context.l10n.detailCommentHint,
                 hintStyle: const TextStyle(
                   fontFamily: AppFonts.family,
                   color: AppColors.textSecondary,

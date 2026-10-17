@@ -16,11 +16,10 @@ import '../../../core/theme/app_tokens.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../upload/video_upload_controller.dart';
 import '../upload/video_upload_models.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Message affiché une fois la vidéo envoyée.
-const kVideoProcessingMessage =
-    'Votre témoignage est en cours de traitement. '
-    'Vous serez notifié dès qu\'il sera en ligne.';
+String get kVideoProcessingMessage => L10n.current.uploadProcessingMessage;
 
 class VideoUploadScreen extends ConsumerWidget {
   const VideoUploadScreen({super.key});
@@ -40,13 +39,13 @@ class VideoUploadScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text('Publication de la vidéo',
+        title: Text(context.l10n.uploadScreenTitle,
             style: AppTextStyles.h4.copyWith(fontSize: 17)),
         backgroundColor: AppColors.background,
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
           icon: const Icon(Icons.close_rounded),
-          tooltip: 'Fermer',
+          tooltip: context.l10n.commonClose,
           onPressed: () => _leave(context, ref),
         ),
       ),
@@ -64,7 +63,7 @@ class VideoUploadScreen extends ConsumerWidget {
                 if (upload.testimonyId case final id?) ...[
                   AppButton(
                     key: const ValueKey('open-uploaded-testimony'),
-                    label: 'Voir mon témoignage',
+                    label: context.l10n.uploadSeeTestimony,
                     fullWidth: true,
                     leadingIcon: Icons.play_circle_outline_rounded,
                     onPressed: () {
@@ -75,7 +74,7 @@ class VideoUploadScreen extends ConsumerWidget {
                   const SizedBox(height: AppSpacing.md),
                 ],
                 AppButton(
-                  label: 'Voir mes publications',
+                  label: context.l10n.uploadSeeMyPublications,
                   variant: upload.testimonyId == null
                       ? AppButtonVariant.primary
                       : AppButtonVariant.outline,
@@ -88,7 +87,7 @@ class VideoUploadScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: AppSpacing.md),
                 AppButton(
-                  label: 'Retour à l’accueil',
+                  label: context.l10n.uploadBackHome,
                   variant: AppButtonVariant.outline,
                   fullWidth: true,
                   onPressed: () {
@@ -99,8 +98,7 @@ class VideoUploadScreen extends ConsumerWidget {
               ] else if (upload.phase != VideoUploadPhase.failed) ...[
                 const SizedBox(height: AppSpacing.lg),
                 Text(
-                  'Vous pouvez quitter cet écran : l’envoi continue et reprend '
-                  'tout seul après une coupure de réseau.',
+                  context.l10n.uploadCanLeave,
                   style: AppTextStyles.bodySmall,
                   textAlign: TextAlign.center,
                 ),
@@ -125,10 +123,10 @@ class _NothingToSend extends StatelessWidget {
         const Icon(Icons.cloud_done_outlined,
             size: 56, color: AppColors.textSecondary),
         const SizedBox(height: 12),
-        Text('Aucun envoi de vidéo en cours.',
+        Text(context.l10n.uploadNothing,
             style: AppTextStyles.bodyMedium, textAlign: TextAlign.center),
         const SizedBox(height: 20),
-        AppButton(label: 'Retour', onPressed: onBack),
+        AppButton(label: context.l10n.commonBack, onPressed: onBack),
       ],
     );
   }
@@ -146,18 +144,17 @@ class VideoUploadPanel extends ConsumerWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Annuler la publication ?'),
-        content: const Text(
-            'L’envoi de la vidéo sera arrêté et le témoignage ne sera pas publié.'),
+        title: Text(ctx.l10n.uploadCancelTitle),
+        content: Text(ctx.l10n.uploadCancelBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Continuer l’envoi'),
+            child: Text(ctx.l10n.uploadContinue),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             style: TextButton.styleFrom(foregroundColor: AppColors.danger),
-            child: const Text('Annuler la publication'),
+            child: Text(ctx.l10n.uploadCancelPublication),
           ),
         ],
       ),
@@ -224,7 +221,7 @@ class VideoUploadPanel extends ConsumerWidget {
               if (showsPercent)
                 Padding(
                   padding: const EdgeInsets.only(left: 8),
-                  child: Text('$percent %',
+                  child: Text(context.l10n.uploadPercent(percent),
                       style: AppTextStyles.labelSmall
                           .copyWith(fontWeight: FontWeight.w700)),
                 ),
@@ -255,8 +252,8 @@ class VideoUploadPanel extends ConsumerWidget {
             const SizedBox(height: 8),
             Text(
               state.failedProofs.length == 1
-                  ? 'La preuve ${state.failedProofs.first} n’a pas pu être envoyée.'
-                  : 'Les preuves n’ont pas pu être envoyées.',
+                  ? context.l10n.uploadProofFailed(state.failedProofs.first)
+                  : context.l10n.uploadProofsFailed,
               style: AppTextStyles.bodySmall.copyWith(color: AppColors.warning),
             ),
           ],
@@ -267,7 +264,7 @@ class VideoUploadPanel extends ConsumerWidget {
                 if (failed) ...[
                   Expanded(
                     child: AppButton(
-                      label: 'Réessayer',
+                      label: context.l10n.commonRetry,
                       leadingIcon: Icons.refresh_rounded,
                       size: compact ? AppButtonSize.small : AppButtonSize.medium,
                       fullWidth: true,
@@ -278,7 +275,7 @@ class VideoUploadPanel extends ConsumerWidget {
                 ],
                 Expanded(
                   child: AppButton(
-                    label: failed ? 'Abandonner' : 'Annuler',
+                    label: failed ? context.l10n.uploadGiveUp : context.l10n.commonCancel,
                     variant: AppButtonVariant.outline,
                     size: compact ? AppButtonSize.small : AppButtonSize.medium,
                     fullWidth: true,
@@ -309,7 +306,11 @@ class _Steps extends StatelessWidget {
         1,
       _ => 2,
     };
-    const labels = ['Compression', 'Envoi', 'Finalisation'];
+    final labels = [
+      context.l10n.uploadStepCompression,
+      context.l10n.uploadStepUpload,
+      context.l10n.uploadStepFinalize,
+    ];
     return Row(
       children: [
         for (var i = 0; i < labels.length; i++) ...[

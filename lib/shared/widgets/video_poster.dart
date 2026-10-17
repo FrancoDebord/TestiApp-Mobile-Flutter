@@ -11,6 +11,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../core/media/video_source.dart' show mediaHttpHeaders;
+import '../../l10n/app_localizations.dart';
 
 /// « 04:05 », « 1:02:30 » (format des autres durées de l'app) ; vide si inconnue.
 String formatVideoDuration(int seconds) {
@@ -104,7 +105,7 @@ class VideoPoster extends StatelessWidget {
               children: [
                 Semantics(
                   button: true,
-                  label: 'Lire la vidéo',
+                  label: context.l10n.mediaPlayVideo,
                   child: Container(
                     width: 64,
                     height: 64,

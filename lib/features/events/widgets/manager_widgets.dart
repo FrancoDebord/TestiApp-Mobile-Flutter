@@ -10,6 +10,7 @@ import '../../community/models/community_account.dart';
 import '../data/events_repository.dart';
 import '../models/event_models.dart';
 import '../providers/events_providers.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Avatar rond (photo ou initiales).
 class PersonAvatar extends StatelessWidget {
@@ -99,7 +100,7 @@ class _PersonPickerState extends ConsumerState<_PersonPicker> {
     } catch (_) {
       if (mounted) {
         setState(() {
-          _error = 'Recherche impossible. Vérifiez votre connexion.';
+          _error = context.l10n.eventsManagerSearchError;
           _loading = false;
         });
       }
@@ -129,9 +130,9 @@ class _PersonPickerState extends ConsumerState<_PersonPicker> {
                   onChanged: _onChanged,
                   textInputAction: TextInputAction.search,
                   onSubmitted: _search,
-                  decoration: const InputDecoration(
-                    hintText: 'Nom ou adresse e-mail',
-                    prefixIcon: Icon(Icons.search_rounded),
+                  decoration: InputDecoration(
+                    hintText: context.l10n.eventsManagerSearchHint,
+                    prefixIcon: const Icon(Icons.search_rounded),
                   ),
                 ),
               ),
@@ -145,8 +146,8 @@ class _PersonPickerState extends ConsumerState<_PersonPicker> {
                   padding: const EdgeInsets.all(20),
                   child: Text(
                     _query.text.trim().length < 2
-                        ? 'Tapez au moins deux lettres du nom de la personne.'
-                        : 'Aucun compte personnel trouvé.',
+                        ? context.l10n.eventsManagerTypeTwoLetters
+                        : context.l10n.eventsManagerNoAccount,
                     textAlign: TextAlign.center,
                     style: const TextStyle(color: AppColors.textSecondary),
                   ),
@@ -212,23 +213,24 @@ class _EventManagersSheetState extends ConsumerState<EventManagersSheet> {
   Future<void> _add() async {
     final picked = await pickPerson(
       context,
-      title: 'Ajouter un co-gestionnaire',
+      title: context.l10n.eventsManagerAdd,
       exclude: {..._event.managers.map((m) => m.id), _event.organizer.id},
     );
     if (picked == null || !mounted) return;
     await _apply(() => ref.read(eventsRepositoryProvider).addManager(_event.id, picked.id),
-        '${picked.displayName} peut maintenant gérer l\'événement.');
+        context.l10n.eventsManagerAdded(picked.displayName));
   }
 
   Future<void> _remove(EventPerson p) async {
     final self = p.id == widget.currentUserId;
     await _apply(() => ref.read(eventsRepositoryProvider).removeManager(_event.id, p.id),
-        self ? 'Vous ne gérez plus cet événement.' : 'Co-gestionnaire retiré.');
+        self ? context.l10n.eventsManagerLeft : context.l10n.eventsManagerRemoved);
     if (self && mounted) Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final e = _event;
     final full = e.managers.length >= ChristianEvent.maxManagers;
     return SafeArea(
@@ -238,12 +240,11 @@ class _EventManagersSheetState extends ConsumerState<EventManagersSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Co-gestionnaires (${e.managers.length}/${ChristianEvent.maxManagers})',
+            Text(l10n.eventsManagersTitle(e.managers.length, ChristianEvent.maxManagers),
                 style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w800)),
             const SizedBox(height: 4),
             Text(
-              'Ils modifient la page, enregistrent les témoignages et lancent le direct. '
-              'Seul l\'organisateur les désigne et peut supprimer l\'événement.',
+              l10n.eventsManagersHelp,
               style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 12),
@@ -251,19 +252,19 @@ class _EventManagersSheetState extends ConsumerState<EventManagersSheet> {
               contentPadding: EdgeInsets.zero,
               leading: PersonAvatar(name: e.organizer.displayName, url: e.organizer.avatarUrl, initials: e.organizer.initials),
               title: Text(e.organizer.displayName),
-              subtitle: const Text('Organisateur'),
+              subtitle: Text(l10n.eventsOrganizer),
             ),
             for (final m in e.managers)
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: PersonAvatar(name: m.displayName, url: m.avatarUrl, initials: m.initials),
                 title: Text(m.displayName),
-                subtitle: const Text('Co-gestionnaire'),
+                subtitle: Text(l10n.eventsCoManager),
                 trailing: e.canAdministrate || m.id == widget.currentUserId
                     ? TextButton(
                         onPressed: _busy ? null : () => _remove(m),
                         style: TextButton.styleFrom(foregroundColor: AppColors.danger),
-                        child: Text(m.id == widget.currentUserId ? 'Me retirer' : 'Retirer'),
+                        child: Text(m.id == widget.currentUserId ? l10n.eventsManagerRemoveMe : l10n.commonRemove),
                       )
                     : null,
               ),
@@ -273,7 +274,7 @@ class _EventManagersSheetState extends ConsumerState<EventManagersSheet> {
                 onPressed: _busy || full ? null : _add,
                 style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(46)),
                 icon: const Icon(Icons.person_add_alt_1_rounded),
-                label: Text(full ? 'Deux co-gestionnaires au plus' : 'Ajouter un co-gestionnaire'),
+                label: Text(full ? l10n.eventsManagersMax : l10n.eventsManagerAdd),
               ),
             ],
           ],

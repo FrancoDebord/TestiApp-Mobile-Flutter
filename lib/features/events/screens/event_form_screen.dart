@@ -13,6 +13,8 @@ import '../models/event_models.dart';
 import '../providers/events_providers.dart';
 import '../widgets/event_location_widgets.dart';
 import '../widgets/event_widgets.dart';
+import '../../../core/media/youtube.dart' show extractYouTubeId;
+import '../../../l10n/app_localizations.dart';
 
 /// Création ([eventId] null) ou modification d'un événement :
 /// infos, dates, lieu, invités principaux, images du carrousel, publication.
@@ -112,7 +114,7 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
   Future<void> _addImages() async {
     final left = _maxImages - _imageCount;
     if (left <= 0) {
-      _snack('Six images au plus.');
+      _snack(context.l10n.eventsFormMaxImages);
       return;
     }
     final picked = await ImagePicker().pickMultiImage(
@@ -160,11 +162,11 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     if (_draft.startsAt == null || _draft.endsAt == null) {
-      _snack('Indiquez les dates de début et de fin.');
+      _snack(context.l10n.eventsFormDatesRequired);
       return;
     }
     if (_draft.endsAt!.isBefore(_draft.startsAt!)) {
-      _snack('La fin doit être après le début.');
+      _snack(context.l10n.eventsEndAfterStart);
       return;
     }
     setState(() {
@@ -181,7 +183,7 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
       // Création : images envoyées une par une (un échec n'annule pas l'événement).
       var failed = 0;
       for (var i = 0; i < _pending.length; i++) {
-        if (mounted) setState(() => _progress = 'Envoi des images ${i + 1}/${_pending.length}…');
+        if (mounted) setState(() => _progress = L10n.current.eventsFormUploadingImages(i + 1, _pending.length));
         try {
           event = await repo.addImage(event.id, _pending[i]);
         } on EventFailure {
@@ -194,10 +196,10 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
       ref.invalidate(eventDetailProvider(event.id));
       if (!mounted) return;
       _snack(failed > 0
-          ? 'Événement enregistré, mais $failed image(s) n\'ont pas pu être envoyées.'
+          ? context.l10n.eventsFormImagesFailed(failed)
           : _isEdit
-              ? 'Événement mis à jour.'
-              : 'Événement créé !');
+              ? context.l10n.eventsFormUpdated
+              : context.l10n.eventsFormCreated);
       if (_isEdit) {
         context.pop();
       } else {
@@ -214,7 +216,7 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text(_isEdit ? "Modifier l'événement" : 'Nouvel événement'),
+        title: Text(_isEdit ? context.l10n.eventsFormEditTitle : context.l10n.eventsFormNewTitle),
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.textPrimary,
         surfaceTintColor: AppColors.surface,
@@ -228,7 +230,7 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(_loadError!, textAlign: TextAlign.center),
-                      TextButton(onPressed: _load, child: const Text('Réessayer')),
+                      TextButton(onPressed: _load, child: Text(context.l10n.commonRetry)),
                     ],
                   ),
                 )
@@ -254,14 +256,14 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
                                 height: 18,
                                 child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
                             const SizedBox(width: 10),
-                            Text(_progress ?? 'Enregistrement…'),
+                            Text(_progress ?? context.l10n.eventsFormSaving),
                           ],
                         )
                       : Text(_isEdit
-                          ? 'Enregistrer les modifications'
+                          ? context.l10n.eventsFormSaveChanges
                           : _draft.status == EventStatus.draft
-                              ? 'Enregistrer le brouillon'
-                              : "Publier l'événement"),
+                              ? context.l10n.eventsFormSaveDraft
+                              : context.l10n.eventsFormPublish),
                 ),
               ),
             ),
@@ -269,6 +271,7 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
   }
 
   Widget _form() {
+    final l10n = context.l10n;
     final d = _draft;
     return Form(
       key: _formKey,
@@ -277,8 +280,8 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
         children: [
           // ── Images ────────────────────────────────────────────────────────
           _Section(
-            title: 'Images de couverture',
-            subtitle: 'Jusqu\'à 6 images, affichées en carrousel. La première sert de vignette.',
+            title: l10n.eventsFormCoverImages,
+            subtitle: l10n.eventsFormCoverImagesHelp,
             child: _ImagesEditor(
               existing: _event?.images ?? const [],
               pending: _pending,
@@ -295,22 +298,22 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
 
           // ── Informations ─────────────────────────────────────────────────
           _Section(
-            title: 'Informations',
+            title: l10n.eventsFormInfo,
             child: Column(
               children: [
                 TextFormField(
                   initialValue: d.title,
                   maxLength: 150,
                   textCapitalization: TextCapitalization.sentences,
-                  decoration: const InputDecoration(labelText: 'Titre *', hintText: 'Ex. : Croisade de guérison 2026'),
-                  validator: (v) => (v ?? '').trim().isEmpty ? "Donnez un titre à l'événement." : null,
+                  decoration: InputDecoration(labelText: l10n.eventsFormTitleLabel, hintText: l10n.eventsFormTitleHint),
+                  validator: (v) => (v ?? '').trim().isEmpty ? l10n.eventsFormTitleRequired : null,
                   onChanged: (v) => d.title = v,
                 ),
                 const SizedBox(height: 4),
                 DropdownButtonFormField<EventType>(
                   initialValue: d.type,
                   isExpanded: true,
-                  decoration: const InputDecoration(labelText: "Type d'événement *"),
+                  decoration: InputDecoration(labelText: l10n.eventsFormTypeLabel),
                   items: [
                     for (final t in EventType.values)
                       DropdownMenuItem(
@@ -333,9 +336,9 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
                   maxLines: 12,
                   maxLength: 5000,
                   textCapitalization: TextCapitalization.sentences,
-                  decoration: const InputDecoration(
-                    labelText: 'Description',
-                    hintText: 'Programme, thème, public attendu, informations pratiques…',
+                  decoration: InputDecoration(
+                    labelText: l10n.eventsFormDescription,
+                    hintText: l10n.eventsFormDescriptionHint,
                     alignLabelWithHint: true,
                   ),
                   onChanged: (v) => d.description = v,
@@ -346,11 +349,11 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
 
           // ── Dates ────────────────────────────────────────────────────────
           _Section(
-            title: 'Dates',
+            title: l10n.eventsFormDates,
             child: Column(
               children: [
                 _DateField(
-                  label: 'Début *',
+                  label: l10n.eventsFormStart,
                   value: d.startsAt,
                   onTap: () async {
                     final v = await _pickDateTime(d.startsAt);
@@ -366,7 +369,7 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
                 ),
                 const SizedBox(height: 10),
                 _DateField(
-                  label: 'Fin *',
+                  label: l10n.eventsFormEnd,
                   value: d.endsAt,
                   onTap: () async {
                     final v = await _pickDateTime(d.endsAt, notBefore: d.startsAt);
@@ -379,16 +382,16 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
 
           // ── Lieu ─────────────────────────────────────────────────────────
           _Section(
-            title: 'Lieu',
+            title: l10n.eventsPlace,
             child: Column(
               children: [
                 TextFormField(
                   initialValue: d.location,
                   maxLength: 200,
-                  decoration: const InputDecoration(
-                    labelText: 'Lieu',
-                    hintText: "Ex. : Stade de l'Amitié, église…",
-                    prefixIcon: Icon(Icons.place_outlined),
+                  decoration: InputDecoration(
+                    labelText: l10n.eventsPlace,
+                    hintText: l10n.eventsFormPlaceHint,
+                    prefixIcon: const Icon(Icons.place_outlined),
                   ),
                   onChanged: (v) => d.location = v,
                 ),
@@ -397,10 +400,10 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
                   initialValue: d.address,
                   maxLength: 300,
                   textCapitalization: TextCapitalization.sentences,
-                  decoration: const InputDecoration(
-                    labelText: 'Adresse',
-                    hintText: 'Rue, quartier, point de repère…',
-                    prefixIcon: Icon(Icons.signpost_outlined),
+                  decoration: InputDecoration(
+                    labelText: l10n.eventsFormAddress,
+                    hintText: l10n.eventsFormAddressHint,
+                    prefixIcon: const Icon(Icons.signpost_outlined),
                   ),
                   onChanged: (v) => d.address = v,
                 ),
@@ -411,7 +414,7 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
                       child: TextFormField(
                         initialValue: d.city,
                         maxLength: 100,
-                        decoration: const InputDecoration(labelText: 'Ville'),
+                        decoration: InputDecoration(labelText: l10n.eventsFormCity),
                         onChanged: (v) => d.city = v,
                       ),
                     ),
@@ -420,7 +423,7 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
                       child: TextFormField(
                         initialValue: d.country,
                         maxLength: 100,
-                        decoration: const InputDecoration(labelText: 'Pays'),
+                        decoration: InputDecoration(labelText: l10n.eventsFormCountry),
                         onChanged: (v) => d.country = v,
                       ),
                     ),
@@ -432,9 +435,8 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
 
           // ── Position sur la carte (repère GPS facultatif) ────────────────
           _Section(
-            title: 'Position sur la carte',
-            subtitle: 'Facultatif : touchez la carte pour placer le repère du lieu. '
-                "Les participants pourront lancer l'itinéraire.",
+            title: l10n.eventsFormMapPosition,
+            subtitle: l10n.eventsFormMapPositionHelp,
             child: EventMapPicker(
               key: ValueKey('map-${_event?.id}'),
               latitude: d.latitude,
@@ -450,10 +452,31 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
             ),
           ),
 
+          // ── Direct YouTube (lien facultatif ; pas de direct dans l'application) ──
+          _Section(
+            title: l10n.eventsFormYoutubeLive,
+            subtitle: l10n.eventsFormYoutubeLiveHelp,
+            child: TextFormField(
+              initialValue: d.youtubeLiveUrl,
+              maxLength: 300,
+              keyboardType: TextInputType.url,
+              autocorrect: false,
+              decoration: InputDecoration(
+                labelText: l10n.eventsFormYoutubeLiveLabel,
+                hintText: 'https://www.youtube.com/live/…', // i18n-ignore
+                prefixIcon: const Icon(Icons.smart_display_outlined),
+              ),
+              validator: (v) => (v ?? '').trim().isEmpty || extractYouTubeId(v) != null
+                  ? null
+                  : l10n.eventsFormYoutubeLiveInvalid,
+              onChanged: (v) => d.youtubeLiveUrl = v,
+            ),
+          ),
+
           // ── Invités ──────────────────────────────────────────────────────
           _Section(
-            title: 'Invités principaux',
-            subtitle: 'Facultatif : orateurs, chantres, groupes…',
+            title: l10n.eventsFormGuests,
+            subtitle: l10n.eventsFormGuestsHelp,
             child: Column(
               children: [
                 for (var i = 0; i < d.guests.length; i++)
@@ -469,7 +492,7 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
                     child: TextButton.icon(
                       onPressed: () => setState(() => d.guests.add(const EventGuest(name: ''))),
                       icon: const Icon(Icons.person_add_alt_1_rounded),
-                      label: const Text('Ajouter un invité'),
+                      label: Text(l10n.eventsFormAddGuest),
                     ),
                   ),
               ],
@@ -478,24 +501,24 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
 
           // ── Publication ──────────────────────────────────────────────────
           _Section(
-            title: 'Publication',
+            title: l10n.eventsFormPublication,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 SegmentedButton<EventStatus>(
                   showSelectedIcon: false,
                   segments: [
-                    const ButtonSegment(
-                        value: EventStatus.draft, icon: Icon(Icons.edit_note_rounded), label: Text('Brouillon')),
-                    const ButtonSegment(
-                        value: EventStatus.published, icon: Icon(Icons.public_rounded), label: Text('Publié')),
+                    ButtonSegment(
+                        value: EventStatus.draft, icon: const Icon(Icons.edit_note_rounded), label: Text(l10n.eventsStatusDraft)),
+                    ButtonSegment(
+                        value: EventStatus.published, icon: const Icon(Icons.public_rounded), label: Text(l10n.eventsStatusPublished)),
                     // Reporté (date à confirmer) : seulement s'il l'est déjà ; changer la date le reprogramme.
                     if (_isEdit && _initialStatus == EventStatus.postponed)
-                      const ButtonSegment(
-                          value: EventStatus.postponed, icon: Icon(Icons.event_repeat_rounded), label: Text('Reporté')),
+                      ButtonSegment(
+                          value: EventStatus.postponed, icon: const Icon(Icons.event_repeat_rounded), label: Text(l10n.eventsFlagPostponed)),
                     if (_isEdit)
-                      const ButtonSegment(
-                          value: EventStatus.cancelled, icon: Icon(Icons.cancel_outlined), label: Text('Annulé')),
+                      ButtonSegment(
+                          value: EventStatus.cancelled, icon: const Icon(Icons.cancel_outlined), label: Text(l10n.eventsStatusCancelled)),
                   ],
                   selected: {d.status},
                   onSelectionChanged: (s) => setState(() => d.status = s.first),
@@ -503,11 +526,10 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
                 const SizedBox(height: 6),
                 Text(
                   switch (d.status) {
-                    EventStatus.draft => 'Brouillon : visible de vous seul, à publier plus tard.',
-                    EventStatus.published => 'Visible de tous : chacun peut répondre « Je participe ».',
-                    EventStatus.cancelled => 'Reste visible avec la mention « Annulé » ; plus de participation.',
-                    EventStatus.postponed =>
-                      'Reporté, date à confirmer : modifiez les dates pour le reprogrammer.',
+                    EventStatus.draft => l10n.eventsFormDraftHelp,
+                    EventStatus.published => l10n.eventsFormPublishedHelp,
+                    EventStatus.cancelled => l10n.eventsFormCancelledHelp,
+                    EventStatus.postponed => l10n.eventsFormPostponedHelp,
                   },
                   style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
                 ),
@@ -516,8 +538,8 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
                   contentPadding: EdgeInsets.zero,
                   value: d.commentsEnabled,
                   onChanged: (v) => setState(() => d.commentsEnabled = v),
-                  title: const Text('Commentaires ouverts'),
-                  subtitle: const Text('Les participants partagent ce qu\'ils ont vécu.'),
+                  title: Text(l10n.eventsFormCommentsOpen),
+                  subtitle: Text(l10n.eventsFormCommentsOpenHelp),
                 ),
               ],
             ),
@@ -584,8 +606,8 @@ class _DateField extends StatelessWidget {
         ),
         child: Text(
           v == null
-              ? 'Choisir la date et l\'heure'
-              : '${formatEventDay(v)} · ${v.hour.toString().padLeft(2, '0')}:${v.minute.toString().padLeft(2, '0')}',
+              ? context.l10n.eventsFormPickDateTime
+              : '${formatEventDay(v)} · ${formatTime(v)}',
           style: TextStyle(color: v == null ? AppColors.textSecondary : AppColors.textPrimary),
         ),
       ),
@@ -612,7 +634,7 @@ class _GuestRow extends StatelessWidget {
             flex: 5,
             child: TextFormField(
               initialValue: guest.name,
-              decoration: const InputDecoration(labelText: 'Nom', isDense: true),
+              decoration: InputDecoration(labelText: context.l10n.eventsFormGuestName, isDense: true),
               textCapitalization: TextCapitalization.words,
               onChanged: (v) => onChanged(current = EventGuest(name: v, role: current.role)),
             ),
@@ -622,12 +644,12 @@ class _GuestRow extends StatelessWidget {
             flex: 4,
             child: TextFormField(
               initialValue: guest.role,
-              decoration: const InputDecoration(labelText: 'Rôle', hintText: 'Orateur…', isDense: true),
+              decoration: InputDecoration(labelText: context.l10n.eventsFormGuestRole, hintText: context.l10n.eventsFormGuestRoleHint, isDense: true),
               onChanged: (v) => onChanged(current = EventGuest(name: current.name, role: v)),
             ),
           ),
           IconButton(
-            tooltip: "Retirer l'invité",
+            tooltip: context.l10n.eventsFormRemoveGuest,
             onPressed: onRemove,
             icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary),
           ),
@@ -664,12 +686,12 @@ class _ImagesEditor extends StatelessWidget {
           image: CachedNetworkImage(imageUrl: existing[i].url, fit: BoxFit.cover),
           first: i == 0,
           menu: PopupMenuButton<String>(
-            tooltip: 'Options',
+            tooltip: context.l10n.eventsFormOptions,
             icon: const Icon(Icons.more_vert_rounded, color: Colors.white, size: 20),
             onSelected: (a) => onExisting(existing[i], a),
             itemBuilder: (_) => [
-              if (i != 0) const PopupMenuItem(value: 'cover', child: Text('Mettre en premier')),
-              const PopupMenuItem(value: 'remove', child: Text('Retirer')),
+              if (i != 0) PopupMenuItem(value: 'cover', child: Text(context.l10n.eventsFormMakeFirst)),
+              PopupMenuItem(value: 'remove', child: Text(context.l10n.commonRemove)),
             ],
           ),
         ),
@@ -680,7 +702,7 @@ class _ImagesEditor extends StatelessWidget {
               : _FileImage(key: ObjectKey(pending[i]), file: pending[i]),
           first: existing.isEmpty && i == 0,
           menu: IconButton(
-            tooltip: 'Retirer',
+            tooltip: context.l10n.commonRemove,
             onPressed: () => onRemovePending(pending[i]),
             icon: const Icon(Icons.close_rounded, color: Colors.white, size: 20),
           ),
@@ -699,17 +721,17 @@ class _ImagesEditor extends StatelessWidget {
               child: busy
                   ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))
                   // Réduit plutôt que de déborder (petit écran, texte agrandi).
-                  : const FittedBox(
+                  : FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Padding(
-                        padding: EdgeInsets.all(6),
+                        padding: const EdgeInsets.all(6),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.add_photo_alternate_outlined, color: AppColors.primary),
-                            SizedBox(height: 4),
-                            Text('Ajouter',
-                                style: TextStyle(
+                            const Icon(Icons.add_photo_alternate_outlined, color: AppColors.primary),
+                            const SizedBox(height: 4),
+                            Text(context.l10n.commonAdd,
+                                style: const TextStyle(
                                     color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 12)),
                           ],
                         ),
@@ -763,8 +785,8 @@ class _Thumb extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(color: AppColors.sun, borderRadius: BorderRadius.circular(5)),
-                child: const Text('Vignette',
-                    style: TextStyle(color: AppColors.primaryDark, fontSize: 10, fontWeight: FontWeight.w800)),
+                child: Text(context.l10n.eventsFormThumbnail,
+                    style: const TextStyle(color: AppColors.primaryDark, fontSize: 10, fontWeight: FontWeight.w800)),
               ),
             ),
         ],
@@ -822,10 +844,10 @@ class _OrganizerPicker extends ConsumerWidget {
           (_) => ref.read(_organizerChoice.notifier).set(creators.first.id));
     }
     return _Section(
-      title: 'Organisateur',
+      title: context.l10n.eventsOrganizer,
       subtitle: creators.length > 1
-          ? "Au nom de qui créer l'événement ?"
-          : "L'événement sera publié au nom de ce compte.",
+          ? context.l10n.eventsFormOnBehalfOf
+          : context.l10n.eventsFormPublishedAs,
       child: creators.length == 1
           ? ListTile(
               contentPadding: EdgeInsets.zero,
@@ -835,7 +857,7 @@ class _OrganizerPicker extends ConsumerWidget {
           : DropdownButtonFormField<String>(
               initialValue: selected,
               isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Organisateur'),
+              decoration: InputDecoration(labelText: context.l10n.eventsOrganizer),
               items: [
                 for (final c in creators)
                   DropdownMenuItem(value: c.id, child: Text(c.displayName, overflow: TextOverflow.ellipsis)),

@@ -5,6 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../home/models/testimony_model.dart';
 import '../models/explore_models.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// 2-column grid of trending category cards.
 ///
@@ -23,7 +24,7 @@ class CategoryGrid extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text('Catégories tendance', style: AppTextStyles.h3),
+          child: Text(context.l10n.exploreTrendingCategories, style: AppTextStyles.h3),
         ),
         const SizedBox(height: 12),
         Padding(
@@ -131,7 +132,7 @@ class _CategoryCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     // Count
                     Text(
-                      '${data.count} témoignages',
+                      context.l10n.exploreCategoryTestimonyCount(data.count),
                       style: AppTextStyles.bodySmall.copyWith(
                         color: Colors.white70,
                         fontSize: 11,

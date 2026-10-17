@@ -9,6 +9,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../features/profile/providers/profile_provider.dart';
 import '../../services/api_service.dart' show LaravelApiException;
+import '../../l10n/app_localizations.dart';
 
 /// Image de couverture qui remplit son parent ; rien (le fond reste visible)
 /// si [url] est absent ou si l'image ne se charge pas.
@@ -60,31 +61,31 @@ Future<bool> showProfileCoverSheet(
                   borderRadius: BorderRadius.circular(2)),
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(20, 16, 20, 4),
-            child: Text('Photo de couverture',
-                style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700, fontSize: 16)),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+            child: Text(sheet.l10n.sharedCoverTitle,
+                style: const TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700, fontSize: 16)),
           ),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(20, 0, 20, 8),
-            child: Text('Format large conseillé (1500 × 500 pixels).',
-                style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+            child: Text(sheet.l10n.sharedCoverHint,
+                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
           ),
           ListTile(
             leading: const Icon(Icons.photo_library_rounded, color: AppColors.primary),
-            title: const Text('Choisir dans la galerie', style: TextStyle(fontFamily: AppFonts.family)),
+            title: Text(sheet.l10n.sharedCoverPickGallery, style: const TextStyle(fontFamily: AppFonts.family)),
             onTap: () => Navigator.pop(sheet, _CoverAction.gallery),
           ),
           ListTile(
             leading: const Icon(Icons.camera_alt_rounded, color: AppColors.primary),
-            title: const Text('Prendre une photo', style: TextStyle(fontFamily: AppFonts.family)),
+            title: Text(sheet.l10n.editCamera, style: const TextStyle(fontFamily: AppFonts.family)),
             onTap: () => Navigator.pop(sheet, _CoverAction.camera),
           ),
           if (hasCover)
             ListTile(
               leading: const Icon(Icons.delete_outline_rounded, color: AppColors.danger),
-              title: const Text('Retirer la couverture',
-                  style: TextStyle(fontFamily: AppFonts.family, color: AppColors.danger)),
+              title: Text(sheet.l10n.sharedCoverRemove,
+                  style: const TextStyle(fontFamily: AppFonts.family, color: AppColors.danger)),
               onTap: () => Navigator.pop(sheet, _CoverAction.remove),
             ),
           const SizedBox(height: 8),
@@ -105,7 +106,7 @@ Future<bool> showProfileCoverSheet(
   try {
     if (action == _CoverAction.remove) {
       await notifier.removeCover();
-      snack('Photo de couverture retirée');
+      snack(L10n.current.sharedCoverRemoved);
       return true;
     }
     final file = await ImagePicker().pickImage(
@@ -116,12 +117,12 @@ Future<bool> showProfileCoverSheet(
     );
     if (file == null) return false;
     await notifier.uploadCover(file.path);
-    snack('Photo de couverture mise à jour');
+    snack(L10n.current.sharedCoverUpdated);
     return true;
   } on LaravelApiException catch (e) {
-    snack(e.fieldError('cover') ?? "La photo de couverture n'a pas pu être enregistrée.", error: true);
+    snack(e.fieldError('cover') ?? L10n.current.sharedCoverSaveFailed, error: true);
   } catch (_) {
-    snack("La photo de couverture n'a pas pu être enregistrée. Vérifiez votre connexion.", error: true);
+    snack(L10n.current.sharedCoverSaveFailedNetwork, error: true);
   }
   return false;
 }

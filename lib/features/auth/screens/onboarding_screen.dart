@@ -9,6 +9,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_logo.dart';
+import '../../../l10n/app_localizations.dart';
 
 // =============================================================================
 // ONBOARDING — Tutoriel / premier lancement (maquette, écran 2)
@@ -37,35 +38,34 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  static const List<_SlideData> _slides = [
-    _SlideData(
-      illustration: _Illustration.welcome,
-      title: 'Bienvenue sur',
-      highlightTitle: true,
-      body: 'Découvrez, partagez et vivez des témoignages qui édifient et '
-          'changent des vies.',
-    ),
-    _SlideData(
-      illustration: _Illustration.share,
-      title: 'Partagez ce que Dieu a fait',
-      body: 'Votre témoignage est une arme puissante : chaque histoire de '
-          'grâce mérite d\'être racontée et peut changer une vie.',
-    ),
-    _SlideData(
-      illustration: _Illustration.inspire,
-      title: 'Inspirez d\'autres croyants',
-      body: 'Des milliers de frères et sœurs attendent d\'être encouragés '
-          'par ce que Dieu a accompli dans votre vie.',
-    ),
-    _SlideData(
-      illustration: _Illustration.start,
-      title: 'Commencez votre voyage',
-      body: 'Rejoignez la communauté et soyez une lumière dans la vie de '
-          'quelqu\'un aujourd\'hui.',
-    ),
-  ];
+  List<_SlideData> get _slides {
+    final l10n = context.l10n;
+    return [
+      _SlideData(
+        illustration: _Illustration.welcome,
+        title: l10n.onboardingWelcomeTitle,
+        highlightTitle: true,
+        body: l10n.onboardingWelcomeBody,
+      ),
+      _SlideData(
+        illustration: _Illustration.share,
+        title: l10n.onboardingShareTitle,
+        body: l10n.onboardingShareBody,
+      ),
+      _SlideData(
+        illustration: _Illustration.inspire,
+        title: l10n.onboardingInspireTitle,
+        body: l10n.onboardingInspireBody,
+      ),
+      _SlideData(
+        illustration: _Illustration.start,
+        title: l10n.onboardingStartTitle,
+        body: l10n.onboardingStartBody,
+      ),
+    ];
+  }
 
-  int get _pageCount => _slides.length;
+  static const int _pageCount = 4;
 
   @override
   void dispose() {
@@ -119,7 +119,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
               child: AppButton(
                 key: const ValueKey('onboarding-next'),
-                label: isLastPage ? 'Commencer' : 'Suivant',
+                label: isLastPage
+                    ? context.l10n.onboardingStart
+                    : context.l10n.onboardingNext,
                 variant: isLastPage
                     ? AppButtonVariant.orange
                     : AppButtonVariant.primary,
@@ -137,7 +139,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   : TextButton(
                       onPressed: _skip,
                       child: Text(
-                        'Passer',
+                        context.l10n.onboardingSkip,
                         style: AppTextStyles.labelMedium
                             .copyWith(color: AppColors.primary),
                       ),
@@ -193,9 +195,9 @@ class _SlidePage extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text.rich(
                       TextSpan(children: [
-                        const TextSpan(text: 'Témoignages de '),
+                        const TextSpan(text: 'Témoignages de '), // i18n-ignore
                         TextSpan(
-                          text: 'Gloire',
+                          text: 'Gloire', // i18n-ignore
                           style: titleStyle.copyWith(
                               color: AppColors.secondary),
                         ),
@@ -567,7 +569,7 @@ class _DotIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: 'Page ${current + 1} sur $count',
+      label: context.l10n.onboardingPageOf(current + 1, count),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: List.generate(count, (i) {

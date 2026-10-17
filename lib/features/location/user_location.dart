@@ -3,6 +3,8 @@
 // Serveur : GET/PUT/DELETE /users/me/location ; meta.place et meta.nearby des fils.
 // Doc serveur : docs/fonctionnalites/localisation.md
 
+import '../../l10n/app_localizations.dart';
+
 /// Réglage et zone utilisée (réponse de GET /users/me/location, jamais publique).
 class UserLocationSettings {
   const UserLocationSettings({
@@ -66,19 +68,20 @@ class UserLocationSettings {
   /// Phrase affichée dans le réglage : « Cotonou, Bénin (position de l'appareil) ».
   String describe() {
     if (label == null) {
-      return 'Aucune zone connue : vos fils restent classés selon vos goûts.';
+      return L10n.current.locationNoZone;
     }
     final parts = <String>[];
     for (final p in [locality, label, country]) {
       if (p != null && !parts.contains(p)) parts.add(p);
     }
     final where = parts.join(', ');
+    final l10n = L10n.current;
     final from = switch (source) {
-      'gps' => 'position de l’appareil',
-      'profile' => 'ville et pays du profil',
-      'phone' => 'indicatif du téléphone',
-      'language' => 'langue de l’appareil',
-      _ => 'profil',
+      'gps' => l10n.locationSourceGps,
+      'profile' => l10n.locationSourceProfile,
+      'phone' => l10n.locationSourcePhone,
+      'language' => l10n.locationSourceLanguage,
+      _ => l10n.locationSourceDefault,
     };
     return '$where ($from)';
   }

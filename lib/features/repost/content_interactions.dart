@@ -15,21 +15,30 @@ import '../../services/api_service.dart';
 import '../../shared/widgets/guest_gate.dart';
 import '../home/providers/home_providers.dart' show ReactionType, ReactionTypeInfo, reactionTypeFromApi;
 import '../home/widgets/testimony_action_bar.dart' show formatCount;
+import '../../l10n/app_localizations.dart';
 
 /// Type de publication (segment d'URL de l'API).
 enum ContentKind {
-  event('/events', 'cet événement', 'L’événement'),
-  prayerRequest('/prayer/requests', 'cette requête de prière', 'La requête de prière'),
-  prayerSession('/prayer/sessions', 'cette session de prière', 'La session de prière');
+  event('/events'),
+  prayerRequest('/prayer/requests'),
+  prayerSession('/prayer/sessions');
 
-  const ContentKind(this.prefix, this.thisLabel, this.theLabel);
+  const ContentKind(this.prefix);
   final String prefix;
 
   /// « cet événement » (feuilles et messages).
-  final String thisLabel;
+  String get thisLabel => switch (this) {
+        ContentKind.event => L10n.current.repostKindEventThis,
+        ContentKind.prayerRequest => L10n.current.repostKindPrayerRequestThis,
+        ContentKind.prayerSession => L10n.current.repostKindPrayerSessionThis,
+      };
 
   /// « L'événement » (début de phrase).
-  final String theLabel;
+  String get theLabel => switch (this) {
+        ContentKind.event => L10n.current.repostKindEventThe,
+        ContentKind.prayerRequest => L10n.current.repostKindPrayerRequestThe,
+        ContentKind.prayerSession => L10n.current.repostKindPrayerSessionThe,
+      };
 
   String path(String id, String action) => '$prefix/$id/$action';
 }
@@ -136,14 +145,14 @@ class ContentInteractionsNotifier extends Notifier<Map<String, ContentReactions>
           data: {if (comment != null && comment.trim().isNotEmpty) 'comment': comment.trim()},
         );
     _apply(kind, id, res.data);
-    return res.message ?? 'Partagé avec vos abonnés.';
+    return res.message ?? L10n.current.repostSharedWithFollowers;
   }
 
   /// Annuler son partage. Renvoie le message du serveur.
   Future<String> unrepost(ContentKind kind, String id) async {
     final res = await ref.read(apiServiceProvider).delete<Map<String, dynamic>>(kind.path(id, 'repost'));
     _apply(kind, id, res.data);
-    return res.message ?? 'Partage annulé.';
+    return res.message ?? L10n.current.repostCancelled;
   }
 
   void _apply(ContentKind kind, String id, Map<String, dynamic> data) {
@@ -180,9 +189,9 @@ class ContentInteractionsNotifier extends Notifier<Map<String, ContentReactions>
       }
       // Route absente (serveur pas à jour) ou refus : on le dit au lieu d'annuler en silence.
       if (e is LaravelApiException && e.statusCode == 404) {
-        return 'Le serveur ne prend pas encore en charge cette action. Réessayez plus tard.';
+        return L10n.current.repostServerUnsupported;
       }
-      return e is LaravelApiException && e.message.isNotEmpty ? e.message : 'Impossible d’enregistrer votre réaction. Réessayez.';
+      return e is LaravelApiException && e.message.isNotEmpty ? e.message : L10n.current.repostReactionFailed;
     }
   }
 }
@@ -226,7 +235,7 @@ class ContentReactionBar extends ConsumerWidget {
     final r = ref.watch(contentInteractionsProvider.select((m) => m[ContentInteractionsNotifier.key(kind, id)])) ?? initial;
     final mine = reactionTypeFromApi(r.myReaction);
 
-    Future<bool> member() => requireAccount(context, ref, reason: 'réagir et partager');
+    Future<bool> member() => requireAccount(context, ref, reason: context.l10n.repostReasonReactShare);
 
     void report(String? error) {
       if (error == null || !context.mounted) return;
@@ -284,8 +293,8 @@ class ContentReactionBar extends ConsumerWidget {
       children: [
         _BarButton(
           icon: likeIcon,
-          label: r.likesCount > 0 ? formatCount(r.likesCount) : (dense ? '' : "J'aime"),
-          tooltip: mine?.label ?? "J'aime",
+          label: r.likesCount > 0 ? formatCount(r.likesCount) : (dense ? '' : context.l10n.detailLike),
+          tooltip: mine?.label ?? context.l10n.detailLike,
           onTap: () => react(r.isLiked ? null : ReactionType.like),
           onLongPress: pickReaction,
         ),
@@ -296,8 +305,8 @@ class ContentReactionBar extends ConsumerWidget {
               size: 19,
               color: r.isPrayed ? AppColors.primary : AppColors.textSecondary,
             ),
-            label: r.prayersCount > 0 ? formatCount(r.prayersCount) : (dense ? '' : 'Je prie'),
-            tooltip: 'Je prie',
+            label: r.prayersCount > 0 ? formatCount(r.prayersCount) : (dense ? '' : context.l10n.detailPray),
+            tooltip: context.l10n.detailPray,
             onTap: pray,
           ),
         _BarButton(
@@ -307,7 +316,7 @@ class ContentReactionBar extends ConsumerWidget {
             color: r.isRepostedByMe ? AppColors.secondary : AppColors.textSecondary,
           ),
           label: r.repostsCount > 0 ? formatCount(r.repostsCount) : '',
-          tooltip: 'Partager',
+          tooltip: context.l10n.commonShare,
           onTap: () => showContentShareSheet(context, ref,
               kind: kind, id: id, title: title, webUrl: webUrl, reactions: r),
         ),
@@ -407,7 +416,7 @@ Future<void> showContentShareSheet(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Partager ${kind.thisLabel}', style: AppTextStyles.h4),
+                Text(context.l10n.repostShareThis(kind.thisLabel), style: AppTextStyles.h4),
                 if (link.isNotEmpty) ...[
                   const SizedBox(height: 6),
                   Text(link, overflow: TextOverflow.ellipsis, style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
@@ -417,12 +426,11 @@ Future<void> showContentShareSheet(
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      option(Icons.repeat_rounded, 'Sur TestiApp', AppColors.primary, () {
+                      option(Icons.repeat_rounded, context.l10n.repostOnTestiApp, AppColors.primary, () {
                         close();
                         if (!reactions.canRepost && !reactions.isRepostedByMe) {
                           messenger.showSnackBar(SnackBar(
-                            content: Text('Impossible de partager ${kind.thisLabel} sur TestiApp : '
-                                'la publication est la vôtre, ou elle n’est pas publique.'),
+                            content: Text(L10n.current.repostCannotShare(kind.thisLabel)),
                             behavior: SnackBarBehavior.floating,
                           ));
                           return;
@@ -431,13 +439,13 @@ Future<void> showContentShareSheet(
                       }),
                       if (link.isNotEmpty) ...[
                         const SizedBox(width: 10),
-                        option(Icons.copy_rounded, 'Copier le lien', AppColors.primary, () {
+                        option(Icons.copy_rounded, context.l10n.detailCopyLink, AppColors.primary, () {
                           Clipboard.setData(ClipboardData(text: link));
                           close();
-                          messenger.showSnackBar(const SnackBar(content: Text('Lien copié.'), behavior: SnackBarBehavior.floating));
+                          messenger.showSnackBar(SnackBar(content: Text(L10n.current.repostLinkCopied), behavior: SnackBarBehavior.floating));
                         }),
                         const SizedBox(width: 10),
-                        option(Icons.share_rounded, 'Autres applis', AppColors.secondary, () {
+                        option(Icons.share_rounded, context.l10n.repostOtherApps, AppColors.secondary, () {
                           close();
                           SharePlus.instance.share(ShareParams(text: '$title\n\n$link'));
                         }),
@@ -462,7 +470,7 @@ Future<void> showContentRepostSheet(
   required String id,
   required bool reposted,
 }) async {
-  if (!await requireAccount(context, ref, reason: 'partager avec vos abonnés')) return;
+  if (!await requireAccount(context, ref, reason: context.l10n.repostReasonShare)) return;
   if (!context.mounted) return;
   await showModalBottomSheet<void>(
     context: context,
@@ -505,7 +513,7 @@ class _ContentRepostSheetState extends ConsumerState<_ContentRepostSheet> {
     } catch (e) {
       if (mounted) setState(() => _busy = false);
       messenger.showSnackBar(SnackBar(
-        content: Text(e is LaravelApiException ? e.message : 'Le partage a échoué. Réessayez.'),
+        content: Text(e is LaravelApiException ? e.message : L10n.current.repostFailed),
         behavior: SnackBarBehavior.floating,
       ));
     }
@@ -531,12 +539,11 @@ class _ContentRepostSheetState extends ConsumerState<_ContentRepostSheet> {
                 Row(children: [
                   const Icon(Icons.repeat_rounded, color: AppColors.primary),
                   const SizedBox(width: 8),
-                  Expanded(child: Text('Partager sur TestiApp', style: AppTextStyles.h4)),
+                  Expanded(child: Text(context.l10n.repostShareOnTestiApp, style: AppTextStyles.h4)),
                 ]),
                 const SizedBox(height: 8),
                 Text(
-                  '${widget.kind.theLabel} apparaîtra dans le fil de vos abonnés, avec son auteur, '
-                  'pour toucher plus de monde. L’auteur sera prévenu.',
+                  context.l10n.repostContentExplain(widget.kind.theLabel),
                   style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary, height: 1.4),
                 ),
                 const SizedBox(height: 14),
@@ -547,10 +554,10 @@ class _ContentRepostSheetState extends ConsumerState<_ContentRepostSheet> {
                   maxLines: 5,
                   enabled: !_busy,
                   textCapitalization: TextCapitalization.sentences,
-                  decoration: const InputDecoration(
-                    labelText: 'Votre commentaire (facultatif)',
-                    hintText: 'Pourquoi vous le partagez…',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: context.l10n.repostCommentLabel,
+                    hintText: context.l10n.repostCommentHintContent,
+                    border: const OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -559,13 +566,13 @@ class _ContentRepostSheetState extends ConsumerState<_ContentRepostSheet> {
                   icon: _busy
                       ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                       : const Icon(Icons.repeat_rounded),
-                  label: Text(widget.reposted ? 'Mettre à jour mon partage' : 'Partager avec mes abonnés'),
+                  label: Text(widget.reposted ? context.l10n.repostUpdate : context.l10n.repostShareWithFollowers),
                 ),
                 if (widget.reposted) ...[
                   const SizedBox(height: 4),
                   TextButton(
                     onPressed: _busy ? null : () => _run((n) => n.unrepost(widget.kind, widget.id)),
-                    child: const Text('Annuler mon partage'),
+                    child: Text(context.l10n.repostUndo),
                   ),
                 ],
               ],

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../models/prophecy.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Choix du rappel de prière. Renvoie `(value: null)` pour « aucun rappel »,
 /// et null si la feuille est fermée sans choix.
@@ -40,19 +41,19 @@ class _ReminderSheetState extends State<_ReminderSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Rappel de prière', style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w800)),
+            Text(context.l10n.prophecyReminderLabel, style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w800)),
             const SizedBox(height: 4),
             Text(
-              'Une notification sur ce téléphone pour prier sur la parole, jusqu\'à son accomplissement.',
+              context.l10n.prophecyReminderSheetIntro,
               style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 14),
             SegmentedButton<ReminderFrequency?>(
               showSelectedIcon: false,
-              segments: const [
-                ButtonSegment(value: null, label: Text('Aucun')),
-                ButtonSegment(value: ReminderFrequency.daily, label: Text('Chaque jour')),
-                ButtonSegment(value: ReminderFrequency.weekly, label: Text('Chaque semaine')),
+              segments: [
+                ButtonSegment(value: null, label: Text(context.l10n.prophecyReminderNone)),
+                ButtonSegment(value: ReminderFrequency.daily, label: Text(context.l10n.prophecyEveryDay)),
+                ButtonSegment(value: ReminderFrequency.weekly, label: Text(context.l10n.prophecyEveryWeek)),
               ],
               selected: {_frequency},
               onSelectionChanged: (s) => setState(() => _frequency = s.first),
@@ -62,7 +63,7 @@ class _ReminderSheetState extends State<_ReminderSheet> {
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.schedule_rounded, color: AppColors.primary),
-                title: const Text('Heure'),
+                title: Text(context.l10n.prophecyReminderTime),
                 trailing: Text(_time.format(context), style: const TextStyle(fontWeight: FontWeight.w700)),
                 onTap: () async {
                   final t = await showTimePicker(context: context, initialTime: _time);
@@ -96,7 +97,7 @@ class _ReminderSheetState extends State<_ReminderSheet> {
                       ),
               )),
               style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
-              child: const Text('Valider'),
+              child: Text(context.l10n.commonValidate),
             ),
           ],
         ),

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../l10n/app_localizations.dart';
 import '../data/prayer_repository.dart';
 import '../models/prayer_models.dart';
 import 'prayer_widgets.dart';
@@ -41,7 +42,7 @@ class UpcomingPrayerSessionsStrip extends ConsumerWidget {
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    'Sessions de prière à venir',
+                    context.l10n.prayerUpcomingSessions,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w800, color: AppColors.textPrimary),
@@ -49,7 +50,7 @@ class UpcomingPrayerSessionsStrip extends ConsumerWidget {
                 ),
                 TextButton(
                   onPressed: () => context.push('/prayer-sessions'),
-                  child: const Text('Tout voir'),
+                  child: Text(context.l10n.prayerSeeAll),
                 ),
               ],
             ),

@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../providers/auth_notifier.dart';
+import '../../../l10n/app_localizations.dart';
 
 const _kPrimary = AppColors.primary;
 const _kGold   = AppColors.secondary;
@@ -45,7 +46,7 @@ class _SimpleRegisterScreenState
     final lastName  = _lastNameCtrl.text.trim();
 
     if (firstName.isEmpty || lastName.isEmpty) {
-      setState(() => _error = 'Veuillez entrer votre prénom et votre nom.');
+      setState(() => _error = context.l10n.authEnterFullName);
       return;
     }
 
@@ -98,9 +99,9 @@ class _SimpleRegisterScreenState
                       ),
                     ),
                     const SizedBox(height: 16),
-                    const Text(
-                      'Bienvenue !',
-                      style: TextStyle(
+                    Text(
+                      context.l10n.authWelcomeNew,
+                      style: const TextStyle(
                         fontFamily: AppFonts.family,
                         fontWeight: FontWeight.w700,
                         fontSize: 28,
@@ -109,7 +110,7 @@ class _SimpleRegisterScreenState
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'Partagez les œuvres de Dieu',
+                      context.l10n.authTagline,
                       style: TextStyle(
                         fontFamily: AppFonts.family,
                         fontSize: 14,
@@ -137,9 +138,9 @@ class _SimpleRegisterScreenState
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text(
-                      'Créer mon compte',
-                      style: TextStyle(
+                    Text(
+                      context.l10n.authCreateMyAccount,
+                      style: const TextStyle(
                         fontFamily: AppFonts.family,
                         fontWeight: FontWeight.w600,
                         fontSize: 20,
@@ -148,7 +149,7 @@ class _SimpleRegisterScreenState
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'Entrez juste votre prénom et votre nom.\nAucun mot de passe requis.',
+                      context.l10n.authSimpleRegisterIntro,
                       style: TextStyle(
                         fontFamily: AppFonts.family,
                         fontSize: 13,
@@ -187,20 +188,20 @@ class _SimpleRegisterScreenState
 
                     // Prénom
                     _buildField(
-                      label: 'Prénom',
+                      label: context.l10n.authFirstNameLabel,
                       controller: _firstNameCtrl,
                       focusNode: _firstFocus,
-                      hint: 'Marie',
+                      hint: context.l10n.authFirstNameHintFemale,
                       nextFocus: _lastFocus,
                     ),
                     const SizedBox(height: 16),
 
                     // Nom
                     _buildField(
-                      label: 'Nom',
+                      label: context.l10n.authLastNameLabel,
                       controller: _lastNameCtrl,
                       focusNode: _lastFocus,
-                      hint: 'Dupont',
+                      hint: context.l10n.authLastNameHint,
                       isLast: true,
                       onSubmit: _submit,
                     ),
@@ -221,9 +222,9 @@ class _SimpleRegisterScreenState
                               width: 22, height: 22,
                               child: CircularProgressIndicator(
                                   color: Colors.white, strokeWidth: 2.5))
-                          : const Text(
-                              "C'est parti !",
-                              style: TextStyle(
+                          : Text(
+                              context.l10n.authLetsGo,
+                              style: const TextStyle(
                                 fontFamily: AppFonts.family,
                                 fontWeight: FontWeight.w600,
                                 fontSize: 16,
@@ -237,7 +238,7 @@ class _SimpleRegisterScreenState
                     // Mention légère
                     Center(
                       child: Text(
-                        'Vous pouvez compléter votre profil plus tard.',
+                        context.l10n.authCompleteProfileLater,
                         style: TextStyle(
                           fontFamily: AppFonts.family,
                           fontSize: 12,

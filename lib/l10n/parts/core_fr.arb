@@ -1,0 +1,155 @@
+{
+  "@@locale": "fr",
+  "commonDelete": "Supprimer",
+  "commonEdit": "Modifier",
+  "commonOk": "OK",
+  "commonYes": "Oui",
+  "commonNo": "Non",
+  "commonContinue": "Continuer",
+  "commonNext": "Suivant",
+  "commonPrevious": "Précédent",
+  "commonRetry": "Réessayer",
+  "commonSearch": "Rechercher",
+  "commonSeeAll": "Voir tout",
+  "commonSeeMore": "Voir plus",
+  "commonSeeLess": "Voir moins",
+  "commonDone": "Terminé",
+  "commonApply": "Appliquer",
+  "commonReset": "Réinitialiser",
+  "commonCopy": "Copier",
+  "commonCopied": "Copié",
+  "commonReport": "Signaler",
+  "commonPublish": "Publier",
+  "commonAdd": "Ajouter",
+  "commonRemove": "Retirer",
+  "commonValidate": "Valider",
+  "commonRefresh": "Actualiser",
+  "commonOptional": "Facultatif",
+  "commonRequired": "Obligatoire",
+  "commonRequiredField": "Ce champ est obligatoire.",
+  "commonErrorGeneric": "Une erreur est survenue. Réessayez.",
+  "commonErrorNetwork": "Pas de connexion. Vérifiez votre réseau puis réessayez.",
+  "commonNoResults": "Aucun résultat",
+  "commonAnonymous": "Anonyme",
+  "commonYou": "Vous",
+  "commonUntitled": "(Sans titre)",
+  "commonAppName": "Témoignages",
+  "timeJustNow": "à l'instant",
+  "timeMinutesAgo": "il y a {count} min",
+  "@timeMinutesAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "timeHoursAgo": "il y a {count} h",
+  "@timeHoursAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "timeDaysAgo": "il y a {count} j",
+  "@timeDaysAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "timeWeeksAgo": "il y a {count} sem.",
+  "@timeWeeksAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "timeMonthsAgo": "il y a {count} mois",
+  "@timeMonthsAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "timeYearsAgo": "{count, plural, =1{il y a 1 an} other{il y a {count} ans}}",
+  "@timeYearsAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "timeToday": "Aujourd'hui",
+  "timeYesterday": "Hier",
+  "timeTomorrow": "Demain",
+  "profileMemberSinceYears": "{count, plural, =1{Membre depuis 1 an} other{Membre depuis {count} ans}}",
+  "@profileMemberSinceYears": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "profileMemberSinceMonths": "Membre depuis {count} mois",
+  "@profileMemberSinceMonths": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "profileMemberSinceDays": "{count, plural, =1{Membre depuis 1 jour} other{Membre depuis {count} jours}}",
+  "@profileMemberSinceDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "languageScreenTitle": "Langue",
+  "languageSystem": "Langue du système",
+  "languageSystemCurrent": "Actuellement : {language}",
+  "@languageSystemCurrent": {
+    "placeholders": {
+      "language": {
+        "type": "String"
+      }
+    }
+  },
+  "languageFrench": "Français",
+  "languageEnglish": "English",
+  "languageHint": "L'application, les notifications et les e-mails utilisent cette langue. Les témoignages restent dans la langue de leur auteur.",
+  "languageChanged": "Langue mise à jour.",
+  "pushTestTitle": "Tester les notifications",
+  "pushTestSubtitle": "Recevoir une notification de test sur cet appareil",
+  "pushTestSending": "Envoi de la notification de test…",
+  "pushTestSent": "Notification de test envoyée. Elle doit arriver dans quelques secondes.",
+  "pushTestSentDevices": "{count, plural, =1{Notification envoyée à 1 appareil. Elle doit arriver dans quelques secondes.} other{Notification envoyée à {count} appareils. Elle doit arriver dans quelques secondes.}}",
+  "@pushTestSentDevices": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pushTestPermissionDenied": "Les notifications sont désactivées pour Témoignages. Autorisez-les dans les réglages du téléphone, puis réessayez.",
+  "pushTestNoToken": "Cet appareil n'a pas pu s'enregistrer pour les notifications (services Google ou Apple indisponibles, ou simulateur).",
+  "pushTestNotDeployed": "Le test des notifications n'est pas encore disponible sur le serveur. Réessayez après sa mise à jour.",
+  "pushTestServerError": "Le serveur n'a pas pu envoyer la notification : {message}",
+  "@pushTestServerError": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "pushTestNetworkError": "Impossible de joindre le serveur. Vérifiez votre connexion.",
+  "pushTestNotReceived": "Rien reçu ? Vérifiez que les notifications sont autorisées et que le mode « Ne pas déranger » est désactivé.",
+  "pushFallbackTitle": "Témoignages",
+  "pushChannelName": "Notifications Témoignages",
+  "pushChannelDescription": "Commentaires, réactions, approbations et prières."
+}

@@ -5,6 +5,7 @@ import '../app_constants.dart';
 import '../../features/auth/providers/auth_notifier.dart'
     show authStateProvider, AuthStateAuthenticated;
 import '../../services/api_service.dart';
+import '../../l10n/app_localizations.dart';
 
 // ── Model ─────────────────────────────────────────────────────────────────────
 
@@ -36,21 +37,25 @@ class CategoryModel {
 
 // Mêmes slugs que la table `categories` du serveur (CategorySeeder) :
 // un slug inconnu fait échouer le partage (« category invalid »).
-const _kFallbackCategories = [
-  CategoryModel(id: '', name: 'Guérison',          slug: 'guerison'),
-  CategoryModel(id: '', name: 'Délivrance',         slug: 'delivrance'),
-  CategoryModel(id: '', name: 'Protection',         slug: 'protection'),
-  CategoryModel(id: '', name: 'Provision',          slug: 'provision'),
-  CategoryModel(id: '', name: 'Famille',            slug: 'famille'),
-  CategoryModel(id: '', name: 'Salut',              slug: 'salut'),
-  CategoryModel(id: '', name: 'Mariage',            slug: 'mariage'),
-  CategoryModel(id: '', name: 'Emploi & Carrière',  slug: 'emploi'),
-  CategoryModel(id: '', name: 'Études',             slug: 'etudes'),
-  CategoryModel(id: '', name: 'Autre',              slug: 'autre'),
-];
+// Noms dans la langue affichée (getter : suit un changement de langue).
+List<CategoryModel> get _kFallbackCategories {
+  final l = L10n.current;
+  return [
+    CategoryModel(id: '', name: l.sharedCategoryHealing,       slug: 'guerison'),
+    CategoryModel(id: '', name: l.sharedCategoryDeliverance,   slug: 'delivrance'),
+    CategoryModel(id: '', name: l.appCategoryProtection,       slug: 'protection'),
+    CategoryModel(id: '', name: l.appCategoryProvision,        slug: 'provision'),
+    CategoryModel(id: '', name: l.sharedCategoryFamily,        slug: 'famille'),
+    CategoryModel(id: '', name: l.sharedCategorySalvation,     slug: 'salut'),
+    CategoryModel(id: '', name: l.sharedCategoryMarriage,      slug: 'mariage'),
+    CategoryModel(id: '', name: l.appCategoryCareer,           slug: 'emploi'),
+    CategoryModel(id: '', name: l.appCategoryStudies,          slug: 'etudes'),
+    CategoryModel(id: '', name: l.sharedOrgTypeOther,          slug: 'autre'),
+  ];
+}
 
 @visibleForTesting
-const List<CategoryModel> kFallbackCategoriesForTest = _kFallbackCategories;
+List<CategoryModel> get kFallbackCategoriesForTest => _kFallbackCategories;
 
 // ── Notifier ──────────────────────────────────────────────────────────────────
 

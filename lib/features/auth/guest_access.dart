@@ -1,7 +1,8 @@
 // lib/features/auth/guest_access.dart
 //
-// Règles d'accès du mode invité (navigation sans compte), sans dépendance
-// Flutter : utilisées par le redirect du routeur et testées unitairement.
+// Règles d'accès du mode invité (navigation sans compte), sans widget ni
+// BuildContext (textes via L10n.current) : utilisées par le redirect du
+// routeur et testées unitairement.
 //
 // Autorisé  : onglets (accueil, explorer, bible, téléchargements, profil),
 //             fiche / lecteurs de témoignage, recherche, catégories,
@@ -10,6 +11,8 @@
 // Compte    : publier, commenter / signaler, notifications, journal,
 //             édition du profil, mes témoignages, favoris, abonnements,
 //             sécurité du compte, diffusion en direct, modération, admin.
+
+import '../../l10n/app_localizations.dart';
 
 /// Vrai si un invité peut ouvrir [location] (chemin sans query string).
 bool guestCanAccess(String location) {
@@ -101,21 +104,22 @@ bool _isBlocked(String path) {
 /// Raison affichée dans la feuille « Créez un compte pour … ».
 String guestBlockedReason(String location) {
   final path = _normalize(location);
-  if (path.startsWith('/publish')) return 'publier votre témoignage';
-  if (path.startsWith('/notifications')) return 'recevoir vos notifications';
-  if (path.startsWith('/journal')) return 'tenir votre journal spirituel';
-  if (path.startsWith('/prophecies')) return 'garder vos paroles prophétiques';
-  if (path == '/my-feed') return 'suivre les témoignages de vos abonnements';
-  if (path.startsWith('/prayer-requests')) return 'confier une requête de prière';
-  if (path.startsWith('/prayer-sessions')) return 'programmer une session de prière';
-  if (path.startsWith('/events/')) return 'gérer un événement';
-  if (path.endsWith('/comments')) return 'commenter les témoignages';
-  if (path.endsWith('/report')) return 'signaler un contenu';
-  if (path == '/following') return 'suivre des membres';
-  if (path.startsWith('/lives')) return 'lancer un direct';
-  if (path.startsWith('/profile/saved')) return 'enregistrer vos favoris';
-  if (path.startsWith('/profile')) return 'gérer votre profil';
-  return 'profiter de toutes les fonctionnalités';
+  final l10n = L10n.current;
+  if (path.startsWith('/publish')) return l10n.authGuestReasonPublish;
+  if (path.startsWith('/notifications')) return l10n.authGuestReasonNotifications;
+  if (path.startsWith('/journal')) return l10n.authGuestReasonJournal;
+  if (path.startsWith('/prophecies')) return l10n.authGuestReasonProphecies;
+  if (path == '/my-feed') return l10n.authGuestReasonMyFeed;
+  if (path.startsWith('/prayer-requests')) return l10n.authGuestReasonPrayerRequest;
+  if (path.startsWith('/prayer-sessions')) return l10n.authGuestReasonPrayerSession;
+  if (path.startsWith('/events/')) return l10n.authGuestReasonEvent;
+  if (path.endsWith('/comments')) return l10n.authGuestReasonComment;
+  if (path.endsWith('/report')) return l10n.authGuestReasonReport;
+  if (path == '/following') return l10n.authGuestReasonFollow;
+  if (path.startsWith('/lives')) return l10n.authGuestReasonLive;
+  if (path.startsWith('/profile/saved')) return l10n.authGuestReasonSaved;
+  if (path.startsWith('/profile')) return l10n.authGuestReasonProfile;
+  return l10n.authGuestReasonDefault;
 }
 
 String _normalize(String location) {

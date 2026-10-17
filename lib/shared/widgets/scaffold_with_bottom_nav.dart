@@ -40,7 +40,7 @@ class ScaffoldWithBottomNav extends ConsumerWidget {
   Future<void> _onPublishTap(BuildContext context, WidgetRef ref) async {
     if (ref.read(isGuestProvider) &&
         !await requireAccount(context, ref,
-            reason: 'publier votre témoignage')) {
+            reason: context.l10n.sharedReasonPublishTestimony)) {
       return;
     }
     if (context.mounted) _onTabTap(context, 3);
@@ -48,7 +48,7 @@ class ScaffoldWithBottomNav extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final l10n  = AppLocalizations.of(context);
+    final l10n  = context.l10n;
     final cur   = navigationShell.currentIndex;
 
     return Scaffold(

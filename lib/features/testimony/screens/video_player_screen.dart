@@ -176,8 +176,10 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
       ..showSnackBar(
         SnackBar(
           content: Text(
-            'Qualité ajustée : ${next.label} '
-            '(${now ? 'données mobiles' : 'Wi-Fi'})',
+            context.l10n.playerQualityAdjusted(
+              next.label,
+              now ? context.l10n.playerNetworkMobile : context.l10n.playerNetworkWifi,
+            ),
           ),
           duration: const Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
@@ -302,7 +304,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     for (final r in _renditions) {
       if (r.url == url) return r.label;
     }
-    return url == _testimony?.mp4Url ? 'MP4' : 'Originale';
+    return url == _testimony?.mp4Url ? 'MP4' : context.l10n.playerQualityOriginal;
   }
 
   Future<void> _startPlayback() async {
@@ -427,7 +429,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
       if (mounted) {
         setState(() => _switching = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Impossible de charger cette qualité.')),
+          SnackBar(content: Text(context.l10n.playerQualityLoadError)),
         );
       }
       return false;
@@ -655,7 +657,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
                         VideoPoster(
                           thumbnailUrl: testimony?.thumbnailUrl,
                           durationSeconds: testimony?.durationSeconds ?? 0,
-                          hint: 'Données mobiles · ${_resolved?.label ?? ''}',
+                          hint: context.l10n.playerMobileDataHint(_resolved?.label ?? ''),
                           onPlay: _playFromPoster,
                         )
                       else if (_chewieCtrl != null)
@@ -686,7 +688,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
                           top: 4,
                           left: 4,
                           child: IconButton(
-                            tooltip: 'Retour',
+                            tooltip: context.l10n.commonBack,
                             onPressed: () => Navigator.of(context).maybePop(),
                             icon: const Icon(Icons.arrow_back_rounded),
                             color: AppColors.surface,
@@ -781,7 +783,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
   // ── Actions réservées aux membres (mode invité : feuille « compte requis »)
 
   Future<void> _toggleLike(VideoTestimony? t) async {
-    if (!await requireAccount(context, ref, reason: 'réagir aux témoignages')) {
+    if (!await requireAccount(context, ref, reason: context.l10n.homeReasonReact)) {
       return;
     }
     if (!mounted || t == null) return;
@@ -789,7 +791,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
   }
 
   Future<void> _togglePray(VideoTestimony? t) async {
-    if (!await requireAccount(context, ref, reason: 'réagir aux témoignages')) {
+    if (!await requireAccount(context, ref, reason: context.l10n.homeReasonReact)) {
       return;
     }
     if (!mounted || t == null) return;
@@ -797,7 +799,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
   }
 
   Future<void> _toggleSave() async {
-    if (!await requireAccount(context, ref, reason: 'enregistrer vos favoris')) {
+    if (!await requireAccount(context, ref, reason: context.l10n.authGuestReasonSaved)) {
       return;
     }
     if (!mounted) return;
@@ -812,7 +814,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
 
   Future<void> _showCommentsSheet(BuildContext context) async {
     if (!await requireAccount(context, ref,
-        reason: 'commenter les témoignages')) {
+        reason: context.l10n.authGuestReasonComment)) {
       return;
     }
     if (!context.mounted) return;
@@ -833,20 +835,20 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
 /// Libellé court du bouton « Qualité » : « Auto · 360p », « 720p », « Auto ».
 String videoQualityChipLabel(VideoQuality effective, ResolvedMedia? resolved) {
   if (effective == VideoQuality.auto) {
-    return resolved?.rendition != null ? 'Auto · ${resolved!.label}' : 'Auto';
+    final l = L10n.current;
+    return resolved?.rendition != null ? l.playerQualityAutoWith(resolved!.label) : l.playerQualityAuto;
   }
   if (resolved == null) return effective.label;
-  return resolved.rendition != null ? resolved.label : 'Auto';
+  return resolved.rendition != null ? resolved.label : L10n.current.playerQualityAuto;
 }
 
 /// Pourquoi une seule qualité est proposée (versions allégées en préparation, ou absentes).
 String singleQualityReason(String? renditionsStatus, {required bool video}) =>
     switch (renditionsStatus) {
-      'pending' || 'processing' =>
-        'Les autres qualités sont en préparation : réessayez dans quelques minutes.',
+      'pending' || 'processing' => L10n.current.playerQualitiesPreparing,
       _ => video
-          ? 'Une seule qualité est disponible pour cette vidéo.'
-          : 'Une seule qualité est disponible pour cet audio.',
+          ? L10n.current.playerSingleQualityVideo
+          : L10n.current.playerSingleQualityAudio,
     };
 
 /// Ouvre la feuille « Qualité » pour une vidéo et renvoie le choix
@@ -893,12 +895,11 @@ Future<VideoQuality?> showVideoQualitySheet(
           override: VideoQuality.auto,
         )?.rendition?.label;
 
-  const settingsHint =
-      'Qualité par défaut modifiable dans Paramètres › Qualité vidéo.';
+  final settingsHint = context.l10n.playerVideoQualitySettingsHint;
 
   return showQualityPickerSheet<VideoQuality>(
     context,
-    title: 'Qualité de la vidéo',
+    title: context.l10n.playerVideoQualityTitle,
     options: [
       for (final q in options)
         QualityOption(value: q, label: q.fullLabel, hint: q.hint),
@@ -907,7 +908,7 @@ Future<VideoQuality?> showVideoQualitySheet(
     currentLabel: autoLabel,
     footer: renditions.isEmpty && !adaptive
         ? '${singleQualityReason(renditionsStatus, video: true)}\n$settingsHint'
-        : 'Ce choix vaut pour cette lecture uniquement.\n$settingsHint',
+        : context.l10n.playerQualityThisPlaybackOnly(settingsHint),
   );
 }
 
@@ -952,7 +953,7 @@ class _PlaybackControlsRow extends StatelessWidget {
           // Bouton « Qualité » (pilule)
           Flexible(
             child: Tooltip(
-              message: 'Qualité de la vidéo',
+              message: context.l10n.playerVideoQualityTitle,
               child: InkWell(
                 onTap: onQuality,
                 borderRadius: BorderRadius.circular(AppRadius.pill),
@@ -996,7 +997,7 @@ class _PlaybackControlsRow extends StatelessWidget {
           if (onBookmark != null)
             IconButton(
               onPressed: onBookmark,
-              tooltip: isBookmarked ? 'Retirer des favoris' : 'Sauvegarder',
+              tooltip: isBookmarked ? context.l10n.playerRemoveFromFavorites : context.l10n.detailSave,
               visualDensity: VisualDensity.compact,
               icon: Icon(
                 isBookmarked
@@ -1023,7 +1024,7 @@ class _PlaybackControlsRow extends StatelessWidget {
               onTap: () => onAutoplayChanged(!autoplayNext),
               behavior: HitTestBehavior.opaque,
               child: Text(
-                'Lecture auto',
+                context.l10n.playerAutoplay,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.labelSmall.copyWith(
@@ -1059,10 +1060,10 @@ class _QualitySwitchOverlay extends StatelessWidget {
     return Container(
       color: Colors.black54,
       alignment: Alignment.center,
-      child: const Column(
+      child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          SizedBox(
+          const SizedBox(
             width: 32,
             height: 32,
             child: CircularProgressIndicator(
@@ -1070,10 +1071,10 @@ class _QualitySwitchOverlay extends StatelessWidget {
               color: Colors.white,
             ),
           ),
-          SizedBox(height: 10),
+          const SizedBox(height: 10),
           Text(
-            'Changement de qualité…',
-            style: TextStyle(
+            context.l10n.playerQualitySwitching,
+            style: const TextStyle(
               fontFamily: AppFonts.family,
               color: Colors.white,
               fontSize: 13,
@@ -1122,7 +1123,7 @@ class _UpNextOverlay extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'Suivant dans $seconds s',
+                      context.l10n.playerUpNextIn(seconds),
                       style: const TextStyle(
                         fontFamily: AppFonts.family,
                         color: Colors.white70,
@@ -1149,7 +1150,7 @@ class _UpNextOverlay extends StatelessWidget {
                   foregroundColor: Colors.white,
                   minimumSize: const Size(48, 40),
                 ),
-                child: const Text('Annuler'),
+                child: Text(context.l10n.commonCancel),
               ),
             ],
           ),
@@ -1537,7 +1538,7 @@ class _VideoInfo extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = testimony;
-    final fr = AppLocalizations.of(context).isFr;
+    final fr = context.l10n.isFr;
     final currentUid = ref.watch(currentUserProvider)?.id;
     if (t == null) {
       return const Padding(
@@ -1585,7 +1586,7 @@ class _VideoInfo extends ConsumerWidget {
             InsightVerseCard(
               verse: verse.trim(),
               reference: t.bibleVerseRef,
-              title: fr ? 'Parole de Dieu' : 'Word of God',
+              title: context.l10n.testimonyWordOfGod,
             ),
           ],
           const SizedBox(height: 6),
@@ -1620,7 +1621,7 @@ class _CommentsPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fr = AppLocalizations.of(context).isFr;
+    final fr = context.l10n.isFr;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: Material(
@@ -1652,9 +1653,7 @@ class _CommentsPreview extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    fr
-                        ? '${formatCompactCount(count)} commentaire${count > 1 ? 's' : ''}'
-                        : '${formatCompactCount(count, fr: false)} comment${count == 1 ? '' : 's'}',
+                    context.l10n.playerCommentsCount(count, formatCompactCount(count, fr: fr)),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AppTextStyles.labelMedium
@@ -1715,7 +1714,7 @@ class _RelatedVideosList extends ConsumerWidget {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
           child: Text(
-            AppLocalizations.of(context).isFr ? 'Vidéos similaires' : 'Related videos',
+            context.l10n.playerRelatedVideos,
             style: AppTextStyles.h4,
           ),
         ),
@@ -1788,7 +1787,8 @@ class _RelatedVideoCardState extends State<_RelatedVideoCard> {
   static String _fmtDuration(int s) =>
       '${(s ~/ 60).toString().padLeft(2, '0')}:${(s % 60).toString().padLeft(2, '0')}';
 
-  static String _fmtViews(int v) => '${formatCompactCount(v)} vue${v > 1 ? 's' : ''}';
+  static String _fmtViews(int v) =>
+      L10n.current.testimonyViews(v, formatCompactCount(v, fr: L10n.current.isFr));
 
   @override
   Widget build(BuildContext context) {
@@ -1957,7 +1957,7 @@ class _VideoCommentsBottomSheetState extends State<_VideoCommentsBottomSheet> {
             children: [
               const _DragHandle(),
               _SheetHeader(
-                title: 'Commentaires (34)',
+                title: context.l10n.commentsTitleCount(34),
                 onClose: () => Navigator.of(context).pop(),
               ),
               const Divider(height: 1, color: AppColors.border),
@@ -1965,28 +1965,28 @@ class _VideoCommentsBottomSheetState extends State<_VideoCommentsBottomSheet> {
                 child: ListView(
                   controller: scrollController,
                   padding: const EdgeInsets.only(top: 8, bottom: 8),
-                  children: const [
+                  children: [
                     _VideoCommentItem(
-                      name: 'Jean Dupont',
+                      name: 'Jean Dupont', // i18n-ignore
                       initials: 'JD',
                       text:
-                          'Gloire à Dieu ! Ce témoignage m\'a touché au plus profond.',
-                      time: 'il y a 2h',
+                          'Gloire à Dieu ! Ce témoignage m\'a touché au plus profond.', // i18n-ignore
+                      time: context.l10n.commentsAgoHoursShort(2),
                       likeCount: 12,
                     ),
                     _VideoCommentItem(
-                      name: 'Amina Kone',
+                      name: 'Amina Kone', // i18n-ignore
                       initials: 'AK',
-                      text: 'Merci de partager. Dieu est bon tout le temps !',
-                      time: 'il y a 5h',
+                      text: 'Merci de partager. Dieu est bon tout le temps !', // i18n-ignore
+                      time: context.l10n.commentsAgoHoursShort(5),
                       likeCount: 8,
                     ),
                     _VideoCommentItem(
-                      name: 'Samuel Obi',
+                      name: 'Samuel Obi', // i18n-ignore
                       initials: 'SO',
                       text:
-                          'Mon épouse a vécu quelque chose de similaire. Dieu guérit encore aujourd\'hui.',
-                      time: 'il y a 1j',
+                          'Mon épouse a vécu quelque chose de similaire. Dieu guérit encore aujourd\'hui.', // i18n-ignore
+                      time: context.l10n.commentsAgoDaysShort(1),
                       likeCount: 21,
                     ),
                   ],
@@ -2132,9 +2132,9 @@ class _VideoCommentItem extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(width: 16),
-                    const Text(
-                      'Répondre',
-                      style: TextStyle(
+                    Text(
+                      context.l10n.detailReply,
+                      style: const TextStyle(
                         fontFamily: AppFonts.family,
                         fontSize: 12,
                         color: AppColors.textSecondary,
@@ -2195,7 +2195,7 @@ class _VideoCommentInputBar extends StatelessWidget {
               focusNode: focusNode,
               style: AppTextStyles.bodyMedium,
               decoration: InputDecoration(
-                hintText: 'Ajouter un commentaire...',
+                hintText: context.l10n.commentsAddHintDots,
                 hintStyle: const TextStyle(
                   fontFamily: AppFonts.family,
                   color: AppColors.textSecondary,
@@ -2436,7 +2436,7 @@ class _FullscreenOverlay extends StatelessWidget {
                 ),
                 const Expanded(
                   child: Text(
-                    'Comment Dieu a guéri ma fille',
+                    'Comment Dieu a guéri ma fille', // i18n-ignore
                     style: TextStyle(
                       fontFamily: AppFonts.family,
                       color: Colors.white,

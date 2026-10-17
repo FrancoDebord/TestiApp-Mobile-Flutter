@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/admin_provider.dart';
+import '../../../l10n/app_localizations.dart';
 
 // =============================================================================
 // AdminStatsScreen — Charts and analytics
@@ -24,40 +25,48 @@ class AdminStatsScreen extends ConsumerWidget {
       ..sort((a, b) => b.testimonyCount.compareTo(a.testimonyCount));
     final top5 = sorted.take(5).toList();
 
+    final l10n = context.l10n;
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
       children: [
         // ── Weekly bar chart ─────────────────────────────────────────────────
         _ChartCard(
-          title: 'Témoignages cette semaine',
-          subtitle: 'Soumis vs approuvés',
+          title: l10n.adminStatsWeekTitle,
+          subtitle: l10n.adminStatsWeekSubtitle,
           child: _BarChartPlaceholder(
-            bars: const [
-              _Bar('Lun', 8, 6),
-              _Bar('Mar', 12, 10),
-              _Bar('Mer', 7, 5),
-              _Bar('Jeu', 15, 13),
-              _Bar('Ven', 11, 9),
-              _Bar('Sam', 6, 4),
-              _Bar('Dim', 4, 4),
+            bars: [
+              _Bar(l10n.adminDayMon, 8, 6),
+              _Bar(l10n.adminDayTue, 12, 10),
+              _Bar(l10n.adminDayWed, 7, 5),
+              _Bar(l10n.adminDayThu, 15, 13),
+              _Bar(l10n.adminDayFri, 11, 9),
+              _Bar(l10n.adminDaySat, 6, 4),
+              _Bar(l10n.adminDaySun, 4, 4),
             ],
           ),
         ),
         const SizedBox(height: 16),
         // ── Monthly line chart ───────────────────────────────────────────────
         _ChartCard(
-          title: 'Croissance mensuelle',
-          subtitle: 'Nouveaux utilisateurs — 6 derniers mois',
+          title: l10n.adminStatsGrowthTitle,
+          subtitle: l10n.adminStatsGrowthSubtitle,
           child: _LineChartPlaceholder(
             points: const [320, 410, 375, 490, 520, 620],
-            labels: const ['Déc', 'Jan', 'Fév', 'Mar', 'Avr', 'Mai'],
+            labels: [
+              l10n.adminMonthDec,
+              l10n.adminMonthJan,
+              l10n.adminMonthFeb,
+              l10n.adminMonthMar,
+              l10n.adminMonthApr,
+              l10n.adminMonthMay,
+            ],
           ),
         ),
         const SizedBox(height: 16),
         // ── Pie chart ────────────────────────────────────────────────────────
         _ChartCard(
-          title: 'Répartition par catégorie',
-          subtitle: 'Top 5 catégories les plus actives',
+          title: l10n.adminStatsByCategoryTitle,
+          subtitle: l10n.adminStatsByCategorySubtitle,
           child: _PieChartPlaceholder(top5: top5),
         ),
         const SizedBox(height: 16),
@@ -462,9 +471,9 @@ class _TopCategoriesTable extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Top catégories',
-            style: TextStyle(
+          Text(
+            context.l10n.adminTopCategories,
+            style: const TextStyle(
               fontFamily: 'Plus Jakarta Sans',
               fontWeight: FontWeight.w600,
               fontSize: 14,
@@ -500,7 +509,7 @@ class _TopCategoriesTable extends StatelessWidget {
                       Flexible(
                         flex: 2,
                         child: Text(
-                          '${cat.testimonyCount} témoignages',
+                          context.l10n.adminTestimonyCount(cat.testimonyCount as int),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           textAlign: TextAlign.end,

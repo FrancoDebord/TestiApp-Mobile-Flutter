@@ -9,6 +9,7 @@ import '../../../core/theme/app_tokens.dart';
 import '../../../shared/search/search_suggestions.dart';
 import '../../../shared/widgets/search_autocomplete_field.dart';
 import '../providers/explore_providers.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Animated search bar with real voice-search via speech_to_text.
 class SearchBarWidget extends ConsumerStatefulWidget {
@@ -72,9 +73,9 @@ class _SearchBarWidgetState extends ConsumerState<SearchBarWidget>
 
     if (!_speechAvailable) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Microphone non disponible'),
-          duration: Duration(seconds: 2),
+        SnackBar(
+          content: Text(context.l10n.exploreMicUnavailable),
+          duration: const Duration(seconds: 2),
         ),
       );
       return;
@@ -97,7 +98,7 @@ class _SearchBarWidgetState extends ConsumerState<SearchBarWidget>
         }
       },
       listenOptions: SpeechListenOptions(
-        localeId: 'fr_FR',
+        localeId: L10n.languageCode == 'fr' ? 'fr_FR' : 'en_US',
         listenFor: const Duration(seconds: 10),
         pauseFor: const Duration(seconds: 3),
       ),
@@ -187,7 +188,7 @@ class _SearchBarWidgetState extends ConsumerState<SearchBarWidget>
                     focusNode: _focus,
                     style: AppTextStyles.bodyMedium,
                     decoration: InputDecoration(
-                      hintText: 'Rechercher un témoignage...',
+                      hintText: context.l10n.exploreSearchHintDots,
                       hintStyle: AppTextStyles.bodyMedium.copyWith(
                         color: AppColors.textSecondary,
                       ),
@@ -208,7 +209,7 @@ class _SearchBarWidgetState extends ConsumerState<SearchBarWidget>
               icon: const Icon(Icons.close_rounded, size: 18),
               color: AppColors.textSecondary,
               onPressed: _clear,
-              tooltip: 'Effacer',
+              tooltip: context.l10n.exploreClear,
               padding: const EdgeInsets.symmetric(horizontal: 8),
               constraints: const BoxConstraints(),
             ),
@@ -283,7 +284,7 @@ class _ListeningIndicatorState extends State<_ListeningIndicator>
     return FadeTransition(
       opacity: _fade,
       child: Text(
-        'Parlez maintenant…',
+        context.l10n.exploreSpeakNow,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: TextStyle(

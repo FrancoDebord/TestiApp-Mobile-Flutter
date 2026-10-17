@@ -189,6 +189,11 @@ abstract final class AppConstants {
 
   static String userById(String id)         => '/users/$id';
   static String userTestimonies(String id)  => '/users/$id/testimonies';
+  // Témoignage de conversion publié d'un compte (404 s'il n'en a pas) ;
+  // le mien, quel que soit son statut : { data | null, can_create }.
+  // docs serveur fonctionnalites/temoignage-de-conversion.md
+  static String userConversionTestimony(String id) => '/users/$id/conversion-testimony';
+  static const String myConversionTestimony = '/me/conversion-testimony';
   static String userFollow(String id)       => '/users/$id/follow';    // POST
   static String userUnfollow(String id)     => '/users/$id/unfollow';  // DELETE
   // Communauté et abonnements — backend : docs/fonctionnalites/abonnements.md
@@ -209,6 +214,8 @@ abstract final class AppConstants {
 
   // Self management
   static const String updateProfile    = '/users/me';          // PUT
+  /// PUT { locale: fr|en } : langue des notifications et e-mails (repli : updateProfile).
+  static const String meLocale         = '/me';
   static const String uploadAvatar     = '/users/me/avatar';   // POST multipart
   static const String profileCover     = '/users/me/cover';    // POST multipart « cover » / DELETE
   static const String updateSettings   = '/users/me/settings'; // GET · PUT (clés snake_case)
@@ -486,6 +493,9 @@ abstract final class AppConstants {
 
   static const String registerFcmToken   = '/devices/token';
   static const String unregisterFcmToken = '/devices/token';
+  /// POST : envoie un push de test aux appareils du compte (Paramètres ›
+  /// « Tester les notifications »).
+  static const String pushTest           = '/me/push-test';
 
   // ── Validation limits ─────────────────────────────────────────────────────
 

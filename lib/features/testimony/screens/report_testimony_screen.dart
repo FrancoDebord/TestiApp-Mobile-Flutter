@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../services/api_service.dart';
 import '../../../shared/widgets/guest_gate.dart';
 
@@ -30,11 +31,11 @@ enum _Reason {
       };
 
   String get label => switch (this) {
-        _Reason.inappropriateContent => 'Contenu inapproprié',
-        _Reason.falseTesti           => 'Faux témoignage',
-        _Reason.hateSpeech           => 'Discours haineux',
-        _Reason.spam                 => 'Spam ou publicité',
-        _Reason.other                => 'Autre raison',
+        _Reason.inappropriateContent => L10n.current.reportReasonInappropriate,
+        _Reason.falseTesti           => L10n.current.reportReasonFalseTestimony,
+        _Reason.hateSpeech           => L10n.current.reportReasonHate,
+        _Reason.spam                 => L10n.current.reportReasonSpam,
+        _Reason.other                => L10n.current.reportReasonOther,
       };
 }
 
@@ -64,7 +65,7 @@ class _ReportTestimonyScreenState
     final reason = _selectedReason;
     if (reason == null) return;
     // Mode invité : signaler demande un compte.
-    if (!await requireAccount(context, ref, reason: 'signaler un contenu')) {
+    if (!await requireAccount(context, ref, reason: context.l10n.reportGuestReason)) {
       return;
     }
     if (!mounted) return;
@@ -83,16 +84,16 @@ class _ReportTestimonyScreenState
       if (!mounted) return;
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Signalement envoyé. Merci pour votre contribution.'),
+        SnackBar(
+          content: Text(context.l10n.reportSent),
           backgroundColor: AppColors.success,
         ),
       );
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Une erreur est survenue. Veuillez réessayer.'),
+        SnackBar(
+          content: Text(context.l10n.reportError),
           backgroundColor: AppColors.danger,
         ),
       );
@@ -110,8 +111,8 @@ class _ReportTestimonyScreenState
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: false,
-        title: const Text(
-          'Signaler ce témoignage',
+        title: Text(
+          context.l10n.reportTitle,
           style: TextStyle(
             fontFamily: AppFonts.family,
             fontWeight: FontWeight.w600,
@@ -137,7 +138,7 @@ class _ReportTestimonyScreenState
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: AppColors.sunBorder),
                     ),
-                    child: const Row(
+                    child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Icon(Icons.info_outline_rounded,
@@ -145,7 +146,7 @@ class _ReportTestimonyScreenState
                         SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            'Votre signalement est anonyme et sera examiné par notre équipe de modération.',
+                            context.l10n.reportIntro,
                             style: TextStyle(
                               fontFamily: AppFonts.family,
                               fontSize: 13,
@@ -160,8 +161,8 @@ class _ReportTestimonyScreenState
                   const SizedBox(height: 24),
 
                   // ── Raison ────────────────────────────────────────────────
-                  const Text(
-                    'Raison du signalement',
+                  Text(
+                    context.l10n.reportReasonTitle,
                     style: TextStyle(
                       fontFamily: AppFonts.family,
                       fontWeight: FontWeight.w600,
@@ -170,8 +171,8 @@ class _ReportTestimonyScreenState
                     ),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
-                    'Sélectionnez la raison qui correspond le mieux',
+                  Text(
+                    context.l10n.reportReasonSubtitle,
                     style: TextStyle(
                       fontFamily: AppFonts.family,
                       fontSize: 13,
@@ -189,8 +190,8 @@ class _ReportTestimonyScreenState
                   const SizedBox(height: 24),
 
                   // ── Commentaire optionnel ─────────────────────────────────
-                  const Text(
-                    'Détails supplémentaires (optionnel)',
+                  Text(
+                    context.l10n.reportDetailsTitle,
                     style: TextStyle(
                       fontFamily: AppFonts.family,
                       fontWeight: FontWeight.w600,
@@ -206,7 +207,7 @@ class _ReportTestimonyScreenState
                     textCapitalization: TextCapitalization.sentences,
                     decoration: InputDecoration(
                       hintText:
-                          'Décrivez le problème avec plus de précision…',
+                          context.l10n.reportDetailsHint,
                       hintStyle: const TextStyle(
                         fontFamily: AppFonts.family,
                         fontSize: 14,
@@ -276,8 +277,8 @@ class _ReportTestimonyScreenState
                           color: Colors.white,
                         ),
                       )
-                    : const Text(
-                        'Envoyer le signalement',
+                    : Text(
+                        context.l10n.reportSubmit,
                         style: TextStyle(
                           fontFamily: AppFonts.family,
                           fontWeight: FontWeight.w600,

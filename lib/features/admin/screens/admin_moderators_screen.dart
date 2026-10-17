@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../shared/models/user_model.dart' show UserRole;
 import '../models/admin_models.dart';
 import '../providers/admin_provider.dart';
+import '../../../l10n/app_localizations.dart';
 
 // =============================================================================
 // AdminModeratorsScreen — Assign / Remove moderator role
@@ -32,7 +33,7 @@ class AdminModeratorsScreen extends ConsumerWidget {
       children: [
         // ── Active moderators ────────────────────────────────────────────────
         _SectionHeader(
-          title: 'Modérateurs actifs',
+          title: context.l10n.adminActiveModerators,
           count: moderators.length,
           color: const Color(0xFF2B5DB0),
         ),
@@ -41,8 +42,8 @@ class AdminModeratorsScreen extends ConsumerWidget {
             user: u,
             onRemove: () => _confirmAction(
               context,
-              'Retirer le rôle de modérateur ?',
-              '${u.displayName} redeviendra un utilisateur standard.',
+              context.l10n.adminRemoveModeratorTitle,
+              context.l10n.adminRemoveModeratorBody(u.displayName),
               const Color(0xFFD92D20),
               () => ref
                   .read(adminUsersNotifierProvider.notifier)
@@ -53,7 +54,7 @@ class AdminModeratorsScreen extends ConsumerWidget {
         const SizedBox(height: 16),
         // ── Promote candidates ───────────────────────────────────────────────
         _SectionHeader(
-          title: 'Utilisateurs — Promouvoir',
+          title: context.l10n.adminPromoteCandidates,
           count: candidates.length,
           color: const Color(0xFF184797),
         ),
@@ -62,8 +63,8 @@ class AdminModeratorsScreen extends ConsumerWidget {
             user: u,
             onPromote: () => _confirmAction(
               context,
-              'Promouvoir ${u.displayName} ?',
-              'Cet utilisateur pourra modérer les témoignages soumis.',
+              context.l10n.adminPromoteTitle(u.displayName),
+              context.l10n.adminPromoteModeratorBody,
               const Color(0xFF184797),
               () => ref
                   .read(adminUsersNotifierProvider.notifier)
@@ -98,9 +99,9 @@ class AdminModeratorsScreen extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Annuler',
+            child: Text(context.l10n.commonCancel,
                 style:
-                    TextStyle(fontFamily: 'Plus Jakarta Sans', color: Color(0xFF667085))),
+                    const TextStyle(fontFamily: 'Plus Jakarta Sans', color: Color(0xFF667085))),
           ),
           ElevatedButton(
             onPressed: () {
@@ -114,8 +115,8 @@ class AdminModeratorsScreen extends ConsumerWidget {
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8)),
             ),
-            child: const Text('Confirmer',
-                style: TextStyle(
+            child: Text(context.l10n.commonConfirm,
+                style: const TextStyle(
                     fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600)),
           ),
         ],
@@ -231,17 +232,17 @@ class _ModeratorCard extends StatelessWidget {
                 color: const Color(0xFFEAF1FC),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.shield_rounded,
+                  const Icon(Icons.shield_rounded,
                       size: 12, color: Color(0xFF2B5DB0)),
-                  SizedBox(width: 4),
+                  const SizedBox(width: 4),
                   Flexible(
-                    child: Text('Modérateur',
+                    child: Text(context.l10n.adminRoleModerator,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
+                        style: const TextStyle(
                             fontFamily: 'Plus Jakarta Sans',
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
@@ -255,7 +256,7 @@ class _ModeratorCard extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.remove_circle_outline_rounded,
                 size: 18, color: Color(0xFFD92D20)),
-            tooltip: 'Retirer le rôle',
+            tooltip: context.l10n.adminRemoveRole,
             onPressed: onRemove,
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
@@ -309,7 +310,7 @@ class _CandidateCard extends StatelessWidget {
           TextButton.icon(
             onPressed: onPromote,
             icon: const Icon(Icons.add_moderator_outlined, size: 14),
-            label: const Text('Promouvoir'),
+            label: Text(context.l10n.adminPromote),
             style: TextButton.styleFrom(
               foregroundColor: const Color(0xFF184797),
               textStyle: const TextStyle(

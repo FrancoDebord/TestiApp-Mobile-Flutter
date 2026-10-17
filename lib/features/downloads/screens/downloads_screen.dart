@@ -10,6 +10,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../shared/widgets/app_button.dart';
+import '../../../l10n/app_localizations.dart' hide formatBytes;
 import '../../home/models/testimony_model.dart';
 import '../providers/downloads_provider.dart';
 import '../widgets/download_tile.dart';
@@ -25,14 +26,20 @@ class DownloadsScreen extends ConsumerStatefulWidget {
 /// Filtres (pas de type « Images » : l'application ne publie pas d'images
 /// seules).
 enum _Filter {
-  all('Tous', null),
-  video('Vidéos', TestimonyType.video),
-  audio('Audios', TestimonyType.audio),
-  text('Textes', TestimonyType.text);
+  all(null),
+  video(TestimonyType.video),
+  audio(TestimonyType.audio),
+  text(TestimonyType.text);
 
-  const _Filter(this.label, this.type);
-  final String label;
+  const _Filter(this.type);
   final TestimonyType? type;
+
+  String get label => switch (this) {
+        all => L10n.current.downloadsFilterAll,
+        video => L10n.current.downloadsFilterVideos,
+        audio => L10n.current.downloadsFilterAudios,
+        text => L10n.current.downloadsFilterTexts,
+      };
 }
 
 class _DownloadsScreenState extends ConsumerState<DownloadsScreen> {
@@ -59,7 +66,7 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen> {
         automaticallyImplyLeading: canPop,
         titleSpacing: canPop ? 0 : AppSpacing.screen,
         title: Text(
-          'Mes téléchargements',
+          context.l10n.downloadsTitle,
           style: AppTextStyles.h3,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
@@ -209,7 +216,7 @@ class _OfflineBanner extends StatelessWidget {
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
-              'Vous êtes hors ligne. Vos téléchargements restent disponibles.',
+              context.l10n.downloadsOfflineBanner,
               style: AppTextStyles.bodySmall
                   .copyWith(color: AppColors.primaryDark),
             ),
@@ -252,7 +259,7 @@ class _StorageFooter extends ConsumerWidget {
                   runSpacing: AppSpacing.xs,
                   children: [
                     Text(
-                      'Stockage utilisé $pct %',
+                      context.l10n.downloadsStorageUsed(pct),
                       style: AppTextStyles.labelMedium.copyWith(
                         color: AppColors.textPrimary,
                         fontWeight: FontWeight.w600,
@@ -279,7 +286,7 @@ class _StorageFooter extends ConsumerWidget {
           ),
           const SizedBox(height: AppSpacing.md),
           AppButton(
-            label: 'Gérer le stockage',
+            label: context.l10n.downloadsManageStorage,
             variant: AppButtonVariant.accent,
             leadingIcon: Icons.storage_rounded,
             fullWidth: true,
@@ -315,11 +322,11 @@ class _ManageStorageSheet extends ConsumerWidget {
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Annuler')),
+              child: Text(context.l10n.commonCancel)),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: AppColors.danger),
-            child: const Text('Supprimer'),
+            child: Text(context.l10n.commonDelete),
           ),
         ],
       ),
@@ -340,11 +347,10 @@ class _ManageStorageSheet extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Gérer le stockage', style: AppTextStyles.h3),
+            Text(context.l10n.downloadsManageStorage, style: AppTextStyles.h3),
             const SizedBox(height: AppSpacing.xs),
             Text(
-              '$count téléchargement${count > 1 ? 's' : ''} · '
-              '${formatBytes(s.totalBytes)} utilisés',
+              context.l10n.downloadsCountUsed(count, formatBytes(s.totalBytes)),
               style: AppTextStyles.bodySmall,
             ),
             const SizedBox(height: AppSpacing.md),
@@ -355,19 +361,19 @@ class _ManageStorageSheet extends ConsumerWidget {
                 count: s.entries.values.where((e) => e.type == t).length,
                 onDelete: () async {
                   final label = switch (t) {
-                    TestimonyType.video => 'les vidéos',
-                    TestimonyType.audio => 'les audios',
-                    TestimonyType.text => 'les textes',
+                    TestimonyType.video => context.l10n.downloadsTheVideos,
+                    TestimonyType.audio => context.l10n.downloadsTheAudios,
+                    TestimonyType.text => context.l10n.downloadsTheTexts,
                   };
-                  if (await _confirm(context, 'Supprimer $label ?',
-                      'Tous $label téléchargés seront supprimés de l’appareil.')) {
+                  if (await _confirm(context, context.l10n.downloadsDeleteTypeTitle(label),
+                      context.l10n.downloadsDeleteTypeBody(label))) {
                     await n.deleteType(t);
                   }
                 },
               ),
             const SizedBox(height: AppSpacing.lg),
             AppButton(
-              label: 'Tout supprimer',
+              label: context.l10n.downloadsDeleteAll,
               variant: AppButtonVariant.danger,
               leadingIcon: Icons.delete_sweep_outlined,
               fullWidth: true,
@@ -376,9 +382,8 @@ class _ManageStorageSheet extends ConsumerWidget {
                   : () async {
                       if (await _confirm(
                           context,
-                          'Tout supprimer ?',
-                          'Tous vos téléchargements seront supprimés. '
-                              'Ils ne seront plus disponibles hors ligne.')) {
+                          context.l10n.downloadsDeleteAllTitle,
+                          context.l10n.downloadsDeleteAllBody)) {
                         await n.deleteAll();
                         if (context.mounted) Navigator.pop(context);
                       }
@@ -407,9 +412,9 @@ class _TypeRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = switch (type) {
-      TestimonyType.video => 'Vidéos',
-      TestimonyType.audio => 'Audios',
-      TestimonyType.text => 'Textes',
+      TestimonyType.video => context.l10n.downloadsFilterVideos,
+      TestimonyType.audio => context.l10n.downloadsFilterAudios,
+      TestimonyType.text => context.l10n.downloadsFilterTexts,
     };
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
@@ -444,7 +449,7 @@ class _TypeRow extends StatelessWidget {
             ),
           ),
           IconButton(
-            tooltip: 'Supprimer les $name',
+            tooltip: context.l10n.downloadsDeleteTypeTooltip(name),
             onPressed: count == 0 ? null : onDelete,
             icon: Icon(Icons.delete_outline_rounded,
                 color: count == 0 ? AppColors.border : AppColors.danger),
@@ -481,20 +486,19 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.lg),
           Text(
-            filtered ? 'Aucun téléchargement de ce type' : 'Aucun téléchargement',
+            filtered ? context.l10n.downloadsEmptyFiltered : context.l10n.downloadsEmpty,
             style: AppTextStyles.h4,
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            'Téléchargez des témoignages pour les lire, les écouter ou les '
-            'regarder sans connexion.',
+            context.l10n.downloadsEmptyDesc,
             style: AppTextStyles.bodySmall,
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: AppSpacing.xl),
           AppButton(
-            label: 'Explorer les témoignages',
+            label: context.l10n.downloadsExplore,
             variant: AppButtonVariant.primary,
             leadingIcon: Icons.explore_outlined,
             onPressed: () => GoRouter.maybeOf(context)?.go(AppPaths.explorePath),
@@ -520,14 +524,13 @@ class _WebNotice extends StatelessWidget {
                 size: 48, color: AppColors.primary),
             const SizedBox(height: AppSpacing.lg),
             Text(
-              'Téléchargements disponibles sur l’application mobile',
+              context.l10n.downloadsWebTitle,
               style: AppTextStyles.h4,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
-              'Le navigateur ne permet pas d’enregistrer les témoignages '
-              'pour une lecture hors ligne.',
+              context.l10n.downloadsWebDesc,
               style: AppTextStyles.bodySmall,
               textAlign: TextAlign.center,
             ),

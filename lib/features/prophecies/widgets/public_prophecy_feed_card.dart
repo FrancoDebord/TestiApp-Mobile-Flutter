@@ -6,6 +6,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../models/public_prophecy.dart';
 import 'prophecy_widgets.dart' show prophecyDay, prophecyReceived;
+import '../../../l10n/app_localizations.dart';
 
 /// Carte d'une parole prophétique publique dans un fil : extrait de la parole et lien
 /// vers le témoignage d'accomplissement (qui reste celui de son auteur).
@@ -18,8 +19,9 @@ class PublicProphecyFeedCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = prophecy;
     final meta = [
-      if (p.receivedOn != null) 'Reçue le ${prophecyReceived(p.receivedOn!, p.receivedTime)}',
-      if (p.givenBy != null) 'donnée par ${p.givenBy}',
+      if (p.receivedOn != null)
+        context.l10n.prophecyReceivedOn(prophecyReceived(p.receivedOn!, p.receivedTime)),
+      if (p.givenBy != null) context.l10n.prophecyGivenBy(p.givenBy!),
     ].join(', ');
     return Material(
       color: AppColors.sunSoft,
@@ -49,7 +51,9 @@ class PublicProphecyFeedCard extends StatelessWidget {
                     style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
               const SizedBox(height: 8),
               Text(
-                p.bodyText != null ? '« ${p.bodyText} »' : 'Parole enregistrée en audio',
+                p.bodyText != null
+                    ? context.l10n.prophecyQuoted(p.bodyText!)
+                    : context.l10n.prophecyRecordedAsAudio,
                 maxLines: 5,
                 overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.bodyMedium.copyWith(fontStyle: FontStyle.italic, height: 1.45),
@@ -60,7 +64,7 @@ class PublicProphecyFeedCard extends StatelessWidget {
                   const Icon(Icons.verified_rounded, size: 16, color: AppColors.success),
                   const SizedBox(width: 6),
                   Expanded(
-                    child: Text('Accomplie le ${prophecyDay(p.fulfilledOn!)}',
+                    child: Text(context.l10n.prophecyFulfilledOn(prophecyDay(p.fulfilledOn!)),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(color: AppColors.success, fontWeight: FontWeight.w700, fontSize: 13)),
@@ -71,7 +75,7 @@ class PublicProphecyFeedCard extends StatelessWidget {
                 const Icon(Icons.menu_book_rounded, size: 16, color: AppColors.primary),
                 const SizedBox(width: 6),
                 Expanded(
-                  child: Text('Lire le témoignage : ${p.testimonyTitle}',
+                  child: Text(context.l10n.prophecyReadTestimony(p.testimonyTitle),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.bodySmall.copyWith(color: AppColors.primary, fontWeight: FontWeight.w700)),

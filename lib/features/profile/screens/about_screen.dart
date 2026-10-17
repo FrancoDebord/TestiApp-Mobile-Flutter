@@ -23,13 +23,13 @@ class AboutScreen extends StatelessWidget {
         mode: LaunchMode.externalApplication);
     if (!ok && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Impossible d'ouvrir le site web")));
+          SnackBar(content: Text(context.l10n.profileAboutSiteOpenFailed)));
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+    final l10n = context.l10n;
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -55,7 +55,7 @@ class AboutScreen extends StatelessWidget {
                 border: Border.all(color: AppColors.sunBorder),
               ),
               child: Text(
-                'Version $appVersion',
+                l10n.profileAboutVersion(appVersion),
                 style: AppTextStyles.labelSmall.copyWith(
                     color: AppColors.sunText, fontWeight: FontWeight.w600),
               ),
@@ -68,20 +68,15 @@ class AboutScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Notre mission', style: AppTextStyles.h4),
+                Text(l10n.profileAboutMission, style: AppTextStyles.h4),
                 const SizedBox(height: AppSpacing.sm),
                 Text(
-                  'Témoignages de Gloire rassemble les récits de vies '
-                  'transformées pour la gloire de Dieu. Partagez ce que Dieu '
-                  'a fait pour vous en vidéo, en audio, en texte ou en image, '
-                  'et soyez édifiés par les témoignages de la communauté — '
-                  'même hors connexion.',
+                  l10n.profileAboutMissionBody,
                   style: AppTextStyles.bodyMedium.copyWith(height: 1.55),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 Text(
-                  '« Ils l\'ont vaincu à cause du sang de l\'Agneau et à cause '
-                  'de la parole de leur témoignage. » — Apocalypse 12:11',
+                  l10n.profileAboutVerse,
                   style: AppTextStyles.bodySmall.copyWith(
                       fontStyle: FontStyle.italic, height: 1.5),
                 ),
@@ -93,7 +88,7 @@ class AboutScreen extends StatelessWidget {
             children: [
               ProfileMenuTile(
                 icon: Icons.public_rounded,
-                title: 'Site web',
+                title: l10n.profileAboutWebsite,
                 subtitle: AppConstants.webBaseUrl
                     .replaceFirst(RegExp('^https?://'), ''),
                 onTap: () => _openSite(context),
@@ -105,10 +100,10 @@ class AboutScreen extends StatelessWidget {
               ),
               ProfileMenuTile(
                 icon: Icons.description_outlined,
-                title: 'Licences open source',
+                title: l10n.profileAboutLicenses,
                 onTap: () => showLicensePage(
                   context: context,
-                  applicationName: 'Témoignages de Gloire',
+                  applicationName: 'Témoignages de Gloire', // i18n-ignore
                   applicationVersion: appVersion,
                 ),
               ),
@@ -116,14 +111,14 @@ class AboutScreen extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.xxl),
           Text(
-            'Conçu par ARISE & SHINE Krea',
+            l10n.profileAboutDesignedBy('ARISE & SHINE Krea'), // i18n-ignore
             textAlign: TextAlign.center,
             style: AppTextStyles.bodyMedium.copyWith(
                 fontWeight: FontWeight.w600, color: AppColors.primary),
           ),
           const SizedBox(height: 4),
           Text(
-            '© ${DateTime.now().year} Témoignages de Gloire. Tous droits réservés.',
+            l10n.profileAboutCopyright('${DateTime.now().year}'),
             textAlign: TextAlign.center,
             style: AppTextStyles.bodySmall,
           ),

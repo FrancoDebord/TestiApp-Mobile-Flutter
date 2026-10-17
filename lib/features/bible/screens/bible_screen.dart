@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../l10n/app_localizations.dart';
 import '../models/bible_models.dart';
 import '../providers/bible_providers.dart';
 
@@ -46,14 +47,14 @@ class BibleScreen extends ConsumerWidget {
                   color: Colors.white, size: 18),
             ),
             const SizedBox(width: 10),
-            Text('Bible', style: AppTextStyles.h3),
+            Text(context.l10n.bibleTitle, style: AppTextStyles.h3),
           ],
         ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded,
                 color: AppColors.textSecondary),
-            tooltip: 'Actualiser',
+            tooltip: context.l10n.commonRefresh,
             onPressed: () =>
                 ref.invalidate(bibleTranslationsProvider),
           ),
@@ -78,21 +79,21 @@ class BibleScreen extends ConsumerWidget {
 // ── Language helpers ──────────────────────────────────────────────────────────
 
 String _languageLabel(String lang) => switch (lang.toLowerCase()) {
-      'fr' => 'Français',
-      'en' => 'English',
-      'es' => 'Español',
-      'pt' => 'Português',
-      'de' => 'Deutsch',
-      'it' => 'Italiano',
-      'ar' => 'العربية',
-      'sw' => 'Kiswahili',
-      'ln' => 'Lingala',
-      'yo' => 'Yoruba',
-      'ha' => 'Hausa',
-      'ig' => 'Igbo',
-      'am' => 'Amharique',
-      'rw' => 'Kinyarwanda',
-      'wo' => 'Wolof',
+      'fr' => 'Français', // i18n-ignore
+      'en' => 'English', // i18n-ignore
+      'es' => 'Español', // i18n-ignore
+      'pt' => 'Português', // i18n-ignore
+      'de' => 'Deutsch', // i18n-ignore
+      'it' => 'Italiano', // i18n-ignore
+      'ar' => 'العربية', // i18n-ignore
+      'sw' => 'Kiswahili', // i18n-ignore
+      'ln' => 'Lingala', // i18n-ignore
+      'yo' => 'Yoruba', // i18n-ignore
+      'ha' => 'Hausa', // i18n-ignore
+      'ig' => 'Igbo', // i18n-ignore
+      'am' => L10n.current.bibleLanguageAmharic,
+      'rw' => 'Kinyarwanda', // i18n-ignore
+      'wo' => 'Wolof', // i18n-ignore
       _    => lang.toUpperCase(),
     };
 
@@ -224,7 +225,7 @@ class _TranslationCard extends ConsumerWidget {
                       const SizedBox(height: 2),
                       Text(
                         '${_languageLabel(t.language)}'
-                        '${t.verseCount > 0 ? '  ·  ${_formatCount(t.verseCount)} versets' : ''}',
+                        '${t.verseCount > 0 ? '  ·  ${context.l10n.bibleVerseCount(_formatCount(t.verseCount))}' : ''}',
                         style: AppTextStyles.bodySmall.copyWith(
                           color: AppColors.textSecondary,
                         ),
@@ -245,16 +246,16 @@ class _TranslationCard extends ConsumerWidget {
                       }
                     },
                     itemBuilder: (_) => [
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: 'delete',
                         child: Row(
                           children: [
-                            Icon(Icons.delete_outline,
+                            const Icon(Icons.delete_outline,
                                 size: 18, color: Colors.redAccent),
-                            SizedBox(width: 10),
-                            Text('Supprimer',
+                            const SizedBox(width: 10),
+                            Text(context.l10n.commonDelete,
                                 style:
-                                    TextStyle(color: Colors.redAccent)),
+                                    const TextStyle(color: Colors.redAccent)),
                           ],
                         ),
                       ),
@@ -276,8 +277,8 @@ class _TranslationCard extends ConsumerWidget {
               const SizedBox(height: 6),
               Text(
                 t.downloadProgress != null
-                    ? '${(t.downloadProgress! * 100).round()} %'
-                    : 'Connexion…',
+                    ? context.l10n.downloadsPercent((t.downloadProgress! * 100).round())
+                    : context.l10n.bibleConnecting,
                 style: AppTextStyles.bodySmall.copyWith(
                   color: AppColors.primary,
                   fontWeight: FontWeight.w600,
@@ -290,7 +291,7 @@ class _TranslationCard extends ConsumerWidget {
                 t.errorMessage != null) ...[
               const SizedBox(height: 10),
               Text(
-                'Erreur : ${t.errorMessage}',
+                context.l10n.bibleError('${t.errorMessage}'),
                 style: AppTextStyles.bodySmall
                     .copyWith(color: AppColors.danger),
                 maxLines: 2,
@@ -305,7 +306,7 @@ class _TranslationCard extends ConsumerWidget {
               children: [
                 if (t.isDownloaded)
                   _ActionButton(
-                    label: 'Lire',
+                    label: context.l10n.bibleRead,
                     icon: Icons.import_contacts_rounded,
                     onTap: () => context.push('/bible/${t.code}'),
                     primary: true,
@@ -322,7 +323,7 @@ class _TranslationCard extends ConsumerWidget {
                 else ...[
                   if (t.downloadStatus == DownloadStatus.error)
                     _ActionButton(
-                      label: 'Réessayer',
+                      label: context.l10n.commonRetry,
                       icon: Icons.refresh_rounded,
                       onTap: () => ref
                           .read(bibleTranslationsProvider.notifier)
@@ -331,7 +332,7 @@ class _TranslationCard extends ConsumerWidget {
                     )
                   else
                     _ActionButton(
-                      label: 'Télécharger',
+                      label: context.l10n.bibleDownload,
                       icon: Icons.download_rounded,
                       onTap: () => ref
                           .read(bibleTranslationsProvider.notifier)
@@ -358,15 +359,14 @@ class _TranslationCard extends ConsumerWidget {
       builder: (ctx) => AlertDialog(
         shape:
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Supprimer la version ?'),
+        title: Text(context.l10n.bibleDeleteVersionTitle),
         content: Text(
-          'La version "$name" sera supprimée de votre appareil. '
-          'Vous pourrez la re-télécharger à tout moment.',
+          context.l10n.bibleDeleteVersionBody(name),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Annuler'),
+            child: Text(context.l10n.commonCancel),
           ),
           TextButton(
             style:
@@ -377,7 +377,7 @@ class _TranslationCard extends ConsumerWidget {
                   .read(bibleTranslationsProvider.notifier)
                   .delete(id);
             },
-            child: const Text('Supprimer'),
+            child: Text(context.l10n.commonDelete),
           ),
         ],
       ),
@@ -495,14 +495,13 @@ class _EmptyBody extends StatelessWidget {
                 color: AppColors.textSecondary.withAlpha(80)),
             const SizedBox(height: 16),
             Text(
-              'Aucune version disponible',
+              context.l10n.bibleNoVersion,
               style: AppTextStyles.h4,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
-              'Les versions de la Bible seront disponibles '
-              'dès que le serveur les proposera.',
+              context.l10n.bibleNoVersionDesc,
               style: AppTextStyles.bodyMedium
                   .copyWith(color: AppColors.textSecondary),
               textAlign: TextAlign.center,
@@ -533,7 +532,7 @@ class _ErrorBody extends StatelessWidget {
                 size: 56, color: AppColors.textSecondary),
             const SizedBox(height: 16),
             Text(
-              'Impossible de charger les versions',
+              context.l10n.bibleLoadVersionsFailed,
               style: AppTextStyles.h4,
               textAlign: TextAlign.center,
             ),
@@ -550,7 +549,7 @@ class _ErrorBody extends StatelessWidget {
             ElevatedButton.icon(
               onPressed: onRetry,
               icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Réessayer'),
+              label: Text(context.l10n.commonRetry),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,

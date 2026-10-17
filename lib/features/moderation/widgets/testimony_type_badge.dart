@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/app_localizations.dart';
 import '../models/moderation_models.dart';
 
 // =============================================================================
@@ -16,19 +17,19 @@ class TestimonyTypeBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final (label, icon, bg, fg) = switch (type) {
       TestimonyType.text => (
-          'TEXTE',
+          context.l10n.modTypeBadgeText,
           Icons.article_rounded,
           const Color(0xFFEAF1FC),
           const Color(0xFF2B5DB0),
         ),
       TestimonyType.audio => (
-          'AUDIO',
+          context.l10n.modTypeBadgeAudio,
           Icons.headphones_rounded,
           const Color(0xFFFFF1E2),
           const Color(0xFFF79009),
         ),
       TestimonyType.video => (
-          'VIDEO',
+          context.l10n.modTypeBadgeVideo,
           Icons.play_circle_rounded,
           const Color(0xFFECFDF3),
           const Color(0xFF12B76A),

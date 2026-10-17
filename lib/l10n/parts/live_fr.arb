@@ -1,0 +1,545 @@
+{
+  "@@locale": "fr",
+  "errorNotFoundTitle": "Page introuvable",
+  "errorNotFoundBody": "Cette page n'existe pas ou a été déplacée.",
+  "errorBackHome": "Retour à l'accueil",
+  "feedEventPast": "Événement passé · à revivre",
+  "feedEventOngoing": "En cours",
+  "feedEventUpcoming": "Événement à venir",
+  "feedPrayerRequest": "Requête de prière",
+  "feedPrayerRequestEvent": "Requête de prière · {event}",
+  "@feedPrayerRequestEvent": {
+    "placeholders": {
+      "event": {
+        "type": "String"
+      }
+    }
+  },
+  "feedPrayerRequestBy": "Requête de prière de {name}",
+  "@feedPrayerRequestBy": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "feedPrayerSession": "Session de prière",
+  "feedPrayerSessionHost": "Session de prière · {host}",
+  "@feedPrayerSessionHost": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "feedProphecyFulfilled": "Parole prophétique accomplie · {author}",
+  "@feedProphecyFulfilled": {
+    "placeholders": {
+      "author": {
+        "type": "String"
+      }
+    }
+  },
+  "feedTitle": "Mon fil",
+  "feedLoadError": "Impossible de charger votre fil.",
+  "feedHeaderFollowing": "{count, plural, =1{Les {count} compte que vous suivez d’abord, puis des témoignages choisis pour vous.} other{Les {count} comptes que vous suivez d’abord, puis des témoignages choisis pour vous.}}",
+  "@feedHeaderFollowing": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "feedFollowAccounts": "Suivez des comptes",
+  "feedNoTestimonyYet": "Pas encore de témoignage",
+  "feedFollowAccountsBody": "Abonnez-vous à des églises, ministères et personnes : leurs témoignages apparaîtront ici. En attendant, voici des témoignages choisis pour vous.",
+  "feedFollowingEmptyBody": "Les comptes que vous suivez n'ont encore rien publié.",
+  "feedDiscoverCommunity": "Découvrir la communauté",
+  "feedSuggestionForYou": "Suggestion pour vous",
+  "liveCameraBroadcastFailed": "La caméra n'a pas pu être diffusée. Réessayez.",
+  "liveVideoNotConfigured": "Le service vidéo n'est pas configuré.",
+  "liveSpeakerRequested": "{name} demande à intervenir.",
+  "@liveSpeakerRequested": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "liveTooManyReactions": "Doucement ! Trop de réactions en peu de temps.",
+  "liveNotConnected": "Vous n'êtes pas connecté au direct.",
+  "liveMicNotOpenedYet": "Le service vidéo n'a pas encore ouvert votre micro. Réessayez.",
+  "liveMicInaccessible": "Micro inaccessible. Autorisez-le dans les réglages du téléphone.",
+  "liveStageEndedByHost": "Le diffuseur a terminé votre intervention. Merci pour votre témoignage !",
+  "liveStageRemovedByModerator": "Un modérateur vous a retiré de l'antenne.",
+  "liveStageConnectionLost": "Connexion perdue : vous n'êtes plus à l'antenne.",
+  "liveStageEnded": "Votre intervention est terminée. Merci pour votre témoignage !",
+  "liveVideoUnavailable": "Le service vidéo est momentanément indisponible.",
+  "liveServerError": "Erreur du serveur ({status}).",
+  "@liveServerError": {
+    "placeholders": {
+      "status": {
+        "type": "int"
+      }
+    }
+  },
+  "liveConnectionImpossible": "Connexion impossible. Vérifiez votre accès à Internet.",
+  "liveReactionPray": "Prière",
+  "liveReactionAmen": "Amen",
+  "liveReactionWorship": "Adorer Dieu",
+  "liveReactionFire": "Feu",
+  "liveDefaultTitle": "Direct",
+  "liveEndReasonHost": "Terminé par le diffuseur",
+  "liveEndReasonModerator": "Coupé par la modération",
+  "liveEndReasonConnection": "Interrompu (connexion perdue)",
+  "liveEndReasonAbandoned": "Jamais passé à l'antenne",
+  "liveEndReasonDefault": "Merci d'avoir suivi ce témoignage.",
+  "liveProtocolEncrypted": "{protocol} (chiffré)",
+  "@liveProtocolEncrypted": {
+    "placeholders": {
+      "protocol": {
+        "type": "String"
+      }
+    }
+  },
+  "liveCamHikvision": "Hikvision (et HiLook)",
+  "liveCamHikvisionHint": "Canal 1 : 101 (principal), 102 (secondaire). Canal 2 : 201, 202…",
+  "liveCamDahua": "Dahua (et Imou)",
+  "liveCamDahuaHint": "subtype=0 : flux principal, subtype=1 : flux secondaire.",
+  "liveCamAmcrestHint": "Même format que Dahua.",
+  "liveCamReolinkHint": "Activez RTSP dans Réglages → Réseau → Avancé → Ports. Modèles 4K / H.265 : /h265Preview_01_main.",
+  "liveCamAxisHint": "Paramètres possibles : ?videocodec=h264&resolution=1280x720.",
+  "liveCamTapoHint": "Créez d'abord un « Compte de la caméra » dans l'application Tapo (Paramètres avancés) : ce sont cet identifiant et ce mot de passe.",
+  "liveCamFoscamHint": "Port RTSP 88 sur la plupart des modèles récents (vérifiez dans Réglages → Réseau → Port).",
+  "liveCamOnvif": "ONVIF générique",
+  "liveCamOnvifHint": "Le chemin dépend du modèle : lisez-le dans l'interface de la caméra ou avec ONVIF Device Manager (profil de flux).",
+  "liveCamOther": "Autre",
+  "liveCamOtherHint": "Indiquez le chemin donné par la documentation de la caméra.",
+  "liveCamHostRequired": "Indiquez l'adresse IP ou le nom d'hôte de la caméra.",
+  "liveCamHostNoScheme": "Indiquez seulement l'adresse, sans « rtsp:// ».",
+  "liveCamHostInvalidChars": "Adresse non valide (pas d'espace, de « / », « @ » ni « ? »).",
+  "liveCamIpv6Invalid": "Adresse IPv6 non valide.",
+  "liveCamIpInvalid": "Adresse IP non valide.",
+  "liveCamHostnameInvalid": "Nom d'hôte non valide.",
+  "liveCamPortRange": "Port entre 1 et 65535.",
+  "liveCamPathNoSpace": "Le chemin ne doit pas contenir d'espace.",
+  "liveCamPassphraseLength": "La phrase secrète SRT compte 10 à 79 caractères.",
+  "liveCamUrlTooLong": "Adresse trop longue (500 caractères au plus).",
+  "livesTitle": "Directs",
+  "livesGoLive": "Lancer un direct",
+  "livesLoadError": "Impossible de charger les directs.",
+  "livesNotAvailable": "Les directs ne sont pas encore disponibles.\nLe service vidéo doit être configuré sur le serveur.",
+  "livesEmptyCanGoLive": "Aucun direct pour le moment.\nLancez le premier !",
+  "livesEmptyComeBack": "Aucun direct pour le moment.\nRevenez bientôt.",
+  "livesRecent": "Récents",
+  "liveBadgePreparing": "EN PRÉPARATION",
+  "liveResume": "Reprendre",
+  "liveWatch": "Regarder",
+  "liveNowCount": "{count, plural, =1{Un direct en cours} other{{count} directs en cours}}",
+  "@liveNowCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveViewersSemantics": "{count, plural, other{{count} spectateurs : voir qui regarde}}",
+  "@liveViewersSemantics": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveViewersLoadError": "La liste n'a pas pu être chargée.",
+  "liveViewersTitle": "Qui regarde · {count}",
+  "@liveViewersTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveViewersNoAccount": "Aucun compte connecté ne regarde pour le moment.",
+  "liveViewersNobody": "Personne ne regarde pour le moment.",
+  "liveViewersAnonymous": "{count, plural, =1{+ 1 visiteur non connecté} other{+ {count} visiteurs non connectés}}",
+  "@liveViewersAnonymous": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveCamUnreadableUrl": "Adresse illisible : le formulaire n'a pas été rempli.",
+  "liveCamHide": "Masquer",
+  "liveCamShow": "Afficher",
+  "liveCamModeForm": "Formulaire",
+  "liveCamModeFullUrl": "Adresse complète",
+  "liveCamPrivateHost": "« {host} » est une adresse du réseau local : le service vidéo, sur Internet, ne pourra pas la joindre. Utilisez l'adresse IP publique de la box ou un nom DDNS, avec une redirection de port vers la caméra, ou choisissez le mode RTMP (OBS, ffmpeg).",
+  "@liveCamPrivateHost": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "liveCamReachableNotice": "La caméra doit être joignable depuis Internet par le service vidéo : IP publique ou DDNS, et redirection du port (ex. 554) vers la caméra sur la box. L'adresse est conservée chiffrée sur le serveur ; le mot de passe n'est pas mémorisé sur ce téléphone.",
+  "liveCamStreamUrlLabel": "Adresse du flux *",
+  "liveCamStreamUrlHint": "rtsp://utilisateur:motdepasse@cam.exemple.org:554/stream1",
+  "liveCamStreamUrlHelper": "rtsp(s)://, rtmp(s)://, http(s):// ou srt://. Caractères spéciaux du mot de passe encodés (@ → %40).",
+  "liveCamStreamUrlRequired": "Indiquez l'adresse du flux de la caméra.",
+  "liveCamStreamUrlInvalid": "Adresse non reconnue : elle doit commencer par rtsp://, rtmp://, http(s):// ou srt://.",
+  "liveCamModel": "Modèle de caméra",
+  "liveCamMainStream": "Flux principal",
+  "liveCamSubStream": "Flux secondaire",
+  "liveCamProtocol": "Protocole",
+  "liveCamHostLabel": "Adresse IP ou nom d'hôte *",
+  "liveCamHostHint": "cam.exemple.org",
+  "liveCamPort": "Port",
+  "liveCamPathParams": "Chemin / paramètres (facultatif)",
+  "liveCamPath": "Chemin du flux",
+  "liveCamStreamId": "Stream ID (facultatif)",
+  "liveCamPassphrase": "Phrase secrète (facultatif)",
+  "liveCamPassphraseHelper": "Chiffrement SRT : 10 à 79 caractères.",
+  "liveCamUsername": "Identifiant de la caméra",
+  "liveCamComposedUrl": "Adresse composée",
+  "liveCheckPending": "Vérification…",
+  "liveCheckEventOrganizer": "Organisateur de l'événement",
+  "liveCheckEventOrganizerOnly": "Seuls l'organisateur et les administrateurs peuvent diffuser cet événement.",
+  "liveCheckModeratorAccount": "Compte modérateur ou administrateur",
+  "liveCheckModeratorsOnly": "Seuls les modérateurs et administrateurs peuvent diffuser.",
+  "liveCheckServiceOk": "Service vidéo disponible",
+  "liveCheckServiceMissing": "Le service vidéo n'est pas encore configuré sur le serveur.",
+  "liveCheckMobileData": "Données mobiles : la vidéo consomme environ 1 Go par heure.",
+  "liveCheckNoInternet": "Aucune connexion Internet.",
+  "liveCheckConnected": "Connecté",
+  "liveCheckCameraGranted": "Caméra autorisée",
+  "liveCheckCameraDeniedForever": "Caméra refusée : autorisez-la dans les réglages.",
+  "liveCheckCameraRestricted": "Caméra bloquée sur cet appareil.",
+  "liveCheckCameraDenied": "Caméra refusée. Appuyez pour réessayer.",
+  "liveCheckMicGranted": "Micro autorisé",
+  "liveCheckMicDeniedForever": "Micro refusé : autorisez-le dans les réglages.",
+  "liveCheckMicRestricted": "Micro bloqué sur cet appareil.",
+  "liveCheckMicDenied": "Micro refusé. Appuyez pour réessayer.",
+  "liveCheckCameraBusy": "Impossible d'ouvrir la caméra (déjà utilisée par une autre application ?).",
+  "liveAlreadyRunningTitle": "Direct déjà en cours",
+  "liveAlreadyRunningBody": "{message}\n\nVoulez-vous reprendre ce direct ?",
+  "@liveAlreadyRunningBody": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "liveEventLiveLabel": "Direct de l'événement\n",
+  "liveCameraUsed": "Caméra utilisée",
+  "liveSourceDevice": "Caméra de cet appareil",
+  "liveSourceRtmp": "Caméra IP ou encodeur (RTMP)",
+  "liveSourceRtmpHint": "Conseillé : le studio donne une adresse et une clé à saisir dans la caméra ou le logiciel (OBS…).",
+  "liveSourceUrl": "Caméra IP (adresse du flux)",
+  "liveSourceUrlHint": "Renseignez la caméra (RTSP, SRT, HLS…) : le service vidéo lit lui-même son flux, joignable depuis Internet.",
+  "liveChecks": "Vérifications",
+  "liveCheckRights": "Droits",
+  "liveCheckService": "Service vidéo",
+  "liveCheckNetwork": "Réseau",
+  "liveCheckCamera": "Caméra",
+  "liveCheckMic": "Micro",
+  "liveYourLive": "Votre direct",
+  "liveTitleLabel": "Titre *",
+  "liveTitleHint": "Ex. : Comment Dieu m'a relevé",
+  "liveTitleRequired": "Merci de donner un titre au direct.",
+  "liveDescriptionLabel": "Présentation (facultatif)",
+  "liveCategoryLabel": "Catégorie (facultatif)",
+  "liveCategoryNone": "Aucune",
+  "liveAllowComments": "Autoriser les commentaires",
+  "liveAllowCommentsHint": "Vous pourrez masquer un commentaire ou exclure une personne.",
+  "liveOpenStudio": "Ouvrir le studio",
+  "liveInvisibleUntilOnAir": "Le direct reste invisible du public tant que vous n'êtes pas passé à l'antenne.",
+  "liveRtmpStep1": "Ouvrez le studio : il affiche l'adresse du serveur et la clé de diffusion.",
+  "liveRtmpStep2": "Saisissez-les dans la caméra, OBS, vMix ou votre encodeur, puis lancez la diffusion.",
+  "liveRtmpStep3": "Quand l'image apparaît dans le studio, appuyez sur « Passer à l'antenne ».",
+  "liveUrlStep1": "Le service vidéo se connecte à l'adresse indiquée (elle doit être joignable depuis Internet).",
+  "liveUrlStep2": "Vérifiez l'aperçu dans le studio.",
+  "liveUrlStep3": "Appuyez sur « Passer à l'antenne » : le direct ne démarre jamais tout seul.",
+  "liveConnectIpCamera": "Brancher une caméra IP",
+  "liveExternalCameraNote": "Caméra et micro de ce téléphone ne sont pas utilisés. Réglages conseillés : 720p, 2 à 4 Mbit/s, image clé toutes les 2 secondes, son AAC.",
+  "liveCameraPreview": "Aperçu de la caméra",
+  "liveSwitchCamera": "Changer de caméra",
+  "liveYouAreLive": "Vous êtes en direct !",
+  "liveLeaveStudioTitle": "Quitter le studio ?",
+  "liveLeaveStudioOnAir": "Vous êtes en direct. Vous pouvez le terminer, ou quitter et revenir dans les 5 minutes pour le reprendre (sinon il sera clôturé).",
+  "liveLeaveStudioNotStarted": "Le direct n'a pas commencé. Vous pouvez y revenir depuis la liste des directs.",
+  "liveStay": "Rester",
+  "liveLeave": "Quitter",
+  "liveEndAction": "Terminer",
+  "liveWaitingCameraFeed": "En attente du flux de la caméra…",
+  "liveOpeningCamera": "Ouverture de la caméra…",
+  "liveCameraOffViewers": "Caméra coupée : les spectateurs ne vous voient plus",
+  "liveWriteToViewers": "Écrire aux spectateurs…",
+  "liveWriteToViewersClosed": "Écrire aux spectateurs (commentaires fermés au public)…",
+  "liveConnectingToLive": "Connexion au direct…",
+  "liveCameraConnection": "Connexion de la caméra",
+  "liveMuteMic": "Couper le micro",
+  "liveRestoreMic": "Rétablir le micro",
+  "liveCameraOff": "Couper la caméra",
+  "liveRestoreCamera": "Rétablir la caméra",
+  "liveConnecting": "Connexion…",
+  "liveWaitingFeed": "En attente du flux",
+  "liveGoOnAir": "Passer à l'antenne",
+  "liveAddressCopied": "Adresse copiée",
+  "liveKeyCopied": "Clé copiée",
+  "liveNotAvailable": "Non disponible",
+  "liveIpCamera": "Caméra IP",
+  "liveFeedReceived": "Flux reçu",
+  "liveRtmpServerUrl": "Adresse du serveur (URL RTMP)",
+  "liveStreamKey": "Clé de diffusion (ne la partagez pas)",
+  "liveRtmpInstructions": "Saisissez ces deux valeurs dans la caméra, OBS ou votre encodeur, puis lancez la diffusion. Le direct ne démarre pas tout seul.",
+  "liveUrlInstructions": "Le service vidéo se connecte lui-même à l'adresse du flux de la caméra. Si l'image n'arrive pas, vérifiez que l'adresse est joignable depuis Internet.",
+  "liveStreamAddress": "Adresse du flux",
+  "liveQualityExcellent": "Excellent",
+  "liveQualityGood": "Bon",
+  "liveQualityPoor": "Faible",
+  "liveQualityLost": "Perdu",
+  "liveNetworkQuality": "Qualité du réseau : {quality}",
+  "@liveNetworkQuality": {
+    "placeholders": {
+      "quality": {
+        "type": "String"
+      }
+    }
+  },
+  "liveLeaveStudio": "Quitter le studio",
+  "liveOpeningStudio": "Ouverture du studio…",
+  "liveCannotComment": "Vous ne pouvez plus commenter ce direct",
+  "liveCommentsDisabled": "Commentaires désactivés",
+  "liveChatHint": "Chat…",
+  "liveHideComments": "Masquer les commentaires",
+  "liveShowComments": "Afficher les commentaires",
+  "liveModerationTitle": "Modération du direct",
+  "liveModerationSubtitle": "Vous regardez ce direct en tant que modérateur.",
+  "liveLeaveLive": "Quitter le direct",
+  "liveContinuesForOthers": "Le direct continue pour les autres.",
+  "liveCutForAll": "Couper le direct pour tous",
+  "liveCutForAllHint": "Arrête définitivement la diffusion.",
+  "liveWaitingHostImage": "En attente de l'image du diffuseur…",
+  "liveStartingSoon": "Le direct va bientôt commencer…",
+  "liveModeration": "Modération",
+  "liveFullscreen": "Plein écran",
+  "liveExitFullscreen": "Quitter le plein écran",
+  "liveChatTitle": "Chat en direct",
+  "liveReact": "Réagir",
+  "liveChatEmpty": "Aucun message pour l'instant.\nSoyez le premier à écrire !",
+  "liveConnectionUnstable": "Connexion instable… reconnexion en cours",
+  "liveConnectionLost": "Connexion perdue",
+  "liveHostTag": "Diffuseur",
+  "livePinMessageHint": "Message à épingler…",
+  "liveDontPinMessage": "Ne pas épingler ce message",
+  "livePinMessage": "Épingler ce message en haut du direct",
+  "livePinnedByHost": "Épinglé · {name} (diffuseur)",
+  "@livePinnedByHost": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "livePinnedBy": "Épinglé · {name}",
+  "@livePinnedBy": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "liveUnpin": "Désépingler",
+  "liveCommentUnpinned": "Commentaire désépinglé.",
+  "liveStatDuration": "Durée",
+  "liveStatPeakViewers": "Spectateurs au plus fort",
+  "liveStatComments": "Commentaires",
+  "liveStatReactions": "Réactions",
+  "liveBadgeEnded": "TERMINÉ",
+  "liveYourLiveEnded": "Votre direct est terminé",
+  "liveEnded": "Direct terminé",
+  "liveSummaryHost": "Bilan de votre direct",
+  "liveSummaryNumbers": "En chiffres",
+  "livePinTop": "Épingler en haut du direct",
+  "livePinReplaces": "Remplace le commentaire actuellement épinglé.",
+  "liveHostPinnedMessage": "Le diffuseur a épinglé un message",
+  "liveHostPinnedOnlyHost": "Lui seul peut le retirer ou le remplacer.",
+  "liveHideComment": "Masquer ce commentaire",
+  "liveBan": "Exclure du direct",
+  "liveBanHint": "Ses commentaires sont masqués ; plus de commentaires ni de réactions.",
+  "liveCommentPinned": "Commentaire épinglé.",
+  "liveCommentHidden": "Commentaire masqué.",
+  "liveUserBanned": "{name} ne peut plus commenter ni réagir.",
+  "@liveUserBanned": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "liveEndConfirmTitle": "Terminer le direct ?",
+  "liveCutConfirmTitle": "Couper ce direct ?",
+  "liveEndConfirmBody": "Les spectateurs verront « Direct terminé ». Cette action est définitive.",
+  "liveCutConfirmBody": "Le direct sera arrêté immédiatement pour tout le monde.",
+  "liveCutAction": "Couper le direct",
+  "liveSpeaker": "Intervenant",
+  "liveOnAirName": "À l'antenne : {name}",
+  "@liveOnAirName": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "liveOnAirNameMuted": "À l'antenne : {name}, micro coupé",
+  "@liveOnAirNameMuted": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "liveBadgeOnAir": "À L'ANTENNE",
+  "liveEveryoneHearsYou": "Tout le monde vous entend",
+  "liveMicMutedNobodyHears": "Micro coupé : personne ne vous entend",
+  "liveEnableMic": "Activer le micro",
+  "liveEnableCamera": "Activer la caméra",
+  "liveLeaveStage": "Quitter l'antenne",
+  "liveSpeakers": "Intervenants",
+  "liveSpeakersCount": "Intervenants · {count}",
+  "@liveSpeakersCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveRequestToSpeak": "Demander à intervenir",
+  "liveYourTurn": "C'est votre tour !",
+  "liveInQueue": "En file · n°{position}",
+  "@liveInQueue": {
+    "placeholders": {
+      "position": {
+        "type": "String"
+      }
+    }
+  },
+  "liveSpeakAction": "Intervenir",
+  "liveManageSpeakers": "Gérer les intervenants",
+  "liveRequestToSpeakLive": "Demander à intervenir en direct",
+  "liveEndSpeakerTitle": "Terminer l'intervention ?",
+  "liveEndSpeakerBody": "{name} quittera l'antenne : son micro et sa caméra seront coupés pour tous.",
+  "@liveEndSpeakerBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "liveSpeakerEnded": "Intervention terminée.",
+  "liveRequests": "Demandes",
+  "liveRequestsOpened": "Demandes ouvertes.",
+  "liveRequestsClosedQueueKept": "Demandes fermées. La file est conservée.",
+  "liveOnAirCamera": "À l'antenne · caméra",
+  "liveOnAirMicOnly": "À l'antenne · micro seulement",
+  "liveInvitedWaiting": "Invité · en attente de sa réponse",
+  "liveInvitationCancelled": "Invitation annulée.",
+  "liveNobodyWaiting": "Personne n'attend pour le moment.",
+  "liveRemoveFromQueue": "Retirer de la file",
+  "liveRemovedFromQueue": "Demande retirée de la file.",
+  "liveInvitationSent": "Invitation envoyée : {name} a {seconds} s pour accepter.",
+  "@liveInvitationSent": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "liveInvite": "Inviter",
+  "liveOnePersonAtATime": "Une personne à la fois. L'invitation expire après {seconds} s sans réponse.",
+  "@liveOnePersonAtATime": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "liveRequestSent": "Demande envoyée : le diffuseur vous invitera à votre tour.",
+  "liveLoginRequired": "Connexion requise",
+  "liveLoginRequiredBody": "Connectez-vous pour demander à intervenir et partager votre témoignage en direct.",
+  "liveSignIn": "Se connecter",
+  "liveYouAreOnAir": "Vous êtes à l'antenne",
+  "liveYouAreOnAirBody": "Tout le monde vous entend. Utilisez la barre en bas de l'écran pour couper votre micro ou quitter l'antenne.",
+  "liveHostInvitesYou": "Le diffuseur vous invite à l'antenne.",
+  "liveAnswerInvitation": "Répondre à l'invitation",
+  "liveInvitationDeclined": "Invitation refusée.",
+  "liveDecline": "Refuser",
+  "liveRequestWithdrawn": "Demande retirée.",
+  "liveCancelMyRequest": "Annuler ma demande",
+  "liveRequestsClosed": "Demandes fermées",
+  "liveRequestsClosedBody": "Les demandes d'intervention sont fermées pour le moment.",
+  "liveTopicLabel": "Sujet de votre témoignage (facultatif)",
+  "liveTopicHint": "Ex. : guérison, emploi, famille…",
+  "liveTopicHelper": "Seuls le diffuseur et les modérateurs le lisent.",
+  "liveTestifyLive": "Témoigner en direct",
+  "liveQueueNobody": "Personne n'attend : vous serez le prochain.",
+  "liveQueueWaiting": "{count, plural, =1{1 personne en attente} other{{count} personnes en attente}}",
+  "@liveQueueWaiting": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveOnAirPrefix": "À l'antenne : ",
+  "liveStepRequest": "Vous demandez",
+  "liveStepRequestBody": "Votre nom rejoint la file.",
+  "liveStepInvited": "Vous êtes invité",
+  "liveStepInvitedBody": "Une fenêtre s'ouvre à votre tour.",
+  "liveStepSpeak": "Vous parlez",
+  "liveStepSpeakBody": "Micro coupable à tout moment.",
+  "liveQueueNumber": "n°{position}",
+  "@liveQueueNumber": {
+    "placeholders": {
+      "position": {
+        "type": "int"
+      }
+    }
+  },
+  "liveYouAreNext": "Vous êtes le prochain",
+  "liveRequestRecorded": "Demande enregistrée",
+  "liveKeepLiveOpen": "Gardez le direct ouvert : une fenêtre s'ouvrira à votre tour.",
+  "liveInvitationExpired": "L'invitation n'est plus valable. Vous pouvez refaire une demande.",
+  "liveJoinedMuted": "Vous êtes à l'antenne, micro coupé. Activez-le quand vous êtes prêt.",
+  "liveJoined": "Vous êtes à l'antenne. Parlez librement : tout le monde vous entend.",
+  "liveInvitationBody": "Le diffuseur vous invite à l'antenne.\nVotre voix sera entendue par tous les spectateurs.",
+  "liveEnableMyCamera": "Activer ma caméra",
+  "liveEnableMyCameraHint": "Sinon, les spectateurs voient votre nom.",
+  "liveJoinMuted": "Arriver micro coupé",
+  "liveJoinMutedHint": "Endroit bruyant ? Activez le micro au moment de parler.",
+  "liveInvitationFooter": "Vous pourrez couper le micro ou quitter l'antenne à tout moment. Le diffuseur peut aussi terminer votre intervention.",
+  "liveJoin": "Rejoindre",
+  "liveJoinFailed": "Impossible de rejoindre le direct.",
+  "livesViewerCount": "{count, plural, =0{0 spectateur} =1{1 spectateur} other{{count} spectateurs}}",
+  "@livesViewerCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "livesCommentCount": "{count, plural, =0{0 commentaire} =1{1 commentaire} other{{count} commentaires}}",
+  "@livesCommentCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveSeeAll": "Tout voir"
+}

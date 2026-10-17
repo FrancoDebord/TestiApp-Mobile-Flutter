@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../models/account_approval.dart';
+import '../../l10n/app_localizations.dart';
 
 /// Pastille « Approuvé » à côté du nom d'un compte.
 class AccountApprovalIcon extends StatelessWidget {
@@ -49,19 +50,19 @@ class TestimonyApprovedLabel extends StatelessWidget {
   /// Version réduite (cartes du fil).
   final bool compact;
 
-  static const tooltip = 'Vérifié par l\'équipe de modération';
+  static String get tooltip => L10n.current.sharedApprovedTooltip;
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: 'Témoignage approuvé. $tooltip',
+      label: context.l10n.sharedTestimonyApprovedSemantics(tooltip),
       excludeSemantics: true,
       child: Tooltip(
         message: tooltip,
         triggerMode: TooltipTriggerMode.tap,
         child: _Pill(
           icon: Icons.verified_rounded,
-          label: 'Témoignage approuvé',
+          label: context.l10n.sharedTestimonyApproved,
           background: AppColors.primarySoft,
           foreground: AppColors.primary,
           compact: compact,
@@ -83,11 +84,11 @@ class FeaturedLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: 'À la une',
+      label: context.l10n.sharedFeatured,
       excludeSemantics: true,
       child: _Pill(
         icon: Icons.star_rounded,
-        label: 'À la une',
+        label: context.l10n.sharedFeatured,
         // Jaune Krea : toujours du texte foncé dessus (charte).
         background: onDark ? AppColors.sun : AppColors.sunSoft,
         foreground: onDark ? AppColors.primaryDark : AppColors.sunText,

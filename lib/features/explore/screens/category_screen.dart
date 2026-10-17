@@ -13,6 +13,7 @@ import '../../home/widgets/pill_tabs.dart';
 import '../../home/widgets/testimony_feed_item.dart';
 import '../models/explore_models.dart';
 import '../providers/explore_providers.dart';
+import '../../../l10n/app_localizations.dart';
 
 // ── Métadonnées visuelles par catégorie ───────────────────────────────────────
 
@@ -78,7 +79,7 @@ class CategoryScreen extends ConsumerWidget {
             backgroundColor: meta.colors.first,
             foregroundColor: Colors.white,
             leading: IconButton(
-              tooltip: 'Retour',
+              tooltip: context.l10n.commonBack,
               icon: const Icon(Icons.arrow_back_rounded,
                   color: Colors.white, size: 22),
               onPressed: () => Navigator.of(context).pop(),
@@ -124,7 +125,7 @@ class CategoryScreen extends ConsumerWidget {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            '${results.length} témoignage${results.length != 1 ? 's' : ''}',
+                            context.l10n.exploreCategoryTestimonyCount(results.length),
                             maxLines: 1,
                             style: TextStyle(
                               fontFamily: AppFonts.family,
@@ -244,7 +245,7 @@ class _SortButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Tooltip(
-      message: 'Trier : ${current.popularityLabel}',
+      message: context.l10n.exploreSortTooltip(current.popularityLabel),
       child: InkWell(
         onTap: () => _showSheet(context),
         borderRadius: BorderRadius.circular(AppRadius.pill),
@@ -293,7 +294,7 @@ class _SortButton extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              Text('Trier par', style: AppTextStyles.h4),
+              Text(context.l10n.exploreSortBy, style: AppTextStyles.h4),
               const SizedBox(height: 8),
               ...ExploreSortOrder.values.map((o) => ListTile(
                     contentPadding: EdgeInsets.zero,
@@ -329,13 +330,13 @@ class _EmptyCategory extends StatelessWidget {
         Icon(Icons.inbox_rounded,
             size: 60, color: AppColors.textSecondary.withAlpha(80)),
         const SizedBox(height: 16),
-        Text('Aucun témoignage pour l\'instant',
+        Text(context.l10n.exploreCategoryEmpty,
             textAlign: TextAlign.center,
             style:
                 AppTextStyles.h4.copyWith(color: AppColors.textSecondary)),
         const SizedBox(height: 8),
         Text(
-          'Soyez le premier à partager\ndans cette rubrique.',
+          context.l10n.exploreCategoryEmptyHint,
           style: AppTextStyles.bodySmall,
           textAlign: TextAlign.center,
         ),

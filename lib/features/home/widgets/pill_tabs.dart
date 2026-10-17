@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
+import '../../../l10n/app_localizations.dart';
 import '../models/testimony_model.dart';
 
 class PillTab<T> {
@@ -19,12 +20,12 @@ class PillTab<T> {
 
 /// Onglets « type de témoignage » (null = Tous). Pas d'onglet « Images » :
 /// l'application ne publie pas de témoignage image.
-const List<PillTab<TestimonyType?>> kTestimonyTypeTabs = [
-  PillTab(null, 'Tous'),
-  PillTab(TestimonyType.video, 'Vidéos'),
-  PillTab(TestimonyType.audio, 'Audios'),
-  PillTab(TestimonyType.text, 'Textes'),
-];
+List<PillTab<TestimonyType?>> get kTestimonyTypeTabs => [
+      PillTab(null, L10n.current.homeTabAll),
+      PillTab(TestimonyType.video, L10n.current.homeTabVideos),
+      PillTab(TestimonyType.audio, L10n.current.homeTabAudios),
+      PillTab(TestimonyType.text, L10n.current.homeTabTexts),
+    ];
 
 class PillTabs<T> extends StatelessWidget {
   const PillTabs({

@@ -18,6 +18,7 @@ import '../data/journal_offline_controller.dart';
 import '../data/journal_repository.dart';
 import '../models/journal_entry.dart';
 import 'journal_screen.dart' show journalDayLabel, journalTypeIcon;
+import '../../../l10n/app_localizations.dart';
 
 /// Lire une entrée du carnet privé ; la partager, la ranger ou la supprimer.
 class JournalEntryScreen extends ConsumerStatefulWidget {
@@ -114,14 +115,14 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
     if (category == null || !mounted) return;
     await _run(
       () => ref.read(journalRepositoryProvider).share(entry.id, category: category),
-      'Témoignage partagé : il sera visible après validation par un modérateur.',
+      context.l10n.journalSharedSnack,
     );
   }
 
   Future<void> _moveBack(JournalEntry entry) async {
     await _run(
       () => ref.read(journalRepositoryProvider).moveToJournal(entry.id),
-      'Rangé dans votre carnet privé 🔒',
+      context.l10n.journalMovedBackSnack,
     );
   }
 
@@ -129,14 +130,14 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Supprimer ce témoignage ?'),
-        content: const Text('Il sera définitivement effacé de votre carnet.'),
+        title: Text(context.l10n.journalDeleteTitle),
+        content: Text(context.l10n.journalDeleteBody),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(context.l10n.commonCancel)),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
-            child: const Text('Supprimer'),
+            child: Text(context.l10n.commonDelete),
           ),
         ],
       ),
@@ -147,7 +148,7 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
       await ref.read(journalRepositoryProvider).delete(entry.id);
       if (!mounted) return;
       ref.read(journalRefreshProvider.notifier).bump();
-      _snack('Témoignage supprimé.');
+      _snack(context.l10n.journalDeletedSnack);
       context.canPop() ? context.pop() : context.go('/journal');
     } on JournalFailure catch (e) {
       if (mounted) {
@@ -163,7 +164,7 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Mon carnet'),
+        title: Text(context.l10n.journalMyJournal),
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
@@ -173,13 +174,13 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
               onSelected: (v) {
                 if (v == 'delete') _delete(entry);
               },
-              itemBuilder: (_) => const [
+              itemBuilder: (_) => [
                 PopupMenuItem(
                   value: 'delete',
                   child: ListTile(
                     contentPadding: EdgeInsets.zero,
-                    leading: Icon(Icons.delete_outline_rounded, color: AppColors.danger),
-                    title: Text('Supprimer', style: TextStyle(color: AppColors.danger)),
+                    leading: const Icon(Icons.delete_outline_rounded, color: AppColors.danger),
+                    title: Text(context.l10n.commonDelete, style: const TextStyle(color: AppColors.danger)),
                   ),
                 ),
               ],
@@ -196,7 +197,7 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(_error!, textAlign: TextAlign.center),
-                          TextButton(onPressed: _load, child: const Text('Réessayer')),
+                          TextButton(onPressed: _load, child: Text(context.l10n.commonRetry)),
                         ],
                       ),
                     ),
@@ -215,13 +216,13 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
                           minimumSize: const Size.fromHeight(50),
                         ),
                         icon: const Icon(Icons.campaign_rounded),
-                        label: const Text('Partager ce témoignage'),
+                        label: Text(context.l10n.detailShareTitle),
                       )
                     : OutlinedButton.icon(
                         onPressed: _busy ? null : () => _moveBack(entry),
                         style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
                         icon: const Icon(Icons.lock_outline_rounded),
-                        label: const Text('Ne plus partager · ranger dans mon carnet'),
+                        label: Text(context.l10n.journalUnshare),
                       ),
               ),
             ),
@@ -280,7 +281,7 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
               children: [
                 const Icon(Icons.offline_pin_rounded, size: 15, color: AppColors.primary),
                 const SizedBox(width: 4),
-                Text('Disponible hors ligne sur ce téléphone',
+                Text(context.l10n.journalOfflineAvailableOnPhone,
                     style: AppTextStyles.bodySmall.copyWith(color: AppColors.primary)),
               ],
             ),
@@ -319,10 +320,10 @@ class _StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (icon, label, color) = entry.isPrivate
-        ? (Icons.lock_rounded, 'Privé · visible par vous seul', AppColors.primary)
+        ? (Icons.lock_rounded, context.l10n.journalStatusPrivate, AppColors.primary)
         : entry.isPendingReview
-            ? (Icons.hourglass_top_rounded, 'Partagé · en attente de validation', AppColors.secondary)
-            : (Icons.public_rounded, 'Partagé', AppColors.success);
+            ? (Icons.hourglass_top_rounded, context.l10n.journalStatusPending, AppColors.secondary)
+            : (Icons.public_rounded, context.l10n.journalStatusShared, AppColors.success);
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
@@ -396,15 +397,15 @@ class _JournalAudio extends ConsumerWidget {
           children: [
             const Icon(Icons.error_outline_rounded, color: AppColors.danger),
             const SizedBox(width: 10),
-            const Expanded(
-              child: Text("Impossible de lire l'enregistrement audio."),
+            Expanded(
+              child: Text(context.l10n.journalAudioError),
             ),
             TextButton(
               onPressed: () async {
                 await notifier.stop(); // oublie l'échec, puis nouvel essai
                 await notifier.play(url);
               },
-              child: const Text('Réessayer'),
+              child: Text(context.l10n.commonRetry),
             ),
           ],
         ),
@@ -498,8 +499,8 @@ class _JournalVideoState extends State<_JournalVideo> {
           color: Colors.black,
           alignment: Alignment.center,
           child: _failed
-              ? const Text('Impossible de lire la vidéo.',
-                  style: TextStyle(color: Colors.white70))
+              ? Text(context.l10n.journalVideoError,
+                  style: const TextStyle(color: Colors.white70))
               : _chewie == null
                   ? const CircularProgressIndicator(color: Colors.white70)
                   : Chewie(controller: _chewie!),
@@ -539,20 +540,19 @@ class _ShareSheetState extends ConsumerState<_ShareSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Partager ce témoignage', style: AppTextStyles.h4),
+            Text(context.l10n.detailShareTitle, style: AppTextStyles.h4),
             const SizedBox(height: 6),
             Text(
-              'Il quittera votre carnet privé et sera relu par un modérateur '
-              'avant d\'être visible par tous. Vous pourrez toujours le reprendre.',
+              context.l10n.journalShareSheetBody,
               style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
               initialValue: valid ? _category : null,
               isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Catégorie',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: context.l10n.journalCategory,
+                border: const OutlineInputBorder(),
               ),
               items: [
                 for (final c in categories)
@@ -566,8 +566,8 @@ class _ShareSheetState extends ConsumerState<_ShareSheet> {
               controlAffinity: ListTileControlAffinity.leading,
               value: _consent,
               onChanged: (v) => setState(() => _consent = v ?? false),
-              title: const Text('Je certifie que ce témoignage est réel'),
-              subtitle: const Text('Les faits sont authentiques et vécus personnellement.'),
+              title: Text(context.l10n.publishCertifyReal),
+              subtitle: Text(context.l10n.journalCertifySubtitle),
             ),
             const SizedBox(height: 8),
             FilledButton(
@@ -576,7 +576,7 @@ class _ShareSheetState extends ConsumerState<_ShareSheet> {
                 backgroundColor: AppColors.primary,
                 minimumSize: const Size.fromHeight(50),
               ),
-              child: const Text('Partager'),
+              child: Text(context.l10n.commonShare),
             ),
           ],
         ),

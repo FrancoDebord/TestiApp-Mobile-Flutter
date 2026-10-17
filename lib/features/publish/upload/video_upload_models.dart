@@ -6,6 +6,8 @@
 // Étapes : compression (video_compress) → upload-init (crée le témoignage et la
 // vidéo Bunny) → preuves → envoi TUS reprenable → upload-complete.
 
+import '../../../l10n/app_localizations.dart';
+
 /// Étape en cours de l'envoi.
 enum VideoUploadPhase {
   compressing,
@@ -25,13 +27,13 @@ enum VideoUploadPhase {
       this == finalizing;
 
   String get label => switch (this) {
-        compressing => 'Compression de la vidéo…',
-        preparing => 'Préparation de l’envoi…',
-        uploading => 'Envoi de la vidéo…',
-        waitingNetwork => 'Connexion perdue : l’envoi reprendra automatiquement.',
-        finalizing => 'Finalisation…',
-        done => 'Vidéo envoyée',
-        failed => 'L’envoi a échoué',
+        compressing => L10n.current.uploadPhaseCompressing,
+        preparing => L10n.current.uploadPhasePreparing,
+        uploading => L10n.current.uploadPhaseUploading,
+        waitingNetwork => L10n.current.uploadPhaseWaitingNetwork,
+        finalizing => L10n.current.uploadPhaseFinalizing,
+        done => L10n.current.uploadPhaseDone,
+        failed => L10n.current.uploadPhaseFailed,
       };
 }
 
@@ -120,10 +122,10 @@ class VideoUploadJob {
 
   /// En-têtes d'autorisation Bunny Stream de l'envoi TUS.
   Map<String, String> get tusHeaders => {
-        'AuthorizationSignature': signature ?? '',
-        'AuthorizationExpire': '${expiration ?? 0}',
-        'VideoId': bunnyVideoId ?? '',
-        'LibraryId': libraryId ?? '',
+        'AuthorizationSignature': signature ?? '', // i18n-ignore
+        'AuthorizationExpire': '${expiration ?? 0}', // i18n-ignore
+        'VideoId': bunnyVideoId ?? '', // i18n-ignore
+        'LibraryId': libraryId ?? '', // i18n-ignore
       };
 
   /// Type MIME de la métadonnée TUS « filetype ».

@@ -14,17 +14,18 @@ import '../providers/follow_provider.dart';
 import '../providers/suggestions_provider.dart';
 import 'account_tile.dart' show AccountAvatar;
 import 'follow_button.dart';
+import '../../../l10n/app_localizations.dart';
 
 class SuggestedAccountsStrip extends ConsumerWidget {
   const SuggestedAccountsStrip({
-    this.title = 'Comptes à suivre',
+    this.title,
     this.maxCards = 10,
     this.showMore = true,
     this.padding = const EdgeInsets.symmetric(vertical: 8),
     super.key,
   });
 
-  final String title;
+  final String? title;
   final int maxCards;
 
   /// Lien « Voir plus » vers la Communauté.
@@ -59,7 +60,7 @@ class SuggestedAccountsStrip extends ConsumerWidget {
                   child: Semantics(
                     header: true,
                     child: Text(
-                      title,
+                      title ?? context.l10n.communitySuggestedTitle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -75,7 +76,7 @@ class SuggestedAccountsStrip extends ConsumerWidget {
                   TextButton(
                     onPressed: () => context.push('/community'),
                     style: TextButton.styleFrom(foregroundColor: AppColors.primary, visualDensity: VisualDensity.compact),
-                    child: const Text('Voir plus'),
+                    child: Text(context.l10n.commonSeeMore),
                   ),
               ],
             ),
@@ -140,7 +141,7 @@ class _SuggestedCard extends StatelessWidget {
                     ),
                     if (a.isVerified) ...[
                       const SizedBox(width: 3),
-                      const Icon(Icons.verified_rounded, size: 15, color: AppColors.primary, semanticLabel: 'Compte vérifié'),
+                      Icon(Icons.verified_rounded, size: 15, color: AppColors.primary, semanticLabel: context.l10n.communityVerifiedAccount),
                     ],
                   ],
                 ),

@@ -7,6 +7,7 @@ import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/app_tokens.dart';
 import '../content/encouragements.dart';
 import 'guest_gate.dart' show requireAccount;
+import '../../l10n/app_localizations.dart';
 
 /// Carte « Témoignez » : un verset (ou une invitation) et le bouton Témoigner.
 ///
@@ -16,7 +17,7 @@ class EncouragementCard extends ConsumerWidget {
   const EncouragementCard({
     required this.message,
     this.compact = false,
-    this.actionLabel = 'Témoigner',
+    this.actionLabel,
     this.onAction,
     this.showAction = true,
     super.key,
@@ -24,13 +25,13 @@ class EncouragementCard extends ConsumerWidget {
 
   final Encouragement message;
   final bool compact;
-  final String actionLabel;
+  final String? actionLabel;
   final VoidCallback? onAction;
   final bool showAction;
 
   Future<void> _testify(BuildContext context, WidgetRef ref) async {
     if (onAction != null) return onAction!();
-    if (!await requireAccount(context, ref, reason: 'partager votre témoignage')) return;
+    if (!await requireAccount(context, ref, reason: context.l10n.sharedReasonShareTestimony)) return;
     if (context.mounted) context.go('/publish');
   }
 
@@ -39,7 +40,7 @@ class EncouragementCard extends ConsumerWidget {
     final m = message;
     return Semantics(
       container: true,
-      label: m.isVerse ? 'Verset ${m.reference}' : 'Invitation à témoigner',
+      label: m.isVerse ? context.l10n.sharedVerseSemantics(m.reference ?? '') : context.l10n.sharedTestifyInvitation,
       child: Container(
         padding: EdgeInsets.fromLTRB(16, compact ? 12 : 16, 16, compact ? 12 : 14),
         decoration: BoxDecoration(
@@ -109,7 +110,7 @@ class EncouragementCard extends ConsumerWidget {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.button)),
                   ),
                   icon: const Icon(Icons.campaign_rounded, size: 18),
-                  label: Text(actionLabel),
+                  label: Text(actionLabel ?? context.l10n.sharedTestify),
                 ),
               ),
             ],

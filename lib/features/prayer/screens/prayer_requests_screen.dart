@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/guest_gate.dart' show requireAccount;
 import '../../auth/providers/auth_notifier.dart' show currentUserProvider;
 import '../data/prayer_repository.dart';
@@ -25,7 +26,7 @@ class _PrayerRequestsScreenState extends ConsumerState<PrayerRequestsScreen> {
   bool _answeredOnly = false;
 
   Future<void> _create() async {
-    if (!await requireAccount(context, ref, reason: 'confier une requête de prière')) return;
+    if (!await requireAccount(context, ref, reason: context.l10n.prayerReasonEntrust)) return;
     if (!mounted) return;
     final created = await context.push<PrayerRequest>('/prayer-requests/new');
     if (created != null) {
@@ -37,8 +38,8 @@ class _PrayerRequestsScreenState extends ConsumerState<PrayerRequestsScreen> {
   Widget build(BuildContext context) {
     final loggedIn = ref.watch(currentUserProvider) != null;
     final tabs = <(String, PrayerRequestScope)>[
-      ('Toutes', PrayerRequestScope.all),
-      if (loggedIn) ('Mes requêtes', PrayerRequestScope.mine),
+      (context.l10n.prayerTabAll, PrayerRequestScope.all),
+      if (loggedIn) (context.l10n.prayerTabMine, PrayerRequestScope.mine),
     ];
 
     return DefaultTabController(
@@ -46,14 +47,14 @@ class _PrayerRequestsScreenState extends ConsumerState<PrayerRequestsScreen> {
       child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
-          title: const Text('Requêtes de prière'),
+          title: Text(context.l10n.prayerTitle),
           backgroundColor: AppColors.surface,
           foregroundColor: AppColors.textPrimary,
           surfaceTintColor: AppColors.surface,
           elevation: 0,
           actions: [
             IconButton(
-              tooltip: 'Sessions de prière',
+              tooltip: context.l10n.prayerGroupTitle,
               icon: const Icon(Icons.groups_2_outlined),
               onPressed: () => context.push('/prayer-sessions'),
             ),
@@ -68,14 +69,14 @@ class _PrayerRequestsScreenState extends ConsumerState<PrayerRequestsScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screen, vertical: 6),
                   children: [
                     ChoiceChip(
-                      label: const Text('Toutes'),
+                      label: Text(context.l10n.prayerTabAll),
                       selected: !_answeredOnly,
                       onSelected: (_) => setState(() => _answeredOnly = false),
                     ),
                     const SizedBox(width: 8),
                     ChoiceChip(
                       avatar: const Icon(Icons.check_circle_rounded, size: 16),
-                      label: const Text('Exaucées'),
+                      label: Text(context.l10n.prayerFilterAnswered),
                       selected: _answeredOnly,
                       onSelected: (_) => setState(() => _answeredOnly = !_answeredOnly),
                     ),
@@ -91,7 +92,7 @@ class _PrayerRequestsScreenState extends ConsumerState<PrayerRequestsScreen> {
           backgroundColor: AppColors.secondary,
           foregroundColor: Colors.white,
           icon: const Icon(Icons.add_rounded),
-          label: const Text('Confier une requête'),
+          label: Text(context.l10n.prayerEntrustRequest),
         ),
         body: TabBarView(
           children: [
@@ -111,10 +112,10 @@ class _RequestList extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(prayerRequestListProvider(listKey));
     final empty = listKey.scope == PrayerRequestScope.mine
-        ? "Vous n'avez pas encore confié de requête.\nLa communauté priera avec vous — vous pouvez rester anonyme."
+        ? context.l10n.prayerEmptyMine
         : listKey.answeredOnly
-            ? 'Aucune requête exaucée pour le moment.'
-            : 'Aucune requête de prière pour le moment.\nSoyez le premier à confier un besoin.';
+            ? context.l10n.prayerEmptyAnswered
+            : context.l10n.prayerEmptyAll;
 
     return RefreshIndicator(
       onRefresh: () => ref.refresh(prayerRequestListProvider(listKey).future),
@@ -149,10 +150,10 @@ class _RequestList extends ConsumerWidget {
           ),
         AsyncValue(:final error?) => PrayerMessageView(
             icon: Icons.wifi_off_rounded,
-            text: error is PrayerFailure ? error.message : 'Impossible de charger les requêtes.',
+            text: error is PrayerFailure ? error.message : context.l10n.prayerLoadRequestsError,
             action: TextButton(
               onPressed: () => ref.invalidate(prayerRequestListProvider(listKey)),
-              child: const Text('Réessayer'),
+              child: Text(context.l10n.commonRetry),
             ),
           ),
         _ => const Center(child: CircularProgressIndicator()),
@@ -177,12 +178,11 @@ class _VerseBanner extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '« Priez les uns pour les autres, afin que vous soyez guéris. '
-              'La prière agissante du juste a une grande efficacité. »',
+              context.l10n.prayerVerseJames,
               style: AppTextStyles.bodyMedium.copyWith(fontStyle: FontStyle.italic, color: AppColors.textPrimary, height: 1.45),
             ),
             const SizedBox(height: 6),
-            Text('Jacques 5:16', style: AppTextStyles.labelMedium.copyWith(color: AppColors.sunText)),
+            Text(context.l10n.prayerVerseJamesRef, style: AppTextStyles.labelMedium.copyWith(color: AppColors.sunText)),
           ],
         ),
       );

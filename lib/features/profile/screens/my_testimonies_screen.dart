@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
+import '../../conversion/widgets/conversion_widgets.dart' show ConversionLabel;
 import '../../../core/router/app_routes.dart' show AppPaths;
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../core/media/video_source.dart' show VideoStatusText;
 import '../../../shared/widgets/video_poster.dart'
     show VideoThumbnailImage, formatVideoDuration;
@@ -56,13 +57,14 @@ class _MyTestimoniesScreenState extends ConsumerState<MyTestimoniesScreen>
     final pending   = all.where((t) => t.status == 'pending').toList();
     final published = all.where((t) => t.status == 'published').toList();
     final rejected  = all.where((t) => t.status == 'rejected').toList();
+    final l10n = context.l10n;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text(
-          'Mes témoignages',
-          style: TextStyle(
+        title: Text(
+          l10n.profileMyTesti,
+          style: const TextStyle(
             fontFamily: AppFonts.family,
             fontWeight: FontWeight.w600,
             fontSize: 17,
@@ -93,12 +95,12 @@ class _MyTestimoniesScreenState extends ConsumerState<MyTestimoniesScreen>
           indicatorColor: AppColors.primary,
           indicatorSize: TabBarIndicatorSize.tab,
           tabs: [
-            Tab(text: 'Tous (${all.length})'),
+            Tab(text: l10n.profileTabAll(all.length)),
             Tab(
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('En attente'),
+                  Text(l10n.profileStatusPending),
                   if (pending.isNotEmpty) ...[
                     const SizedBox(width: 6),
                     _CountBadge(count: pending.length, color: _statusColor('pending')),
@@ -106,8 +108,8 @@ class _MyTestimoniesScreenState extends ConsumerState<MyTestimoniesScreen>
                 ],
               ),
             ),
-            Tab(text: 'Publiés (${published.length})'),
-            Tab(text: 'Refusés (${rejected.length})'),
+            Tab(text: l10n.profileTabPublished(published.length)),
+            Tab(text: l10n.profileTabRejected(rejected.length)),
           ],
         ),
       ),
@@ -147,9 +149,9 @@ class _MyTestimoniesScreenState extends ConsumerState<MyTestimoniesScreen>
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add_rounded),
-        label: const Text(
-          'Nouveau',
-          style: TextStyle(
+        label: Text(
+          l10n.profileNewTestimony,
+          style: const TextStyle(
             fontFamily: AppFonts.family,
             fontWeight: FontWeight.w600,
             fontSize: 14,
@@ -222,7 +224,7 @@ class _MyTestimonyCard extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        testimony.title.isNotEmpty ? testimony.title : '(Sans titre)',
+                        testimony.title.isNotEmpty ? testimony.title : context.l10n.commonUntitled,
                         style: AppTextStyles.h4.copyWith(fontSize: 14),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -246,7 +248,10 @@ class _MyTestimonyCard extends ConsumerWidget {
                   testimony: testimony,
                   // Vidéo en traitement : le détail re-vérifie son état.
                   onView: () => context.push('/testimony/${testimony.id}'),
-                  onEdit: () => editAndResubmit(context, ref, testimony),
+                  // Témoignage de conversion : écran dédié (année, lieu, verset).
+                  onEdit: () => testimony.isConversion
+                      ? context.push('/conversions/mine/edit')
+                      : editAndResubmit(context, ref, testimony),
                   onDelete: () => _confirmDelete(context, ref),
                 ),
               ],
@@ -260,6 +265,7 @@ class _MyTestimonyCard extends ConsumerWidget {
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 _StatusBadge(status: testimony.status),
+                if (testimony.isConversion) const ConversionLabel(compact: true),
                 // Vidéo pas encore en ligne : visible ici seulement.
                 if (testimony.isVideoProcessing || testimony.isVideoFailed)
                   _VideoStatusBadge(failed: testimony.isVideoFailed),
@@ -290,15 +296,15 @@ class _MyTestimonyCard extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: AppColors.danger.withAlpha(60)),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
-                    Icon(Icons.error_outline_rounded,
+                    const Icon(Icons.error_outline_rounded,
                         size: 14, color: AppColors.danger),
-                    SizedBox(width: 6),
+                    const SizedBox(width: 6),
                     Expanded(
                       child: Text(
                         VideoStatusText.failed,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontFamily: AppFonts.family,
                           fontSize: 11,
                           color: AppColors.danger,
@@ -315,7 +321,7 @@ class _MyTestimonyCard extends ConsumerWidget {
                   key: const ValueKey('resend-video-button'),
                   onPressed: () => resendFailedVideo(context, ref, testimony.id),
                   icon: const Icon(Icons.upload_rounded, size: 18),
-                  label: const Text(VideoStatusText.resend),
+                  label: Text(VideoStatusText.resend),
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     visualDensity: VisualDensity.compact,
@@ -340,8 +346,7 @@ class _MyTestimonyCard extends ConsumerWidget {
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        'En cours de validation par notre équipe. '
-                        'Vous recevrez une notification dès que ce sera traité.',
+                        context.l10n.profilePendingNotice,
                         style: const TextStyle(
                           fontFamily: AppFonts.family,
                           fontSize: 11,
@@ -394,7 +399,7 @@ class _MyTestimonyCard extends ConsumerWidget {
                   key: const ValueKey('resubmit-button'),
                   onPressed: () => editAndResubmit(context, ref, testimony),
                   icon: const Icon(Icons.edit_note_rounded, size: 18),
-                  label: const Text('Modifier et renvoyer'),
+                  label: Text(context.l10n.profileEditResubmit),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.primary,
                     side: const BorderSide(color: AppColors.primary),
@@ -414,18 +419,18 @@ class _MyTestimonyCard extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          'Supprimer ce témoignage ?',
-          style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600),
+        title: Text(
+          context.l10n.profileDeleteTestimonyTitle,
+          style: const TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600),
         ),
-        content: const Text(
-          'Cette action est irréversible. Le témoignage sera définitivement supprimé.',
-          style: TextStyle(fontFamily: AppFonts.family, fontSize: 13),
+        content: Text(
+          context.l10n.profileDeleteTestimonyBody,
+          style: const TextStyle(fontFamily: AppFonts.family, fontSize: 13),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Annuler'),
+            child: Text(context.l10n.commonCancel),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
@@ -436,12 +441,12 @@ class _MyTestimonyCard extends ConsumerWidget {
                   .deleteTestimony(testimony.id);
               if (!ok && context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text('Impossible de supprimer. Réessaie.')),
+                  SnackBar(
+                      content: Text(context.l10n.profileDeleteTestimonyFailed)),
                 );
               }
             },
-            child: const Text('Supprimer'),
+            child: Text(context.l10n.commonDelete),
           ),
         ],
       ),
@@ -451,11 +456,12 @@ class _MyTestimonyCard extends ConsumerWidget {
   static String _relativeDate(DateTime date) {
     final now   = DateTime.now();
     final diff  = now.difference(date);
-    if (diff.inDays == 0) return "Aujourd'hui";
-    if (diff.inDays == 1) return 'Hier';
-    if (diff.inDays < 7) return 'Il y a ${diff.inDays} j';
-    if (diff.inDays < 30) return 'Il y a ${diff.inDays ~/ 7} sem';
-    return DateFormat('d MMM yyyy', 'fr').format(date);
+    final l10n  = L10n.current;
+    if (diff.inDays == 0) return l10n.profileDateToday;
+    if (diff.inDays == 1) return l10n.profileDateYesterday;
+    if (diff.inDays < 7) return l10n.profileDateDaysAgo(diff.inDays);
+    if (diff.inDays < 30) return l10n.profileDateWeeksAgo(diff.inDays ~/ 7);
+    return formatDate(date);
   }
 
   static String _fmtDuration(int s) =>
@@ -548,10 +554,11 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final (label, bg, fg) = switch (status) {
-      'pending'   => ('En attente', AppColors.sunSoft, AppColors.sunText),
-      'published' => ('Publié',     AppColors.successSoft, AppColors.success),
-      'rejected'  => ('Refusé',     AppColors.dangerSoft, AppColors.danger),
+      'pending'   => (l10n.profileStatusPending,   AppColors.sunSoft, AppColors.sunText),
+      'published' => (l10n.profileStatusPublished, AppColors.successSoft, AppColors.success),
+      'rejected'  => (l10n.profileStatusRejected,  AppColors.dangerSoft, AppColors.danger),
       _           => (status,       AppColors.border,         AppColors.textSecondary),
     };
     return Container(
@@ -581,7 +588,7 @@ class _VideoStatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (label, icon, bg, fg) = failed
-        ? ('Échec', Icons.error_outline_rounded, AppColors.dangerSoft, AppColors.danger)
+        ? (context.l10n.profileVideoFailed, Icons.error_outline_rounded, AppColors.dangerSoft, AppColors.danger)
         : (VideoStatusText.processing, Icons.hourglass_top_rounded,
             AppColors.infoSoft, AppColors.info);
     return Container(
@@ -687,28 +694,28 @@ class _CardMenu extends StatelessWidget {
       },
       itemBuilder: (_) => [
         if (testimony.status == 'published' || testimony.type == 'video')
-          const PopupMenuItem(
+          PopupMenuItem(
             value: 'view',
             child: Row(children: [
-              Icon(Icons.visibility_outlined, size: 18),
-              SizedBox(width: 10),
-              Text('Consulter'),
+              const Icon(Icons.visibility_outlined, size: 18),
+              const SizedBox(width: 10),
+              Text(context.l10n.profileView),
             ]),
           ),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 'edit',
           child: Row(children: [
-            Icon(Icons.edit_outlined, size: 18),
-            SizedBox(width: 10),
-            Text('Modifier'),
+            const Icon(Icons.edit_outlined, size: 18),
+            const SizedBox(width: 10),
+            Text(context.l10n.commonEdit),
           ]),
         ),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 'delete',
           child: Row(children: [
-            Icon(Icons.delete_outline_rounded, size: 18, color: Colors.red),
-            SizedBox(width: 10),
-            Text('Supprimer', style: TextStyle(color: Colors.red)),
+            const Icon(Icons.delete_outline_rounded, size: 18, color: Colors.red),
+            const SizedBox(width: 10),
+            Text(context.l10n.commonDelete, style: const TextStyle(color: Colors.red)),
           ]),
         ),
       ],
@@ -726,26 +733,27 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final (icon, title, subtitle) = switch (status) {
       'pending'   => (
           Icons.hourglass_top_rounded,
-          'Aucun témoignage en attente',
-          'Vos témoignages soumis apparaîtront ici\npendant leur validation.',
+          l10n.profileEmptyPendingTitle,
+          l10n.profileEmptyPendingBody,
         ),
       'published' => (
           Icons.check_circle_outline_rounded,
-          'Aucun témoignage publié',
-          'Vos témoignages validés\ns\'afficheront ici.',
+          l10n.profileEmptyPublishedTitle,
+          l10n.profileEmptyPublishedBody,
         ),
       'rejected'  => (
           Icons.block_rounded,
-          'Aucun témoignage refusé',
-          'Bonne nouvelle ! Aucun de vos\ntémoignages n\'a été refusé.',
+          l10n.profileEmptyRejectedTitle,
+          l10n.profileEmptyRejectedBody,
         ),
       _           => (
           Icons.auto_stories_outlined,
-          'Aucun témoignage',
-          'Partagez ce que Dieu a fait\ndans votre vie.',
+          l10n.profileEmptyAllTitle,
+          l10n.profileEmptyAllBody,
         ),
     };
     return Center(
@@ -769,8 +777,8 @@ class _EmptyState extends StatelessWidget {
               FilledButton.icon(
                 onPressed: () => context.go('/publish'),
                 icon: const Icon(Icons.add_rounded, size: 18),
-                label: const Text('Publier un témoignage',
-                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 13)),
+                label: Text(l10n.profilePublishTestimony,
+                    style: const TextStyle(fontFamily: AppFonts.family, fontSize: 13)),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   padding: const EdgeInsets.symmetric(
@@ -816,7 +824,7 @@ class _ErrorView extends StatelessWidget {
             const Icon(Icons.cloud_off_rounded,
                 size: 48, color: AppColors.textSecondary),
             const SizedBox(height: 16),
-            Text('Impossible de charger vos témoignages.',
+            Text(context.l10n.profileMyTestimoniesLoadFailed,
                 style: AppTextStyles.h4
                     .copyWith(color: AppColors.textSecondary),
                 textAlign: TextAlign.center),
@@ -829,7 +837,7 @@ class _ErrorView extends StatelessWidget {
             FilledButton.icon(
               onPressed: onRetry,
               icon: const Icon(Icons.refresh_rounded, size: 18),
-              label: const Text('Réessayer'),
+              label: Text(context.l10n.commonRetry),
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 shape: RoundedRectangleBorder(
@@ -860,11 +868,10 @@ Color _statusColor(String status) => switch (status) {
 
 /// Message de confirmation avant de modifier un témoignage déjà publié.
 String publishedEditWarning(UserTestimony t) {
-  const base = 'Votre témoignage repassera en modération et ne sera plus visible '
-      'jusqu\'à sa validation. Continuer ?';
+  final l10n = L10n.current;
   return t.hasApprovedLabel
-      ? '$base\n\nIl perdra aussi son label Témoignage approuvé.'
-      : base;
+      ? l10n.profilePublishedEditWarningLabel
+      : l10n.profilePublishedEditWarning;
 }
 
 /// Modifie le titre et le texte, puis enregistre (PUT /testimonies/{id}). Le
@@ -885,14 +892,14 @@ Future<void> editAndResubmit(BuildContext context, WidgetRef ref, UserTestimony 
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Modifier un témoignage publié ?'),
+        title: Text(ctx.l10n.profileEditPublishedTitle),
         content: Text(publishedEditWarning(t)),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Annuler')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(ctx.l10n.commonCancel)),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Continuer'),
+            child: Text(ctx.l10n.commonContinue),
           ),
         ],
       ),
@@ -901,19 +908,20 @@ Future<void> editAndResubmit(BuildContext context, WidgetRef ref, UserTestimony 
   }
 
   final messenger = ScaffoldMessenger.of(context);
+  final l10n = context.l10n;
   try {
     final updated = await ref
         .read(myTestimoniesNotifierProvider.notifier)
         .resubmit(t.id, title: edited.title, bodyText: edited.body);
     final resent = updated.status == 'pending' && t.status != 'pending';
     messenger.showSnackBar(SnackBar(
-      content: Text(resent ? 'Renvoyé en modération' : 'Modifications enregistrées'),
+      content: Text(resent ? l10n.profileResubmitted : l10n.profileChangesSaved),
       behavior: SnackBarBehavior.floating,
     ));
   } on LaravelApiException catch (e) {
     messenger.showSnackBar(SnackBar(content: Text(e.displayMessage)));
   } catch (_) {
-    messenger.showSnackBar(const SnackBar(content: Text('Impossible d\'enregistrer. Réessayez.')));
+    messenger.showSnackBar(SnackBar(content: Text(l10n.profileSaveFailed)));
   }
 }
 
@@ -941,10 +949,11 @@ class _EditTestimonySheetState extends State<_EditTestimonySheet> {
   Widget build(BuildContext context) {
     final t = widget.testimony;
     final rejected = t.status == 'rejected';
+    final l10n = context.l10n;
     final bodyLabel = switch (t.type) {
-      'audio' => 'Transcription',
-      'video' => 'Description',
-      _ => 'Témoignage',
+      'audio' => l10n.profileBodyTranscription,
+      'video' => l10n.profileBodyDescription,
+      _ => l10n.profileBodyTestimony,
     };
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
@@ -958,18 +967,18 @@ class _EditTestimonySheetState extends State<_EditTestimonySheet> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(rejected ? 'Modifier et renvoyer' : 'Modifier le témoignage', style: AppTextStyles.h4),
+                Text(rejected ? l10n.profileEditResubmit : l10n.profileEditTestimony, style: AppTextStyles.h4),
                 if (rejected && (t.rejectionReason ?? '').isNotEmpty) ...[
                   const SizedBox(height: 8),
-                  Text('Motif du refus : ${t.rejectionReason}',
+                  Text(l10n.profileRejectionReason(t.rejectionReason ?? ''),
                       style: AppTextStyles.bodySmall.copyWith(color: AppColors.danger)),
                 ],
                 const SizedBox(height: 14),
                 TextFormField(
                   controller: _title,
                   maxLength: 200,
-                  decoration: const InputDecoration(labelText: 'Titre'),
-                  validator: (v) => (v ?? '').trim().isEmpty ? 'Le titre est obligatoire.' : null,
+                  decoration: InputDecoration(labelText: l10n.profileTitleLabel),
+                  validator: (v) => (v ?? '').trim().isEmpty ? l10n.profileTitleRequired : null,
                 ),
                 const SizedBox(height: 8),
                 TextFormField(
@@ -979,7 +988,7 @@ class _EditTestimonySheetState extends State<_EditTestimonySheet> {
                   maxLength: 5000,
                   decoration: InputDecoration(labelText: bodyLabel, alignLabelWithHint: true),
                   validator: (v) => t.type == 'text' && (v ?? '').trim().isEmpty
-                      ? 'Le texte du témoignage est obligatoire.'
+                      ? l10n.profileBodyRequired
                       : null,
                 ),
                 const SizedBox(height: 12),
@@ -994,7 +1003,7 @@ class _EditTestimonySheetState extends State<_EditTestimonySheet> {
                     Navigator.of(context).pop((title: _title.text.trim(), body: _body.text.trim()));
                   },
                   icon: Icon(rejected ? Icons.send_rounded : Icons.save_outlined),
-                  label: Text(rejected ? 'Renvoyer en modération' : 'Enregistrer'),
+                  label: Text(rejected ? l10n.profileResubmitAction : l10n.commonSave),
                 ),
               ],
             ),

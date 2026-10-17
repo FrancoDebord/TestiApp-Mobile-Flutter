@@ -13,6 +13,7 @@ import '../data/events_repository.dart';
 import '../models/event_models.dart';
 import '../providers/events_providers.dart';
 import '../widgets/event_widgets.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Événements chrétiens : à venir, auxquels je participe, passés, les miens.
 class EventsScreen extends ConsumerStatefulWidget {
@@ -44,12 +45,13 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
   Widget build(BuildContext context) {
     final loggedIn = ref.watch(currentUserProvider) != null;
     final canCreate = ref.watch(canCreateEventsProvider);
+    final l10n = context.l10n;
     final tabs = <(String, EventScope)>[
-      ('À venir', EventScope.upcoming),
-      ('En cours', EventScope.ongoing),
-      if (loggedIn) ("J'y participe", EventScope.going),
-      ('Passés', EventScope.past),
-      if (canCreate) ('Mes événements', EventScope.mine),
+      (l10n.eventsTabUpcoming, EventScope.upcoming),
+      (l10n.eventsTabOngoing, EventScope.ongoing),
+      if (loggedIn) (l10n.eventsTabGoing, EventScope.going),
+      (l10n.eventsTabPast, EventScope.past),
+      if (canCreate) (l10n.eventsTabMine, EventScope.mine),
     ];
 
     return DefaultTabController(
@@ -57,7 +59,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
       child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
-          title: const Text('Événements'),
+          title: Text(l10n.navEvents),
           actions: const [_LayoutToggle()],
           backgroundColor: AppColors.surface,
           foregroundColor: AppColors.textPrimary,
@@ -75,7 +77,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
                     controller: _search,
                     scope: SearchScope.events,
                     recentKey: 'events',
-                    hintText: 'Rechercher : titre, ville, lieu…',
+                    hintText: l10n.eventsSearchHint,
                     onSubmitted: _submitSearch,
                     onChanged: (v) {
                       if (v.trim().isEmpty && _query != null) _submitSearch('');
@@ -104,7 +106,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
                 backgroundColor: AppColors.secondary,
                 foregroundColor: Colors.white,
                 icon: const Icon(Icons.add_rounded),
-                label: const Text('Créer un événement'),
+                label: Text(l10n.eventsCreate),
               )
             : null,
         body: TabBarView(
@@ -126,7 +128,7 @@ class _LayoutToggle extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final compact = ref.watch(eventLayoutProvider) == FeedLayout.compact;
     return IconButton(
-      tooltip: compact ? 'Affichage : cartes' : 'Affichage : liste compacte',
+      tooltip: compact ? context.l10n.eventsLayoutCards : context.l10n.eventsLayoutCompact,
       icon: Icon(compact ? Icons.view_agenda_outlined : Icons.view_list_rounded),
       onPressed: () => ref
           .read(eventLayoutProvider.notifier)
@@ -152,7 +154,7 @@ class _TypeFilter extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: ChoiceChip(
-              label: const Text('Tous'),
+              label: Text(context.l10n.eventsAllTypes),
               selected: selected == null,
               onSelected: (_) => onChanged(null),
             ),
@@ -182,13 +184,14 @@ class _EventList extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(eventListProvider(listKey));
     final compact = ref.watch(eventLayoutProvider) == FeedLayout.compact;
+    final l10n = context.l10n;
     final empty = switch (listKey.scope) {
-      EventScope.upcoming => 'Aucun événement à venir pour le moment.',
-      EventScope.going => "Vous n'avez encore répondu « Je participe » à aucun événement.",
-      EventScope.ongoing => "Aucun événement en cours en ce moment.",
-      EventScope.past => 'Aucun événement passé.',
-      EventScope.mine => 'Vous n\'avez pas encore créé d\'événement.\nCroisade, conférence, camp… lancez-vous !',
-      EventScope.following => 'Aucun événement à venir des comptes que vous suivez.',
+      EventScope.upcoming => l10n.eventsEmptyUpcoming,
+      EventScope.going => l10n.eventsEmptyGoing,
+      EventScope.ongoing => l10n.eventsEmptyOngoing,
+      EventScope.past => l10n.eventsEmptyPast,
+      EventScope.mine => l10n.eventsEmptyMine,
+      EventScope.following => l10n.eventsEmptyFollowing,
     };
 
     return RefreshIndicator(
@@ -228,10 +231,10 @@ class _EventList extends ConsumerWidget {
           ),
         AsyncValue(:final error?) => _Message(
             icon: Icons.wifi_off_rounded,
-            text: error is EventFailure ? error.message : 'Impossible de charger les événements.',
+            text: error is EventFailure ? error.message : l10n.eventsLoadError,
             action: TextButton(
               onPressed: () => ref.invalidate(eventListProvider(listKey)),
-              child: const Text('Réessayer'),
+              child: Text(l10n.commonRetry),
             ),
           ),
         _ => const Center(child: CircularProgressIndicator()),

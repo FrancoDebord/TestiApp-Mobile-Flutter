@@ -6,6 +6,7 @@ import '../../repost/repost.dart';
 import '../../../core/app_constants.dart';
 import '../../../core/media/video_source.dart';
 import 'media_rendition.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/models/account_approval.dart';
 import '../../../shared/models/mention.dart';
 
@@ -30,16 +31,16 @@ enum TestimonyCategory {
 
 extension TestimonyCategoryLabel on TestimonyCategory {
   String get label => switch (this) {
-        TestimonyCategory.guerison => 'Guérison',
-        TestimonyCategory.delivrance => 'Délivrance',
-        TestimonyCategory.conversion => 'Conversion',
-        TestimonyCategory.mariage => 'Mariage',
-        TestimonyCategory.famille => 'Famille',
-        TestimonyCategory.finances => 'Finances',
-        TestimonyCategory.miracles => 'Miracles',
-        TestimonyCategory.protection => 'Protection divine',
-        TestimonyCategory.ministere => 'Ministère',
-        TestimonyCategory.salut => 'Salut',
+        TestimonyCategory.guerison => L10n.current.categoryHealing,
+        TestimonyCategory.delivrance => L10n.current.categoryDeliverance,
+        TestimonyCategory.conversion => L10n.current.categoryConversion,
+        TestimonyCategory.mariage => L10n.current.categoryMarriage,
+        TestimonyCategory.famille => L10n.current.categoryFamily,
+        TestimonyCategory.finances => L10n.current.categoryFinances,
+        TestimonyCategory.miracles => L10n.current.categoryMiracles,
+        TestimonyCategory.protection => L10n.current.categoryProtection,
+        TestimonyCategory.ministere => L10n.current.categoryMinistry,
+        TestimonyCategory.salut => L10n.current.categorySalvation,
       };
 
   String get slug => name; // already lowercase ascii
@@ -125,8 +126,10 @@ class TestimonyProof {
   /// Taille lisible (« 245 Ko », « 1,2 Mo »).
   String get formattedSize {
     if (size <= 0) return '';
-    if (size < 1024 * 1024) return '${(size / 1024).ceil()} Ko';
-    return '${(size / (1024 * 1024)).toStringAsFixed(1).replaceAll('.', ',')} Mo';
+    final fr = L10n.languageCode == 'fr';
+    if (size < 1024 * 1024) return '${(size / 1024).ceil()} ${fr ? 'Ko' : 'KB'}'; // i18n-ignore
+    final mb = (size / (1024 * 1024)).toStringAsFixed(1);
+    return fr ? '${mb.replaceAll('.', ',')} Mo' : '$mb MB'; // i18n-ignore
   }
 
   /// `null` si l'élément est inexploitable (ni identifiant ni adresse).
@@ -143,7 +146,7 @@ class TestimonyProof {
     return TestimonyProof(
       id: id,
       position: pos is num ? pos.toInt() : int.tryParse('$pos') ?? 1,
-      name: name.isEmpty ? 'Preuve' : name,
+      name: name.isEmpty ? L10n.current.homeProofDefaultName : name,
       url: absUrl?.call(url) ?? url,
       mimeType: mime,
       size: size is num ? size.toInt() : int.tryParse('$size') ?? 0,
@@ -163,6 +166,36 @@ class TestimonyProof {
         .toList()
       ..sort((a, b) => a.position.compareTo(b.position));
   }
+}
+
+// ── Témoignage de conversion ─────────────────────────────────────────────────
+
+/// Détails d'un témoignage de conversion (`conversion: { year, place, verse }` de l'API).
+class ConversionDetails {
+  const ConversionDetails({this.year, this.place, this.verse});
+
+  /// `kind` / `isConversion` / `conversion` d'un témoignage de l'API ; null s'il est standard.
+  static ConversionDetails? fromTestimonyJson(Map<String, dynamic> m) {
+    final isConversion = m['isConversion'] == true || m['is_conversion'] == true || m['kind'] == 'conversion';
+    if (!isConversion) return null;
+    final c = m['conversion'] is Map ? Map<String, dynamic>.from(m['conversion'] as Map) : const <String, dynamic>{};
+    String? str(Object? v) => (v?.toString().trim().isEmpty ?? true) ? null : v.toString().trim();
+    final year = c['year'] ?? m['conversion_year'];
+    return ConversionDetails(
+      year: year is int ? year : int.tryParse('${year ?? ''}'),
+      place: str(c['place'] ?? m['conversion_place']),
+      verse: str(c['verse'] ?? m['conversion_verse']),
+    );
+  }
+
+  final int? year;
+  final String? place;
+  final String? verse;
+
+  bool get hasDetails => year != null || place != null || verse != null;
+
+  /// « 2012 · Cotonou · Jean 3:16 ».
+  String get summary => [if (year != null) '$year', ?place, ?verse].join(' · ');
 }
 
 // ── Base testimony ───────────────────────────────────────────────────────────
@@ -187,6 +220,7 @@ sealed class Testimony {
     this.canDelete = false,
     this.badges = const {},
     this.featuredSource,
+    this.conversion,
   });
 
   final String id;
@@ -229,6 +263,13 @@ sealed class Testimony {
   /// Origine dans « À la une » : manual, recent (complément automatique) ou null.
   final String? featuredSource;
 
+  /// Témoignage de conversion (`kind: conversion`) : année, lieu et verset facultatifs ;
+  /// null pour un témoignage standard. docs serveur fonctionnalites/temoignage-de-conversion.md
+  final ConversionDetails? conversion;
+
+  /// Témoignage de conversion (« Comment j'ai rencontré Jésus »), un seul par compte personnel.
+  bool get isConversion => conversion != null;
+
   /// Label « Témoignage approuvé ».
   bool get hasApprovedLabel => badges.contains('verified');
 
@@ -270,6 +311,7 @@ final class TextTestimony extends Testimony {
     super.canDelete,
     super.badges,
     super.featuredSource,
+    super.conversion,
   });
 
   final String preview;
@@ -311,6 +353,7 @@ final class AudioTestimony extends Testimony {
     super.canDelete,
     super.badges,
     super.featuredSource,
+    super.conversion,
   });
 
   final int     durationSeconds;
@@ -370,6 +413,7 @@ final class VideoTestimony extends Testimony {
     super.canDelete,
     super.badges,
     super.featuredSource,
+    super.conversion,
   });
 
   final int     durationSeconds;

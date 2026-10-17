@@ -3,6 +3,7 @@
 // fonctionnalites/paroles-prophetiques.md et recommandations.md
 
 import 'prophecy.dart' show parseClockTime;
+import '../../../l10n/app_localizations.dart';
 
 class PublicProphecy {
   const PublicProphecy({
@@ -52,10 +53,10 @@ class PublicProphecy {
     return PublicProphecy(
       id: id,
       authorId: user['id']?.toString() ?? '',
-      authorName: _s(user['displayName'] ?? user['display_name']) ?? 'Anonyme',
+      authorName: _s(user['displayName'] ?? user['display_name']) ?? L10n.current.commonAnonymous,
       authorAvatarUrl: _s(user['avatarUrl'] ?? user['avatar_url']),
       testimonyId: testimonyId,
-      testimonyTitle: _s(t?['title']) ?? 'Témoignage',
+      testimonyTitle: _s(t?['title']) ?? L10n.current.modTestimony,
       title: _s(m['title']),
       bodyText: _s(m['bodyText']),
       audioUrl: _s(m['audioUrl']),

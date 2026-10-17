@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
+import '../../../l10n/app_localizations.dart';
 import '../data/prayer_repository.dart';
 import '../models/prayer_models.dart';
 import '../providers/prayer_providers.dart';
@@ -61,7 +62,12 @@ class _CreatePrayerSessionScreenState extends ConsumerState<CreatePrayerSessionS
     _description.text = s.description ?? '';
   }
 
-  static String _durationLabel(int m) => m < 60 ? '$m min' : (m % 60 == 0 ? '${m ~/ 60} h' : '${m ~/ 60} h ${m % 60}');
+  static String _durationLabel(int m) {
+    final l = L10n.current;
+    return m < 60
+        ? l.prayerDurationMinutes(m)
+        : (m % 60 == 0 ? l.prayerDurationHours(m ~/ 60) : l.prayerDurationHoursMinutes(m ~/ 60, m % 60));
+  }
 
   Future<void> _pickDate() async {
     final d = _draft!;
@@ -97,7 +103,7 @@ class _CreatePrayerSessionScreenState extends ConsumerState<CreatePrayerSessionS
     final d = _draft;
     if (d == null || _saving || !(_form.currentState?.validate() ?? false)) return;
     if (!_editing && d.startsAt.isBefore(DateTime.now())) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('La session doit être programmée dans le futur.')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.l10n.prayerSessionMustBeFuture)));
       return;
     }
     if (_topic.text.trim().isNotEmpty) _addTopic();
@@ -111,7 +117,7 @@ class _CreatePrayerSessionScreenState extends ConsumerState<CreatePrayerSessionS
       if (_editing) ref.read(prayerSessionProvider(saved.id).notifier).replace(saved);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_editing ? 'Session mise à jour.' : 'Session de prière programmée.')),
+        SnackBar(content: Text(_editing ? context.l10n.prayerSessionUpdated : context.l10n.prayerSessionScheduled)),
       );
       if (_editing) {
         context.pop(saved);
@@ -133,10 +139,10 @@ class _CreatePrayerSessionScreenState extends ConsumerState<CreatePrayerSessionS
         _load(s);
       } else {
         return Scaffold(
-          appBar: AppBar(title: const Text('Modifier la session')),
+          appBar: AppBar(title: Text(context.l10n.prayerEditSession)),
           body: Center(
             child: async.hasError
-                ? Text(async.error is PrayerFailure ? (async.error! as PrayerFailure).message : 'Session introuvable.')
+                ? Text(async.error is PrayerFailure ? (async.error! as PrayerFailure).message : context.l10n.prayerSessionNotFound)
                 : const CircularProgressIndicator(),
           ),
         );
@@ -147,7 +153,7 @@ class _CreatePrayerSessionScreenState extends ConsumerState<CreatePrayerSessionS
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text(_editing ? 'Modifier la session' : 'Programmer une session'),
+        title: Text(_editing ? context.l10n.prayerEditSession : context.l10n.prayerScheduleSession),
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.textPrimary,
         surfaceTintColor: AppColors.surface,
@@ -159,8 +165,7 @@ class _CreatePrayerSessionScreenState extends ConsumerState<CreatePrayerSessionS
           padding: const EdgeInsets.all(AppSpacing.screen),
           children: [
             Text(
-              "À l'heure prévue, vous ouvrez la salle (caméra ou micro) : les inscrits rejoignent, "
-              'commentent et peuvent prendre la parole à tour de rôle.',
+              context.l10n.prayerSessionFormIntro,
               style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
             ),
             if (d.eventId != null) ...[
@@ -169,7 +174,7 @@ class _CreatePrayerSessionScreenState extends ConsumerState<CreatePrayerSessionS
                 const Icon(Icons.event_rounded, size: 18, color: AppColors.primary),
                 const SizedBox(width: 6),
                 Expanded(
-                  child: Text("Session rattachée à l'événement.",
+                  child: Text(context.l10n.prayerSessionLinkedToEvent,
                       style: AppTextStyles.bodySmall.copyWith(color: AppColors.primary)),
                 ),
               ]),
@@ -179,8 +184,9 @@ class _CreatePrayerSessionScreenState extends ConsumerState<CreatePrayerSessionS
               controller: _title,
               maxLength: 150,
               textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(labelText: 'Titre *', hintText: 'Ex. : Veillée de prière pour les familles'),
-              validator: (v) => (v?.trim().isEmpty ?? true) ? 'Donnez un titre à la session.' : null,
+              decoration: InputDecoration(
+                  labelText: context.l10n.prayerSessionTitleLabel, hintText: context.l10n.prayerSessionTitleHint),
+              validator: (v) => (v?.trim().isEmpty ?? true) ? context.l10n.prayerSessionTitleRequired : null,
             ),
             TextFormField(
               controller: _description,
@@ -188,10 +194,10 @@ class _CreatePrayerSessionScreenState extends ConsumerState<CreatePrayerSessionS
               maxLines: 6,
               maxLength: 3000,
               textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(labelText: 'Présentation'),
+              decoration: InputDecoration(labelText: context.l10n.prayerSessionDescriptionLabel),
             ),
             const SizedBox(height: AppSpacing.md),
-            Text('Sujets de prière', style: AppTextStyles.labelMedium),
+            Text(context.l10n.prayerSessionTopics, style: AppTextStyles.labelMedium),
             const SizedBox(height: AppSpacing.sm),
             Wrap(spacing: 6, runSpacing: 6, children: [
               for (final (i, t) in d.topics.indexed)
@@ -204,19 +210,19 @@ class _CreatePrayerSessionScreenState extends ConsumerState<CreatePrayerSessionS
                   maxLength: 150,
                   textCapitalization: TextCapitalization.sentences,
                   onSubmitted: (_) => _addTopic(),
-                  decoration: InputDecoration(hintText: d.topics.length >= 10 ? '10 sujets au plus' : 'Ajouter un sujet'),
+                  decoration: InputDecoration(hintText: d.topics.length >= 10 ? context.l10n.prayerTopicsMax : context.l10n.prayerAddTopicHint),
                 ),
               ),
-              IconButton(onPressed: _addTopic, icon: const Icon(Icons.add_circle_outline), tooltip: 'Ajouter le sujet'),
+              IconButton(onPressed: _addTopic, icon: const Icon(Icons.add_circle_outline), tooltip: context.l10n.prayerAddTopicTooltip),
             ]),
             const SizedBox(height: AppSpacing.md),
-            Text('Quand ?', style: AppTextStyles.labelMedium),
+            Text(context.l10n.prayerWhen, style: AppTextStyles.labelMedium),
             const SizedBox(height: AppSpacing.sm),
             Wrap(spacing: AppSpacing.sm, runSpacing: AppSpacing.sm, children: [
               OutlinedButton.icon(
                 onPressed: _pickDate,
                 icon: const Icon(Icons.calendar_today_rounded, size: 18),
-                label: Text(formatPrayerDate(d.startsAt).split(',').first),
+                label: Text(formatPrayerDay(d.startsAt)),
               ),
               OutlinedButton.icon(
                 onPressed: _pickTime,
@@ -227,23 +233,27 @@ class _CreatePrayerSessionScreenState extends ConsumerState<CreatePrayerSessionS
             const SizedBox(height: AppSpacing.md),
             DropdownButtonFormField<int>(
               initialValue: durations.contains(d.durationMinutes) ? d.durationMinutes : 60,
-              decoration: const InputDecoration(labelText: 'Durée'),
+              decoration: InputDecoration(labelText: context.l10n.prayerDuration),
               items: [for (final m in durations) DropdownMenuItem(value: m, child: Text(_durationLabel(m)))],
               onChanged: (v) => setState(() => d.durationMinutes = v ?? 60),
             ),
             const SizedBox(height: AppSpacing.xs),
-            Text('Les inscrits reçoivent un rappel 15 minutes avant.',
+            Text(context.l10n.prayerReminderInfo,
                 style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
             const SizedBox(height: AppSpacing.lg),
-            Text('Qui peut la voir ?', style: AppTextStyles.labelMedium),
+            Text(context.l10n.prayerWhoCanSee, style: AppTextStyles.labelMedium),
             RadioGroup<PrayerVisibility>(
               groupValue: d.visibility == PrayerVisibility.followers ? PrayerVisibility.followers : PrayerVisibility.public,
               onChanged: (v) => setState(() => d.visibility = v ?? PrayerVisibility.public),
-              child: const Column(children: [
+              child: Column(children: [
                 RadioListTile<PrayerVisibility>(
-                    value: PrayerVisibility.public, contentPadding: EdgeInsets.zero, title: Text('Tout le monde')),
+                    value: PrayerVisibility.public,
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(context.l10n.prayerVisibilityPublic)),
                 RadioListTile<PrayerVisibility>(
-                    value: PrayerVisibility.followers, contentPadding: EdgeInsets.zero, title: Text('Mes abonnés')),
+                    value: PrayerVisibility.followers,
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(context.l10n.prayerVisibilityFollowers)),
               ]),
             ),
             const SizedBox(height: AppSpacing.lg),
@@ -252,7 +262,7 @@ class _CreatePrayerSessionScreenState extends ConsumerState<CreatePrayerSessionS
               icon: _saving
                   ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                   : const Icon(Icons.check_rounded),
-              label: Text(_editing ? 'Enregistrer' : 'Programmer la session'),
+              label: Text(_editing ? context.l10n.commonSave : context.l10n.prayerScheduleTheSession),
               style: FilledButton.styleFrom(backgroundColor: AppColors.primary, padding: const EdgeInsets.symmetric(vertical: 14)),
             ),
           ],

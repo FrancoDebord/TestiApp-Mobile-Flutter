@@ -177,12 +177,12 @@ class _AudioPlayerScreenState extends ConsumerState<AudioPlayerScreen>
     ];
     final footer = [
       if (!hasRenditions) singleQualityReason(t is AudioTestimony ? t.renditionsStatus : null, video: false),
-      'Qualité par défaut modifiable dans Paramètres › Lecture et données.',
+      context.l10n.audioPlayerQualitySettingsHint,
     ].join('\n');
 
     final choice = await showQualityPickerSheet<AudioQuality>(
       context,
-      title: 'Qualité audio',
+      title: context.l10n.audioPlayerQualityTitle,
       options: options,
       selected: player.qualityOverride ?? AudioQuality.auto,
       currentLabel: player.qualityOverride == null ? player.qualityLabel : null,
@@ -211,17 +211,17 @@ class _AudioPlayerScreenState extends ConsumerState<AudioPlayerScreen>
       requireAccount(context, ref, reason: reason);
 
   Future<void> _toggleLike(AudioTestimony? t) async {
-    if (!await _member('réagir aux témoignages') || !mounted || t == null) return;
+    if (!await _member(context.l10n.homeReasonReact) || !mounted || t == null) return;
     ref.read(interactionProvider.notifier).toggleLike(t);
   }
 
   Future<void> _togglePray(AudioTestimony? t) async {
-    if (!await _member('réagir aux témoignages') || !mounted || t == null) return;
+    if (!await _member(context.l10n.homeReasonReact) || !mounted || t == null) return;
     ref.read(interactionProvider.notifier).togglePray(t);
   }
 
   Future<void> _toggleBookmark(AudioTestimony? t) async {
-    if (!await _member('enregistrer vos favoris') || !mounted) return;
+    if (!await _member(context.l10n.homeReasonSave) || !mounted) return;
     setState(() => _isBookmarked = !_isBookmarked);
     if (t != null) ref.read(interactionProvider.notifier).toggleSave(t.id);
   }
@@ -232,7 +232,7 @@ class _AudioPlayerScreenState extends ConsumerState<AudioPlayerScreen>
   }
 
   Future<void> _openComments(AudioTestimony? t) async {
-    if (!await _member('commenter les témoignages') || !mounted) return;
+    if (!await _member(context.l10n.authGuestReasonComment) || !mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) =>
@@ -248,7 +248,7 @@ class _AudioPlayerScreenState extends ConsumerState<AudioPlayerScreen>
     final prefsCtl  = ref.read(playbackPreferencesProvider.notifier);
     final isPlaying = player.isPlaying;
     final progress  = player.progress;
-    final fr        = AppLocalizations.of(context).isFr;
+    final fr        = context.l10n.isFr;
 
     // Témoignage réellement en cours (change lors de l'enchaînement auto).
     final current = player.currentTestimony ?? _testimony;
@@ -330,7 +330,7 @@ class _AudioPlayerScreenState extends ConsumerState<AudioPlayerScreen>
 
                       // ── Infos (même hiérarchie que le lecteur vidéo) ──
                       Text(
-                        current?.title ?? (fr ? 'Chargement…' : 'Loading…'),
+                        current?.title ?? context.l10n.commonLoading,
                         style: AppTextStyles.h3,
                         maxLines: 4,
                         overflow: TextOverflow.ellipsis,
@@ -371,7 +371,7 @@ class _AudioPlayerScreenState extends ConsumerState<AudioPlayerScreen>
                           InsightVerseCard(
                             verse: current.bibleVerse!.trim(),
                             reference: current.bibleVerseRef,
-                            title: fr ? 'Parole de Dieu' : 'Word of God',
+                            title: context.l10n.testimonyWordOfGod,
                           ),
                         ],
                       ],
@@ -415,21 +415,20 @@ class _AudioAppBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fr = AppLocalizations.of(context).isFr;
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
       child: Row(
         children: [
           IconButton(
             onPressed: onBack,
-            tooltip: fr ? 'Fermer' : 'Close',
+            tooltip: context.l10n.commonClose,
             icon: const Icon(Icons.keyboard_arrow_down_rounded),
             color: AppColors.primary,
             iconSize: 28,
           ),
           Expanded(
             child: Text(
-              fr ? 'Témoignage audio' : 'Audio testimony',
+              context.l10n.audioPlayerTitle,
               textAlign: TextAlign.center,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -438,7 +437,7 @@ class _AudioAppBar extends StatelessWidget {
           ),
           IconButton(
             onPressed: onBookmark,
-            tooltip: fr ? 'Sauvegarder' : 'Save',
+            tooltip: context.l10n.detailSave,
             icon: Icon(isBookmarked
                 ? Icons.bookmark_rounded
                 : Icons.bookmark_border_rounded),
@@ -446,7 +445,7 @@ class _AudioAppBar extends StatelessWidget {
           ),
           IconButton(
             onPressed: onShare,
-            tooltip: fr ? 'Partager' : 'Share',
+            tooltip: context.l10n.commonShare,
             icon: const Icon(Icons.share_rounded),
             color: AppColors.textSecondary,
           ),
@@ -537,7 +536,7 @@ class _CoverArt extends StatelessWidget {
                           color: AppColors.sun, size: 14),
                       const SizedBox(width: 4),
                       Text(
-                        'AUDIO',
+                        context.l10n.modTypeBadgeAudio,
                         style: AppTextStyles.labelSmall.copyWith(
                           color: AppColors.surface,
                           fontSize: 11,
@@ -685,7 +684,7 @@ class _PlayerControls extends StatelessWidget {
           iconSize: 32,
           color: AppColors.primary,
           disabledColor: AppColors.border,
-          tooltip: 'Précédent',
+          tooltip: context.l10n.commonPrevious,
         ),
         // Reculer de 15 s
         _SkipButton(
@@ -696,7 +695,7 @@ class _PlayerControls extends StatelessWidget {
         // Play / Pause (grand, bleu)
         Semantics(
           button: true,
-          label: isPlaying ? 'Pause' : 'Lecture',
+          label: isPlaying ? context.l10n.testimonyTtsPause : context.l10n.audioPlayerPlay,
           child: GestureDetector(
             onTap: onPlayPause,
             child: Container(
@@ -736,7 +735,7 @@ class _PlayerControls extends StatelessWidget {
           iconSize: 32,
           color: AppColors.primary,
           disabledColor: AppColors.border,
-          tooltip: 'Suivant',
+          tooltip: context.l10n.commonNext,
         ),
       ],
     );
@@ -812,9 +811,9 @@ class _SecondaryControls extends StatelessWidget {
                     ? Icons.repeat_rounded
                     : Icons.repeat,
             label: switch (repeatMode) {
-              RepeatMode.off => 'Répéter',
-              RepeatMode.one => 'Répéter 1',
-              RepeatMode.all => 'Tout répéter',
+              RepeatMode.off => context.l10n.audioPlayerRepeat,
+              RepeatMode.one => context.l10n.audioPlayerRepeatOne,
+              RepeatMode.all => context.l10n.audioPlayerRepeatAll,
             },
             tooltip: repeatMode.label,
             active: repeatMode != RepeatMode.off,
@@ -824,10 +823,10 @@ class _SecondaryControls extends StatelessWidget {
         Expanded(
           child: _SecondaryButton(
             icon: Icons.playlist_play_rounded,
-            label: 'Lecture auto',
+            label: context.l10n.playerAutoplay,
             tooltip: autoplayNext
-                ? 'Lecture automatique activée'
-                : 'Lecture automatique désactivée',
+                ? context.l10n.audioPlayerAutoplayOn
+                : context.l10n.audioPlayerAutoplayOff,
             active: autoplayNext,
             onTap: onAutoplay,
           ),
@@ -836,7 +835,7 @@ class _SecondaryControls extends StatelessWidget {
           child: _SecondaryButton(
             icon: Icons.high_quality_outlined,
             label: qualityLabel,
-            tooltip: 'Qualité',
+            tooltip: context.l10n.audioPlayerQuality,
             onTap: onQuality,
           ),
         ),
@@ -844,7 +843,7 @@ class _SecondaryControls extends StatelessWidget {
           child: _SecondaryButton(
             icon: Icons.speed_rounded,
             label: _speedLabel(speed),
-            tooltip: 'Vitesse de lecture',
+            tooltip: context.l10n.audioPlayerSpeed,
             active: speed != 1.0,
             onTap: onSpeed,
           ),
@@ -948,7 +947,7 @@ class _TranscriptToggle extends StatelessWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Transcription',
+                      context.l10n.audioPlayerTranscript,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.labelMedium
@@ -1061,7 +1060,7 @@ class _MiniAudioPlayerState extends State<MiniAudioPlayer> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Comment Dieu a guéri ma fille...',
+                      'Comment Dieu a guéri ma fille...', // i18n-ignore (maquette)
                       style: TextStyle(
                         fontFamily: AppFonts.family,
                         fontWeight: FontWeight.w600,
@@ -1072,7 +1071,7 @@ class _MiniAudioPlayerState extends State<MiniAudioPlayer> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const Text(
-                      'Marie Nkosi',
+                      'Marie Nkosi', // i18n-ignore (maquette)
                       style: TextStyle(
                         fontFamily: AppFonts.family,
                         fontSize: 11,

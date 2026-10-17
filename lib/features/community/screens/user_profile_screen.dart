@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../conversion/providers/conversion_providers.dart' show userConversionProvider;
+import '../../conversion/widgets/conversion_widgets.dart' show ProfileConversionSection;
 import '../../events/widgets/organizer_events_section.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -15,6 +17,7 @@ import '../models/community_account.dart';
 import '../providers/follow_provider.dart';
 import '../widgets/account_tile.dart';
 import '../widgets/follow_button.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Profil public d'un auteur (personne ou organisation) : présentation, bouton Suivre, témoignages.
 /// Son propre profil ouvre l'onglet « Profil ».
@@ -62,7 +65,7 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
         _testimonies = results[1] as List<Testimony>;
       });
     } catch (_) {
-      if (mounted) setState(() => _error = 'Ce profil n\'a pas pu être chargé.');
+      if (mounted) setState(() => _error = context.l10n.communityProfileLoadError);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -74,7 +77,7 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text(a?.displayName ?? 'Profil'),
+        title: Text(a?.displayName ?? context.l10n.communityProfile),
         backgroundColor: AppColors.surface,
         surfaceTintColor: Colors.transparent,
       ),
@@ -86,12 +89,15 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(_error!, style: const TextStyle(color: AppColors.textSecondary)),
-                  TextButton(onPressed: _load, child: const Text('Réessayer')),
+                  TextButton(onPressed: _load, child: Text(context.l10n.commonRetry)),
                 ],
               ),
             )
           : RefreshIndicator(
-              onRefresh: _load,
+              onRefresh: () {
+                ref.invalidate(userConversionProvider(widget.userId));
+                return _load();
+              },
               child: ListView(
                 padding: const EdgeInsets.only(bottom: 24),
                 children: [
@@ -100,20 +106,25 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                     followers: _followers ?? a.followerCount,
                     onFollowers: (n) => setState(() => _followers = n),
                   ),
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(16, 20, 16, 8),
+                  // Témoignage de conversion publié, mis en avant (masqué s'il n'y en a pas).
+                  ProfileConversionSection(
+                    userId: widget.userId,
+                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
                     child: Text(
-                      'Témoignages',
-                      style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w700, fontSize: 16),
+                      context.l10n.communityTestimonies,
+                      style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w700, fontSize: 16),
                     ),
                   ),
                   if (_testimonies.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.all(24),
+                    Padding(
+                      padding: const EdgeInsets.all(24),
                       child: Text(
-                        'Aucun témoignage publié pour le moment.',
+                        context.l10n.communityNoTestimonies,
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: AppColors.textSecondary),
+                        style: const TextStyle(color: AppColors.textSecondary),
                       ),
                     )
                   else
@@ -138,6 +149,7 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final a = account;
+    final l10n = context.l10n;
     Widget stat(int n, String one, String many) => Column(
       children: [
         Text(
@@ -206,9 +218,9 @@ class _Header extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    stat(a.testimonyCount, 'témoignage', 'témoignages'),
-                    stat(followers, 'abonné', 'abonnés'),
-                    stat(a.followingCount, 'abonnement', 'abonnements'),
+                    stat(a.testimonyCount, l10n.communityStatTestimony, l10n.communityStatTestimonies),
+                    stat(followers, l10n.communityStatFollower, l10n.communityStatFollowers),
+                    stat(a.followingCount, l10n.communityStatFollowingOne, l10n.communityStatFollowingMany),
                   ],
                 ),
                 const SizedBox(height: 14),

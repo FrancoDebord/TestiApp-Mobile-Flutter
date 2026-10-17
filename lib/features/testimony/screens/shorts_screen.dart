@@ -141,7 +141,7 @@ class _ShortsScreenState extends ConsumerState<ShortsScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
-          AppLocalizations.of(context).navShorts,
+          context.l10n.navShorts,
           style: TextStyle(
             fontFamily: AppFonts.family,
             color: Colors.white,
@@ -167,10 +167,10 @@ class _ShortsScreenState extends ConsumerState<ShortsScreen> {
         ],
       ),
       body: widget.testimonies.isEmpty
-          ? const Center(
+          ? Center(
               child: Text(
-                'Aucune vidéo disponible',
-                style: TextStyle(color: Colors.white),
+                context.l10n.homeEmptyVideos,
+                style: const TextStyle(color: Colors.white),
               ),
             )
           : PageView.builder(
@@ -214,7 +214,7 @@ class _ShortsQualityChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Tooltip(
-        message: 'Qualité de la vidéo',
+        message: context.l10n.playerVideoQualityTitle,
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(20),
@@ -331,8 +331,10 @@ class _ShortPageState extends ConsumerState<_ShortPage> {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(
-        content: Text('Qualité ajustée : ${resolved.label} '
-            '(${now ? 'données mobiles' : 'Wi-Fi'})'),
+        content: Text(context.l10n.playerQualityAdjusted(
+          resolved.label,
+          now ? context.l10n.playerNetworkMobile : context.l10n.playerNetworkWifi,
+        )),
         duration: const Duration(seconds: 2),
         behavior: SnackBarBehavior.floating,
       ));
@@ -564,7 +566,7 @@ class _ShortPageState extends ConsumerState<_ShortPage> {
             VideoPoster(
               thumbnailUrl: widget.testimony.thumbnailUrl,
               durationSeconds: widget.testimony.durationSeconds,
-              hint: 'Données mobiles · touchez pour lire',
+              hint: context.l10n.shortsMobileDataTapToPlay,
               fit: BoxFit.contain,
               onPlay: _playFromPoster,
             )
@@ -840,7 +842,7 @@ class _ShortActions extends ConsumerWidget {
           color: liked ? AppColors.danger : Colors.white,
           label: _formatCount(effectiveLikes),
           onTap: () => guarded(
-            'réagir aux témoignages',
+            context.l10n.homeReasonReact,
             () => ref.read(interactionProvider.notifier).toggleLike(testimony),
           ),
         ),
@@ -852,7 +854,7 @@ class _ShortActions extends ConsumerWidget {
           color: prayed ? AppColors.sun : Colors.white,
           label: _formatCount(effectivePrayers),
           onTap: () => guarded(
-            'réagir aux témoignages',
+            context.l10n.homeReasonReact,
             () => ref.read(interactionProvider.notifier).togglePray(testimony),
           ),
         ),
@@ -864,7 +866,7 @@ class _ShortActions extends ConsumerWidget {
           color: Colors.white,
           label: _formatCount(testimony.stats.comments),
           onTap: () => guarded(
-            'commenter les témoignages',
+            context.l10n.authGuestReasonComment,
             () => _openComments(context),
           ),
         ),
@@ -874,9 +876,9 @@ class _ShortActions extends ConsumerWidget {
         _ActionButton(
           icon: saved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
           color: saved ? AppColors.secondary : Colors.white,
-          label: saved ? 'Sauvegardé' : AppLocalizations.of(context).detailSave,
+          label: saved ? context.l10n.shortsSaved : context.l10n.detailSave,
           onTap: () => guarded(
-            'enregistrer vos favoris',
+            context.l10n.authGuestReasonSaved,
             () => ref.read(interactionProvider.notifier).toggleSave(testimony.id),
           ),
         ),
@@ -886,11 +888,11 @@ class _ShortActions extends ConsumerWidget {
         _ActionButton(
           icon: Icons.share_rounded,
           color: Colors.white,
-          label: AppLocalizations.of(context).detailShare,
+          label: context.l10n.detailShare,
           onTap: () => SharePlus.instance.share(
             ShareParams(
               text: '${testimony.title}\n\n${testimony.shareLink}\n\n'
-                  'Partagé depuis l\'application Témoignages ✝️',
+                  '${context.l10n.shortsSharedFromApp}',
             ),
           ),
         ),
@@ -1011,7 +1013,7 @@ class _ShortsCommentsSheetState
         'id': 'sc_${DateTime.now().millisecondsSinceEpoch}',
         'testimony_id': widget.testimonyId,
         'user_id': user?.id ?? 'anon',
-        'author_name': user?.displayName ?? 'Moi',
+        'author_name': user?.displayName ?? context.l10n.shortsMe,
         'body': text,
         'created_at': DateTime.now().toIso8601String(),
         'like_count': 0,
@@ -1022,7 +1024,7 @@ class _ShortsCommentsSheetState
     if (!mounted) return;
     setState(() {
       _comments.add(_ShortsComment(
-        author: user?.displayName ?? 'Moi',
+        author: user?.displayName ?? context.l10n.shortsMe,
         text: text,
         createdAt: DateTime.now(),
       ));
@@ -1069,7 +1071,7 @@ class _ShortsCommentsSheetState
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  AppLocalizations.of(context).detailComments,
+                  context.l10n.detailComments,
                   style: const TextStyle(
                     fontFamily: AppFonts.family,
                     fontWeight: FontWeight.w600,
@@ -1087,7 +1089,7 @@ class _ShortsCommentsSheetState
             child: _comments.isEmpty
                 ? Center(
                     child: Text(
-                      AppLocalizations.of(context).detailFirstComment,
+                      context.l10n.detailFirstComment,
                       textAlign: TextAlign.center,
                       style: AppTextStyles.bodyMedium.copyWith(
                         color: AppColors.textSecondary,
@@ -1130,7 +1132,7 @@ class _ShortsCommentsSheetState
                     style: AppTextStyles.bodyMedium,
                     textCapitalization: TextCapitalization.sentences,
                     decoration: InputDecoration(
-                      hintText: AppLocalizations.of(context).detailAddComment,
+                      hintText: context.l10n.detailAddComment,
                       hintStyle: AppTextStyles.bodyMedium.copyWith(
                         color: AppColors.textSecondary,
                       ),
@@ -1204,10 +1206,10 @@ class _CommentTile extends StatelessWidget {
         : '?';
     final diff = DateTime.now().difference(comment.createdAt);
     final timeAgo = diff.inMinutes < 1
-        ? 'à l\'instant'
+        ? context.l10n.timeJustNow
         : diff.inMinutes < 60
-            ? 'il y a ${diff.inMinutes}min'
-            : 'il y a ${diff.inHours}h';
+            ? context.l10n.shortsAgoMinutes(diff.inMinutes)
+            : context.l10n.commentsAgoHoursShort(diff.inHours);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),

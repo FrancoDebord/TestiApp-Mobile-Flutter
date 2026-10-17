@@ -1,0 +1,373 @@
+{
+  "@@locale": "fr",
+  "adminRoleVisitor": "Visiteur",
+  "adminRoleUser": "Utilisateur",
+  "adminRoleModerator": "Modérateur",
+  "adminRoleAdmin": "Admin",
+  "adminStatusActive": "Actif",
+  "adminStatusSuspended": "Suspendu",
+  "adminStatusBanned": "Banni",
+  "adminErrorWithDetail": "Erreur : {error}",
+  "@adminErrorWithDetail": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "adminEditCategory": "Modifier la catégorie",
+  "adminCategoryNameHint": "Nom de la catégorie",
+  "adminNewCategoryHint": "Nouvelle catégorie…",
+  "adminTitle": "Administration",
+  "adminModerationQueue": "File de modération",
+  "adminAccountVerification": "Vérification des comptes",
+  "adminManagement": "Gestion",
+  "adminUsers": "Utilisateurs",
+  "adminMetricTotal": "total",
+  "adminMetricNewToday": "nouveaux aujourd'hui",
+  "adminTestimonies": "Témoignages",
+  "adminMetricPublished": "publiés",
+  "adminMetricViewsThisMonth": "vues ce mois",
+  "adminApproval": "Approbation",
+  "adminMetricApprovalRate": "taux d'approbation",
+  "adminMetricPending": "en attente",
+  "adminEngagement": "Engagement",
+  "adminMetricAvgInteractions": "moy. interactions",
+  "adminMetricCommentsPerMonth": "commentaires/mois",
+  "adminUsersSub": "Gérer les comptes",
+  "adminContent": "Contenus",
+  "adminContentSub": "Témoignages publiés",
+  "adminModerators": "Modérateurs",
+  "adminModeratorsSub": "Assigner / retirer le rôle",
+  "adminCategories": "Catégories",
+  "adminCategoriesSub": "Ajouter, modifier, réordonner",
+  "adminStats": "Statistiques",
+  "adminStatsSub": "Graphiques et tendances",
+  "adminSettings": "Paramètres",
+  "adminSettingsSub": "Configuration de l'app",
+  "adminUsersManagement": "Gestion des utilisateurs",
+  "adminContentManagement": "Gestion des contenus",
+  "adminActiveModerators": "Modérateurs actifs",
+  "adminRemoveModeratorTitle": "Retirer le rôle de modérateur ?",
+  "adminRemoveModeratorBody": "{name} redeviendra un utilisateur standard.",
+  "@adminRemoveModeratorBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "adminPromoteCandidates": "Utilisateurs — Promouvoir",
+  "adminPromoteTitle": "Promouvoir {name} ?",
+  "@adminPromoteTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "adminPromoteModeratorBody": "Cet utilisateur pourra modérer les témoignages soumis.",
+  "adminRemoveRole": "Retirer le rôle",
+  "adminPromote": "Promouvoir",
+  "adminSettingsAccess": "Accès",
+  "adminSettingsNewSignups": "Nouvelles inscriptions",
+  "adminSettingsNewSignupsSub": "Autoriser les nouveaux comptes",
+  "adminSettingsGuestAccess": "Accès visiteur",
+  "adminSettingsGuestAccessSub": "Consulter sans compte",
+  "adminSettingsEmailVerification": "Vérification e-mail",
+  "adminSettingsEmailVerificationSub": "Obligatoire à l'inscription",
+  "adminSettingsModeration": "Modération",
+  "adminSettingsAutoModeration": "Modération automatique",
+  "adminSettingsAutoModerationSub": "Filtres IA pré-approbation",
+  "adminSettingsNotifications": "Notifications",
+  "adminSettingsPush": "Notifications push",
+  "adminSettingsPushSub": "Envoyer des notifications aux utilisateurs",
+  "adminMaintenanceActive": "Mode maintenance actif",
+  "adminMaintenanceActiveBody": "L'application est inaccessible aux utilisateurs.",
+  "adminDisable": "Désactiver",
+  "adminEnable": "Activer",
+  "adminBeta": "Bêta",
+  "adminDangerZone": "Zone dangereuse",
+  "adminMaintenanceMode": "Mode maintenance",
+  "adminMaintenanceOnSub": "Application hors ligne pour les utilisateurs",
+  "adminMaintenanceOffSub": "Mettre l'app en mode maintenance",
+  "adminStatsWeekTitle": "Témoignages cette semaine",
+  "adminStatsWeekSubtitle": "Soumis vs approuvés",
+  "adminDayMon": "Lun",
+  "adminDayTue": "Mar",
+  "adminDayWed": "Mer",
+  "adminDayThu": "Jeu",
+  "adminDayFri": "Ven",
+  "adminDaySat": "Sam",
+  "adminDaySun": "Dim",
+  "adminStatsGrowthTitle": "Croissance mensuelle",
+  "adminStatsGrowthSubtitle": "Nouveaux utilisateurs — 6 derniers mois",
+  "adminMonthDec": "Déc",
+  "adminMonthJan": "Jan",
+  "adminMonthFeb": "Fév",
+  "adminMonthMar": "Mar",
+  "adminMonthApr": "Avr",
+  "adminMonthMay": "Mai",
+  "adminStatsByCategoryTitle": "Répartition par catégorie",
+  "adminStatsByCategorySubtitle": "Top 5 catégories les plus actives",
+  "adminTopCategories": "Top catégories",
+  "adminTestimonyCount": "{count, plural, other{{count} témoignages}}",
+  "@adminTestimonyCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "adminSearchUsersHint": "Rechercher par nom ou e-mail…",
+  "adminResultCount": "{count, plural, =1{1 résultat} other{{count} résultats}}",
+  "@adminResultCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "adminNoUserFound": "Aucun utilisateur trouvé.",
+  "adminSuspendTitle": "Suspendre {name} ?",
+  "@adminSuspendTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "adminSuspendBody": "L'utilisateur ne pourra plus se connecter temporairement.",
+  "adminBanTitle": "Bannir {name} ?",
+  "@adminBanTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "adminBanBody": "Cette action est définitive. Le compte sera désactivé.",
+  "adminPromoteUserBody": "Cet utilisateur deviendra modérateur.",
+  "adminRestoreTitle": "Réactiver {name} ?",
+  "@adminRestoreTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "adminRestoreBody": "Le compte sera de nouveau accessible.",
+  "adminSearchUserTitle": "Rechercher un utilisateur",
+  "adminSearchUserBody": "Saisissez un nom ou une adresse e-mail\npour trouver un compte.",
+  "adminRestore": "Réactiver",
+  "adminSuspend": "Suspendre",
+  "adminBan": "Bannir",
+  "adminPromoteModerator": "Promouvoir modérateur",
+  "adminPromoteAdmin": "Promouvoir admin",
+  "adminDocumentFallback": "Pièce",
+  "adminVerifTabPending": "En attente",
+  "adminVerifTabApproved": "Approuvées",
+  "adminVerifTabRejected": "Refusées",
+  "adminVerifTabRevoked": "Retirées",
+  "adminLoadFailed": "Chargement impossible.",
+  "adminNoRequests": "Aucune demande.",
+  "adminVerifRequestSubtitle": "{role} · {church}\n{count} pièce(s)",
+  "@adminVerifRequestSubtitle": {
+    "placeholders": {
+      "role": {
+        "type": "String"
+      },
+      "church": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "adminActionFailed": "Action impossible. Vérifiez votre connexion.",
+  "adminReasonLabel": "Motif (communiqué à la personne)",
+  "adminVerifRequestTitle": "Demande de vérification",
+  "adminVerifStatus": "Statut",
+  "adminVerifFullName": "Nom complet",
+  "adminVerifRole": "Fonction",
+  "adminVerifChurch": "Église ou ministère",
+  "adminVerifAccount": "Compte",
+  "adminVerifLinks": "Liens publics",
+  "adminVerifMessage": "Message",
+  "adminVerifReason": "Motif",
+  "adminVerifDocuments": "Pièces justificatives (privées)",
+  "adminVerifNoDocuments": "Aucune pièce disponible.",
+  "adminApprove": "Approuver",
+  "adminVerifApprovedSnack": "Compte vérifié. La personne a été prévenue.",
+  "adminReject": "Refuser",
+  "adminRejectRequest": "Refuser la demande",
+  "adminVerifRejectedSnack": "Demande refusée. La personne a été prévenue.",
+  "adminRevokeVerification": "Retirer la vérification",
+  "adminVerifRevokedSnack": "Vérification retirée. La personne a été prévenue.",
+  "adminVerifPdfHint": "Document PDF : à consulter sur le site d’administration",
+  "adminVerifDocumentUnavailable": "Pièce indisponible",
+  "authGuestReasonPublish": "publier votre témoignage",
+  "authGuestReasonNotifications": "recevoir vos notifications",
+  "authGuestReasonJournal": "tenir votre journal spirituel",
+  "authGuestReasonProphecies": "garder vos paroles prophétiques",
+  "authGuestReasonMyFeed": "suivre les témoignages de vos abonnements",
+  "authGuestReasonPrayerRequest": "confier une requête de prière",
+  "authGuestReasonPrayerSession": "programmer une session de prière",
+  "authGuestReasonEvent": "gérer un événement",
+  "authGuestReasonComment": "commenter les témoignages",
+  "authGuestReasonReport": "signaler un contenu",
+  "authGuestReasonFollow": "suivre des membres",
+  "authGuestReasonLive": "lancer un direct",
+  "authGuestReasonSaved": "enregistrer vos favoris",
+  "authGuestReasonProfile": "gérer votre profil",
+  "authGuestReasonDefault": "profiter de toutes les fonctionnalités",
+  "authErrInvalidPhone": "Numéro de téléphone invalide.",
+  "authErrTooManyRequests": "Trop de tentatives. Réessayez dans quelques minutes.",
+  "authErrSmsQuota": "Quota SMS dépassé. Réessayez plus tard.",
+  "authErrorWithDetail": "Erreur : {error}",
+  "@authErrorWithDetail": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "authErrInvalidServerResponse": "Réponse serveur invalide.",
+  "authDefaultUserName": "Utilisateur",
+  "authGoogleIdentityRejected": "Google n’a pas pu confirmer votre identité. Réessayez.",
+  "authAccountCannotSignIn": "Ce compte ne peut pas se connecter.",
+  "authServerUnavailable": "Le serveur est indisponible pour le moment. Réessayez plus tard.",
+  "authNoInternet": "Pas de connexion Internet. Vérifiez votre réseau et réessayez.",
+  "authGoogleFailed": "La connexion avec Google a échoué. Réessayez.",
+  "authGoogleUnavailable": "La connexion avec Google n’est pas disponible sur cet appareil.",
+  "authGoogleInterrupted": "La connexion avec Google a été interrompue. Réessayez.",
+  "authGoogleMisconfigured": "La connexion avec Google est mal configurée. Contactez le support.",
+  "authGoogleUiUnavailable": "Impossible d’ouvrir la fenêtre de connexion Google. Réessayez.",
+  "authJoinTagline": "Rejoignez une communauté qui partage la gloire de Dieu.",
+  "authSignInWithPhone": "Se connecter avec numéro",
+  "authSignInWithGoogle": "Se connecter avec Google",
+  "authSignInWithEmail": "Se connecter avec Email",
+  "authOrContinueWithoutAccount": "Ou continuer sans compte",
+  "authGuestMode": "Mode invité",
+  "authEmailSignInTitle": "Connexion par e-mail",
+  "authEmailHint": "exemple@email.com",
+  "authShowPassword": "Afficher le mot de passe",
+  "authHidePassword": "Masquer le mot de passe",
+  "authOr": "ou",
+  "authContinueWithGoogle": "Continuer avec Google",
+  "authResetEmailFailed": "Impossible d'envoyer l'e-mail. Vérifiez l'adresse saisie.",
+  "authResetSubtitle": "Nous vous enverrons un lien de réinitialisation",
+  "authResetInstructions": "Saisissez l'adresse e-mail associée à votre compte. Vous recevrez un lien pour créer un nouveau mot de passe.",
+  "authSendLink": "Envoyer le lien",
+  "authBackToSignIn": "Retour à la connexion",
+  "authEmailSent": "E-mail envoyé !",
+  "authResetEmailSentBody": "Nous avons envoyé un lien de réinitialisation à\n{email}\n\nVérifiez également vos courriers indésirables.",
+  "@authResetEmailSentBody": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "authResendEmail": "Renvoyer l'e-mail",
+  "onboardingWelcomeTitle": "Bienvenue sur",
+  "onboardingWelcomeBody": "Découvrez, partagez et vivez des témoignages qui édifient et changent des vies.",
+  "onboardingShareTitle": "Partagez ce que Dieu a fait",
+  "onboardingShareBody": "Votre témoignage est une arme puissante : chaque histoire de grâce mérite d'être racontée et peut changer une vie.",
+  "onboardingInspireTitle": "Inspirez d'autres croyants",
+  "onboardingInspireBody": "Des milliers de frères et sœurs attendent d'être encouragés par ce que Dieu a accompli dans votre vie.",
+  "onboardingStartTitle": "Commencez votre voyage",
+  "onboardingStartBody": "Rejoignez la communauté et soyez une lumière dans la vie de quelqu'un aujourd'hui.",
+  "onboardingStart": "Commencer",
+  "onboardingPageOf": "Page {current} sur {total}",
+  "@onboardingPageOf": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "authCountryOther": "Autre",
+  "authTagline": "Partagez les œuvres de Dieu",
+  "authCodeSentToPhone": "Code envoyé au {phone}",
+  "@authCodeSentToPhone": {
+    "placeholders": {
+      "phone": {
+        "type": "String"
+      }
+    }
+  },
+  "authResendIn": "Renvoyer dans {time}",
+  "@authResendIn": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "authFirstNameHintFemale": "Marie",
+  "authFirstNameHintMale": "Jean",
+  "authLastNameHint": "Dupont",
+  "authLogoUploadFailed": "Logo non envoyé, vous pourrez l'ajouter depuis votre profil",
+  "authInvalidWebsite": "Adresse du site web invalide",
+  "authValidateNewPwd": "Veuillez saisir un mot de passe",
+  "authCreateAccountFailed": "Impossible de créer le compte. Vérifiez vos informations.",
+  "authOrgNameLabel": "Nom de l'organisation",
+  "authOrgNameHint": "Église de la Grâce",
+  "authOrgNameRequired": "Veuillez saisir le nom de l'organisation",
+  "authCityLabel": "Ville",
+  "authCityRequired": "Veuillez saisir la ville",
+  "authWebsiteLabel": "Site web (optionnel)",
+  "authWebsiteHint": "www.exemple.org",
+  "authOptionalNote": "(facultatif)",
+  "authPickOrgLogo": "Choisir le logo de l'organisation",
+  "authPickProfilePhoto": "Choisir une photo de profil",
+  "authLogo": "Logo",
+  "authProfilePhoto": "Photo de profil",
+  "authAccountType": "Type de compte",
+  "authAccountTypeIndividual": "Je suis une personne",
+  "authAccountTypeIndividualSub": "Partagez vos témoignages personnels",
+  "authAccountTypeOrg": "Je représente une organisation",
+  "authAccountTypeOrgSub": "Église, ministère, association…",
+  "authOrgVerificationNote": "Votre organisation sera vérifiée par notre équipe. Le badge vérifié apparaîtra ensuite sur votre profil et vos témoignages.",
+  "authOrgTypeLabel": "Type d'organisation",
+  "authOrgTypeHint": "Sélectionnez le type",
+  "authOrgTypeRequired": "Veuillez choisir un type",
+  "authAcceptPrefix": "J'accepte les ",
+  "authTermsOfUse": "Conditions Générales d'Utilisation",
+  "authAcceptAnd": " et la ",
+  "authPrivacyPolicy": "Politique de confidentialité",
+  "authEnterFullName": "Veuillez entrer votre prénom et votre nom.",
+  "authCreateMyAccount": "Créer mon compte",
+  "authSimpleRegisterIntro": "Entrez juste votre prénom et votre nom.\nAucun mot de passe requis.",
+  "authCompleteProfileLater": "Vous pouvez compléter votre profil plus tard.",
+  "authSplashSemantics": "Témoignages de Gloire. Des vies transformées pour la gloire de Dieu.",
+  "authSplashTagline": "Des vies transformées\npour la gloire de Dieu",
+  "authLoadingSemantics": "Chargement",
+  "authCodeInvalidOrExpired": "Code incorrect ou expiré. Veuillez réessayer.",
+  "authCheckEmailTitle": "Vérifiez votre e-mail",
+  "authCodeSentToEmail": "Code envoyé à {email}",
+  "@authCodeSentToEmail": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "authEnterSixDigitCode": "Saisissez le code à 6 chiffres que nous venons de vous envoyer.",
+  "authNotMyAccount": "Ce n'est pas mon compte ? ",
+  "authSignOut": "Se déconnecter",
+  "authNoCodeReceived": "Vous n'avez pas reçu de code ? ",
+  "authLoadingProgress": "{percent} %",
+  "@authLoadingProgress": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  }
+}

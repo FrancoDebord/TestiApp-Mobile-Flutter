@@ -16,6 +16,8 @@ import '../../home/models/testimony_model.dart';
 import '../../home/providers/home_providers.dart';
 import '../../home/widgets/testimony_feed_item.dart';
 import '../../../core/providers/categories_provider.dart';
+import '../../conversion/widgets/conversion_widgets.dart' show ConversionEntryCard;
+import '../../events/widgets/past_events_widgets.dart' show PastEventsStrip;
 import '../../home/widgets/skeleton_card.dart';
 import '../providers/explore_providers.dart';
 import '../widgets/filter_row.dart';
@@ -60,15 +62,15 @@ class ExploreScreen extends ConsumerWidget {
                       children: [
                         Text(
                           isSearching
-                              ? 'Recherche & filtres'
-                              : AppLocalizations.of(context).exploreTitle,
+                              ? context.l10n.exploreSearchFiltersTitle
+                              : context.l10n.exploreTitle,
                           style: AppTextStyles.h3,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                         if (!isSearching)
                           Text(
-                            AppLocalizations.of(context).exploreSubtitle,
+                            context.l10n.exploreSubtitle,
                             style: AppTextStyles.bodySmall,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -85,7 +87,7 @@ class ExploreScreen extends ConsumerWidget {
                             .update(false);
                       },
                       child: Text(
-                        AppLocalizations.of(context).exploreCancel,
+                        context.l10n.exploreCancel,
                         style: AppTextStyles.labelMedium.copyWith(
                           color: AppColors.primary,
                         ),
@@ -147,8 +149,8 @@ class _SearchContent extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
             child: Text(
               results.isEmpty
-                  ? AppLocalizations.of(context).exploreNoResults
-                  : '${results.length} témoignage${results.length > 1 ? 's' : ''}',
+                  ? context.l10n.exploreNoResults
+                  : context.l10n.exploreTestimonyCount(results.length),
               style: AppTextStyles.bodySmall.copyWith(
                 color: AppColors.textSecondary,
               ),
@@ -183,15 +185,26 @@ class _DiscoverContent extends ConsumerWidget {
     final trending   = ref.watch(trendingProvider);
     final mostPrayed = ref.watch(mostPrayedProvider);
     final recent     = ref.watch(recentProvider);
-    final l10n       = AppLocalizations.of(context);
+    final l10n       = context.l10n;
 
     return SliverMainAxisGroup(
       slivers: [
+        // ── Témoignages de conversion (témoignage fondamental, section à part) ──
+        const SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: ConversionEntryCard(),
+          ),
+        ),
+
+        // ── Événements passés : revivre les témoignages (masqué s'il n'y en a aucun) ──
+        const SliverToBoxAdapter(child: PastEventsStrip()),
+
         // ── Rubriques ─────────────────────────────────────────────────────
         SliverToBoxAdapter(
           child: _SectionHeader(
             title: l10n.exploreCategories,
-            subtitle: 'Parcourez par thème',
+            subtitle: l10n.exploreCategoriesSubtitle,
             icon: Icons.grid_view_rounded,
           ),
         ),
@@ -206,7 +219,7 @@ class _DiscoverContent extends ConsumerWidget {
           SliverToBoxAdapter(
             child: _SectionHeader(
               title: l10n.exploreTrending,
-              subtitle: 'Les plus consultés en ce moment',
+              subtitle: l10n.exploreTrendingSubtitle,
               icon: null,
             ),
           ),
@@ -215,7 +228,7 @@ class _DiscoverContent extends ConsumerWidget {
                 ? const _SkeletonHorizontalScroll()
                 : _HorizontalScroll(
                     testimonies: trending,
-                    statLabel: 'vues',
+                    statLabel: l10n.exploreStatViews,
                     statValue: (t) => t.stats.views,
                   ),
           ),
@@ -227,7 +240,7 @@ class _DiscoverContent extends ConsumerWidget {
           SliverToBoxAdapter(
             child: _SectionHeader(
               title: l10n.exploreMostPrayed,
-              subtitle: 'Témoignages qui touchent le cœur',
+              subtitle: l10n.exploreMostPrayedSubtitle,
               icon: null,
             ),
           ),
@@ -236,7 +249,7 @@ class _DiscoverContent extends ConsumerWidget {
                 ? const _SkeletonHorizontalScroll()
                 : _HorizontalScroll(
                     testimonies: mostPrayed,
-                    statLabel: 'prières',
+                    statLabel: l10n.exploreStatPrayers,
                     statValue: (t) => t.stats.prayers,
                   ),
           ),
@@ -248,7 +261,7 @@ class _DiscoverContent extends ConsumerWidget {
           SliverToBoxAdapter(
             child: _SectionHeader(
               title: l10n.exploreRecent,
-              subtitle: 'Derniers témoignages publiés',
+              subtitle: l10n.exploreRecentSubtitle,
               icon: Icons.access_time_rounded,
             ),
           ),
@@ -462,8 +475,8 @@ class _CategoryCard extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         liveCount > 0
-                            ? '$liveCount témoignage${liveCount > 1 ? 's' : ''}'
-                            : 'Aucun témoignage',
+                            ? context.l10n.exploreTestimonyCount(liveCount)
+                            : context.l10n.exploreNoTestimony,
                         style: AppTextStyles.bodySmall.copyWith(
                           fontSize: 11,
                           color: AppColors.textSecondary,
@@ -532,14 +545,14 @@ class _EmptySearch extends StatelessWidget {
             color: AppColors.textSecondary.withAlpha(80)),
         const SizedBox(height: 16),
         Text(
-          'Aucun témoignage trouvé',
+          context.l10n.exploreNoTestimonyFound,
           textAlign: TextAlign.center,
           style: AppTextStyles.h4
               .copyWith(color: AppColors.textSecondary),
         ),
         const SizedBox(height: 8),
         Text(
-          'Essayez un autre mot-clé ou\nparcourez les rubriques.',
+          context.l10n.exploreNoTestimonyFoundHint,
           style: AppTextStyles.bodySmall,
           textAlign: TextAlign.center,
         ),

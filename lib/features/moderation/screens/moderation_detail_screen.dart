@@ -10,6 +10,7 @@ import '../models/moderation_models.dart';
 import '../providers/moderation_provider.dart';
 import '../widgets/review_bottom_sheet.dart';
 import '../widgets/testimony_type_badge.dart';
+import '../../../l10n/app_localizations.dart';
 
 // =============================================================================
 // ModerationDetailScreen — Full testimony preview for a moderator
@@ -36,8 +37,8 @@ class ModerationDetailScreen extends ConsumerWidget {
 
     if (item == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Témoignage')),
-        body: const Center(child: Text('Témoignage introuvable.')),
+        appBar: AppBar(title: Text(context.l10n.modTestimony)),
+        body: Center(child: Text(context.l10n.modNotFound)),
       );
     }
 
@@ -51,9 +52,9 @@ class ModerationDetailScreen extends ConsumerWidget {
             backgroundColor: Colors.white,
             surfaceTintColor: Colors.transparent,
             foregroundColor: const Color(0xFF263238),
-            title: const Text(
-              'Prévisualisation',
-              style: TextStyle(
+            title: Text(
+              context.l10n.modPreview,
+              style: const TextStyle(
                 fontFamily: 'Plus Jakarta Sans',
                 fontWeight: FontWeight.w600,
                 fontSize: 18,
@@ -180,9 +181,9 @@ class _AuthorHeader extends StatelessWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            const Text(
-              'Soumis',
-              style: TextStyle(
+            Text(
+              L10n.current.modSubmitted,
+              style: const TextStyle(
                 fontFamily: 'Plus Jakarta Sans',
                 fontSize: 11,
                 color: Color(0xFF98A2B3),
@@ -265,7 +266,7 @@ class _ContentSection extends StatelessWidget {
           ),
           child: Text(
             item.contentPreview ??
-                'Contenu du témoignage non disponible pour la prévisualisation.',
+                L10n.current.modContentUnavailable,
             style: const TextStyle(
               fontFamily: 'Playfair Display',
               fontStyle: FontStyle.italic,
@@ -279,8 +280,8 @@ class _ContentSection extends StatelessWidget {
       case TestimonyType.audio:
         return _MediaPlaceholder(
           icon: Icons.headphones_rounded,
-          label: 'Témoignage audio',
-          sublabel: 'Appuyer pour écouter',
+          label: L10n.current.modAudio,
+          sublabel: L10n.current.modAudioPlay,
           color: const Color(0xFFF79009),
         );
 
@@ -374,9 +375,9 @@ class _ActionSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          'Action de modération',
-          style: TextStyle(
+        Text(
+          context.l10n.modActionTitle,
+          style: const TextStyle(
             fontFamily: 'Plus Jakarta Sans',
             fontWeight: FontWeight.w600,
             fontSize: 15,
@@ -385,21 +386,21 @@ class _ActionSection extends ConsumerWidget {
         ),
         const SizedBox(height: 12),
         _FullActionButton(
-          label: 'Approuver le témoignage',
+          label: context.l10n.modApprove,
           icon: Icons.check_circle_rounded,
           backgroundColor: const Color(0xFF12B76A),
           onTap: () => _doApprove(context, ref),
         ),
         const SizedBox(height: 10),
         _FullActionButton(
-          label: 'Demander une modification',
+          label: context.l10n.modRequestEdit,
           icon: Icons.edit_rounded,
           backgroundColor: const Color(0xFFF79009),
           onTap: () => _showSheet(context, ref, ReviewAction.requestEdit),
         ),
         const SizedBox(height: 10),
         _FullActionButton(
-          label: 'Rejeter le témoignage',
+          label: context.l10n.modReject,
           icon: Icons.cancel_rounded,
           backgroundColor: const Color(0xFFD92D20),
           onTap: () => _showSheet(context, ref, ReviewAction.reject),
@@ -413,10 +414,10 @@ class _ActionSection extends ConsumerWidget {
       await ref.read(moderationNotifierProvider.notifier).approve(item.id);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Témoignage approuvé',
-                style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13)),
-            backgroundColor: Color(0xFF12B76A),
+          SnackBar(
+            content: Text(context.l10n.modApprovedSnack,
+                style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13)),
+            backgroundColor: const Color(0xFF12B76A),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -426,7 +427,7 @@ class _ActionSection extends ConsumerWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erreur : $e',
+            content: Text(context.l10n.moderationError('$e'),
                 style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13)),
             backgroundColor: const Color(0xFFD92D20),
             behavior: SnackBarBehavior.floating,
@@ -510,22 +511,22 @@ class _StatusChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final (label, bg, fg) = switch (status) {
       ModerationStatus.pending => (
-          'En attente',
+          context.l10n.modStatusPending,
           const Color(0xFFFFF1E2),
           const Color(0xFFF79009),
         ),
       ModerationStatus.inReview => (
-          'En révision',
+          context.l10n.modStatusInReview,
           const Color(0xFFEAF1FC),
           const Color(0xFF2B5DB0),
         ),
       ModerationStatus.approved => (
-          'Approuvé',
+          context.l10n.modStatusApproved,
           const Color(0xFFECFDF3),
           const Color(0xFF12B76A),
         ),
       ModerationStatus.rejected => (
-          'Rejeté',
+          context.l10n.modStatusRejected,
           const Color(0xFFFEF3F2),
           const Color(0xFFD92D20),
         ),

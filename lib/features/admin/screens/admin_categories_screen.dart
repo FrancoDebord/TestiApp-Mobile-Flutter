@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/admin_models.dart';
 import '../providers/admin_provider.dart';
+import '../../../l10n/app_localizations.dart';
 
 // =============================================================================
 // AdminCategoriesScreen — Add / Edit / Reorder categories
@@ -74,9 +75,9 @@ class AdminCategoriesScreen extends ConsumerWidget {
       context: context,
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          'Modifier la catégorie',
-          style: TextStyle(
+        title: Text(
+          context.l10n.adminEditCategory,
+          style: const TextStyle(
               fontFamily: 'Plus Jakarta Sans',
               fontWeight: FontWeight.w600,
               fontSize: 16,
@@ -86,7 +87,7 @@ class AdminCategoriesScreen extends ConsumerWidget {
           controller: controller,
           autofocus: true,
           decoration: InputDecoration(
-            hintText: 'Nom de la catégorie',
+            hintText: context.l10n.adminCategoryNameHint,
             hintStyle: const TextStyle(
                 fontFamily: 'Plus Jakarta Sans', fontSize: 13, color: Color(0xFF98A2B3)),
             border: OutlineInputBorder(
@@ -104,9 +105,9 @@ class AdminCategoriesScreen extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Annuler',
+            child: Text(context.l10n.commonCancel,
                 style:
-                    TextStyle(fontFamily: 'Plus Jakarta Sans', color: Color(0xFF667085))),
+                    const TextStyle(fontFamily: 'Plus Jakarta Sans', color: Color(0xFF667085))),
           ),
           ElevatedButton(
             onPressed: () {
@@ -125,8 +126,8 @@ class AdminCategoriesScreen extends ConsumerWidget {
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8)),
             ),
-            child: const Text('Enregistrer',
-                style: TextStyle(
+            child: Text(context.l10n.commonSave,
+                style: const TextStyle(
                     fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600)),
           ),
         ],
@@ -164,7 +165,7 @@ class _AddCategoryBarState extends State<_AddCategoryBar> {
             child: TextField(
               controller: _controller,
               decoration: InputDecoration(
-                hintText: 'Nouvelle catégorie…',
+                hintText: context.l10n.adminNewCategoryHint,
                 hintStyle: const TextStyle(
                     fontFamily: 'Plus Jakarta Sans',
                     fontSize: 13,
@@ -202,7 +203,7 @@ class _AddCategoryBarState extends State<_AddCategoryBar> {
                       setState(() {});
                     },
               icon: const Icon(Icons.add_rounded, size: 16),
-              label: const Text('Ajouter'),
+              label: Text(context.l10n.commonAdd),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF184797),
                 foregroundColor: Colors.white,
@@ -324,7 +325,7 @@ class _CategoryTile extends StatelessWidget {
             onPressed: onEdit,
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
-            tooltip: 'Modifier',
+            tooltip: context.l10n.commonEdit,
           ),
           const SizedBox(width: 6),
           // Active toggle

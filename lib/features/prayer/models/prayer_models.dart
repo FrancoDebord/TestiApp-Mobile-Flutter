@@ -1,19 +1,25 @@
 // Requêtes et sessions de prière — modèles lus depuis l'API.
 // Docs serveur : fonctionnalites/requetes-de-priere.md, fonctionnalites/sessions-de-priere.md
 
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/models/mention.dart';
 import '../../repost/content_interactions.dart' show ContentReactions;
 import '../../repost/repost.dart' show RepostInfo, repostInfoFromContent;
 
 /// Qui peut voir une requête (ou une session : pas de « privé »).
 enum PrayerVisibility {
-  public('public', 'Tout le monde'),
-  followers('followers', 'Mes abonnés'),
-  private('private', 'Moi seul');
+  public('public'),
+  followers('followers'),
+  private('private');
 
-  const PrayerVisibility(this.apiValue, this.label);
+  const PrayerVisibility(this.apiValue);
   final String apiValue;
-  final String label;
+
+  String get label => switch (this) {
+        PrayerVisibility.public => L10n.current.prayerVisibilityPublic,
+        PrayerVisibility.followers => L10n.current.prayerVisibilityFollowers,
+        PrayerVisibility.private => L10n.current.prayerVisibilityPrivate,
+      };
 
   static PrayerVisibility parse(Object? v) => switch (v) {
         'followers' => PrayerVisibility.followers,
@@ -24,14 +30,20 @@ enum PrayerVisibility {
 
 /// Raisons de signalement acceptées par `POST /prayer/requests/{id}/report`.
 enum PrayerReportReason {
-  inappropriateContent('inappropriate_content', 'Contenu inapproprié'),
-  hateSpeech('hate_speech', 'Propos haineux'),
-  spam('spam', 'Publicité ou spam'),
-  other('other', 'Autre raison');
+  inappropriateContent('inappropriate_content'),
+  hateSpeech('hate_speech'),
+  spam('spam'),
+  other('other');
 
-  const PrayerReportReason(this.apiValue, this.label);
+  const PrayerReportReason(this.apiValue);
   final String apiValue;
-  final String label;
+
+  String get label => switch (this) {
+        PrayerReportReason.inappropriateContent => L10n.current.prayerReportInappropriate,
+        PrayerReportReason.hateSpeech => L10n.current.prayerReportHate,
+        PrayerReportReason.spam => L10n.current.prayerReportSpam,
+        PrayerReportReason.other => L10n.current.prayerReportOther,
+      };
 }
 
 // ── Outils de lecture ─────────────────────────────────────────────────────────
@@ -60,10 +72,11 @@ String prayerInitials(String name) {
 String prayerTimeAgo(DateTime? date, {DateTime? now}) {
   if (date == null) return '';
   final diff = (now ?? DateTime.now()).difference(date);
-  if (diff.inMinutes < 1) return "à l'instant";
-  if (diff.inMinutes < 60) return 'il y a ${diff.inMinutes} min';
-  if (diff.inHours < 24) return 'il y a ${diff.inHours} h';
-  if (diff.inDays < 30) return 'il y a ${diff.inDays} j';
+  final l = L10n.current;
+  if (diff.inMinutes < 1) return l.timeJustNow;
+  if (diff.inMinutes < 60) return l.timeMinutesAgo(diff.inMinutes);
+  if (diff.inHours < 24) return l.timeHoursAgo(diff.inHours);
+  if (diff.inDays < 30) return l.timeDaysAgo(diff.inDays);
   String two(int v) => v.toString().padLeft(2, '0');
   return '${two(date.day)}/${two(date.month)}/${date.year}';
 }
@@ -90,7 +103,7 @@ class PrayerPerson {
 
   factory PrayerPerson.fromJson(Map<String, dynamic> j) => PrayerPerson(
         id: '${j['id'] ?? ''}',
-        displayName: _str(j['displayName']) ?? _str(j['name']) ?? 'Utilisateur',
+        displayName: _str(j['displayName']) ?? _str(j['name']) ?? L10n.current.prayerDefaultUser,
         avatarUrl: _str(j['avatarUrl']) ?? _str(j['avatar']),
         isVerified: j['isVerified'] == true,
         isOrganization: j['isOrganization'] == true,
@@ -106,7 +119,7 @@ class PrayerEventRef {
   static PrayerEventRef? fromJson(Object? v) {
     final j = _map(v);
     if (j['id'] == null) return null;
-    return PrayerEventRef(id: '${j['id']}', title: _str(j['title']) ?? 'Événement');
+    return PrayerEventRef(id: '${j['id']}', title: _str(j['title']) ?? L10n.current.prayerDefaultEvent);
   }
 }
 
@@ -178,7 +191,7 @@ class PrayerRequest {
   final RepostInfo? repost;
 
   /// Nom affiché : « Anonyme » si l'auteur est masqué.
-  String get authorName => author?.displayName ?? 'Anonyme';
+  String get authorName => author?.displayName ?? L10n.current.commonAnonymous;
 
   factory PrayerRequest.fromJson(Map<String, dynamic> j) {
     final author = _map(j['author']);
@@ -312,13 +325,17 @@ class PrayerRequestDraft {
 
 /// Phase d'une session, calculée par le serveur.
 enum PrayerSessionPhase {
-  upcoming('À venir'),
-  live('En cours'),
-  ended('Terminée'),
-  cancelled('Annulée');
+  upcoming,
+  live,
+  ended,
+  cancelled;
 
-  const PrayerSessionPhase(this.label);
-  final String label;
+  String get label => switch (this) {
+        PrayerSessionPhase.upcoming => L10n.current.prayerPhaseUpcoming,
+        PrayerSessionPhase.live => L10n.current.prayerPhaseLive,
+        PrayerSessionPhase.ended => L10n.current.prayerPhaseEnded,
+        PrayerSessionPhase.cancelled => L10n.current.prayerPhaseCancelled,
+      };
 
   static PrayerSessionPhase parse(Object? v) => switch (v) {
         'live' => PrayerSessionPhase.live,
@@ -396,7 +413,7 @@ class PrayerSession {
     final starts = _date(j['startsAt']) ?? DateTime.now();
     return PrayerSession(
       id: '${j['id']}',
-      title: _str(j['title']) ?? 'Session de prière',
+      title: _str(j['title']) ?? L10n.current.prayerSessionDefaultTitle,
       description: _str(j['description']),
       topics: (j['topics'] is List ? j['topics'] as List : const [])
           .map((e) => '$e')

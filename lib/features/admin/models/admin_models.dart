@@ -2,6 +2,7 @@
 // Admin domain models
 // =============================================================================
 
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/models/user_model.dart' show UserRole;
 import '../../moderation/models/moderation_models.dart';
 
@@ -77,10 +78,10 @@ class AdminUser {
 
 extension UserRoleLabel on UserRole {
   String get label => switch (this) {
-        UserRole.visiteur => 'Visiteur',
-        UserRole.utilisateur => 'Utilisateur',
-        UserRole.moderateur => 'Modérateur',
-        UserRole.administrateur => 'Admin',
+        UserRole.visiteur => L10n.current.adminRoleVisitor,
+        UserRole.utilisateur => L10n.current.adminRoleUser,
+        UserRole.moderateur => L10n.current.adminRoleModerator,
+        UserRole.administrateur => L10n.current.adminRoleAdmin,
       };
 }
 
@@ -88,11 +89,11 @@ extension UserAccountStatusLabel on UserAccountStatus {
   String get label {
     switch (this) {
       case UserAccountStatus.active:
-        return 'Actif';
+        return L10n.current.adminStatusActive;
       case UserAccountStatus.suspended:
-        return 'Suspendu';
+        return L10n.current.adminStatusSuspended;
       case UserAccountStatus.banned:
-        return 'Banni';
+        return L10n.current.adminStatusBanned;
     }
   }
 }

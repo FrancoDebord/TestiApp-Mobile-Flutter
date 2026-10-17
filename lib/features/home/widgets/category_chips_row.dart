@@ -5,6 +5,7 @@ import '../../../core/theme/app_tokens.dart';
 import '../models/testimony_model.dart';
 import '../providers/home_providers.dart';
 import 'pill_tabs.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Horizontally scrollable row of category filter chips.
 ///
@@ -31,7 +32,7 @@ class CategoryChipsRow extends ConsumerWidget {
       child: Row(
         children: [
           PillChip(
-            label: 'Toutes',
+            label: context.l10n.homeCategoryAll,
             icon: Icons.grid_view_rounded,
             soft: true,
             selected: selected == null,

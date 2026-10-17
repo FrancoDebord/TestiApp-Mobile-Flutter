@@ -7,6 +7,7 @@ import 'package:timezone/timezone.dart' as tz;
 
 import '../../../services/push_service.dart' show localNotificationsPlugin;
 import '../models/prophecy.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Rappels de prière des paroles prophétiques : notifications locales répétées
 /// (chaque jour ou chaque semaine à l'heure choisie), programmées sur ce téléphone.
@@ -16,7 +17,7 @@ import '../models/prophecy.dart';
 /// Aucun rappel pour une parole accomplie.
 abstract final class ProphecyReminders {
   static const _channelId = 'prophecy_reminders';
-  static const _channelName = 'Rappels de prière';
+  static String get _channelName => L10n.current.prophecyReminderChannel;
   static bool _tzReady = false;
   static bool _pluginReady = false;
 
@@ -122,18 +123,19 @@ abstract final class ProphecyReminders {
       final next = nextOccurrence(r, DateTime.now()).toUtc();
       await localNotificationsPlugin.zonedSchedule(
         id,
-        'Temps de prière',
-        'Priez pour la parole : « ${p.displayTitle((d) => '${d.day}/${d.month}/${d.year}')} »',
+        L10n.current.prophecyReminderTitle,
+        L10n.current.prophecyReminderBody(
+            p.displayTitle((d) => '${d.day}/${d.month}/${d.year}')),
         tz.TZDateTime.from(next, tz.UTC),
-        const NotificationDetails(
+        NotificationDetails(
           android: AndroidNotificationDetails(
             _channelId,
             _channelName,
-            channelDescription: 'Rappels pour prier sur vos paroles prophétiques.',
+            channelDescription: L10n.current.prophecyReminderChannelDesc,
             importance: Importance.defaultImportance,
             icon: '@mipmap/ic_launcher',
           ),
-          iOS: DarwinNotificationDetails(),
+          iOS: const DarwinNotificationDetails(),
         ),
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,

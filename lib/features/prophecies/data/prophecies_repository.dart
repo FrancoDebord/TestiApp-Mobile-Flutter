@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/app_constants.dart';
 import '../../../services/api_service.dart';
 import '../models/prophecy.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Erreur lisible d'une action sur une parole prophétique.
 class ProphecyFailure implements Exception {
@@ -30,7 +31,7 @@ class PropheciesRepository {
     } on DioException catch (e) {
       final body = e.response?.data;
       final msg = body is Map ? body['message'] as String? : null;
-      throw ProphecyFailure(msg ?? 'Connexion impossible. Vérifiez votre accès à Internet.',
+      throw ProphecyFailure(msg ?? L10n.current.prophecyNetworkError,
           statusCode: e.response?.statusCode ?? 0);
     }
   }

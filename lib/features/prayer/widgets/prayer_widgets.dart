@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/guest_gate.dart' show requireAccount;
 import '../../../shared/widgets/mention_text.dart' show MentionText;
 import '../../../shared/widgets/organization_badge.dart';
@@ -12,13 +13,21 @@ import '../data/prayer_repository.dart';
 import '../models/prayer_models.dart';
 import '../providers/prayer_providers.dart';
 
-const _days = ['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.'];
-const _months = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+const _days = ['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.']; // i18n-ignore
+const _months = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']; // i18n-ignore
 
-/// « mar. 7 oct., 20:30 » (sans données de langue d'intl).
+/// « mar. 7 oct., 20:30 » (en français sans données de langue d'intl) ;
+/// « Tue, Oct 7, 8:30 PM » en anglais.
 String formatPrayerDate(DateTime d) {
+  if (L10n.languageCode != 'fr') return '${formatPrayerDay(d)}, ${formatTime(d)}';
   String two(int v) => v.toString().padLeft(2, '0');
-  return '${_days[d.weekday - 1]} ${d.day} ${_months[d.month - 1]}, ${two(d.hour)}:${two(d.minute)}';
+  return '${formatPrayerDay(d)}, ${two(d.hour)}:${two(d.minute)}';
+}
+
+/// Jour seul : « mar. 7 oct. » / « Tue, Oct 7 ».
+String formatPrayerDay(DateTime d) {
+  if (L10n.languageCode != 'fr') return formatDatePattern(d, 'EEE, MMM d');
+  return '${_days[d.weekday - 1]} ${d.day} ${_months[d.month - 1]}';
 }
 
 /// Avatar d'une personne (initiales sans photo), ou masque pour une requête anonyme.
@@ -64,7 +73,7 @@ class PrayerAnsweredBadge extends StatelessWidget {
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           const Icon(Icons.check_circle_rounded, size: 14, color: AppColors.success),
           const SizedBox(width: 4),
-          Text('Exaucée', style: AppTextStyles.labelSmall.copyWith(color: AppColors.success)),
+          Text(context.l10n.prayerAnswered, style: AppTextStyles.labelSmall.copyWith(color: AppColors.success)),
         ]),
       );
 }
@@ -102,7 +111,7 @@ class _PrayerRequestFeedCardState extends ConsumerState<PrayerRequestFeedCard> {
 
   Future<void> _togglePray() async {
     if (_busy) return;
-    if (!await requireAccount(context, ref, reason: 'prier pour cette requête')) return;
+    if (!await requireAccount(context, ref, reason: context.l10n.prayerReasonPray)) return;
     final previous = _r;
     final target = !_r.hasPrayed;
     setState(() {
@@ -158,10 +167,10 @@ class _PrayerRequestFeedCardState extends ConsumerState<PrayerRequestFeedCard> {
                           ]),
                           Text(
                             [
-                              'Requête de prière',
+                              context.l10n.prayerRequestLabel,
                               prayerTimeAgo(r.createdAt),
                               if (r.visibility != PrayerVisibility.public) r.visibility.label,
-                              if (r.isAnonymous && r.author != null) 'anonyme',
+                              if (r.isAnonymous && r.author != null) context.l10n.prayerAnonymousLower,
                             ].join(' · '),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -233,7 +242,7 @@ class PrayButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = Text(count > 0 ? 'Je prie · $count' : 'Je prie');
+    final label = Text(count > 0 ? context.l10n.prayerPrayCount(count) : context.l10n.detailPray);
     const icon = Icon(Icons.volunteer_activism_rounded, size: 18);
     final padding = EdgeInsets.symmetric(horizontal: large ? 18 : 12, vertical: large ? 12 : 6);
     return prayed
@@ -275,7 +284,7 @@ class _HiddenNotice extends StatelessWidget {
           const Icon(Icons.visibility_off_rounded, size: 16, color: AppColors.warning),
           const SizedBox(width: 6),
           Expanded(
-            child: Text(reason ?? 'Retirée par la modération.',
+            child: Text(reason ?? context.l10n.prayerHiddenByModeration,
                 style: AppTextStyles.bodySmall.copyWith(color: AppColors.textPrimary)),
           ),
         ]),
@@ -336,9 +345,9 @@ class PrayerSessionCard extends StatelessWidget {
                 Wrap(spacing: 6, runSpacing: 6, children: [
                   PrayerSessionPhaseBadge(phase: s.phase),
                   if (s.isRegistered)
-                    _Pill(icon: Icons.check_rounded, label: 'Inscrit', color: AppColors.success, soft: AppColors.successSoft),
+                    _Pill(icon: Icons.check_rounded, label: context.l10n.prayerRegistered, color: AppColors.success, soft: AppColors.successSoft),
                   if (s.visibility == PrayerVisibility.followers)
-                    const _Pill(icon: Icons.group_rounded, label: 'Abonnés', color: AppColors.textSecondary, soft: AppColors.background),
+                    _Pill(icon: Icons.group_rounded, label: context.l10n.prayerFollowersPill, color: AppColors.textSecondary, soft: AppColors.background),
                 ]),
                 const SizedBox(height: AppSpacing.sm),
                 Text(s.title, style: AppTextStyles.h4, maxLines: 2, overflow: TextOverflow.ellipsis),
@@ -350,13 +359,13 @@ class PrayerSessionCard extends StatelessWidget {
                       style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
                 ],
                 const SizedBox(height: AppSpacing.md),
-                _InfoRow(icon: Icons.schedule_rounded, text: '${formatPrayerDate(s.startsAt)} · ${s.durationMinutes} min'),
+                _InfoRow(icon: Icons.schedule_rounded, text: context.l10n.prayerSessionWhen(formatPrayerDate(s.startsAt), s.durationMinutes)),
                 const SizedBox(height: 4),
-                _InfoRow(icon: Icons.person_outline_rounded, text: 'Animée par ${s.host.displayName}'),
+                _InfoRow(icon: Icons.person_outline_rounded, text: context.l10n.prayerHostedBy(s.host.displayName)),
                 const SizedBox(height: 4),
                 _InfoRow(
                     icon: Icons.groups_2_outlined,
-                    text: '${s.participantCount} ${s.participantCount > 1 ? 'inscrits' : 'inscrit'}'),
+                    text: context.l10n.prayerRegisteredCount(s.participantCount)),
               ],
             ),
           ),
@@ -428,8 +437,8 @@ class EventPrayerSection extends ConsumerWidget {
         Row(children: [
           const Icon(Icons.volunteer_activism_rounded, color: AppColors.primary, size: 20),
           const SizedBox(width: 6),
-          Expanded(child: Text('Prière', style: AppTextStyles.h4)),
-          if (total > 0) Text('$total ${total > 1 ? 'requêtes' : 'requête'}', style: AppTextStyles.bodySmall),
+          Expanded(child: Text(context.l10n.prayerSectionTitle, style: AppTextStyles.h4)),
+          if (total > 0) Text(context.l10n.prayerRequestCount(total), style: AppTextStyles.bodySmall),
         ]),
         const SizedBox(height: AppSpacing.md),
         for (final s in upcoming) ...[
@@ -445,17 +454,17 @@ class EventPrayerSection extends ConsumerWidget {
         Wrap(spacing: AppSpacing.sm, runSpacing: AppSpacing.sm, children: [
           OutlinedButton.icon(
             onPressed: () async {
-              if (!await requireAccount(context, ref, reason: 'confier une requête de prière')) return;
+              if (!await requireAccount(context, ref, reason: context.l10n.prayerReasonEntrust)) return;
               if (context.mounted) context.push('/prayer-requests/new?event=$eventId');
             },
             icon: const Icon(Icons.add_rounded),
-            label: const Text('Confier une requête'),
+            label: Text(context.l10n.prayerEntrustRequest),
           ),
           if (canManage)
             TextButton.icon(
               onPressed: () => context.push('/prayer-sessions/new?event=$eventId'),
               icon: const Icon(Icons.event_available_rounded),
-              label: const Text('Programmer une session'),
+              label: Text(context.l10n.prayerScheduleSession),
             ),
         ]),
       ],

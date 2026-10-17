@@ -3,6 +3,7 @@
 
 import 'package:flutter/foundation.dart';
 
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/models/mention.dart';
 import 'verse_reference.dart';
 
@@ -168,7 +169,7 @@ class VerseComment {
     return VerseComment(
       id: '${j['id']}',
       body: '${j['body'] ?? ''}',
-      authorName: (user['displayName'] as String?) ?? 'Membre',
+      authorName: (user['displayName'] as String?) ?? L10n.current.verseMember,
       mentions: MentionRef.listFrom(j['mentions']),
       authorId: user['id'] as String?,
       avatarUrl: user['avatarUrl'] as String?,
@@ -183,9 +184,13 @@ class VerseComment {
 }
 
 /// Raisons de signalement d'un commentaire (mêmes codes que le serveur).
-const Map<String, String> kVerseCommentReportReasons = {
-  'inappropriate_content': 'Contenu inapproprié',
-  'hate_speech': 'Propos haineux',
-  'spam': 'Publicité ou spam',
-  'other': 'Autre raison',
-};
+/// Getter : les libellés suivent la langue affichée.
+Map<String, String> get kVerseCommentReportReasons {
+  final l10n = L10n.current;
+  return {
+    'inappropriate_content': l10n.prayerReportInappropriate,
+    'hate_speech': l10n.prayerReportHate,
+    'spam': l10n.prayerReportSpam,
+    'other': l10n.prayerReportOther,
+  };
+}

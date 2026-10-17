@@ -7,6 +7,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/app_constants.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../services/api_service.dart';
 import '../models/account_verification.dart';
 
@@ -65,7 +66,7 @@ class AccountVerificationRepository {
       if (status >= 400 && status < 500 && raw is Map) {
         final errors = raw['errors'];
         throw LaravelApiException(
-          message: raw['message'] as String? ?? 'Erreur ($status).',
+          message: raw['message'] as String? ?? L10n.current.profileErrorStatus(status),
           errors: errors is Map<String, dynamic> ? errors : null,
           statusCode: status,
         );

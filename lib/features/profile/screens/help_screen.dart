@@ -15,62 +15,27 @@ import '../widgets/profile_menu.dart';
 class HelpScreen extends StatelessWidget {
   const HelpScreen({super.key});
 
-  static const _faq = <(IconData, String, String)>[
-    (
-      Icons.add_circle_outline_rounded,
-      'Comment publier un témoignage ?',
-      'Touchez le bouton « + Publier » au centre de la barre du bas, puis '
-          'choisissez vidéo, audio, texte ou image. Ajoutez un titre, une '
-          'description et une catégorie, puis touchez « Publier ».',
-    ),
-    (
-      Icons.verified_user_outlined,
-      'Pourquoi mon témoignage est-il « en attente » ?',
-      'Chaque témoignage est relu par notre équipe de modération avant sa '
-          'publication. Vous recevez une notification dès qu\'il est approuvé '
-          'ou si une correction est demandée.',
-    ),
-    (
-      Icons.download_rounded,
-      'Comment regarder hors connexion ?',
-      'Sur un témoignage, touchez « Télécharger ». Retrouvez-le ensuite dans '
-          'l\'onglet « Téléchargements ». Activez « Mode hors ligne » dans les '
-          'paramètres pour ne lire que les témoignages téléchargés.',
-    ),
-    (
-      Icons.person_outline_rounded,
-      'Comment modifier ou supprimer mon compte ?',
-      'Profil › Modifier le profil pour vos informations. Paramètres › '
-          'Compte et sécurité pour supprimer définitivement votre compte.',
-    ),
-    (
-      Icons.lock_outline_rounded,
-      'Mes données sont-elles protégées ?',
-      'Vos informations personnelles ne sont jamais vendues. Votre carnet '
-          'privé n\'est visible que par vous, et vous choisissez qui peut '
-          'commenter vos témoignages dans les paramètres.',
-    ),
-    (
-      Icons.record_voice_over_outlined,
-      'Comment fonctionne la lecture vocale ?',
-      'Les témoignages écrits sont lus à voix haute automatiquement à '
-          'l\'ouverture. Utilisez les commandes de lecture pour mettre en '
-          'pause, reprendre ou arrêter la voix.',
-    ),
-  ];
+  static List<(IconData, String, String)> _faq(AppLocalizations l10n) => [
+        (Icons.add_circle_outline_rounded, l10n.profileFaqPublishQ, l10n.profileFaqPublishA),
+        (Icons.verified_user_outlined, l10n.profileFaqPendingQ, l10n.profileFaqPendingA),
+        (Icons.download_rounded, l10n.profileFaqOfflineQ, l10n.profileFaqOfflineA),
+        (Icons.person_outline_rounded, l10n.profileFaqAccountQ, l10n.profileFaqAccountA),
+        (Icons.lock_outline_rounded, l10n.profileFaqPrivacyQ, l10n.profileFaqPrivacyA),
+        (Icons.record_voice_over_outlined, l10n.profileFaqTtsQ, l10n.profileFaqTtsA),
+      ];
 
   Future<void> _openSite(BuildContext context) async {
     final ok = await launchUrl(Uri.parse(AppConstants.webBaseUrl),
         mode: LaunchMode.externalApplication);
     if (!ok && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Impossible d'ouvrir le site web")));
+          SnackBar(content: Text(context.l10n.profileAboutSiteOpenFailed)));
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+    final l10n = context.l10n;
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -107,10 +72,10 @@ class HelpScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Comment pouvons-nous vous aider ?',
+                      Text(l10n.profileHelpHowCanWeHelp,
                           style: AppTextStyles.h4.copyWith(fontSize: 15)),
                       const SizedBox(height: 2),
-                      Text('Réponses rapides aux questions fréquentes.',
+                      Text(l10n.profileHelpQuickAnswers,
                           style: AppTextStyles.bodySmall),
                     ],
                   ),
@@ -121,29 +86,29 @@ class HelpScreen extends StatelessWidget {
           const SizedBox(height: AppSpacing.xl),
           Padding(
             padding: const EdgeInsets.fromLTRB(4, 0, 4, AppSpacing.sm),
-            child: Text('Questions fréquentes',
+            child: Text(l10n.profileHelpFaq,
                 style: AppTextStyles.labelMedium.copyWith(
                     color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
           ),
-          for (final (icon, q, a) in _faq) ...[
+          for (final (icon, q, a) in _faq(l10n)) ...[
             _FaqCard(icon: icon, question: q, answer: a),
             const SizedBox(height: AppSpacing.sm),
           ],
           const SizedBox(height: AppSpacing.lg),
           ProfileMenuCard(
-            title: 'Nous contacter',
+            title: l10n.profileHelpContact,
             children: [
               ProfileMenuTile(
                 icon: Icons.public_rounded,
-                title: 'Site web',
+                title: l10n.profileAboutWebsite,
                 subtitle: AppConstants.webBaseUrl
                     .replaceFirst(RegExp('^https?://'), ''),
                 onTap: () => _openSite(context),
               ),
               ProfileMenuTile(
                 icon: Icons.bug_report_outlined,
-                title: 'Signaler un problème',
-                subtitle: 'Décrivez ce qui ne fonctionne pas',
+                title: l10n.profileHelpReportProblem,
+                subtitle: l10n.profileHelpReportProblemHint,
                 onTap: () => _showReportSheet(context),
               ),
             ],
@@ -228,14 +193,15 @@ class _ReportSheetState extends State<_ReportSheet> {
     if (text.isEmpty) return;
     final platform = kIsWeb ? 'web' : defaultTargetPlatform.name;
     await SharePlus.instance.share(ShareParams(
-      subject: 'Témoignages de Gloire — signalement d\'un problème',
-      text: '$text\n\n— Plateforme : $platform · Version 1.0.0',
+      subject: context.l10n.profileHelpReportSubject,
+      text: context.l10n.profileHelpReportBody(text, platform, '1.0.0'),
     ));
     if (mounted) Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: SafeArea(
@@ -246,11 +212,10 @@ class _ReportSheetState extends State<_ReportSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('Signaler un problème', style: AppTextStyles.h4),
+              Text(l10n.profileHelpReportProblem, style: AppTextStyles.h4),
               const SizedBox(height: 4),
               Text(
-                'Votre message sera partagé via l\'application de votre choix '
-                '(e-mail, WhatsApp…).',
+                l10n.profileHelpReportShareInfo,
                 style: AppTextStyles.bodySmall,
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -259,15 +224,15 @@ class _ReportSheetState extends State<_ReportSheet> {
                 minLines: 4,
                 maxLines: 8,
                 textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(
-                  hintText: 'Que s\'est-il passé ? Sur quel écran ?',
+                decoration: InputDecoration(
+                  hintText: l10n.profileHelpReportInputHint,
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
               ListenableBuilder(
                 listenable: _ctrl,
                 builder: (_, _) => AppButton(
-                  label: 'Envoyer',
+                  label: l10n.commonSend,
                   leadingIcon: Icons.send_rounded,
                   fullWidth: true,
                   onPressed: _ctrl.text.trim().isEmpty ? null : _send,

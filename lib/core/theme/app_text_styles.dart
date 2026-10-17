@@ -7,7 +7,7 @@ import 'app_colors.dart';
 /// (google_fonts).
 /// Nom de la police de l'application (déclarée dans pubspec.yaml).
 abstract final class AppFonts {
-  static const String family = 'Plus Jakarta Sans';
+  static const String family = 'Plus Jakarta Sans'; // i18n-ignore
 }
 
 abstract final class AppTextStyles {

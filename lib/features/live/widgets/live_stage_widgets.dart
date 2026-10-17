@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:livekit_client/livekit_client.dart' as lk;
 
 import '../../../core/theme/app_colors.dart';
+import '../../../l10n/app_localizations.dart';
 import '../controllers/live_room_controller.dart';
 import '../models/live_models.dart';
 import 'live_widgets.dart';
@@ -50,12 +51,13 @@ class LiveStagePip extends StatelessWidget {
     if (!ctrl.onStage && speaker == null) return const SizedBox.shrink();
 
     final person = ctrl.onStage ? speaker?.user : speaker!.user;
-    final name = ctrl.onStage ? 'Vous' : person?.displayName ?? 'Intervenant';
+    final l10n = context.l10n;
+    final name = ctrl.onStage ? l10n.commonYou : person?.displayName ?? l10n.liveSpeaker;
     final track = ctrl.guestVideo;
     final muted = ctrl.guestMicMuted;
 
     return Semantics(
-      label: 'À l\'antenne : $name${muted ? ', micro coupé' : ''}',
+      label: muted ? l10n.liveOnAirNameMuted(name) : l10n.liveOnAirName(name),
       child: Container(
         width: 104,
         height: 138,
@@ -144,6 +146,7 @@ class LiveStageSelfBar extends StatelessWidget {
     if (!ctrl.onStage) return const SizedBox.shrink();
     final mic = ctrl.stageMicEnabled;
     final cam = ctrl.stageCameraEnabled;
+    final l10n = context.l10n;
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 0, 12, 10),
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
@@ -159,13 +162,13 @@ class LiveStageSelfBar extends StatelessWidget {
         children: [
           Row(
             children: [
-              const LiveBadge(label: 'À L\'ANTENNE'),
+              LiveBadge(label: l10n.liveBadgeOnAir),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   mic
-                      ? 'Tout le monde vous entend'
-                      : 'Micro coupé : personne ne vous entend',
+                      ? l10n.liveEveryoneHearsYou
+                      : l10n.liveMicMutedNobodyHears,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -184,19 +187,19 @@ class LiveStageSelfBar extends StatelessWidget {
             children: [
               _StageControl(
                 icon: mic ? Icons.mic_rounded : Icons.mic_off_rounded,
-                label: mic ? 'Couper le micro' : 'Activer le micro',
+                label: mic ? l10n.liveMuteMic : l10n.liveEnableMic,
                 off: !mic,
                 onTap: ctrl.toggleStageMic,
               ),
               _StageControl(
                 icon: cam ? Icons.videocam_rounded : Icons.videocam_off_rounded,
-                label: cam ? 'Couper la caméra' : 'Activer la caméra',
+                label: cam ? l10n.liveCameraOff : l10n.liveEnableCamera,
                 off: !cam,
                 onTap: ctrl.toggleStageCamera,
               ),
               _StageControl(
                 icon: Icons.call_end_rounded,
-                label: 'Quitter l\'antenne',
+                label: l10n.liveLeaveStage,
                 danger: true,
                 onTap: ctrl.stageBusy
                     ? null
@@ -311,10 +314,11 @@ class LiveStageButton extends StatelessWidget {
     final neutralBorder = light
         ? AppColors.primary
         : Colors.white.withAlpha(70);
+    final l10n = context.l10n;
 
     if (!labeled) {
       return Tooltip(
-        message: staff ? 'Intervenants' : 'Demander à intervenir',
+        message: staff ? l10n.liveSpeakers : l10n.liveRequestToSpeak,
         child: Badge(
           isLabelVisible: (staff && count > 0) || invited,
           label: Text(invited ? '!' : '$count'),
@@ -336,22 +340,22 @@ class LiveStageButton extends StatelessWidget {
     final (IconData icon, String label, Color bg, Color border) = staff
         ? (
             Icons.groups_rounded,
-            count > 0 ? 'Intervenants · $count' : 'Intervenants',
+            count > 0 ? l10n.liveSpeakersCount(count) : l10n.liveSpeakers,
             count > 0 ? kLiveRed : neutralBg,
             count > 0 ? kLiveRed : neutralBorder,
           )
         : invited
-        ? (Icons.mic_rounded, 'C\'est votre tour !', kLiveRed, kLiveRed)
+        ? (Icons.mic_rounded, l10n.liveYourTurn, kLiveRed, kLiveRed)
         : mine != null
         ? (
             Icons.hourglass_top_rounded,
-            'En file · n°${mine.position ?? '?'}',
+            l10n.liveInQueue('${mine.position ?? '?'}'),
             light ? AppColors.primary : Colors.black.withAlpha(150),
             AppColors.secondary,
           )
         : (
             Icons.front_hand_rounded,
-            'Intervenir',
+            l10n.liveSpeakAction,
             neutralBg,
             light ? AppColors.primary : Colors.white.withAlpha(90),
           );
@@ -359,8 +363,8 @@ class LiveStageButton extends StatelessWidget {
     return Semantics(
       button: true,
       label: staff
-          ? 'Gérer les intervenants'
-          : 'Demander à intervenir en direct',
+          ? l10n.liveManageSpeakers
+          : l10n.liveRequestToSpeakLive,
       child: Material(
         color: bg,
         shape: StadiumBorder(side: BorderSide(color: border)),
@@ -472,19 +476,19 @@ class _StaffPanel extends StatelessWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Terminer l\'intervention ?'),
+        title: Text(context.l10n.liveEndSpeakerTitle),
         content: Text(
-          '${s.user.displayName} quittera l\'antenne : son micro et sa caméra seront coupés pour tous.',
+          context.l10n.liveEndSpeakerBody(s.user.displayName),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Annuler'),
+            child: Text(context.l10n.commonCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
-            child: const Text('Terminer'),
+            child: Text(context.l10n.liveEndAction),
           ),
         ],
       ),
@@ -493,7 +497,7 @@ class _StaffPanel extends StatelessWidget {
       await _act(
         context,
         () => ctrl.removeSpeaker(s),
-        'Intervention terminée.',
+        context.l10n.liveSpeakerEnded,
       );
     }
   }
@@ -503,6 +507,7 @@ class _StaffPanel extends StatelessWidget {
     final stage = ctrl.stage;
     final current = stage.current;
     final queue = stage.queue ?? const <LiveSpeaker>[];
+    final l10n = context.l10n;
 
     return SafeArea(
       child: Column(
@@ -510,13 +515,13 @@ class _StaffPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _SheetTitle(
-            'Intervenants',
+            l10n.liveSpeakers,
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
-                  'Demandes',
-                  style: TextStyle(
+                Text(
+                  l10n.liveRequests,
+                  style: const TextStyle(
                     fontSize: 13,
                     color: AppColors.textSecondary,
                   ),
@@ -529,8 +534,8 @@ class _StaffPanel extends StatelessWidget {
                           context,
                           () => ctrl.setStageEnabled(v),
                           v
-                              ? 'Demandes ouvertes.'
-                              : 'Demandes fermées. La file est conservée.',
+                              ? l10n.liveRequestsOpened
+                              : l10n.liveRequestsClosedQueueKept,
                         ),
                 ),
               ],
@@ -546,8 +551,8 @@ class _StaffPanel extends StatelessWidget {
               subtitle: Text(
                 [
                   current.isOnStage
-                      ? 'À l\'antenne · ${current.camera ? 'caméra' : 'micro seulement'}'
-                      : 'Invité · en attente de sa réponse',
+                      ? (current.camera ? l10n.liveOnAirCamera : l10n.liveOnAirMicOnly)
+                      : l10n.liveInvitedWaiting,
                   if (current.message != null) '« ${current.message} »',
                 ].join('\n'),
               ),
@@ -560,7 +565,7 @@ class _StaffPanel extends StatelessWidget {
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.danger,
                       ),
-                      child: const Text('Terminer'),
+                      child: Text(l10n.liveEndAction),
                     )
                   : TextButton(
                       onPressed: ctrl.stageBusy
@@ -568,19 +573,19 @@ class _StaffPanel extends StatelessWidget {
                           : () => _act(
                               context,
                               () => ctrl.declineSpeaker(current),
-                              'Invitation annulée.',
+                              l10n.liveInvitationCancelled,
                             ),
-                      child: const Text('Annuler'),
+                      child: Text(l10n.commonCancel),
                     ),
             ),
           const Divider(height: 1),
           if (queue.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(24),
+            Padding(
+              padding: const EdgeInsets.all(24),
               child: Text(
-                'Personne n\'attend pour le moment.',
+                l10n.liveNobodyWaiting,
                 textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.textSecondary),
+                style: const TextStyle(color: AppColors.textSecondary),
               ),
             )
           else
@@ -603,13 +608,13 @@ class _StaffPanel extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
-                          tooltip: 'Retirer de la file',
+                          tooltip: l10n.liveRemoveFromQueue,
                           onPressed: ctrl.stageBusy
                               ? null
                               : () => _act(
                                   context,
                                   () => ctrl.declineSpeaker(s),
-                                  'Demande retirée de la file.',
+                                  l10n.liveRemovedFromQueue,
                                 ),
                           icon: const Icon(Icons.close_rounded),
                         ),
@@ -620,9 +625,9 @@ class _StaffPanel extends StatelessWidget {
                               : () => _act(
                                   context,
                                   () => ctrl.inviteSpeaker(s),
-                                  'Invitation envoyée : ${s.user.displayName} a ${stage.inviteTimeout} s pour accepter.',
+                                  l10n.liveInvitationSent(s.user.displayName, stage.inviteTimeout),
                                 ),
-                          child: const Text('Inviter'),
+                          child: Text(l10n.liveInvite),
                         ),
                       ],
                     ),
@@ -633,7 +638,7 @@ class _StaffPanel extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
             child: Text(
-              'Une personne à la fois. L\'invitation expire après ${stage.inviteTimeout} s sans réponse.',
+              l10n.liveOnePersonAtATime(stage.inviteTimeout),
               style: const TextStyle(
                 fontSize: 12,
                 color: AppColors.textSecondary,
@@ -673,7 +678,7 @@ class _ViewerPanelState extends State<_ViewerPanel> {
     final err = await widget.ctrl.requestToSpeak(message: _message.text);
     if (err == null) _message.clear();
     return err;
-  }, 'Demande envoyée : le diffuseur vous invitera à votre tour.');
+  }, context.l10n.liveRequestSent);
 
   @override
   Widget build(BuildContext context) {
@@ -682,20 +687,20 @@ class _ViewerPanelState extends State<_ViewerPanel> {
     final mine = stage.mine;
     final someoneElse =
         stage.onStage != null && stage.onStage!.user.id != ctrl.currentUserId;
+    final l10n = context.l10n;
 
     final List<Widget> body;
     if (!widget.loggedIn) {
       body = [
-        const _InfoCard(
+        _InfoCard(
           icon: Icons.lock_outline_rounded,
-          title: 'Connexion requise',
-          text:
-              'Connectez-vous pour demander à intervenir et partager votre témoignage en direct.',
+          title: l10n.liveLoginRequired,
+          text: l10n.liveLoginRequiredBody,
         ),
         const SizedBox(height: 16),
         _PrimaryButton(
           icon: Icons.login_rounded,
-          label: 'Se connecter',
+          label: l10n.liveSignIn,
           onPressed: () {
             Navigator.pop(context);
             widget.onLogin?.call();
@@ -703,28 +708,26 @@ class _ViewerPanelState extends State<_ViewerPanel> {
         ),
       ];
     } else if (ctrl.onStage || mine?.isOnStage == true) {
-      body = const [
+      body = [
         _InfoCard(
           icon: Icons.mic_rounded,
           color: kLiveRed,
-          title: 'Vous êtes à l\'antenne',
-          text:
-              'Tout le monde vous entend. Utilisez la barre en bas de l\'écran pour couper '
-              'votre micro ou quitter l\'antenne.',
+          title: l10n.liveYouAreOnAir,
+          text: l10n.liveYouAreOnAirBody,
         ),
       ];
     } else if (mine != null && mine.isInvited) {
       body = [
-        const _InfoCard(
+        _InfoCard(
           icon: Icons.campaign_rounded,
           color: kLiveRed,
-          title: 'C\'est votre tour !',
-          text: 'Le diffuseur vous invite à l\'antenne.',
+          title: l10n.liveYourTurn,
+          text: l10n.liveHostInvitesYou,
         ),
         const SizedBox(height: 16),
         _PrimaryButton(
           icon: Icons.mic_rounded,
-          label: 'Répondre à l\'invitation',
+          label: l10n.liveAnswerInvitation,
           onPressed: () {
             Navigator.pop(context);
             unawaited(
@@ -739,9 +742,9 @@ class _ViewerPanelState extends State<_ViewerPanel> {
               : () => _act(
                   context,
                   ctrl.withdrawStageRequest,
-                  'Invitation refusée.',
+                  l10n.liveInvitationDeclined,
                 ),
-          child: const Text('Refuser'),
+          child: Text(l10n.liveDecline),
         ),
       ];
     } else if (mine != null) {
@@ -754,7 +757,7 @@ class _ViewerPanelState extends State<_ViewerPanel> {
               : () => _act(
                   context,
                   ctrl.withdrawStageRequest,
-                  'Demande retirée.',
+                  l10n.liveRequestWithdrawn,
                 ),
           style: OutlinedButton.styleFrom(
             foregroundColor: AppColors.danger,
@@ -764,17 +767,17 @@ class _ViewerPanelState extends State<_ViewerPanel> {
               borderRadius: BorderRadius.circular(12),
             ),
           ),
-          child: const Text('Annuler ma demande'),
+          child: Text(l10n.liveCancelMyRequest),
         ),
       ];
     } else if (!stage.canRequest) {
       body = [
         _InfoCard(
           icon: Icons.do_not_disturb_on_outlined,
-          title: 'Demandes fermées',
+          title: l10n.liveRequestsClosed,
           text:
               stage.refusal ??
-              'Les demandes d\'intervention sont fermées pour le moment.',
+              l10n.liveRequestsClosedBody,
         ),
       ];
     } else {
@@ -787,17 +790,17 @@ class _ViewerPanelState extends State<_ViewerPanel> {
           maxLines: 3,
           minLines: 1,
           textCapitalization: TextCapitalization.sentences,
-          decoration: const InputDecoration(
-            labelText: 'Sujet de votre témoignage (facultatif)',
-            hintText: 'Ex. : guérison, emploi, famille…',
-            helperText: 'Seuls le diffuseur et les modérateurs le lisent.',
-            prefixIcon: Icon(Icons.edit_note_rounded),
+          decoration: InputDecoration(
+            labelText: l10n.liveTopicLabel,
+            hintText: l10n.liveTopicHint,
+            helperText: l10n.liveTopicHelper,
+            prefixIcon: const Icon(Icons.edit_note_rounded),
           ),
         ),
         const SizedBox(height: 12),
         _PrimaryButton(
           icon: Icons.front_hand_rounded,
-          label: 'Demander à intervenir',
+          label: l10n.liveRequestToSpeak,
           busy: ctrl.stageBusy,
           onPressed: ctrl.stageBusy ? null : _request,
         ),
@@ -829,9 +832,9 @@ class _ViewerPanelState extends State<_ViewerPanel> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Témoigner en direct',
-                        style: TextStyle(
+                      Text(
+                        l10n.liveTestifyLive,
+                        style: const TextStyle(
                           fontFamily: 'Plus Jakarta Sans',
                           fontWeight: FontWeight.w800,
                           fontSize: 18,
@@ -840,10 +843,8 @@ class _ViewerPanelState extends State<_ViewerPanel> {
                       const SizedBox(height: 2),
                       Text(
                         stage.queueCount == 0
-                            ? 'Personne n\'attend : vous serez le prochain.'
-                            : stage.queueCount == 1
-                            ? '1 personne en attente'
-                            : '${stage.queueCount} personnes en attente',
+                            ? l10n.liveQueueNobody
+                            : l10n.liveQueueWaiting(stage.queueCount),
                         style: const TextStyle(
                           fontSize: 13,
                           color: AppColors.textSecondary,
@@ -873,9 +874,9 @@ class _ViewerPanelState extends State<_ViewerPanel> {
                       child: Text.rich(
                         TextSpan(
                           children: [
-                            const TextSpan(
-                              text: 'À l\'antenne : ',
-                              style: TextStyle(color: AppColors.textSecondary),
+                            TextSpan(
+                              text: l10n.liveOnAirPrefix,
+                              style: const TextStyle(color: AppColors.textSecondary),
                             ),
                             TextSpan(
                               text: stage.onStage!.user.displayName,
@@ -889,7 +890,7 @@ class _ViewerPanelState extends State<_ViewerPanel> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const LiveBadge(label: 'LIVE'),
+                    const LiveBadge(label: 'LIVE'), // i18n-ignore
                   ],
                 ),
               ),
@@ -927,18 +928,19 @@ class _Steps extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const steps = [
+    final l10n = context.l10n;
+    final steps = [
       (
         Icons.front_hand_outlined,
-        'Vous demandez',
-        'Votre nom rejoint la file.',
+        l10n.liveStepRequest,
+        l10n.liveStepRequestBody,
       ),
       (
         Icons.notifications_active_outlined,
-        'Vous êtes invité',
-        'Une fenêtre s\'ouvre à votre tour.',
+        l10n.liveStepInvited,
+        l10n.liveStepInvitedBody,
       ),
-      (Icons.mic_none_rounded, 'Vous parlez', 'Micro coupable à tout moment.'),
+      (Icons.mic_none_rounded, l10n.liveStepSpeak, l10n.liveStepSpeakBody),
     ];
     return Container(
       padding: const EdgeInsets.all(12),
@@ -1073,7 +1075,7 @@ class _QueueCard extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             child: Text(
-              position == null ? '?' : 'n°$position',
+              position == null ? '?' : context.l10n.liveQueueNumber(position!),
               style: const TextStyle(
                 color: Colors.white,
                 fontFamily: 'Plus Jakarta Sans',
@@ -1089,17 +1091,17 @@ class _QueueCard extends StatelessWidget {
               children: [
                 Text(
                   position == 1
-                      ? 'Vous êtes le prochain'
-                      : 'Demande enregistrée',
+                      ? context.l10n.liveYouAreNext
+                      : context.l10n.liveRequestRecorded,
                   style: const TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 15,
                   ),
                 ),
                 const SizedBox(height: 3),
-                const Text(
-                  'Gardez le direct ouvert : une fenêtre s\'ouvrira à votre tour.',
-                  style: TextStyle(
+                Text(
+                  context.l10n.liveKeepLiveOpen,
+                  style: const TextStyle(
                     fontSize: 13,
                     color: AppColors.textSecondary,
                     height: 1.35,
@@ -1217,7 +1219,7 @@ class _InvitationDialogState extends State<_InvitationDialog> {
         Navigator.pop(context);
         _snack(
           context,
-          'L\'invitation n\'est plus valable. Vous pouvez refaire une demande.',
+          context.l10n.liveInvitationExpired,
         );
         return;
       }
@@ -1235,6 +1237,7 @@ class _InvitationDialogState extends State<_InvitationDialog> {
     setState(() => _joining = true);
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
+    final l10n = context.l10n;
     final err = await widget.ctrl.acceptInvitation(
       camera: _camera,
       mic: !_micMuted,
@@ -1246,8 +1249,8 @@ class _InvitationDialogState extends State<_InvitationDialog> {
         content: Text(
           err ??
               (_micMuted
-                  ? 'Vous êtes à l\'antenne, micro coupé. Activez-le quand vous êtes prêt.'
-                  : 'Vous êtes à l\'antenne. Parlez librement : tout le monde vous entend.'),
+                  ? l10n.liveJoinedMuted
+                  : l10n.liveJoined),
         ),
       ),
     );
@@ -1255,12 +1258,13 @@ class _InvitationDialogState extends State<_InvitationDialog> {
 
   Future<void> _decline() async {
     final messenger = ScaffoldMessenger.of(context);
+    final declined = context.l10n.liveInvitationDeclined;
     Navigator.pop(context);
     final err = await widget.ctrl.withdrawStageRequest();
     messenger.showSnackBar(
       SnackBar(
         behavior: SnackBarBehavior.floating,
-        content: Text(err ?? 'Invitation refusée.'),
+        content: Text(err ?? declined),
       ),
     );
   }
@@ -1268,6 +1272,7 @@ class _InvitationDialogState extends State<_InvitationDialog> {
   @override
   Widget build(BuildContext context) {
     final left = _left;
+    final l10n = context.l10n;
     return Dialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       clipBehavior: Clip.antiAlias,
@@ -1318,9 +1323,9 @@ class _InvitationDialogState extends State<_InvitationDialog> {
                     ),
                   ),
                   const SizedBox(height: 14),
-                  const Text(
-                    'C\'est votre tour !',
-                    style: TextStyle(
+                  Text(
+                    l10n.liveYourTurn,
+                    style: const TextStyle(
                       color: Colors.white,
                       fontFamily: 'Plus Jakarta Sans',
                       fontWeight: FontWeight.w800,
@@ -1329,7 +1334,7 @@ class _InvitationDialogState extends State<_InvitationDialog> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Le diffuseur vous invite à l\'antenne.\nVotre voix sera entendue par tous les spectateurs.',
+                    l10n.liveInvitationBody,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white.withAlpha(200),
@@ -1348,8 +1353,8 @@ class _InvitationDialogState extends State<_InvitationDialog> {
                 children: [
                   _ChoiceTile(
                     icon: Icons.videocam_rounded,
-                    title: 'Activer ma caméra',
-                    subtitle: 'Sinon, les spectateurs voient votre nom.',
+                    title: l10n.liveEnableMyCamera,
+                    subtitle: l10n.liveEnableMyCameraHint,
                     value: _camera,
                     onChanged: _joining
                         ? null
@@ -1357,9 +1362,8 @@ class _InvitationDialogState extends State<_InvitationDialog> {
                   ),
                   _ChoiceTile(
                     icon: Icons.mic_off_rounded,
-                    title: 'Arriver micro coupé',
-                    subtitle:
-                        'Endroit bruyant ? Activez le micro au moment de parler.',
+                    title: l10n.liveJoinMuted,
+                    subtitle: l10n.liveJoinMutedHint,
                     value: _micMuted,
                     onChanged: _joining
                         ? null
@@ -1368,12 +1372,11 @@ class _InvitationDialogState extends State<_InvitationDialog> {
                 ],
               ),
             ),
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 6, 20, 0),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 6, 20, 0),
               child: Text(
-                'Vous pourrez couper le micro ou quitter l\'antenne à tout moment. '
-                'Le diffuseur peut aussi terminer votre intervention.',
-                style: TextStyle(
+                l10n.liveInvitationFooter,
+                style: const TextStyle(
                   fontSize: 12,
                   color: AppColors.textSecondary,
                   height: 1.35,
@@ -1397,7 +1400,7 @@ class _InvitationDialogState extends State<_InvitationDialog> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: const Text('Refuser'),
+                      child: Text(l10n.liveDecline),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -1405,7 +1408,7 @@ class _InvitationDialogState extends State<_InvitationDialog> {
                     flex: 2,
                     child: _PrimaryButton(
                       icon: Icons.mic_rounded,
-                      label: 'Rejoindre',
+                      label: l10n.liveJoin,
                       busy: _joining,
                       onPressed: _joining ? null : _join,
                     ),

@@ -105,8 +105,8 @@ const _frWords = {
   'le', 'la', 'les', 'des', 'du', 'au', 'aux', 'et', 'est', 'une', 'un', 'que',
   'qui', 'dans', 'pour', 'pas', 'je', 'tu', 'il', 'elle', 'nous', 'vous',
   'ils', 'elles', 'ce', 'cette', 'mon', 'ma', 'mes', 'ton', 'ta', 'tes', 'son',
-  'sa', 'ses', 'avec', 'sur', 'mais', 'ont', 'été', 'être', 'avait', 'était',
-  'suis', 'dieu', 'seigneur', 'jésus',
+  'sa', 'ses', 'avec', 'sur', 'mais', 'ont', 'été', 'être', 'avait', 'était', // i18n-ignore
+  'suis', 'dieu', 'seigneur', 'jésus', // i18n-ignore
 };
 const _enWords = {
   'the', 'and', 'is', 'are', 'was', 'were', 'of', 'to', 'in', 'that', 'it',

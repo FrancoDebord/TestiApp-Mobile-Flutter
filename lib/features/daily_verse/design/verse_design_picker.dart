@@ -13,6 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
+import '../../../l10n/app_localizations.dart';
 import 'verse_background_painter.dart';
 import 'verse_design.dart';
 import 'verse_design_catalog.dart';
@@ -61,10 +62,10 @@ class VerseDesignStackButton extends StatelessWidget {
     final after = kVerseDesigns[(kVerseDesigns.indexOf(design) + 2) % kVerseDesigns.length];
     return Semantics(
       button: true,
-      label: 'Changer le design du verset. Design actuel : ${design.name}',
+      label: context.l10n.verseDesignChangeSemantics(design.name),
       excludeSemantics: true,
       child: Tooltip(
-        message: 'Designs et texte',
+        message: context.l10n.verseDesignsAndText,
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(12),
@@ -139,9 +140,9 @@ class _PickerSheet extends ConsumerWidget {
               indicatorColor: AppColors.secondary,
               labelStyle: AppTextStyles.labelMedium.copyWith(fontWeight: FontWeight.w700),
               unselectedLabelStyle: AppTextStyles.labelMedium,
-              tabs: const [
-                Tab(icon: Icon(Icons.palette_outlined, size: 20), text: 'Fonds', iconMargin: EdgeInsets.only(bottom: 2)),
-                Tab(icon: Icon(Icons.text_fields_rounded, size: 20), text: 'Texte', iconMargin: EdgeInsets.only(bottom: 2)),
+              tabs: [
+                Tab(icon: const Icon(Icons.palette_outlined, size: 20), text: context.l10n.verseTabBackgrounds, iconMargin: const EdgeInsets.only(bottom: 2)),
+                Tab(icon: const Icon(Icons.text_fields_rounded, size: 20), text: context.l10n.prophecyModeText, iconMargin: const EdgeInsets.only(bottom: 2)),
               ],
             ),
             SizedBox(
@@ -207,11 +208,11 @@ class _DesignsTab extends ConsumerWidget {
         SwitchListTile(
           value: prefs.alwaysMine,
           onChanged: notifier.setAlwaysMine,
-          title: Text('Toujours utiliser mon design', style: AppTextStyles.labelMedium),
+          title: Text(context.l10n.verseAlwaysMine, style: AppTextStyles.labelMedium),
           subtitle: Text(
             prefs.alwaysMine
-                ? 'Le même design chaque jour.'
-                : 'Sinon, votre choix vaut jusqu’à demain, puis un nouveau design s’affiche.',
+                ? context.l10n.verseAlwaysMineOn
+                : context.l10n.verseAlwaysMineOff,
             style: AppTextStyles.bodySmall,
           ),
         ),
@@ -249,7 +250,9 @@ class _DesignThumb extends StatelessWidget {
     return Semantics(
       button: true,
       selected: selected,
-      label: 'Design ${design.name}, ${design.mood.label}${isDaily ? ', design du jour' : ''}',
+      label: isDaily
+          ? context.l10n.verseDesignTileSemanticsDaily(design.name, design.mood.label)
+          : context.l10n.verseDesignTileSemantics(design.name, design.mood.label),
       excludeSemantics: true,
       child: GestureDetector(
         onTap: onTap,
@@ -321,7 +324,7 @@ class _DesignThumb extends StatelessWidget {
                     ],
                     Flexible(
                       child: Text(
-                        isDaily ? '${design.name} · du jour' : design.name,
+                        isDaily ? context.l10n.verseDesignOfTheDayShort(design.name) : design.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: AppTextStyles.labelSmall.copyWith(
@@ -359,7 +362,7 @@ class _TextTab extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       children: [
-        title('Police'),
+        title(context.l10n.verseFontTitle),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -381,7 +384,7 @@ class _TextTab extends ConsumerWidget {
               ),
           ],
         ),
-        title('Taille'),
+        title(context.l10n.verseSizeTitle),
         SegmentedButton<VerseTextSize>(
           showSelectedIcon: false,
           segments: [
@@ -391,7 +394,7 @@ class _TextTab extends ConsumerWidget {
           selected: {prefs.size},
           onSelectionChanged: (v) => notifier.setSize(v.first),
         ),
-        title('Alignement'),
+        title(context.l10n.verseAlignTitle),
         SegmentedButton<VerseAlign>(
           showSelectedIcon: false,
           segments: [

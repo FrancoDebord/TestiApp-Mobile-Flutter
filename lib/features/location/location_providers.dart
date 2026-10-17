@@ -15,6 +15,7 @@ import '../events/widgets/event_location_widgets.dart'
 import '../feed/feed_inserts.dart' show feedInsertsProvider;
 import '../home/providers/home_providers.dart' show feedNotifierProvider;
 import 'user_location.dart';
+import '../../l10n/app_localizations.dart';
 
 /// Lecture de la position de l'appareil (remplaçable dans les tests).
 typedef PositionReader =
@@ -56,8 +57,8 @@ class UserLocationNotifier extends AsyncNotifier<UserLocationSettings> {
     } on LocationFailure catch (e) {
       throw LocationFailure(
         e.canOpenSettings
-            ? "Accès à la position refusé. Autorisez-le dans les réglages de l'application, ou indiquez votre ville."
-            : 'Position indisponible pour le moment. Réessayez, ou indiquez votre ville.',
+            ? L10n.current.locationDeniedCity
+            : L10n.current.locationUnavailableCity,
         canOpenSettings: e.canOpenSettings,
       );
     }

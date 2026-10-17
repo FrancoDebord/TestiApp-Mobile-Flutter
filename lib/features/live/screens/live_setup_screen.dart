@@ -10,6 +10,7 @@ import 'package:permission_handler/permission_handler.dart';
 import '../../../core/providers/categories_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../auth/providers/auth_notifier.dart' show currentUserProvider;
 import '../../events/data/events_repository.dart';
 import '../../events/models/event_models.dart';
@@ -22,9 +23,26 @@ import 'live_studio_screen.dart';
 enum _CheckState { pending, ok, warning, failed }
 
 class _Check {
-  const _Check(this.state, this.message);
+  /// Message déjà rédigé (erreur renvoyée par le serveur, nom de réseau).
+  const _Check(this.state, String message)
+      : _message = message,
+        _text = null,
+        needsSettings = false;
+
+  /// Message traduit au moment de l'affichage (suit un changement de langue).
+  const _Check.l10n(this.state, String Function(AppLocalizations l) text,
+      {this.needsSettings = false})
+      : _text = text,
+        _message = null;
+
   final _CheckState state;
-  final String message;
+  final String? _message;
+  final String Function(AppLocalizations l)? _text;
+
+  String message(AppLocalizations l10n) => _message ?? _text!(l10n);
+
+  /// Autorisation refusée définitivement : à accorder dans les réglages.
+  final bool needsSettings;
 }
 
 /// Préparer un direct (modérateurs / administrateurs) : vérifications,
@@ -60,11 +78,11 @@ class _LiveSetupScreenState extends ConsumerState<LiveSetupScreen>
   /// Caméra utilisée : appareil, caméra IP / encodeur (RTMP) ou adresse de flux.
   LiveSource _source = LiveSource.browser;
 
-  _Check _rights = const _Check(_CheckState.pending, 'Vérification…');
-  _Check _service = const _Check(_CheckState.pending, 'Vérification…');
-  _Check _network = const _Check(_CheckState.pending, 'Vérification…');
-  _Check _camera = const _Check(_CheckState.pending, 'Vérification…');
-  _Check _micro = const _Check(_CheckState.pending, 'Vérification…');
+  _Check _rights = _Check.l10n(_CheckState.pending, (l) => l.liveCheckPending);
+  _Check _service = _Check.l10n(_CheckState.pending, (l) => l.liveCheckPending);
+  _Check _network = _Check.l10n(_CheckState.pending, (l) => l.liveCheckPending);
+  _Check _camera = _Check.l10n(_CheckState.pending, (l) => l.liveCheckPending);
+  _Check _micro = _Check.l10n(_CheckState.pending, (l) => l.liveCheckPending);
 
   lk.LocalVideoTrack? _preview;
   lk.CameraPosition _position = lk.CameraPosition.front;
@@ -122,18 +140,16 @@ class _LiveSetupScreenState extends ConsumerState<LiveSetupScreen>
           _event = e;
           if (_title.text.isEmpty) _title.text = e.title;
           _rights = e.canManage
-              ? const _Check(_CheckState.ok, "Organisateur de l'événement")
-              : const _Check(_CheckState.failed,
-                  "Seuls l'organisateur et les administrateurs peuvent diffuser cet événement.");
+              ? _Check.l10n(_CheckState.ok, (l) => l.liveCheckEventOrganizer)
+              : _Check.l10n(_CheckState.failed, (l) => l.liveCheckEventOrganizerOnly);
         });
       } on EventFailure catch (e) {
         if (mounted) setState(() => _rights = _Check(_CheckState.failed, e.message));
       }
     } else {
       setState(() => _rights = user?.canModerate == true
-          ? const _Check(_CheckState.ok, 'Compte modérateur ou administrateur')
-          : const _Check(_CheckState.failed,
-              'Seuls les modérateurs et administrateurs peuvent diffuser.'));
+          ? _Check.l10n(_CheckState.ok, (l) => l.liveCheckModeratorAccount)
+          : _Check.l10n(_CheckState.failed, (l) => l.liveCheckModeratorsOnly));
     }
 
     await Future.wait([
@@ -162,9 +178,8 @@ class _LiveSetupScreenState extends ConsumerState<LiveSetupScreen>
       final index = await ref.read(liveRepositoryProvider).index();
       if (!mounted) return;
       setState(() => _service = index.configured
-          ? const _Check(_CheckState.ok, 'Service vidéo disponible')
-          : const _Check(_CheckState.failed,
-              "Le service vidéo n'est pas encore configuré sur le serveur."));
+          ? _Check.l10n(_CheckState.ok, (l) => l.liveCheckServiceOk)
+          : _Check.l10n(_CheckState.failed, (l) => l.liveCheckServiceMissing));
     } on LiveFailure catch (e) {
       if (mounted) setState(() => _service = _Check(_CheckState.failed, e.message));
     }
@@ -176,14 +191,13 @@ class _LiveSetupScreenState extends ConsumerState<LiveSetupScreen>
     setState(() {
       if (results.contains(ConnectivityResult.wifi) ||
           results.contains(ConnectivityResult.ethernet)) {
-        _network = const _Check(_CheckState.ok, 'Wi-Fi');
+        _network = const _Check(_CheckState.ok, 'Wi-Fi'); // i18n-ignore
       } else if (results.contains(ConnectivityResult.mobile)) {
-        _network = const _Check(_CheckState.warning,
-            'Données mobiles : la vidéo consomme environ 1 Go par heure.');
+        _network = _Check.l10n(_CheckState.warning, (l) => l.liveCheckMobileData);
       } else if (results.contains(ConnectivityResult.none) || results.isEmpty) {
-        _network = const _Check(_CheckState.failed, 'Aucune connexion Internet.');
+        _network = _Check.l10n(_CheckState.failed, (l) => l.liveCheckNoInternet);
       } else {
-        _network = const _Check(_CheckState.ok, 'Connecté');
+        _network = _Check.l10n(_CheckState.ok, (l) => l.liveCheckConnected);
       }
     });
   }
@@ -193,21 +207,23 @@ class _LiveSetupScreenState extends ConsumerState<LiveSetupScreen>
         await [Permission.camera, Permission.microphone].request();
     if (!mounted || _source.isExternal) return;
 
-    _Check describe(PermissionStatus? s, String what) => switch (s) {
+    _Check describe(PermissionStatus? s, {required bool mic}) => switch (s) {
           PermissionStatus.granted ||
           PermissionStatus.limited =>
-            _Check(_CheckState.ok, '$what autorisé${what == 'Micro' ? '' : 'e'}'),
-          PermissionStatus.permanentlyDenied => _Check(_CheckState.failed,
-              '$what refusé${what == 'Micro' ? '' : 'e'} : autorisez-l${what == 'Micro' ? 'e' : 'a'} dans les réglages.'),
-          PermissionStatus.restricted => _Check(
-              _CheckState.failed, '$what bloqué${what == 'Micro' ? '' : 'e'} sur cet appareil.'),
-          _ => _Check(_CheckState.failed,
-              '$what refusé${what == 'Micro' ? '' : 'e'}. Appuyez pour réessayer.'),
+            _Check.l10n(_CheckState.ok,
+                (l) => mic ? l.liveCheckMicGranted : l.liveCheckCameraGranted),
+          PermissionStatus.permanentlyDenied => _Check.l10n(_CheckState.failed,
+              (l) => mic ? l.liveCheckMicDeniedForever : l.liveCheckCameraDeniedForever,
+              needsSettings: true),
+          PermissionStatus.restricted => _Check.l10n(_CheckState.failed,
+              (l) => mic ? l.liveCheckMicRestricted : l.liveCheckCameraRestricted),
+          _ => _Check.l10n(_CheckState.failed,
+              (l) => mic ? l.liveCheckMicDenied : l.liveCheckCameraDenied),
         };
 
     setState(() {
-      _camera = describe(statuses[Permission.camera], 'Caméra');
-      _micro = describe(statuses[Permission.microphone], 'Micro');
+      _camera = describe(statuses[Permission.camera], mic: false);
+      _micro = describe(statuses[Permission.microphone], mic: true);
     });
 
     if (_camera.state == _CheckState.ok && _preview == null) {
@@ -227,8 +243,7 @@ class _LiveSetupScreenState extends ConsumerState<LiveSetupScreen>
       setState(() => _preview = track);
     } catch (e) {
       if (mounted) {
-        setState(() => _camera = const _Check(_CheckState.failed,
-            "Impossible d'ouvrir la caméra (déjà utilisée par une autre application ?)."));
+        setState(() => _camera = _Check.l10n(_CheckState.failed, (l) => l.liveCheckCameraBusy));
       }
     }
   }
@@ -246,7 +261,7 @@ class _LiveSetupScreenState extends ConsumerState<LiveSetupScreen>
   Future<void> _fixCheck(_Check c) async {
     if (c.state != _CheckState.failed) return;
     if (identical(c, _camera) || identical(c, _micro)) {
-      final permanently = c.message.contains('réglages');
+      final permanently = c.needsSettings;
       if (permanently) {
         await openAppSettings();
       } else {
@@ -304,15 +319,15 @@ class _LiveSetupScreenState extends ConsumerState<LiveSetupScreen>
     final resume = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Direct déjà en cours'),
-        content: Text('$message\n\nVoulez-vous reprendre ce direct ?'),
+        title: Text(context.l10n.liveAlreadyRunningTitle),
+        content: Text(context.l10n.liveAlreadyRunningBody(message)),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Annuler')),
+              child: Text(context.l10n.commonCancel)),
           FilledButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('Reprendre')),
+              child: Text(context.l10n.liveResume)),
         ],
       ),
     );
@@ -334,10 +349,11 @@ class _LiveSetupScreenState extends ConsumerState<LiveSetupScreen>
   @override
   Widget build(BuildContext context) {
     final categories = ref.watch(categoriesListProvider);
+    final l10n = context.l10n;
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Lancer un direct'),
+        title: Text(l10n.livesGoLive),
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
@@ -361,7 +377,7 @@ class _LiveSetupScreenState extends ConsumerState<LiveSetupScreen>
                     Expanded(
                       child: Text.rich(
                         TextSpan(children: [
-                          const TextSpan(text: "Direct de l'événement\n"),
+                          TextSpan(text: l10n.liveEventLiveLabel),
                           TextSpan(
                             text: _event!.title,
                             style: const TextStyle(
@@ -375,31 +391,31 @@ class _LiveSetupScreenState extends ConsumerState<LiveSetupScreen>
               ),
               const SizedBox(height: 14),
             ],
-            Text('Caméra utilisée', style: AppTextStyles.h4),
+            Text(l10n.liveCameraUsed, style: AppTextStyles.h4),
             const SizedBox(height: 4),
             RadioGroup<LiveSource>(
               groupValue: _source,
               onChanged: (v) {
                 if (v != null) unawaited(_selectSource(v));
               },
-              child: const Column(
+              child: Column(
                 children: [
                   RadioListTile<LiveSource>(
                     contentPadding: EdgeInsets.zero,
                     value: LiveSource.browser,
-                    title: Text('Caméra de cet appareil'),
+                    title: Text(l10n.liveSourceDevice),
                   ),
                   RadioListTile<LiveSource>(
                     contentPadding: EdgeInsets.zero,
                     value: LiveSource.rtmp,
-                    title: Text('Caméra IP ou encodeur (RTMP)'),
-                    subtitle: Text("Conseillé : le studio donne une adresse et une clé à saisir dans la caméra ou le logiciel (OBS…)."),
+                    title: Text(l10n.liveSourceRtmp),
+                    subtitle: Text(l10n.liveSourceRtmpHint),
                   ),
                   RadioListTile<LiveSource>(
                     contentPadding: EdgeInsets.zero,
                     value: LiveSource.url,
-                    title: Text('Caméra IP (adresse du flux)'),
-                    subtitle: Text('Renseignez la caméra (RTSP, SRT, HLS…) : le service vidéo lit lui-même son flux, joignable depuis Internet.'),
+                    title: Text(l10n.liveSourceUrl),
+                    subtitle: Text(l10n.liveSourceUrlHint),
                   ),
                 ],
               ),
@@ -423,29 +439,29 @@ class _LiveSetupScreenState extends ConsumerState<LiveSetupScreen>
                 onSwitch: _preview == null ? null : _switchCamera,
               ),
             const SizedBox(height: 16),
-            Text('Vérifications', style: AppTextStyles.h4),
+            Text(l10n.liveChecks, style: AppTextStyles.h4),
             const SizedBox(height: 8),
-            _CheckTile(icon: Icons.verified_user_outlined, label: 'Droits', check: _rights),
-            _CheckTile(icon: Icons.cloud_outlined, label: 'Service vidéo', check: _service, onTap: () => _fixCheck(_service)),
-            _CheckTile(icon: Icons.network_check_rounded, label: 'Réseau', check: _network, onTap: () => _fixCheck(_network)),
+            _CheckTile(icon: Icons.verified_user_outlined, label: l10n.liveCheckRights, check: _rights),
+            _CheckTile(icon: Icons.cloud_outlined, label: l10n.liveCheckService, check: _service, onTap: () => _fixCheck(_service)),
+            _CheckTile(icon: Icons.network_check_rounded, label: l10n.liveCheckNetwork, check: _network, onTap: () => _fixCheck(_network)),
             if (!_source.isExternal) ...[
-              _CheckTile(icon: Icons.videocam_outlined, label: 'Caméra', check: _camera, onTap: () => _fixCheck(_camera)),
-              _CheckTile(icon: Icons.mic_none_rounded, label: 'Micro', check: _micro, onTap: () => _fixCheck(_micro)),
+              _CheckTile(icon: Icons.videocam_outlined, label: l10n.liveCheckCamera, check: _camera, onTap: () => _fixCheck(_camera)),
+              _CheckTile(icon: Icons.mic_none_rounded, label: l10n.liveCheckMic, check: _micro, onTap: () => _fixCheck(_micro)),
             ],
             const SizedBox(height: 20),
-            Text('Votre direct', style: AppTextStyles.h4),
+            Text(l10n.liveYourLive, style: AppTextStyles.h4),
             const SizedBox(height: 10),
             TextFormField(
               controller: _title,
               maxLength: 150,
               textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
-                labelText: 'Titre *',
-                hintText: 'Ex. : Comment Dieu m\'a relevé',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.liveTitleLabel,
+                hintText: l10n.liveTitleHint,
+                border: const OutlineInputBorder(),
               ),
               validator: (v) => (v == null || v.trim().isEmpty)
-                  ? 'Merci de donner un titre au direct.'
+                  ? l10n.liveTitleRequired
                   : null,
             ),
             const SizedBox(height: 8),
@@ -454,21 +470,21 @@ class _LiveSetupScreenState extends ConsumerState<LiveSetupScreen>
               maxLength: 1000,
               maxLines: 3,
               textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
-                labelText: 'Présentation (facultatif)',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.liveDescriptionLabel,
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
               initialValue: _category,
               isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Catégorie (facultatif)',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.liveCategoryLabel,
+                border: const OutlineInputBorder(),
               ),
               items: [
-                const DropdownMenuItem<String>(value: null, child: Text('Aucune')),
+                DropdownMenuItem<String>(value: null, child: Text(l10n.liveCategoryNone)),
                 for (final c in categories)
                   DropdownMenuItem(value: c.slug, child: Text(c.name)),
               ],
@@ -479,8 +495,8 @@ class _LiveSetupScreenState extends ConsumerState<LiveSetupScreen>
               contentPadding: EdgeInsets.zero,
               value: _commentsEnabled,
               onChanged: (v) => setState(() => _commentsEnabled = v),
-              title: const Text('Autoriser les commentaires'),
-              subtitle: const Text('Vous pourrez masquer un commentaire ou exclure une personne.'),
+              title: Text(l10n.liveAllowComments),
+              subtitle: Text(l10n.liveAllowCommentsHint),
             ),
             const SizedBox(height: 16),
             FilledButton.icon(
@@ -495,11 +511,11 @@ class _LiveSetupScreenState extends ConsumerState<LiveSetupScreen>
                       height: 18,
                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                   : const Icon(Icons.sensors_rounded),
-              label: const Text('Ouvrir le studio'),
+              label: Text(l10n.liveOpenStudio),
             ),
             const SizedBox(height: 8),
             Text(
-              'Le direct reste invisible du public tant que vous n\'êtes pas passé à l\'antenne.',
+              l10n.liveInvisibleUntilOnAir,
               textAlign: TextAlign.center,
               style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
             ),
@@ -518,17 +534,10 @@ class _ExternalCameraHelp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final steps = source == LiveSource.rtmp
-        ? const [
-            "Ouvrez le studio : il affiche l'adresse du serveur et la clé de diffusion.",
-            'Saisissez-les dans la caméra, OBS, vMix ou votre encodeur, puis lancez la diffusion.',
-            "Quand l'image apparaît dans le studio, appuyez sur « Passer à l'antenne ».",
-          ]
-        : const [
-            "Le service vidéo se connecte à l'adresse indiquée (elle doit être joignable depuis Internet).",
-            "Vérifiez l'aperçu dans le studio.",
-            "Appuyez sur « Passer à l'antenne » : le direct ne démarre jamais tout seul.",
-          ];
+        ? [l10n.liveRtmpStep1, l10n.liveRtmpStep2, l10n.liveRtmpStep3]
+        : [l10n.liveUrlStep1, l10n.liveUrlStep2, l10n.liveUrlStep3];
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -542,7 +551,7 @@ class _ExternalCameraHelp extends StatelessWidget {
             children: [
               const Icon(Icons.settings_input_antenna_rounded, color: AppColors.primary),
               const SizedBox(width: 8),
-              Expanded(child: Text('Brancher une caméra IP', style: AppTextStyles.h4)),
+              Expanded(child: Text(l10n.liveConnectIpCamera, style: AppTextStyles.h4)),
             ],
           ),
           const SizedBox(height: 8),
@@ -554,7 +563,7 @@ class _ExternalCameraHelp extends StatelessWidget {
             ),
           const SizedBox(height: 6),
           Text(
-            "Caméra et micro de ce téléphone ne sont pas utilisés. Réglages conseillés : 720p, 2 à 4 Mbit/s, image clé toutes les 2 secondes, son AAC.",
+            l10n.liveExternalCameraNote,
             style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary, height: 1.5),
           ),
         ],
@@ -589,14 +598,14 @@ class _PreviewBox extends StatelessWidget {
                     : lk.VideoViewMirrorMode.off,
               )
             else
-              const Center(
+              Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.videocam_off_outlined, color: Colors.white54, size: 40),
-                    SizedBox(height: 8),
-                    Text('Aperçu de la caméra',
-                        style: TextStyle(color: Colors.white54, fontFamily: 'Plus Jakarta Sans')),
+                    const Icon(Icons.videocam_off_outlined, color: Colors.white54, size: 40),
+                    const SizedBox(height: 8),
+                    Text(context.l10n.liveCameraPreview,
+                        style: const TextStyle(color: Colors.white54, fontFamily: 'Plus Jakarta Sans')),
                   ],
                 ),
               ),
@@ -607,7 +616,7 @@ class _PreviewBox extends StatelessWidget {
                 child: IconButton.filled(
                   onPressed: onSwitch,
                   style: IconButton.styleFrom(backgroundColor: Colors.black54),
-                  tooltip: 'Changer de caméra',
+                  tooltip: context.l10n.liveSwitchCamera,
                   icon: const Icon(Icons.cameraswitch_rounded, color: Colors.white),
                 ),
               ),
@@ -640,7 +649,7 @@ class _CheckTile extends StatelessWidget {
       onTap: check.state == _CheckState.failed ? onTap : null,
       leading: Icon(icon, color: AppColors.textSecondary),
       title: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
-      subtitle: Text(check.message),
+      subtitle: Text(check.message(context.l10n)),
       trailing: check.state == _CheckState.pending
           ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
           : Icon(statusIcon, color: color),

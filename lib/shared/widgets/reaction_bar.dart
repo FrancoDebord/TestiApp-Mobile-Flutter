@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:testi_app/core/theme/app_colors.dart';
 import 'package:testi_app/core/theme/app_text_styles.dart';
+import '../../l10n/app_localizations.dart';
 
 // ── Data model ─────────────────────────────────────────────────────────────────
 
@@ -81,7 +82,7 @@ class ReactionBar extends StatelessWidget {
               _ReactionButton(
                 icon: Icons.favorite_border_rounded,
                 activeIcon: Icons.favorite_rounded,
-                label: 'J\'aime',
+                label: context.l10n.detailLike,
                 count: state.likeCount,
                 isActive: state.isLiked,
                 activeColor: AppColors.danger,
@@ -90,7 +91,7 @@ class ReactionBar extends StatelessWidget {
               _ReactionButton(
                 icon: Icons.volunteer_activism_outlined,
                 activeIcon: Icons.volunteer_activism_rounded,
-                label: 'Prier',
+                label: context.l10n.prayerPray,
                 count: state.prayCount,
                 isActive: state.isPrayed,
                 activeColor: AppColors.secondary,
@@ -99,7 +100,7 @@ class ReactionBar extends StatelessWidget {
               _ReactionButton(
                 icon: Icons.chat_bubble_outline_rounded,
                 activeIcon: Icons.chat_bubble_rounded,
-                label: 'Commenter',
+                label: context.l10n.detailComment,
                 count: state.commentCount,
                 isActive: false,
                 activeColor: AppColors.primary,
@@ -108,7 +109,7 @@ class ReactionBar extends StatelessWidget {
               _ReactionButton(
                 icon: Icons.share_outlined,
                 activeIcon: Icons.share_rounded,
-                label: 'Partager',
+                label: context.l10n.commonShare,
                 count: state.shareCount,
                 isActive: false,
                 activeColor: AppColors.primary,

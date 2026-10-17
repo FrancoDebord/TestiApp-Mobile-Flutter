@@ -19,6 +19,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../services/api_service.dart';
 import '../../../shared/widgets/app_button.dart';
+import '../../../l10n/app_localizations.dart';
 
 // ── Modèles ───────────────────────────────────────────────────────────────────
 
@@ -88,14 +89,18 @@ class AdminVerificationRequest {
 }
 
 class AdminVerificationDocument {
-  const AdminVerificationDocument({required this.index, required this.name, required this.isImage});
+  const AdminVerificationDocument({required this.index, String? name, required this.isImage})
+      : _name = name;
   final int index;
-  final String name;
+  final String? _name;
   final bool isImage;
+
+  /// Nom de la pièce, ou « Pièce » (dans la langue affichée) s'il est absent.
+  String get name => _name ?? L10n.current.adminDocumentFallback;
 
   factory AdminVerificationDocument.fromJson(Map<String, dynamic> j) => AdminVerificationDocument(
         index: (j['index'] as num?)?.toInt() ?? 0,
-        name: '${j['name'] ?? 'Pièce'}',
+        name: j['name'] == null ? null : '${j['name']}',
         isImage: j['isImage'] == true,
       );
 }
@@ -137,7 +142,12 @@ final adminVerificationDocumentProvider =
 class AdminVerificationsScreen extends StatelessWidget {
   const AdminVerificationsScreen({super.key});
 
-  static const _tabs = [('pending', 'En attente'), ('approved', 'Approuvées'), ('rejected', 'Refusées'), ('revoked', 'Retirées')];
+  static List<(String, String)> get _tabs => [
+        ('pending', L10n.current.adminVerifTabPending),
+        ('approved', L10n.current.adminVerifTabApproved),
+        ('rejected', L10n.current.adminVerifTabRejected),
+        ('revoked', L10n.current.adminVerifTabRevoked),
+      ];
 
   @override
   Widget build(BuildContext context) {
@@ -146,7 +156,7 @@ class AdminVerificationsScreen extends StatelessWidget {
       child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
-          title: const Text('Vérification des comptes'),
+          title: Text(context.l10n.adminAccountVerification),
           backgroundColor: AppColors.surface,
           surfaceTintColor: Colors.transparent,
           bottom: TabBar(
@@ -175,16 +185,16 @@ class _RequestList extends ConsumerWidget {
         error: (e, _) => ListView(children: [
           Padding(
             padding: const EdgeInsets.all(AppSpacing.xxl),
-            child: Text(e is LaravelApiException ? e.message : 'Chargement impossible.', textAlign: TextAlign.center),
+            child: Text(e is LaravelApiException ? e.message : context.l10n.adminLoadFailed, textAlign: TextAlign.center),
           ),
         ]),
         data: (result) {
           final items = result.$1;
           if (items.isEmpty) {
-            return ListView(children: const [
+            return ListView(children: [
               Padding(
-                padding: EdgeInsets.all(AppSpacing.xxl),
-                child: Text('Aucune demande.', textAlign: TextAlign.center),
+                padding: const EdgeInsets.all(AppSpacing.xxl),
+                child: Text(context.l10n.adminNoRequests, textAlign: TextAlign.center),
               ),
             ]);
           }
@@ -200,7 +210,7 @@ class _RequestList extends ConsumerWidget {
                 child: ListTile(
                   shape: const RoundedRectangleBorder(borderRadius: AppRadius.cardRadius),
                   title: Text(r.fullName, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  subtitle: Text('${r.roleLabel} · ${r.church}\n${r.documentCount} pièce(s)',
+                  subtitle: Text(context.l10n.adminVerifRequestSubtitle(r.roleLabel, r.church, r.documentCount),
                       maxLines: 3, overflow: TextOverflow.ellipsis),
                   isThreeLine: true,
                   trailing: const Icon(Icons.chevron_right_rounded),
@@ -246,7 +256,7 @@ class _AdminVerificationDetailScreenState extends ConsumerState<AdminVerificatio
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Action impossible. Vérifiez votre connexion.')));
+          .showSnackBar(SnackBar(content: Text(context.l10n.adminActionFailed)));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -264,10 +274,10 @@ class _AdminVerificationDetailScreenState extends ConsumerState<AdminVerificatio
           maxLength: 255,
           maxLines: 3,
           minLines: 1,
-          decoration: const InputDecoration(labelText: 'Motif (communiqué à la personne)'),
+          decoration: InputDecoration(labelText: context.l10n.adminReasonLabel),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(context.l10n.commonCancel)),
           FilledButton(
             onPressed: () {
               if (ctrl.text.trim().length >= 3) Navigator.pop(ctx, ctrl.text.trim());
@@ -283,33 +293,34 @@ class _AdminVerificationDetailScreenState extends ConsumerState<AdminVerificatio
   Widget build(BuildContext context) {
     final async = ref.watch(adminVerificationProvider(widget.requestId));
     final api = ref.read(apiServiceProvider);
+    final l10n = context.l10n;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Demande de vérification'),
+        title: Text(context.l10n.adminVerifRequestTitle),
         backgroundColor: AppColors.surface,
         surfaceTintColor: Colors.transparent,
       ),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text(e is LaravelApiException ? e.message : 'Chargement impossible.')),
+        error: (e, _) => Center(child: Text(e is LaravelApiException ? e.message : context.l10n.adminLoadFailed)),
         data: (r) => ListView(
           padding: const EdgeInsets.all(AppSpacing.screen),
           children: [
-            _info('Statut', r.statusLabel),
-            _info('Nom complet', r.fullName),
-            _info('Fonction', r.roleLabel),
-            _info('Église ou ministère', r.church),
-            if (r.userName != null) _info('Compte', '${r.userName}${r.userEmail != null ? '\n${r.userEmail}' : ''}'),
-            if (r.links.isNotEmpty) _info('Liens publics', r.links.join('\n')),
-            if (r.message?.isNotEmpty ?? false) _info('Message', r.message!),
-            if (r.reviewNote?.isNotEmpty ?? false) _info('Motif', r.reviewNote!),
+            _info(l10n.adminVerifStatus, r.statusLabel),
+            _info(l10n.adminVerifFullName, r.fullName),
+            _info(l10n.adminVerifRole, r.roleLabel),
+            _info(l10n.adminVerifChurch, r.church),
+            if (r.userName != null) _info(l10n.adminVerifAccount, '${r.userName}${r.userEmail != null ? '\n${r.userEmail}' : ''}'),
+            if (r.links.isNotEmpty) _info(l10n.adminVerifLinks, r.links.join('\n')),
+            if (r.message?.isNotEmpty ?? false) _info(l10n.adminVerifMessage, r.message!),
+            if (r.reviewNote?.isNotEmpty ?? false) _info(l10n.adminVerifReason, r.reviewNote!),
             const SizedBox(height: AppSpacing.md),
-            const Text('Pièces justificatives (privées)',
-                style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700, fontSize: 15)),
+            Text(l10n.adminVerifDocuments,
+                style: const TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700, fontSize: 15)),
             const SizedBox(height: AppSpacing.sm),
-            if (r.documents.isEmpty) const Text('Aucune pièce disponible.'),
+            if (r.documents.isEmpty) Text(l10n.adminVerifNoDocuments),
             for (final d in r.documents) _DocumentPreview(requestId: r.id, document: d),
             const SizedBox(height: AppSpacing.xl),
             if (r.isPending)
@@ -318,28 +329,28 @@ class _AdminVerificationDetailScreenState extends ConsumerState<AdminVerificatio
                 runSpacing: AppSpacing.sm,
                 children: [
                   AppButton(
-                    label: 'Approuver',
+                    label: l10n.adminApprove,
                     leadingIcon: Icons.verified_rounded,
                     isLoading: _busy,
                     onPressed: _busy
                         ? null
                         : () => _run(
                               () => api.post<dynamic>(AppConstants.adminVerificationApprove(r.id)),
-                              'Compte vérifié. La personne a été prévenue.',
+                              l10n.adminVerifApprovedSnack,
                             ),
                   ),
                   AppButton(
-                    label: 'Refuser',
+                    label: l10n.adminReject,
                     variant: AppButtonVariant.danger,
                     leadingIcon: Icons.close_rounded,
                     onPressed: _busy
                         ? null
                         : () async {
-                            final reason = await _askReason('Refuser la demande', 'Refuser');
+                            final reason = await _askReason(l10n.adminRejectRequest, l10n.adminReject);
                             if (reason == null) return;
                             await _run(
                               () => api.post<dynamic>(AppConstants.adminVerificationReject(r.id), data: {'reason': reason}),
-                              'Demande refusée. La personne a été prévenue.',
+                              l10n.adminVerifRejectedSnack,
                             );
                           },
                   ),
@@ -347,17 +358,17 @@ class _AdminVerificationDetailScreenState extends ConsumerState<AdminVerificatio
               )
             else if (r.status == 'approved' && r.userIsVerified && r.userId != null)
               AppButton(
-                label: 'Retirer la vérification',
+                label: l10n.adminRevokeVerification,
                 variant: AppButtonVariant.danger,
                 leadingIcon: Icons.block_rounded,
                 onPressed: _busy
                     ? null
                     : () async {
-                        final reason = await _askReason('Retirer la vérification', 'Retirer');
+                        final reason = await _askReason(l10n.adminRevokeVerification, l10n.commonRemove);
                         if (reason == null) return;
                         await _run(
                           () => api.post<dynamic>(AppConstants.adminRevokeVerification(r.userId!), data: {'reason': reason}),
-                          'Vérification retirée. La personne a été prévenue.',
+                          l10n.adminVerifRevokedSnack,
                         );
                       },
               ),
@@ -394,7 +405,7 @@ class _DocumentPreview extends ConsumerWidget {
         child: ListTile(
           leading: const Icon(Icons.picture_as_pdf_outlined),
           title: title,
-          subtitle: const Text('Document PDF : à consulter sur le site d’administration'),
+          subtitle: Text(context.l10n.adminVerifPdfHint),
           trailing: const Icon(Icons.open_in_new_rounded),
           onTap: () => launchUrl(
             Uri.parse('${AppConstants.webBaseUrl}/admin/verifications/$requestId'),
@@ -416,7 +427,7 @@ class _DocumentPreview extends ConsumerWidget {
               constraints: const BoxConstraints(minHeight: 120, maxHeight: 360),
               child: bytes.when(
                 loading: () => const SizedBox(height: 160, child: Center(child: CircularProgressIndicator())),
-                error: (_, _) => const SizedBox(height: 120, child: Center(child: Text('Pièce indisponible'))),
+                error: (_, _) => SizedBox(height: 120, child: Center(child: Text(context.l10n.adminVerifDocumentUnavailable))),
                 data: (b) => Image.memory(b, fit: BoxFit.contain, gaplessPlayback: true),
               ),
             ),

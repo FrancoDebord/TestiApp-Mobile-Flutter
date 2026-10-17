@@ -2,6 +2,8 @@
 // Notifications feature — domain models
 // =============================================================================
 
+import '../../../l10n/app_localizations.dart';
+
 enum NotificationType {
   comment,
   like,
@@ -40,44 +42,44 @@ extension NotificationTypeLabel on NotificationType {
   String get label {
     switch (this) {
       case NotificationType.comment:
-        return 'Commentaire';
+        return L10n.current.notifTypeComment;
       case NotificationType.like:
-        return 'Like';
+        return L10n.current.notifTypeLike;
       case NotificationType.prayer:
-        return 'Prière';
+        return L10n.current.notifTypePrayer;
       case NotificationType.approved:
-        return 'Approuvé';
+        return L10n.current.notifTypeApproved;
       case NotificationType.newFollowedTestimony:
-        return 'Nouveau témoignage';
+        return L10n.current.notifTypeNewTestimony;
       case NotificationType.resubmitted:
-        return 'Renvoyé en modération';
+        return L10n.current.notifTypeResubmitted;
       case NotificationType.approvalRevoked:
-        return 'Badge retiré';
+        return L10n.current.notifTypeApprovalRevoked;
       case NotificationType.pendingCorrection:
-        return 'Correction requise';
+        return L10n.current.notifTypePendingCorrection;
       case NotificationType.organizationVerified:
-        return 'Organisation vérifiée';
+        return L10n.current.notifTypeOrganizationVerified;
       case NotificationType.organizationRejected:
-        return 'Vérification refusée';
+        return L10n.current.notifTypeOrganizationRejected;
       case NotificationType.accountVerified:
-        return 'Compte vérifié';
+        return L10n.current.notifTypeAccountVerified;
       case NotificationType.accountVerificationRejected:
-        return 'Vérification du compte';
+        return L10n.current.notifTypeAccountVerification;
       case NotificationType.liveStarted:
-        return 'En direct';
+        return L10n.current.notifTypeLive;
       case NotificationType.event:
-        return 'Événement';
+        return L10n.current.notifTypeEvent;
       case NotificationType.follow:
-        return 'Abonné';
+        return L10n.current.notifTypeFollow;
       case NotificationType.share:
-        return 'Partage';
+        return L10n.current.notifTypeShare;
       case NotificationType.mention:
-        return 'Mention';
+        return L10n.current.notifTypeMention;
       case NotificationType.rejected:
-        return 'Refusé';
+        return L10n.current.notifTypeRejected;
       case NotificationType.accountManagerAdded:
       case NotificationType.accountManagerRemoved:
-        return 'Administrateurs';
+        return L10n.current.notifTypeAccountManagers;
     }
   }
 }
@@ -91,11 +93,11 @@ extension NotificationFilterLabel on NotificationFilterTab {
   String get label {
     switch (this) {
       case NotificationFilterTab.all:
-        return 'Toutes';
+        return L10n.current.notifTabAll;
       case NotificationFilterTab.unread:
-        return 'Nouveaux';
+        return L10n.current.notifTabNew;
       case NotificationFilterTab.popular:
-        return 'Populaires';
+        return L10n.current.notifTabPopular;
     }
   }
 }
@@ -185,12 +187,13 @@ class AppNotification {
       testimonyId == null && (eventId != null || prayerRequestId != null || prayerSessionId != null);
 
   String get body {
+    final l = L10n.current;
     switch (type) {
       case NotificationType.comment:
-        return '$actorName a commenté votre témoignage « $testimonyTitle »';
+        return l.notifBodyComment(actorName, testimonyTitle);
       case NotificationType.like:
-        if (_aboutOtherContent) return _serverMessageOr('$actorName a réagi à votre publication');
-        return '$actorName a aimé votre témoignage « $testimonyTitle »';
+        if (_aboutOtherContent) return _serverMessageOr(l.notifBodyReacted(actorName));
+        return l.notifBodyLiked(actorName, testimonyTitle);
       case NotificationType.prayer:
         // Requêtes, sessions de prière et événements : texte rédigé par le serveur.
         final prayerMsg = message?.trim() ?? '';
@@ -198,101 +201,102 @@ class AppNotification {
           // Le nom n'est ajouté que si le serveur ne l'a pas déjà mis (prayer_request_prayed :
           // « {Nom} prie pour votre requête de prière »).
           return actorName.isNotEmpty && !prayerMsg.startsWith(actorName)
-              ? '$actorName $prayerMsg'
+              ? '$actorName $prayerMsg' // i18n-ignore
               : prayerMsg;
         }
-        return '$actorName prie pour vous suite à « $testimonyTitle »';
+        return l.notifBodyPrayer(actorName, testimonyTitle);
       case NotificationType.approved:
-        return 'Votre témoignage « $testimonyTitle » a été approuvé';
+        return l.notifBodyApproved(testimonyTitle);
       case NotificationType.newFollowedTestimony:
-        return '$actorName a partagé un nouveau témoignage « $testimonyTitle »';
+        return l.notifBodyNewTestimony(actorName, testimonyTitle);
       case NotificationType.approvalRevoked:
-        return _serverMessageOr('Le badge « Approuvé » a été retiré de votre compte');
+        return _serverMessageOr(l.notifBodyApprovalRevoked);
       case NotificationType.resubmitted:
-        return _serverMessageOr('Un témoignage a été modifié et renvoyé en modération');
+        return _serverMessageOr(l.notifBodyResubmitted);
       case NotificationType.pendingCorrection:
-        return 'Votre témoignage « $testimonyTitle » nécessite des corrections';
+        return l.notifBodyPendingCorrection(testimonyTitle);
       case NotificationType.organizationVerified:
-        return 'Votre organisation a été vérifiée : le badge est maintenant visible';
+        return l.notifBodyOrganizationVerified;
       case NotificationType.organizationRejected:
-        return 'La vérification de votre organisation a été refusée';
+        return l.notifBodyOrganizationRejected;
       case NotificationType.accountVerified:
-        return _serverMessageOr('Votre compte est vérifié : le badge est maintenant visible');
+        return _serverMessageOr(l.notifBodyAccountVerified);
       case NotificationType.accountVerificationRejected:
-        return _serverMessageOr('La vérification de votre compte a été refusée');
+        return _serverMessageOr(l.notifBodyAccountVerificationRejected);
       case NotificationType.liveStarted:
         final msg = message?.trim() ?? '';
         if (msg.isNotEmpty) return msg;
         return testimonyTitle.isNotEmpty
-            ? '$actorName est en direct : $testimonyTitle'
-            : '$actorName est en direct';
+            ? l.notifBodyLiveTitle(actorName, testimonyTitle)
+            : l.notifBodyLive(actorName);
       case NotificationType.event:
         return message?.trim() ?? '';
       case NotificationType.follow:
-        return _serverMessageOr('$actorName vous suit maintenant');
+        return _serverMessageOr(l.notifBodyFollow(actorName));
       case NotificationType.share:
         return _serverMessageOr(testimonyTitle.isNotEmpty
-            ? '$actorName a partagé votre témoignage « $testimonyTitle »'
-            : '$actorName a partagé votre témoignage');
+            ? l.notifBodyShareTitle(actorName, testimonyTitle)
+            : l.notifBodyShare(actorName));
       case NotificationType.mention:
-        return _serverMessageOr('$actorName vous a mentionné');
+        return _serverMessageOr(l.notifBodyMention(actorName));
       case NotificationType.rejected:
         return _serverMessageOr(
-            "Votre témoignage « $testimonyTitle » n'a pas été publié");
+            l.notifBodyRejected(testimonyTitle));
       case NotificationType.accountManagerAdded:
         return _serverMessageOr(actorName.isNotEmpty
-            ? '$actorName vous a nommé administrateur de son compte'
-            : "Vous avez été nommé administrateur d'un compte");
+            ? l.notifBodyManagerAddedBy(actorName)
+            : l.notifBodyManagerAdded);
       case NotificationType.accountManagerRemoved:
         return _serverMessageOr(actorName.isNotEmpty
-            ? "Vous n'administrez plus le compte de $actorName"
-            : "Vous n'administrez plus un compte");
+            ? l.notifBodyManagerRemovedBy(actorName)
+            : l.notifBodyManagerRemoved);
     }
   }
 
   /// Titre court en gras de la notification (maquette écran 10).
   String get title {
+    final l = L10n.current;
     switch (type) {
       case NotificationType.comment:
-        return 'Nouveau commentaire';
+        return l.notifTitleComment;
       case NotificationType.like:
-        return _aboutOtherContent ? 'Nouvelle réaction' : 'Témoignage populaire';
+        return _aboutOtherContent ? l.notifTitleReaction : l.notifTitlePopular;
       case NotificationType.prayer:
-        return prayerSessionId != null ? 'Session de prière' : 'Prière pour vous';
+        return prayerSessionId != null ? l.notifTitlePrayerSession : l.notifTitlePrayer;
       case NotificationType.approved:
-        return 'Témoignage approuvé';
+        return l.notifTitleApproved;
       case NotificationType.newFollowedTestimony:
-        return 'Nouveau témoignage';
+        return l.notifTypeNewTestimony;
       case NotificationType.resubmitted:
-        return 'Renvoyé en modération';
+        return l.notifTypeResubmitted;
       case NotificationType.approvalRevoked:
-        return 'Badge retiré';
+        return l.notifTypeApprovalRevoked;
       case NotificationType.pendingCorrection:
-        return 'Correction requise';
+        return l.notifTypePendingCorrection;
       case NotificationType.organizationVerified:
-        return 'Organisation vérifiée';
+        return l.notifTypeOrganizationVerified;
       case NotificationType.organizationRejected:
-        return 'Vérification refusée';
+        return l.notifTypeOrganizationRejected;
       case NotificationType.accountVerified:
-        return 'Compte vérifié';
+        return l.notifTypeAccountVerified;
       case NotificationType.accountVerificationRejected:
-        return 'Vérification du compte';
+        return l.notifTypeAccountVerification;
       case NotificationType.liveStarted:
-        return 'En direct';
+        return l.notifTypeLive;
       case NotificationType.event:
-        return 'Événement';
+        return l.notifTypeEvent;
       case NotificationType.follow:
-        return 'Nouvel abonné';
+        return l.notifTitleFollow;
       case NotificationType.share:
-        return _aboutOtherContent ? 'Publication partagée' : 'Témoignage partagé';
+        return _aboutOtherContent ? l.notifTitlePostShared : l.notifTitleTestimonyShared;
       case NotificationType.mention:
-        return 'Vous avez été mentionné';
+        return l.notifTitleMention;
       case NotificationType.rejected:
-        return 'Témoignage non publié';
+        return l.notifTitleRejected;
       case NotificationType.accountManagerAdded:
-        return 'Nouveau compte à administrer';
+        return l.notifTitleManagerAdded;
       case NotificationType.accountManagerRemoved:
-        return 'Administration retirée';
+        return l.notifTitleManagerRemoved;
     }
   }
 

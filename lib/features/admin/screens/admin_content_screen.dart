@@ -26,7 +26,7 @@ class AdminContentScreen extends ConsumerWidget {
 
     return testimoniesAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Erreur : $e')),
+      error: (e, _) => Center(child: Text(context.l10n.adminErrorWithDetail('$e'))),
       data: (testimonies) => ListView.builder(
         padding: const EdgeInsets.symmetric(vertical: 8),
         itemCount: testimonies.length,
@@ -101,7 +101,7 @@ class _PublishedTestimonyCard extends StatelessWidget {
           const SizedBox(height: 10),
           // Stats row
           Builder(builder: (context) {
-            final l10n = AppLocalizations.of(context);
+            final l10n = context.l10n;
             return Row(
             children: [
               // Les statistiques passent à la ligne quand la place manque.
@@ -159,7 +159,9 @@ class _PublishedTestimonyCard extends StatelessWidget {
   }
 
   String _formatNumber(int n) {
-    String one(double v) => v.toStringAsFixed(1).replaceAll('.', ',');
+    String one(double v) => L10n.languageCode == 'fr'
+        ? v.toStringAsFixed(1).replaceAll('.', ',')
+        : v.toStringAsFixed(1);
     if (n >= 1000000) return '${one(n / 1000000)}M';
     if (n >= 1000) return '${one(n / 1000)}k';
     return '$n';
@@ -169,7 +171,7 @@ class _PublishedTestimonyCard extends StatelessWidget {
       '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
 
   void _confirmUnpublish(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+    final l10n = context.l10n;
     showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(

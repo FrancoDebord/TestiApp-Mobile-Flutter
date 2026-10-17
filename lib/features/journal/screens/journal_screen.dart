@@ -16,19 +16,16 @@ import '../widgets/journal_offline_sheet.dart';
 import '../models/journal_entry.dart';
 import '../../../shared/search/search_suggestions.dart';
 import '../../../shared/widgets/search_autocomplete_field.dart';
+import '../../../l10n/app_localizations.dart';
 
-const _months = [
-  'janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet',
-  'août', 'septembre', 'octobre', 'novembre', 'décembre',
-];
-
+/// « Septembre 2026 » / « September 2026 ».
 String journalMonthLabel(DateTime d) {
-  final label = '${_months[d.month - 1]} ${d.year}';
+  final label = formatMonthYear(d);
   return label[0].toUpperCase() + label.substring(1);
 }
 
-String journalDayLabel(DateTime d) =>
-    '${d.day} ${_months[d.month - 1]} ${d.year}';
+/// « 26 septembre 2026 » / « September 26, 2026 ».
+String journalDayLabel(DateTime d) => formatDateLong(d);
 
 IconData journalTypeIcon(JournalEntryType t) => switch (t) {
       JournalEntryType.text  => Icons.edit_note_rounded,
@@ -50,16 +47,16 @@ Future<void> startJournalEntry(BuildContext context, WidgetRef ref) async {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Nouveau témoignage privé', style: AppTextStyles.h4),
+            Text(context.l10n.journalNewPrivateTitle, style: AppTextStyles.h4),
             const SizedBox(height: 4),
-            Text('Gardé pour vous seul. Vous pourrez le partager plus tard.',
+            Text(context.l10n.journalNewPrivateHint,
                 style: AppTextStyles.bodySmall
                     .copyWith(color: AppColors.textSecondary)),
             const SizedBox(height: 12),
             for (final (f, icon, label, hint) in [
-              (TestimonyFormat.text, Icons.edit_note_rounded, 'Écrire', 'Un texte, avec mise en forme'),
-              (TestimonyFormat.audio, Icons.mic_rounded, 'Enregistrer ma voix', 'Un audio'),
-              (TestimonyFormat.video, Icons.videocam_rounded, 'Filmer', 'Une vidéo'),
+              (TestimonyFormat.text, Icons.edit_note_rounded, context.l10n.journalNewWrite, context.l10n.journalNewWriteHint),
+              (TestimonyFormat.audio, Icons.mic_rounded, context.l10n.journalNewRecordVoice, context.l10n.journalNewRecordVoiceHint),
+              (TestimonyFormat.video, Icons.videocam_rounded, context.l10n.journalNewFilm, context.l10n.journalNewFilmHint),
             ])
               ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -234,7 +231,7 @@ class _JournalScreenState extends ConsumerState<JournalScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Mon carnet privé'),
+        title: Text(context.l10n.journalTitle),
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
@@ -247,7 +244,7 @@ class _JournalScreenState extends ConsumerState<JournalScreen> {
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add_rounded),
-        label: const Text('Nouveau témoignage'),
+        label: Text(context.l10n.journalNewEntry),
       ),
       body: RefreshIndicator(
         onRefresh: _reload,
@@ -284,7 +281,7 @@ class _JournalScreenState extends ConsumerState<JournalScreen> {
                     onSubmitted: submit,
                     textInputAction: TextInputAction.search,
                     decoration: InputDecoration(
-                      hintText: 'Rechercher dans mon carnet…',
+                      hintText: context.l10n.journalSearchHint,
                       prefixIcon: const Icon(Icons.search_rounded),
                       suffixIcon: _search.text.isEmpty
                           ? null
@@ -321,7 +318,7 @@ class _JournalScreenState extends ConsumerState<JournalScreen> {
                       Padding(
                         padding: const EdgeInsets.only(right: 8),
                         child: ChoiceChip(
-                          label: Text(t?.label ?? 'Tous'),
+                          label: Text(t?.label ?? context.l10n.journalFilterAll),
                           avatar: t == null ? null : Icon(journalTypeIcon(t), size: 16),
                           selected: _type == t,
                           onSelected: (_) {
@@ -359,7 +356,7 @@ class _JournalScreenState extends ConsumerState<JournalScreen> {
             child: _Empty(
               icon: Icons.wifi_off_rounded,
               text: _error!,
-              action: TextButton(onPressed: _reload, child: const Text('Réessayer')),
+              action: TextButton(onPressed: _reload, child: Text(context.l10n.commonRetry)),
             ),
           ),
         ];
@@ -371,15 +368,14 @@ class _JournalScreenState extends ConsumerState<JournalScreen> {
           child: _Empty(
             icon: filtered ? Icons.search_off_rounded : Icons.auto_stories_rounded,
             text: filtered
-                ? 'Aucun témoignage ne correspond.'
-                : 'Votre carnet est vide.\nNotez ce que Dieu a fait pour vous, '
-                    'pour ne jamais l\'oublier.',
+                ? context.l10n.journalNoMatch
+                : context.l10n.journalEmpty,
             action: filtered
                 ? null
                 : FilledButton.icon(
                     onPressed: () => startJournalEntry(context, ref),
                     icon: const Icon(Icons.add_rounded),
-                    label: const Text('Mon premier témoignage'),
+                    label: Text(context.l10n.journalFirstEntry),
                   ),
           ),
         ),
@@ -410,7 +406,7 @@ class _JournalScreenState extends ConsumerState<JournalScreen> {
     }
 
     for (final e in _entries) {
-      final month = e.createdAt == null ? 'Sans date' : journalMonthLabel(e.createdAt!);
+      final month = e.createdAt == null ? context.l10n.journalNoDate : journalMonthLabel(e.createdAt!);
       if (month != currentMonth) {
         flush();
         currentMonth = month;
@@ -452,12 +448,12 @@ class _OfflineBanner extends ConsumerWidget {
           Expanded(
             child: Text(
               last == null
-                  ? 'Hors ligne : copie enregistrée sur ce téléphone.'
-                  : 'Hors ligne : copie du ${journalDayLabel(last.toLocal())}.',
+                  ? context.l10n.journalOfflineBanner
+                  : context.l10n.journalOfflineBannerDate(journalDayLabel(last.toLocal())),
               style: AppTextStyles.bodySmall,
             ),
           ),
-          TextButton(onPressed: onRetry, child: const Text('Réessayer')),
+          TextButton(onPressed: onRetry, child: Text(context.l10n.commonRetry)),
         ],
       ),
     );
@@ -487,9 +483,9 @@ class _Header extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Ce que Dieu a fait pour moi',
-                  style: TextStyle(
+                Text(
+                  context.l10n.journalHeaderTitle,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontFamily: 'Plus Jakarta Sans',
                     fontWeight: FontWeight.w700,
@@ -499,8 +495,8 @@ class _Header extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   total > 0
-                      ? '$total témoignage${total > 1 ? 's' : ''} · visible${total > 1 ? 's' : ''} par vous seul'
-                      : 'Visible uniquement par vous · sans modération',
+                      ? context.l10n.journalHeaderCount(total)
+                      : context.l10n.journalHeaderEmpty,
                   style: TextStyle(
                       color: Colors.white.withAlpha(215),
                       fontFamily: 'Plus Jakarta Sans',
@@ -608,9 +604,9 @@ class _PropheciesEntry extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Paroles prophétiques',
+                      Text(context.l10n.journalProphecies,
                           style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w800)),
-                      Text('Gardez-les, priez, témoignez de leur accomplissement.',
+                      Text(context.l10n.journalPropheciesHint,
                           style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
                     ],
                   ),

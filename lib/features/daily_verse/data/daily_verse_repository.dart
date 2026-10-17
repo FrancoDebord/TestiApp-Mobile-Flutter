@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/app_constants.dart';
 import '../../../core/local_db/daos/bible_dao.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../services/api_service.dart';
 import '../../bible/providers/bible_providers.dart' show bibleDaoProvider;
 import '../../home/models/testimony_model.dart';
@@ -38,8 +39,8 @@ class DailyVerseRepository {
       throw DailyVerseFailure(fields.isNotEmpty ? fields : e.message, statusCode: e.statusCode);
     } on DioException catch (e) {
       final status = e.response?.statusCode ?? 0;
-      if (status >= 500) throw DailyVerseFailure('Erreur du serveur ($status).', statusCode: status);
-      throw const DailyVerseFailure('Pas de connexion. Réessayez une fois en ligne.', offline: true);
+      if (status >= 500) throw DailyVerseFailure(L10n.current.verseServerError(status), statusCode: status);
+      throw DailyVerseFailure(L10n.current.verseOfflineError, offline: true);
     }
   }
 

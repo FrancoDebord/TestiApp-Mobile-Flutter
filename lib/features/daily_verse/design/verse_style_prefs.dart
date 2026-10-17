@@ -17,6 +17,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/app_constants.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../services/api_service.dart';
 import '../../auth/providers/auth_notifier.dart' show AuthState, AuthStateAuthenticated, AuthStateUnauthenticated, authStateProvider;
 import '../../home/providers/home_providers.dart' show dailyVerseProvider;
@@ -25,10 +26,10 @@ import 'verse_design_catalog.dart';
 
 /// Police du texte du verset (embarquées : assets/fonts).
 enum VerseFont {
-  lora('Lora', 'Lora', serif: true),
-  sourceSerif('Source Serif 4', 'Source Serif', serif: true),
-  inter('Inter', 'Inter', serif: false),
-  nunitoSans('Nunito Sans', 'Nunito Sans', serif: false);
+  lora('Lora', 'Lora', serif: true), // i18n-ignore : nom de police
+  sourceSerif('Source Serif 4', 'Source Serif', serif: true), // i18n-ignore : nom de police
+  inter('Inter', 'Inter', serif: false), // i18n-ignore : nom de police
+  nunitoSans('Nunito Sans', 'Nunito Sans', serif: false); // i18n-ignore : nom de police
 
   const VerseFont(this.family, this.label, {required this.serif});
 
@@ -39,25 +40,34 @@ enum VerseFont {
 
 /// Taille du texte : multiplie la taille calculée (sans passer sous le minimum).
 enum VerseTextSize {
-  small('Petit', 0.86),
-  medium('Moyen', 1.0),
-  large('Grand', 1.16);
+  small(0.86),
+  medium(1.0),
+  large(1.16);
 
-  const VerseTextSize(this.label, this.factor);
+  const VerseTextSize(this.factor);
 
-  final String label;
   final double factor;
+
+  String get label => switch (this) {
+        VerseTextSize.small => L10n.current.verseSizeSmall,
+        VerseTextSize.medium => L10n.current.verseSizeMedium,
+        VerseTextSize.large => L10n.current.verseSizeLarge,
+      };
 }
 
 enum VerseAlign {
-  start('Gauche', TextAlign.left, Icons.format_align_left_rounded),
-  center('Centré', TextAlign.center, Icons.format_align_center_rounded);
+  start(TextAlign.left, Icons.format_align_left_rounded),
+  center(TextAlign.center, Icons.format_align_center_rounded);
 
-  const VerseAlign(this.label, this.textAlign, this.icon);
+  const VerseAlign(this.textAlign, this.icon);
 
-  final String label;
   final TextAlign textAlign;
   final IconData icon;
+
+  String get label => switch (this) {
+        VerseAlign.start => L10n.current.verseAlignLeft,
+        VerseAlign.center => L10n.current.verseAlignCenter,
+      };
 }
 
 /// Préférences de style du verset.
@@ -336,10 +346,15 @@ class VerseStylePrefsNotifier extends Notifier<VerseStylePrefs> {
       await _push();
       return;
     }
+    // user_style du verset : seulement si aucun changement local n'a eu lieu
+    // depuis le lancement (le verset a pu être chargé avant ce changement) ;
+    // sinon GET /me/verse-style, à jour.
     Map<String, dynamic>? style;
-    try {
-      style = (await ref.read(dailyVerseProvider.future)).userStyle;
-    } catch (_) {}
+    if (_revision == 0) {
+      try {
+        style = (await ref.read(dailyVerseProvider.future)).userStyle;
+      } catch (_) {}
+    }
     await _pull(style);
   }
 
@@ -369,9 +384,18 @@ class VerseStylePrefsNotifier extends Notifier<VerseStylePrefs> {
         chosenOn: VerseStylePrefs.dayKey(verseDay(now())),
       ));
 
+  /// Design affiché aujourd'hui, calculé ici : lire currentVerseDesignProvider
+  /// depuis ce notifier, dont il dépend, lèverait une CircularDependencyError
+  /// (l'option « Toujours utiliser mon design » restait alors sans effet).
+  VerseDesign _displayedDesign() => state.resolveDesign(
+        now: now(),
+        available: ref.read(availableVerseDesignsProvider),
+        serverDesignId: ref.read(serverVerseDesignIdProvider),
+      );
+
   void setAlwaysMine(bool value) {
     // Activer l'option fige le design affiché aujourd'hui.
-    final current = ref.read(currentVerseDesignProvider);
+    final current = _displayedDesign();
     _update(state.copyWith(
       alwaysMine: value,
       designId: value ? current.id : state.designId,

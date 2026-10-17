@@ -16,6 +16,7 @@ import '../models/prophecy.dart';
 import '../providers/prophecies_providers.dart';
 import '../widgets/prophecy_widgets.dart';
 import 'prophecy_reminder_sheet.dart';
+import '../../../l10n/app_localizations.dart';
 
 enum _Mode { text, audio }
 
@@ -83,8 +84,9 @@ class _ProphecyFormScreenState extends ConsumerState<ProphecyFormScreen> {
   // ── Audio ──────────────────────────────────────────────────────────────────
 
   Future<void> _startRecording() async {
+    final micPermission = context.l10n.prophecyMicPermission;
     if (!await _recorder.checkPermission()) {
-      _snack('Autorisez le micro dans les réglages du téléphone.');
+      _snack(micPermission);
       return;
     }
     final dir = await getTemporaryDirectory();
@@ -130,8 +132,8 @@ class _ProphecyFormScreenState extends ConsumerState<ProphecyFormScreen> {
       initialDate: _draft.receivedOn,
       firstDate: DateTime(now.year - 50),
       lastDate: now,
-      locale: const Locale('fr'),
-      helpText: 'Date de la parole',
+      locale: L10n.locale,
+      helpText: context.l10n.prophecyDateLabel,
     );
     if (d != null) setState(() => _draft.receivedOn = d);
   }
@@ -144,7 +146,7 @@ class _ProphecyFormScreenState extends ConsumerState<ProphecyFormScreen> {
       initialTime: current == null
           ? TimeOfDay.now()
           : TimeOfDay(hour: int.parse(current.substring(0, 2)), minute: int.parse(current.substring(3))),
-      helpText: 'Heure de la parole',
+      helpText: context.l10n.prophecyTimeLabel,
     );
     if (t != null) {
       setState(() => _draft.receivedTime =
@@ -159,8 +161,8 @@ class _ProphecyFormScreenState extends ConsumerState<ProphecyFormScreen> {
       initialDate: _draft.dueOn ?? now.add(const Duration(days: 365)),
       firstDate: _draft.receivedOn,
       lastDate: DateTime(now.year + 30),
-      locale: const Locale('fr'),
-      helpText: 'Échéance (facultative)',
+      locale: L10n.locale,
+      helpText: context.l10n.prophecyDueLabel,
     );
     if (d != null) setState(() => _draft.dueOn = d);
   }
@@ -168,12 +170,13 @@ class _ProphecyFormScreenState extends ConsumerState<ProphecyFormScreen> {
   // ── Enregistrement ─────────────────────────────────────────────────────────
 
   Future<void> _save() async {
+    final emptyContent = context.l10n.prophecyEmptyContent;
     if (_recording) await _stopRecording();
     if (!_form.currentState!.validate()) return;
     final hasText = _draft.bodyText.trim().isNotEmpty;
     final hasAudio = _draft.localAudioPath != null || _draft.audioUrl != null;
     if (!hasText && !hasAudio) {
-      _snack('Écrivez la parole ou enregistrez-la en audio.');
+      _snack(emptyContent);
       return;
     }
     setState(() => _saving = true);
@@ -183,7 +186,7 @@ class _ProphecyFormScreenState extends ConsumerState<ProphecyFormScreen> {
       ref.invalidate(propheciesListProvider);
       if (_isEdit) ref.invalidate(prophecyProvider(p.id));
       if (!mounted) return;
-      _snack(_isEdit ? 'Parole mise à jour.' : 'Parole gardée dans votre carnet.');
+      _snack(_isEdit ? context.l10n.prophecyUpdated : context.l10n.prophecySaved);
       if (_isEdit) {
         context.pop();
       } else {
@@ -200,7 +203,7 @@ class _ProphecyFormScreenState extends ConsumerState<ProphecyFormScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text(_isEdit ? 'Modifier la parole' : 'Nouvelle parole prophétique'),
+        title: Text(_isEdit ? context.l10n.prophecyEditTitle : context.l10n.prophecyNewTitle),
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.textPrimary,
         surfaceTintColor: AppColors.surface,
@@ -222,7 +225,7 @@ class _ProphecyFormScreenState extends ConsumerState<ProphecyFormScreen> {
                       ? const SizedBox(
                           width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                       : const Icon(Icons.bookmark_add_rounded),
-                  label: Text(_isEdit ? 'Enregistrer' : 'Garder cette parole'),
+                  label: Text(_isEdit ? context.l10n.commonSave : context.l10n.prophecyKeepWord),
                 ),
               ),
             ),
@@ -238,15 +241,15 @@ class _ProphecyFormScreenState extends ConsumerState<ProphecyFormScreen> {
         children: [
           // ── La parole ─────────────────────────────────────────────────────
           _Card(
-            title: 'La parole',
+            title: context.l10n.prophecySectionWord,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 SegmentedButton<_Mode>(
                   showSelectedIcon: false,
-                  segments: const [
-                    ButtonSegment(value: _Mode.text, icon: Icon(Icons.edit_note_rounded), label: Text('Texte')),
-                    ButtonSegment(value: _Mode.audio, icon: Icon(Icons.mic_rounded), label: Text('Audio')),
+                  segments: [
+                    ButtonSegment(value: _Mode.text, icon: const Icon(Icons.edit_note_rounded), label: Text(context.l10n.prophecyModeText)),
+                    ButtonSegment(value: _Mode.audio, icon: const Icon(Icons.mic_rounded), label: Text(context.l10n.prophecyModeAudio)),
                   ],
                   selected: {_mode},
                   onSelectionChanged: (s) => setState(() => _mode = s.first),
@@ -259,8 +262,8 @@ class _ProphecyFormScreenState extends ConsumerState<ProphecyFormScreen> {
                     maxLines: 14,
                     maxLength: 20000,
                     textCapitalization: TextCapitalization.sentences,
-                    decoration: const InputDecoration(
-                      hintText: 'Écrivez la parole telle que vous l\'avez reçue…',
+                    decoration: InputDecoration(
+                      hintText: context.l10n.prophecyTextHint,
                       alignLabelWithHint: true,
                     ),
                     onChanged: (v) => d.bodyText = v,
@@ -273,20 +276,20 @@ class _ProphecyFormScreenState extends ConsumerState<ProphecyFormScreen> {
 
           // ── Contexte ──────────────────────────────────────────────────────
           _Card(
-            title: 'Contexte',
+            title: context.l10n.prophecySectionContext,
             child: Column(
               children: [
                 _DateTile(
                   icon: Icons.event_note_rounded,
-                  label: 'Date de la parole',
+                  label: context.l10n.prophecyDateLabel,
                   value: prophecyDay(d.receivedOn),
                   onTap: _pickReceived,
                 ),
                 const SizedBox(height: 10),
                 _DateTile(
                   icon: Icons.schedule_rounded,
-                  label: 'Heure de la parole (facultatif)',
-                  value: d.receivedTime ?? 'Non précisée',
+                  label: context.l10n.prophecyTimeOptionalLabel,
+                  value: d.receivedTime ?? context.l10n.prophecyTimeUnspecified,
                   onTap: _pickReceivedTime,
                   onClear: d.receivedTime == null ? null : () => setState(() => d.receivedTime = null),
                 ),
@@ -295,10 +298,10 @@ class _ProphecyFormScreenState extends ConsumerState<ProphecyFormScreen> {
                   initialValue: d.givenBy,
                   maxLength: 150,
                   textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(
-                    labelText: 'Qui l\'a donnée ? (facultatif)',
-                    hintText: 'Ex. : Pasteur Jean, lors du culte de jeudi',
-                    prefixIcon: Icon(Icons.person_outline_rounded),
+                  decoration: InputDecoration(
+                    labelText: context.l10n.prophecyGivenByLabel,
+                    hintText: context.l10n.prophecyGivenByHint,
+                    prefixIcon: const Icon(Icons.person_outline_rounded),
                   ),
                   onChanged: (v) => d.givenBy = v,
                 ),
@@ -307,9 +310,9 @@ class _ProphecyFormScreenState extends ConsumerState<ProphecyFormScreen> {
                   initialValue: d.title,
                   maxLength: 150,
                   textCapitalization: TextCapitalization.sentences,
-                  decoration: const InputDecoration(
-                    labelText: 'Titre (facultatif)',
-                    hintText: 'Ex. : Une porte ouverte',
+                  decoration: InputDecoration(
+                    labelText: context.l10n.prophecyTitleLabel,
+                    hintText: context.l10n.prophecyTitleHint,
                     prefixIcon: Icon(Icons.title_rounded),
                   ),
                   onChanged: (v) => d.title = v,
@@ -317,8 +320,8 @@ class _ProphecyFormScreenState extends ConsumerState<ProphecyFormScreen> {
                 const SizedBox(height: 4),
                 _DateTile(
                   icon: Icons.flag_outlined,
-                  label: 'Échéance (facultative)',
-                  value: d.dueOn == null ? 'Aucune' : prophecyDay(d.dueOn!),
+                  label: context.l10n.prophecyDueLabel,
+                  value: d.dueOn == null ? context.l10n.prophecyDueNone : prophecyDay(d.dueOn!),
                   onTap: _pickDue,
                   onClear: d.dueOn == null ? null : () => setState(() => d.dueOn = null),
                 ),
@@ -328,12 +331,12 @@ class _ProphecyFormScreenState extends ConsumerState<ProphecyFormScreen> {
 
           // ── Rappel de prière ───────────────────────────────────────────────
           _Card(
-            title: 'Rappel de prière',
+            title: context.l10n.prophecyReminderLabel,
             child: ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.notifications_active_outlined, color: AppColors.primary),
-              title: Text(d.reminder?.label ?? 'Aucun rappel'),
-              subtitle: const Text('Une notification pour prier sur cette parole.'),
+              title: Text(d.reminder?.label ?? context.l10n.prophecyNoReminderShort),
+              subtitle: Text(context.l10n.prophecyReminderSubtitle),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () async {
                 final r = await showReminderSheet(context, current: d.reminder);
@@ -349,7 +352,7 @@ class _ProphecyFormScreenState extends ConsumerState<ProphecyFormScreen> {
   Widget _audioBlock() {
     final d = _draft;
     if (kIsWeb) {
-      return const Text("L'enregistrement audio se fait depuis l'application mobile.",
+      return Text(context.l10n.prophecyAudioMobileOnly,
           style: TextStyle(color: AppColors.textSecondary));
     }
     if (_recording) {
@@ -368,7 +371,7 @@ class _ProphecyFormScreenState extends ConsumerState<ProphecyFormScreen> {
             onPressed: _stopRecording,
             style: FilledButton.styleFrom(backgroundColor: AppColors.danger, minimumSize: const Size.fromHeight(46)),
             icon: const Icon(Icons.stop_rounded),
-            label: const Text("Arrêter l'enregistrement"),
+            label: Text(context.l10n.prophecyStopRecording),
           ),
         ],
       );
@@ -383,8 +386,8 @@ class _ProphecyFormScreenState extends ConsumerState<ProphecyFormScreen> {
     }
     return Column(
       children: [
-        const Text(
-          'Enregistrez la parole de vive voix, ou faites écouter l\'enregistrement reçu.',
+        Text(
+          context.l10n.prophecyRecordHint,
           textAlign: TextAlign.center,
           style: TextStyle(color: AppColors.textSecondary),
         ),
@@ -393,7 +396,7 @@ class _ProphecyFormScreenState extends ConsumerState<ProphecyFormScreen> {
           onPressed: _startRecording,
           style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(46)),
           icon: const Icon(Icons.mic_rounded),
-          label: const Text('Enregistrer'),
+          label: Text(context.l10n.prophecyRecord),
         ),
       ],
     );
@@ -447,7 +450,7 @@ class _DateTile extends StatelessWidget {
           prefixIcon: Icon(icon),
           suffixIcon: onClear == null
               ? const Icon(Icons.edit_calendar_outlined)
-              : IconButton(tooltip: 'Retirer', onPressed: onClear, icon: const Icon(Icons.close_rounded)),
+              : IconButton(tooltip: context.l10n.commonRemove, onPressed: onClear, icon: const Icon(Icons.close_rounded)),
         ),
         child: Text(value),
       ),

@@ -10,6 +10,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart' show AppFonts;
+import '../../../l10n/app_localizations.dart';
 import '../../auth/providers/auth_notifier.dart' show currentUserProvider;
 import '../controllers/live_room_controller.dart';
 import '../data/live_repository.dart';
@@ -133,7 +134,7 @@ class _LiveStudioScreenState extends ConsumerState<LiveStudioScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       behavior: SnackBarBehavior.floating,
       backgroundColor: err == null ? kLiveRed : AppColors.danger,
-      content: Text(err ?? 'Vous êtes en direct !'),
+      content: Text(err ?? context.l10n.liveYouAreLive),
     ));
   }
 
@@ -155,22 +156,21 @@ class _LiveStudioScreenState extends ConsumerState<LiveStudioScreen> {
     final choice = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Quitter le studio ?'),
+        title: Text(context.l10n.liveLeaveStudioTitle),
         content: Text(ctrl.live.isOnAir
-            ? 'Vous êtes en direct. Vous pouvez le terminer, ou quitter et revenir '
-                'dans les 5 minutes pour le reprendre (sinon il sera clôturé).'
-            : 'Le direct n\'a pas commencé. Vous pouvez y revenir depuis la liste des directs.'),
+            ? context.l10n.liveLeaveStudioOnAir
+            : context.l10n.liveLeaveStudioNotStarted),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Rester')),
+              child: Text(context.l10n.liveStay)),
           TextButton(
               onPressed: () => Navigator.pop(context, 'leave'),
-              child: const Text('Quitter')),
+              child: Text(context.l10n.liveLeave)),
           FilledButton(
             onPressed: () => Navigator.pop(context, 'end'),
             style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
-            child: const Text('Terminer'),
+            child: Text(context.l10n.liveEndAction),
           ),
         ],
       ),
@@ -208,6 +208,7 @@ class _LiveStudioScreenState extends ConsumerState<LiveStudioScreen> {
 
   Widget _buildStudio(BuildContext context, LiveRoomController ctrl) {
     final live = ctrl.live;
+    final l10n = context.l10n;
 
     if (ctrl.ended) {
       return LiveEndedView(
@@ -270,10 +271,10 @@ class _LiveStudioScreenState extends ConsumerState<LiveStudioScreen> {
                 Text(
                   ctrl.error ??
                       (external
-                          ? 'En attente du flux de la caméra…'
+                          ? l10n.liveWaitingCameraFeed
                           : ctrl.cameraEnabled
-                              ? 'Ouverture de la caméra…'
-                              : 'Caméra coupée : les spectateurs ne vous voient plus'),
+                              ? l10n.liveOpeningCamera
+                              : l10n.liveCameraOffViewers),
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                       color: Colors.white70, fontFamily: 'Plus Jakarta Sans'),
@@ -284,7 +285,7 @@ class _LiveStudioScreenState extends ConsumerState<LiveStudioScreen> {
                     onPressed: _open,
                     style:
                         OutlinedButton.styleFrom(foregroundColor: Colors.white),
-                    child: const Text('Réessayer'),
+                    child: Text(l10n.commonRetry),
                   ),
                 ],
               ],
@@ -361,9 +362,9 @@ class _LiveStudioScreenState extends ConsumerState<LiveStudioScreen> {
                   enabled: connected,
                   showPinOption: true,
                   hint: live.commentsEnabled
-                      ? 'Écrire aux spectateurs…'
-                      : 'Écrire aux spectateurs (commentaires fermés au public)…',
-                  disabledHint: 'Connexion au direct…',
+                      ? l10n.liveWriteToViewers
+                      : l10n.liveWriteToViewersClosed,
+                  disabledHint: l10n.liveConnectingToLive,
                   onSend: ctrl.sendComment,
                 ),
               ),
@@ -413,7 +414,7 @@ class _LiveStudioScreenState extends ConsumerState<LiveStudioScreen> {
                     if (external)
                       _RoundControl(
                         icon: Icons.settings_input_antenna_rounded,
-                        tooltip: 'Connexion de la caméra',
+                        tooltip: l10n.liveCameraConnection,
                         active: true,
                         onTap: () =>
                             setState(() => _cameraPanelOpen = !_cameraPanelOpen),
@@ -423,7 +424,7 @@ class _LiveStudioScreenState extends ConsumerState<LiveStudioScreen> {
                       icon: ctrl.micEnabled
                           ? Icons.mic_rounded
                           : Icons.mic_off_rounded,
-                      tooltip: ctrl.micEnabled ? 'Couper le micro' : 'Rétablir le micro',
+                      tooltip: ctrl.micEnabled ? l10n.liveMuteMic : l10n.liveRestoreMic,
                       active: ctrl.micEnabled,
                       onTap: connected ? ctrl.toggleMic : null,
                     ),
@@ -432,14 +433,14 @@ class _LiveStudioScreenState extends ConsumerState<LiveStudioScreen> {
                       icon: ctrl.cameraEnabled
                           ? Icons.videocam_rounded
                           : Icons.videocam_off_rounded,
-                      tooltip: ctrl.cameraEnabled ? 'Couper la caméra' : 'Rétablir la caméra',
+                      tooltip: ctrl.cameraEnabled ? l10n.liveCameraOff : l10n.liveRestoreCamera,
                       active: ctrl.cameraEnabled,
                       onTap: connected ? ctrl.toggleCamera : null,
                     ),
                     const SizedBox(width: 10),
                     _RoundControl(
                       icon: Icons.cameraswitch_rounded,
-                      tooltip: 'Changer de caméra',
+                      tooltip: l10n.liveSwitchCamera,
                       active: true,
                       onTap: connected && ctrl.cameraEnabled
                           ? ctrl.switchCamera
@@ -465,7 +466,7 @@ class _LiveStudioScreenState extends ConsumerState<LiveStudioScreen> {
                                 padding: const EdgeInsets.symmetric(horizontal: 12),
                               ),
                               icon: const Icon(Icons.stop_rounded),
-                              label: const Text('Terminer',
+                              label: Text(l10n.liveEndAction,
                                   maxLines: 1, overflow: TextOverflow.ellipsis),
                             )
                           // Caméra externe : actif seulement quand l'image du flux
@@ -487,10 +488,10 @@ class _LiveStudioScreenState extends ConsumerState<LiveStudioScreen> {
                                           strokeWidth: 2, color: Colors.white))
                                   : const Icon(Icons.sensors_rounded),
                               label: Text(!connected
-                                  ? 'Connexion…'
+                                  ? l10n.liveConnecting
                                   : external && ctrl.video == null
-                                      ? 'En attente du flux'
-                                      : 'Passer à l\'antenne',
+                                      ? l10n.liveWaitingFeed
+                                      : l10n.liveGoOnAir,
                                   maxLines: 2,
                                   textAlign: TextAlign.center,
                                   overflow: TextOverflow.ellipsis),
@@ -529,29 +530,30 @@ class _CameraConnectionPanel extends StatefulWidget {
 class _CameraConnectionPanelState extends State<_CameraConnectionPanel> {
   bool _showKey = false;
 
-  Future<void> _copy(String value, String what) async {
+  Future<void> _copy(String value, String copiedMessage) async {
     await Clipboard.setData(ClipboardData(text: value));
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        behavior: SnackBarBehavior.floating, content: Text('$what copiée')));
+        behavior: SnackBarBehavior.floating, content: Text(copiedMessage)));
   }
 
   @override
   Widget build(BuildContext context) {
     final camera = widget.live.camera;
     final rtmp = widget.live.source == LiveSource.rtmp;
+    final l10n = context.l10n;
     const labelStyle = TextStyle(
         color: Colors.white70, fontFamily: AppFonts.family, fontSize: 12);
 
     Widget field({
       required String label,
       required String? value,
-      required String copyLabel,
+      required String copiedMessage,
       bool secret = false,
     }) {
       final v = value ?? '';
       final shown = v.isEmpty
-          ? 'Non disponible'
+          ? l10n.liveNotAvailable
           : secret && !_showKey
               ? '•' * 16
               : v;
@@ -576,7 +578,7 @@ class _CameraConnectionPanelState extends State<_CameraConnectionPanel> {
                 ),
                 if (secret && v.isNotEmpty)
                   IconButton(
-                    tooltip: _showKey ? 'Masquer' : 'Afficher',
+                    tooltip: _showKey ? l10n.liveCamHide : l10n.liveCamShow,
                     onPressed: () => setState(() => _showKey = !_showKey),
                     icon: Icon(
                       _showKey
@@ -588,8 +590,8 @@ class _CameraConnectionPanelState extends State<_CameraConnectionPanel> {
                   ),
                 if (v.isNotEmpty)
                   IconButton(
-                    tooltip: 'Copier',
-                    onPressed: () => _copy(v, copyLabel),
+                    tooltip: l10n.commonCopy,
+                    onPressed: () => _copy(v, copiedMessage),
                     icon: const Icon(Icons.copy_rounded,
                         color: Colors.white70, size: 20),
                   ),
@@ -616,10 +618,10 @@ class _CameraConnectionPanelState extends State<_CameraConnectionPanel> {
               const Icon(Icons.settings_input_antenna_rounded,
                   color: Colors.white, size: 18),
               const SizedBox(width: 8),
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'Caméra IP',
-                  style: TextStyle(
+                  l10n.liveIpCamera,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontFamily: AppFonts.family,
                     fontWeight: FontWeight.w700,
@@ -637,11 +639,11 @@ class _CameraConnectionPanelState extends State<_CameraConnectionPanel> {
                 ),
               ),
               const SizedBox(width: 6),
-              Text(widget.received ? 'Flux reçu' : 'En attente du flux',
+              Text(widget.received ? l10n.liveFeedReceived : l10n.liveWaitingFeed,
                   style: labelStyle),
               if (widget.onClose != null)
                 IconButton(
-                  tooltip: 'Fermer',
+                  tooltip: l10n.commonClose,
                   onPressed: widget.onClose,
                   icon: const Icon(Icons.close_rounded,
                       color: Colors.white70, size: 20),
@@ -652,35 +654,32 @@ class _CameraConnectionPanelState extends State<_CameraConnectionPanel> {
           ),
           if (rtmp) ...[
             field(
-              label: 'Adresse du serveur (URL RTMP)',
+              label: l10n.liveRtmpServerUrl,
               value: camera?.url,
-              copyLabel: 'Adresse',
+              copiedMessage: l10n.liveAddressCopied,
             ),
             field(
-              label: 'Clé de diffusion (ne la partagez pas)',
+              label: l10n.liveStreamKey,
               value: camera?.streamKey,
-              copyLabel: 'Clé',
+              copiedMessage: l10n.liveKeyCopied,
               secret: true,
             ),
             const SizedBox(height: 6),
-            const Text(
-              'Saisissez ces deux valeurs dans la caméra, OBS ou votre encodeur, '
-              'puis lancez la diffusion. Le direct ne démarre pas tout seul.',
+            Text(
+              l10n.liveRtmpInstructions,
               style: labelStyle,
             ),
           ] else ...[
             const SizedBox(height: 6),
-            const Text(
-              "Le service vidéo se connecte lui-même à l'adresse du flux de la "
-              "caméra. Si l'image n'arrive pas, vérifiez que l'adresse est "
-              'joignable depuis Internet.',
+            Text(
+              l10n.liveUrlInstructions,
               style: labelStyle,
             ),
             if (camera?.sourceUrl != null)
               field(
-                label: 'Adresse du flux',
+                label: l10n.liveStreamAddress,
                 value: camera!.sourceUrl,
-                copyLabel: 'Adresse',
+                copiedMessage: l10n.liveAddressCopied,
                 secret: true, // peut contenir un mot de passe
               ),
           ],
@@ -699,11 +698,12 @@ class _StudioTopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final live = ctrl.live;
+    final l10n = context.l10n;
     final (qIcon, qLabel) = switch (ctrl.connectionQuality) {
-      lk.ConnectionQuality.excellent => (Icons.signal_cellular_alt_rounded, 'Excellent'),
-      lk.ConnectionQuality.good => (Icons.signal_cellular_alt_2_bar_rounded, 'Bon'),
-      lk.ConnectionQuality.poor => (Icons.signal_cellular_alt_1_bar_rounded, 'Faible'),
-      lk.ConnectionQuality.lost => (Icons.signal_cellular_off_rounded, 'Perdu'),
+      lk.ConnectionQuality.excellent => (Icons.signal_cellular_alt_rounded, l10n.liveQualityExcellent),
+      lk.ConnectionQuality.good => (Icons.signal_cellular_alt_2_bar_rounded, l10n.liveQualityGood),
+      lk.ConnectionQuality.poor => (Icons.signal_cellular_alt_1_bar_rounded, l10n.liveQualityPoor),
+      lk.ConnectionQuality.lost => (Icons.signal_cellular_off_rounded, l10n.liveQualityLost),
       _ => (Icons.signal_cellular_alt_rounded, '…'),
     };
     return Padding(
@@ -722,15 +722,15 @@ class _StudioTopBar extends StatelessWidget {
                 children: [
                   live.isOnAir
                       ? const LiveBadge()
-                      : const LiveBadge(
-                          label: 'EN PRÉPARATION', color: Color(0xFF475467)),
+                      : LiveBadge(
+                          label: l10n.liveBadgePreparing, color: const Color(0xFF475467)),
                   if (live.isOnAir && live.duration != null)
                     LiveChip(
                         icon: Icons.timer_outlined,
                         label: formatLiveDuration(live.duration!)),
                   LiveViewersChip(liveId: live.id, viewers: ctrl.viewers),
                   Tooltip(
-                    message: 'Qualité du réseau : $qLabel',
+                    message: l10n.liveNetworkQuality(qLabel),
                     child: LiveChip(icon: qIcon, label: qLabel),
                   ),
                 ],
@@ -738,7 +738,7 @@ class _StudioTopBar extends StatelessWidget {
             ),
           ),
           IconButton(
-            tooltip: 'Quitter le studio',
+            tooltip: l10n.liveLeaveStudio,
             onPressed: onClose,
             icon: const Icon(Icons.close_rounded, color: Colors.white),
           ),
@@ -840,13 +840,13 @@ class _StudioLoading extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: error == null
-              ? const Column(
+              ? Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    CircularProgressIndicator(color: Colors.white70),
-                    SizedBox(height: 14),
-                    Text('Ouverture du studio…',
-                        style: TextStyle(color: Colors.white70, fontFamily: 'Plus Jakarta Sans')),
+                    const CircularProgressIndicator(color: Colors.white70),
+                    const SizedBox(height: 14),
+                    Text(context.l10n.liveOpeningStudio,
+                        style: const TextStyle(color: Colors.white70, fontFamily: 'Plus Jakarta Sans')),
                   ],
                 )
               : Column(
@@ -863,13 +863,13 @@ class _StudioLoading extends StatelessWidget {
                       children: [
                         TextButton(
                           onPressed: onClose,
-                          child: const Text('Fermer', style: TextStyle(color: Colors.white70)),
+                          child: Text(context.l10n.commonClose, style: const TextStyle(color: Colors.white70)),
                         ),
                         const SizedBox(width: 8),
                         OutlinedButton(
                           onPressed: onRetry,
                           style: OutlinedButton.styleFrom(foregroundColor: Colors.white),
-                          child: const Text('Réessayer'),
+                          child: Text(context.l10n.commonRetry),
                         ),
                       ],
                     ),

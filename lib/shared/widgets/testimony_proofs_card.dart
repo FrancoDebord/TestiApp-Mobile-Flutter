@@ -18,6 +18,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../features/home/models/testimony_model.dart';
+import '../../l10n/app_localizations.dart';
 import '../../services/api_service.dart';
 
 /// Jeton d'accès courant (pour les images protégées chargées hors Dio).
@@ -27,8 +28,8 @@ final proofAuthHeadersProvider =
           .read(secureStorageProvider)
           .read(key: AppConstants.keyAccessToken);
       return {
-        'Accept': '*/*',
-        if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+        'Accept': '*/*', // i18n-ignore
+        if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token', // i18n-ignore
       };
     });
 
@@ -68,17 +69,15 @@ class TestimonyProofsCard extends ConsumerWidget {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: Text('Preuves du témoignage', style: AppTextStyles.h4),
+                child: Text(context.l10n.sharedProofsTitle, style: AppTextStyles.h4),
               ),
             ],
           ),
           const SizedBox(height: 4),
           Text(
             forStaffOrAuthor
-                ? "Visibles de l'auteur et de l'équipe de modération ; aussi du "
-                    "public si l'auteur a accepté leur publication (une fois le "
-                    'témoignage publié).'
-                : "Documents partagés par l'auteur pour confirmer ce témoignage.",
+                ? context.l10n.sharedProofsStaffNote
+                : context.l10n.sharedProofsPublicNote,
             style: AppTextStyles.bodySmall.copyWith(
               color: AppColors.textSecondary,
             ),
@@ -103,7 +102,7 @@ class _ProofRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final subtitle = [
-      'Preuve ${proof.position}',
+      context.l10n.sharedProofLabel(proof.position),
       if (proof.formattedSize.isNotEmpty) proof.formattedSize,
     ].join(' · ');
 
@@ -202,7 +201,7 @@ class _ProofRow extends ConsumerWidget {
               top: 4,
               right: 4,
               child: IconButton(
-                tooltip: 'Fermer',
+                tooltip: ctx.l10n.commonClose,
                 icon: const Icon(Icons.close_rounded, color: Colors.white),
                 onPressed: () => Navigator.of(ctx).pop(),
               ),
@@ -218,7 +217,7 @@ class _ProofRow extends ConsumerWidget {
   Future<void> _openPdf(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
     messenger.showSnackBar(
-      const SnackBar(content: Text('Téléchargement de la preuve…')),
+      SnackBar(content: Text(context.l10n.sharedProofDownloading)),
     );
     try {
       final dir = await getTemporaryDirectory();
@@ -231,7 +230,7 @@ class _ProofRow extends ConsumerWidget {
           .download(
             proof.url,
             path,
-            options: Options(headers: {'Accept': 'application/pdf'}),
+            options: Options(headers: {'Accept': 'application/pdf'}), // i18n-ignore
           );
       messenger.hideCurrentSnackBar();
       await SharePlus.instance.share(
@@ -244,8 +243,8 @@ class _ProofRow extends ConsumerWidget {
       messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(
-          const SnackBar(
-            content: Text("La preuve n'a pas pu être téléchargée."),
+          SnackBar(
+            content: Text(L10n.current.sharedProofDownloadFailed),
           ),
         );
     }

@@ -21,6 +21,7 @@ import '../../../shared/widgets/quality_picker_sheet.dart';
 import '../models/profile_models.dart';
 import '../providers/profile_provider.dart';
 import '../widgets/profile_menu.dart';
+import '../widgets/push_test.dart';
 
 /// Écran 12 de la maquette : « Paramètres ».
 class SettingsScreen extends ConsumerWidget {
@@ -30,12 +31,10 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(userSettingsProvider);
     final notifier = ref.read(userSettingsProvider.notifier);
-    final locale   = ref.watch(localeProvider);
-    final isFr     = locale.languageCode == 'fr';
     final playback = ref.watch(playbackPreferencesProvider);
     final playCtl  = ref.read(playbackPreferencesProvider.notifier);
 
-    final l10n = AppLocalizations.of(context);
+    final l10n = context.l10n;
 
     // Agit pour un compte administré : les réglages réservés au titulaire
     // (sécurité, notifications, localisation, commentaires) sont bloqués.
@@ -76,17 +75,17 @@ class SettingsScreen extends ConsumerWidget {
               // Administrateurs du compte : tous les comptes (2 personnes au plus).
               ProfileMenuTile(
                 icon: Icons.manage_accounts_outlined,
-                title: 'Administrateurs du compte',
-                subtitle: 'Deux personnes au plus agissent en votre nom',
+                title: l10n.accountsManagersTitle,
+                subtitle: l10n.settingsManagersSubtitle,
                 onTap: () => context.push('/managers'),
               ),
               if (canSwitch)
                 ProfileMenuTile(
                   icon: Icons.swap_horiz_rounded,
-                  title: 'Changer de compte',
+                  title: l10n.settingsSwitchAccount,
                   subtitle: acting == null
-                      ? "Agir au nom d'un compte que vous administrez"
-                      : 'Vous agissez au nom de ${acting.displayName}',
+                      ? l10n.settingsSwitchAccountSubtitle
+                      : l10n.accountsActingAs(acting.displayName),
                   onTap: () => showAccountSwitcher(context),
                 ),
               ProfileMenuTile(
@@ -98,17 +97,29 @@ class SettingsScreen extends ConsumerWidget {
                   }
                 },
               ),
+              // « Tester les notifications » : POST /me/push-test.
+              ProfileMenuTile(
+                key: const ValueKey('push-test-tile'),
+                icon: Icons.notifications_active_outlined,
+                title: l10n.pushTestTitle,
+                subtitle: l10n.pushTestSubtitle,
+                onTap: () => runPushTest(context, ref),
+              ),
               ProfileMenuTile(
                 icon: Icons.language_rounded,
                 title: l10n.settingsLanguage,
-                value: isFr ? 'Français' : 'English',
+                value: switch (ref.watch(appLanguageProvider)) {
+                  AppLanguage.system => l10n.languageSystem,
+                  AppLanguage.fr => l10n.languageFrench,
+                  AppLanguage.en => l10n.languageEnglish,
+                },
                 onTap: () => context.pushNamed(AppRoutes.language),
               ),
               // Localisation privée : fils classés par zone (docs serveur : localisation.md).
               ProfileMenuTile(
                 icon: Icons.location_on_outlined,
-                title: 'Localisation',
-                subtitle: 'Témoignages et événements proches de vous',
+                title: l10n.settingsLocation,
+                subtitle: l10n.settingsLocationSubtitle,
                 onTap: () {
                   if (ensureOwnerAction(context, ref)) {
                     context.push(locationSettingsPath);
@@ -151,19 +162,20 @@ class SettingsScreen extends ConsumerWidget {
             children: [
               ProfileMenuTile(
                 icon: Icons.hd_outlined,
-                title: 'Qualité vidéo',
-                subtitle: 'Données mobiles : ${playback.videoQualityMobile.fullLabel}'
-                    ' · Wi-Fi : ${playback.videoQualityWifi.fullLabel}',
+                title: l10n.settingsVideoQuality,
+                subtitle: l10n.settingsVideoQualitySubtitle(
+                    playback.videoQualityMobile.fullLabel,
+                    playback.videoQualityWifi.fullLabel),
                 onTap: () => context.pushNamed(AppRoutes.videoQuality),
               ),
               ProfileMenuTile(
                 icon: Icons.graphic_eq_rounded,
-                title: 'Qualité audio par défaut',
+                title: l10n.settingsAudioQuality,
                 value: playback.audioQuality.label,
                 onTap: () async {
                   final q = await showQualityPickerSheet<AudioQuality>(
                     context,
-                    title: 'Qualité audio par défaut',
+                    title: l10n.settingsAudioQuality,
                     options: [
                       for (final v in AudioQuality.values)
                         QualityOption(value: v, label: v.label, hint: v.hint),
@@ -175,22 +187,22 @@ class SettingsScreen extends ConsumerWidget {
               ),
               _toggle(
                 icon: Icons.data_saver_on_rounded,
-                title: 'Économiseur de données',
-                subtitle: 'Audio en qualité réduite sur données mobiles',
+                title: l10n.settingsDataSaver,
+                subtitle: l10n.settingsDataSaverSubtitle,
                 value: playback.dataSaver,
                 onChanged: playCtl.setDataSaver,
               ),
               _toggle(
                 icon: Icons.playlist_play_rounded,
-                title: 'Lecture automatique',
-                subtitle: 'Enchaîner le témoignage suivant',
+                title: l10n.settingsAutoplay,
+                subtitle: l10n.settingsAutoplaySubtitle,
                 value: playback.autoplayNext,
                 onChanged: playCtl.setAutoplayNext,
               ),
               _select<RepeatMode>(
                 context,
                 icon: Icons.repeat_rounded,
-                title: 'Répétition',
+                title: l10n.settingsRepeat,
                 value: playback.repeatMode,
                 items: RepeatMode.values,
                 labelOf: (v) => v.label,
@@ -199,7 +211,7 @@ class SettingsScreen extends ConsumerWidget {
               _select<FeedLayout>(
                 context,
                 icon: Icons.view_agenda_outlined,
-                title: 'Affichage du fil',
+                title: l10n.settingsFeedLayout,
                 value: playback.feedLayout,
                 items: FeedLayout.values,
                 labelOf: (v) => v.label,
@@ -211,7 +223,7 @@ class SettingsScreen extends ConsumerWidget {
           // ── Préférences : commentaires, apparence, communauté ──────────
           const SizedBox(height: AppSpacing.xxl),
           ProfileMenuCard(
-            title: 'Préférences',
+            title: l10n.settingsPreferences,
             children: [
               if (acting != null)
                 ProfileMenuTile(
@@ -235,16 +247,8 @@ class SettingsScreen extends ConsumerWidget {
                 title: l10n.settingsInvite,
                 onTap: () => SharePlus.instance.share(
                   ShareParams(
-                    subject: isFr
-                        ? 'Découvre l\'application Témoignages'
-                        : 'Discover the Testimonies app',
-                    text: isFr
-                        ? 'Je t\'invite à rejoindre l\'application Témoignages — '
-                            'un espace pour partager et vivre les miracles de Dieu 🙏\n\n'
-                            'Télécharge-la ici : https://testi.app/download'
-                        : 'I invite you to join the Testimonies app — '
-                            'a space to share and live God\'s miracles 🙏\n\n'
-                            'Download it here: https://testi.app/download',
+                    subject: l10n.settingsInviteSubject,
+                    text: l10n.settingsInviteText('https://testi.app/download'),
                   ),
                 ),
               ),
@@ -263,7 +267,7 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: AppSpacing.xl),
           Center(
             child: Text(
-              'Témoignages de Gloire v1.0',
+              'Témoignages de Gloire v1.0', // i18n-ignore
               style: AppTextStyles.bodySmall
                   .copyWith(color: AppColors.textSecondary.withAlpha(150)),
             ),
@@ -276,7 +280,7 @@ class SettingsScreen extends ConsumerWidget {
   // ── Compte et sécurité ───────────────────────────────────────────────────
 
   void _showAccountSheet(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+    final l10n = context.l10n;
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: AppColors.background,
@@ -297,7 +301,7 @@ class SettingsScreen extends ConsumerWidget {
             ),
             ProfileMenuTile(
               icon: Icons.lock_outline_rounded,
-              title: 'Sécurité et mot de passe',
+              title: l10n.settingsSecurityPassword,
               onTap: () {
                 Navigator.pop(sheet);
                 context.pushNamed(AppRoutes.changePassword);
@@ -321,7 +325,7 @@ class SettingsScreen extends ConsumerWidget {
   // ── Notifications (préférences existantes) ──────────────────────────────
 
   void _showNotificationsSheet(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+    final l10n = context.l10n;
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: AppColors.background,
@@ -333,7 +337,6 @@ class SettingsScreen extends ConsumerWidget {
         child: Consumer(builder: (context, ref, _) {
           final settings = ref.watch(userSettingsProvider);
           final notifier = ref.read(userSettingsProvider.notifier);
-          final isFr = ref.watch(localeProvider).languageCode == 'fr';
           return ProfileMenuCard(
             children: [
               _toggle(
@@ -359,7 +362,7 @@ class SettingsScreen extends ConsumerWidget {
               ),
               _toggle(
                 icon: Icons.check_circle_outline_rounded,
-                title: isFr ? 'Validation' : 'Approval',
+                title: l10n.settingsNotifApprovalTitle,
                 subtitle: l10n.settingsNotifApproved,
                 value: settings.pushApproval,
                 onChanged: (_) => notifier.togglePushApproval(),
@@ -374,7 +377,7 @@ class SettingsScreen extends ConsumerWidget {
 
 /// Demande confirmation puis déconnecte (Paramètres et Mon profil).
 Future<void> confirmLogout(BuildContext context, WidgetRef ref) async {
-  final l10n = AppLocalizations.of(context);
+  final l10n = context.l10n;
   final ok = await showDialog<bool>(
     context: context,
     builder: (dialog) => AlertDialog(
@@ -417,6 +420,7 @@ class _ActingNotice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
@@ -429,18 +433,15 @@ class _ActingNotice extends StatelessWidget {
         children: [
           Text.rich(
             TextSpan(children: [
-              const TextSpan(text: 'Vous agissez au nom de '),
+              TextSpan(text: l10n.accountsActingAsPrefix),
               TextSpan(text: name, style: const TextStyle(fontWeight: FontWeight.w800)),
-              const TextSpan(
-                  text: '. La sécurité, les notifications, la localisation et « Qui peut '
-                      'commenter » restent ceux de votre compte : revenez sur votre compte '
-                      'pour les modifier.'),
+              TextSpan(text: l10n.settingsActingNoticeSuffix),
             ]),
             style: AppTextStyles.bodySmall.copyWith(color: AppColors.textPrimary, height: 1.4),
           ),
           Align(
             alignment: Alignment.centerRight,
-            child: TextButton(onPressed: onReturn, child: const Text('Revenir à mon compte')),
+            child: TextButton(onPressed: onReturn, child: Text(l10n.accountsReturnToMine)),
           ),
         ],
       ),

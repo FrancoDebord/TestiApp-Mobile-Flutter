@@ -22,6 +22,7 @@ import '../../../services/api_service.dart' show apiServiceProvider;
 import '../../auth/providers/auth_notifier.dart' show currentUserProvider;
 import '../screens/video_camera_screen.dart';
 import 'video_upload_controller.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Corps de POST /videos/upload-init reconstruit depuis la ressource d'un
 /// témoignage (GET /testimonies/{id}). Champs absents ou null ignorés.
@@ -87,8 +88,7 @@ Future<void> resendFailedVideo(
 
   final upload = ref.read(videoUploadProvider.notifier);
   if (upload.hasPendingJob) {
-    snack('Une vidéo est déjà en cours d’envoi. Attendez la fin de son envoi '
-        '(ou annulez-le) avant d’en renvoyer une autre.');
+    snack(context.l10n.uploadResendBusy);
     return;
   }
 
@@ -99,20 +99,19 @@ Future<void> resendFailedVideo(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const ListTile(
+          ListTile(
             title: Text(VideoStatusText.resend,
-                style: TextStyle(fontWeight: FontWeight.w600)),
-            subtitle: Text('Choisissez à nouveau la vidéo de votre témoignage. '
-                'Le titre, la catégorie et le texte sont conservés.'),
+                style: const TextStyle(fontWeight: FontWeight.w600)),
+            subtitle: Text(ctx.l10n.uploadResendHint),
           ),
           ListTile(
             leading: const Icon(Icons.video_library_outlined),
-            title: const Text('Choisir dans la galerie'),
+            title: Text(ctx.l10n.uploadResendGallery),
             onTap: () => Navigator.of(ctx).pop('gallery'),
           ),
           ListTile(
             leading: const Icon(Icons.videocam_outlined),
-            title: const Text('Filmer'),
+            title: Text(ctx.l10n.journalNewFilm),
             onTap: () => Navigator.of(ctx).pop('camera'),
           ),
         ],
@@ -142,7 +141,7 @@ Future<void> resendFailedVideo(
     body = resendBodyFromTestimonyJson(res.data);
   } catch (_) {
     if (context.mounted) {
-      snack('Impossible de récupérer le témoignage. Vérifiez votre connexion.');
+      snack(context.l10n.uploadResendFetchFailed);
     }
     return;
   }
@@ -154,7 +153,7 @@ Future<void> resendFailedVideo(
       replacesTestimonyId: testimonyId,
     );
   } on StateError {
-    if (context.mounted) snack('Une vidéo est déjà en cours d’envoi.');
+    if (context.mounted) snack(context.l10n.uploadResendAlreadyUploading);
     return;
   }
   if (context.mounted) context.push(AppPaths.videoUploadPath);

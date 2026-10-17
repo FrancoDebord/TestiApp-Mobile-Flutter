@@ -78,7 +78,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
           AuthUser(
             uid: 'uid-stub',
             email: email,
-            displayName: 'Utilisateur',
+            displayName: 'Utilisateur', // i18n-ignore (bouchon de développement)
             role: UserRole.utilisateur,
             isEmailVerified: true,
           ),

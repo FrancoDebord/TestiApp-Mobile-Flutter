@@ -6,6 +6,7 @@ import '../../core/app_constants.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/app_tokens.dart';
+import '../../l10n/app_localizations.dart';
 import '../../services/api_service.dart';
 import '../../shared/content/encouragements.dart';
 import '../../shared/content/feed_mix.dart';
@@ -138,7 +139,7 @@ class PersonalFeedScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Mon fil'),
+        title: Text(context.l10n.feedTitle),
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.textPrimary,
         surfaceTintColor: AppColors.surface,
@@ -159,12 +160,12 @@ class PersonalFeedScreen extends ConsumerWidget {
                 const Icon(Icons.wifi_off_rounded, size: 48, color: AppColors.textSecondary),
                 const SizedBox(height: 12),
                 Text(
-                  error is LaravelApiException ? error.message : 'Impossible de charger votre fil.',
+                  error is LaravelApiException ? error.message : context.l10n.feedLoadError,
                   textAlign: TextAlign.center,
                 ),
                 TextButton(
                   onPressed: () => ref.invalidate(personalFeedProvider),
-                  child: const Text('Réessayer'),
+                  child: Text(context.l10n.commonRetry),
                 ),
               ],
             ),
@@ -285,10 +286,10 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     if (followingCount > 0 && !empty) {
       return Text(
-        'Les $followingCount compte${followingCount > 1 ? 's' : ''} que vous suivez d’abord, '
-        'puis des témoignages choisis pour vous.',
+        l10n.feedHeaderFollowing(followingCount),
         style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
       );
     }
@@ -302,22 +303,21 @@ class _Header extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            followingCount == 0 ? 'Suivez des comptes' : 'Pas encore de témoignage',
+            followingCount == 0 ? l10n.feedFollowAccounts : l10n.feedNoTestimonyYet,
             style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w800, color: AppColors.primary),
           ),
           const SizedBox(height: 4),
           Text(
             followingCount == 0
-                ? 'Abonnez-vous à des églises, ministères et personnes : leurs témoignages '
-                    'apparaîtront ici. En attendant, voici des témoignages choisis pour vous.'
-                : 'Les comptes que vous suivez n\'ont encore rien publié.',
+                ? l10n.feedFollowAccountsBody
+                : l10n.feedFollowingEmptyBody,
             style: AppTextStyles.bodySmall.copyWith(color: AppColors.textPrimary, height: 1.4),
           ),
           const SizedBox(height: 10),
           FilledButton.icon(
             onPressed: () => context.push('/community'),
             icon: const Icon(Icons.groups_rounded),
-            label: const Text('Découvrir la communauté'),
+            label: Text(l10n.feedDiscoverCommunity),
           ),
         ],
       ),
@@ -336,7 +336,7 @@ class _SuggestionLabel extends StatelessWidget {
         const SizedBox(width: 5),
         Flexible(
           child: Text(
-            'Suggestion pour vous',
+            context.l10n.feedSuggestionForYou,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: AppTextStyles.labelSmall.copyWith(
