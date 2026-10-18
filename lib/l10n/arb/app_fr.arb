@@ -4988,5 +4988,90 @@
         "type": "int"
       }
     }
-  }
+  },
+  "prayerFocusTitle": "Temps de prière",
+  "prayerFocusFor": "Avec {name}, présentez ce besoin à Dieu",
+  "@prayerFocusFor": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "prayerFocusSubject": "Sujet de prière",
+  "prayerFocusWait": "Prenez ces 5 minutes pour prier. Vous pourrez ensuite confirmer votre prière.",
+  "prayerFocusConfirm": "J'ai prié pour cette requête",
+  "prayerFocusValidate": "Valider ma prière",
+  "prayerFocusLeave": "Quitter sans valider",
+  "prayerFocusDone": "Temps de prière terminé",
+  "prayerFocusRemaining": "Temps restant : {time}",
+  "@prayerFocusRemaining": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "prayerFocusVerseRef": "Jacques 5:16",
+  "immersiveLayoutClassic": "Classique",
+  "immersiveLayoutImmersive": "Immersif",
+  "immersiveSwitchToImmersive": "Affichage immersif",
+  "immersiveSwitchToClassic": "Affichage classique",
+  "immersiveBy": "Témoignage de {name}",
+  "@immersiveBy": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "immersiveTextHint": "Écouter · touchez un paragraphe pour le lire",
+  "immersiveNoTranscript": "Ce témoignage audio n'a pas encore de transcription. Écoutez-le et laissez-vous toucher.",
+  "immersiveApproxSync": "Texte synchronisé approximativement sur l'audio",
+  "immersiveSettingTitle": "Affichage immersif des témoignages",
+  "immersiveSettingSubtitle": "Plein écran, texte qui défile pendant la lecture : propice à la prière",
+  "prayerFocusTestimonyLabel": "Témoignage",
+  "prayerFocusTestimonyConfirm": "J'ai prié pour ce témoignage",
+  "bibleOtherVersions": "Autres versions",
+  "bibleDownloadingVersion": "Préparation de la {name} sur votre téléphone…\nUne seule fois : elle sera ensuite lisible hors ligne.",
+  "@bibleDownloadingVersion": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "commentLike": "Aimer ce commentaire",
+  "commentUnlike": "Je n'aime plus ce commentaire",
+  "commentLikeReason": "aimer un commentaire",
+  "commentLikeFailed": "Impossible d'enregistrer votre « J'aime ». Réessayez.",
+  "adminSettingsPublishing": "Publication",
+  "adminSettingsTypeText": "Témoignages écrits",
+  "adminSettingsTypeAudio": "Témoignages audio",
+  "adminSettingsTypeVideo": "Témoignages vidéo",
+  "adminSettingsTypeYoutube": "Liens YouTube",
+  "adminSettingsTypeSub": "Accepté sur toute la plateforme (un profil peut avoir une exception)",
+  "adminSettingsTypeYoutubeSub": "Administrateurs, et profils autorisés un par un",
+  "adminSettingsSaveFailed": "Le réglage n'a pas pu être enregistré. Réessayez.",
+  "adminUserPublishingTitle": "Types de témoignages",
+  "adminUserPublishingSubtitle": "Ce que {name} peut publier",
+  "@adminUserPublishingSubtitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "adminUserPublishingAllowed": "Autorisé",
+  "adminUserPublishingBlocked": "Désactivé",
+  "adminUserPublishingDefaultOn": "Par défaut (oui)",
+  "adminUserPublishingDefaultOff": "Par défaut (non)",
+  "adminUserPublishingAllow": "Autoriser",
+  "adminUserPublishingDeny": "Interdire",
+  "publishNoTypeAllowed": "La publication de témoignages n'est pas ouverte pour votre compte pour le moment.",
+  "authPhoneLabel": "Téléphone",
+  "authPhoneSignInTitle": "Connexion par téléphone",
+  "authPhoneUseSmsCode": "Recevoir plutôt un code par SMS",
+  "authSignUpWithGoogle": "Créer mon compte avec Google",
+  "authOrFillForm": "ou remplissez le formulaire"
 }

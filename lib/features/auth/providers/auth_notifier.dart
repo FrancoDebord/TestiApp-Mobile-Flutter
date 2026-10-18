@@ -44,6 +44,9 @@ const _kProfileCountry    = 'profile_country';
 // Stored in the hardware-backed secure enclave (Keychain / Android Keystore).
 // Cleared only on explicit logout — never on token expiry.
 const _kAutoLoginEmail    = 'auto_login_email';
+// Connexion par téléphone + mot de passe : numéro (partie nationale) et indicatif (code ISO).
+const _kAutoLoginPhone        = 'auto_login_phone';
+const _kAutoLoginPhoneCountry = 'auto_login_phone_country';
 const _kAutoLoginPassword = 'auto_login_password';
 
 /// Mode invité : navigation sans compte, conservée au redémarrage.
@@ -215,14 +218,20 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
   /// Retourne null si les credentials sont absents ou invalides.
   Future<AuthState?> _tryAutoLoginWithCredentials() async {
     final email    = await _storage.read(key: _kAutoLoginEmail);
+    final phone    = await _storage.read(key: _kAutoLoginPhone);
+    final country  = await _storage.read(key: _kAutoLoginPhoneCountry);
     final password = await _storage.read(key: _kAutoLoginPassword);
-    if (email == null || email.isEmpty || password == null || password.isEmpty) {
+    final byEmail = email != null && email.isNotEmpty;
+    final byPhone = phone != null && phone.isNotEmpty;
+    if ((!byEmail && !byPhone) || password == null || password.isEmpty) {
       return null;
     }
     try {
       final response = await _api.post<Map<String, dynamic>>(
         AppConstants.authLogin,
-        data: {'email': email, 'password': password},
+        data: byEmail
+            ? {'email': email, 'password': password}
+            : {'phone': phone, 'phone_country': ?country, 'password': password},
       );
       return await _handleTokenResponse(response.data);
     } catch (_) {
@@ -561,6 +570,22 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     state = AsyncValue.data(await _handleTokenResponse(response.data));
   }
 
+  /// Connexion avec le numéro de téléphone enregistré sur le compte et le mot de passe
+  /// (docs serveur fonctionnalites/telephone.md) : POST /auth/login
+  /// { phone (partie nationale), phone_country (code ISO), password }.
+  Future<void> loginWithPhone({
+    required String phone,
+    required String phoneCountry,
+    required String password,
+  }) async {
+    final response = await _api.post<Map<String, dynamic>>(
+      AppConstants.authLogin,
+      data: {'phone': phone, 'phone_country': phoneCountry, 'password': password},
+    );
+    await _saveCredentials(null, password, phone: phone, phoneCountry: phoneCountry);
+    state = AsyncValue.data(await _handleTokenResponse(response.data));
+  }
+
   // ── Mot de passe oublié ────────────────────────────────────────────────────
 
   Future<void> forgotPassword(String email) async {
@@ -632,6 +657,8 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     // Effacer les credentials sauvegardés — déconnexion volontaire.
     await Future.wait([
       _storage.delete(key: _kAutoLoginEmail),
+      _storage.delete(key: _kAutoLoginPhone),
+      _storage.delete(key: _kAutoLoginPhoneCountry),
       _storage.delete(key: _kAutoLoginPassword),
       _storage.delete(key: kGuestModeStorageKey),
       _storage.delete(key: kActingAccountStorageKey),
@@ -665,9 +692,15 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     return AuthStateAuthenticated(user);
   }
 
-  Future<void> _saveCredentials(String email, String password) async {
+  /// Identifiants de reconnexion silencieuse : e-mail, ou téléphone + indicatif.
+  Future<void> _saveCredentials(String? email, String password, {String? phone, String? phoneCountry}) async {
     await Future.wait([
-      _storage.write(key: _kAutoLoginEmail,    value: email),
+      if (email != null) _storage.write(key: _kAutoLoginEmail, value: email) else _storage.delete(key: _kAutoLoginEmail),
+      if (phone != null) _storage.write(key: _kAutoLoginPhone, value: phone) else _storage.delete(key: _kAutoLoginPhone),
+      if (phoneCountry != null)
+        _storage.write(key: _kAutoLoginPhoneCountry, value: phoneCountry)
+      else
+        _storage.delete(key: _kAutoLoginPhoneCountry),
       _storage.write(key: _kAutoLoginPassword, value: password),
     ]);
   }

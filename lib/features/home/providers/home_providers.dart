@@ -133,6 +133,7 @@ Testimony _applyStatsDelta(
       id: t.id, author: t.author, title: t.title,
       category: t.category, createdAt: t.createdAt, stats: ns,
       durationSeconds: t.durationSeconds, transcriptPreview: t.transcriptPreview,
+      transcript: t.transcript, transcriptSegments: t.transcriptSegments,
       mediaPath: t.mediaPath, renditions: t.renditions, renditionsStatus: t.renditionsStatus,
       coverImageUrl: t.coverImageUrl,
       bibleVerse: t.bibleVerse, bibleVerseRef: t.bibleVerseRef,
@@ -321,6 +322,9 @@ Testimony? testimonyFromApiJson(dynamic raw) {
           category: category, createdAt: createdAt, stats: stats,
           durationSeconds:   _parseInt(m['duration'] ?? m['duration_seconds']),
           transcriptPreview: body.length > 180 ? '${body.substring(0, 180)}…' : body,
+          transcript: body,
+          transcriptSegments: TranscriptSegment.parseList(
+              m['transcriptSegments'] ?? m['transcript_segments']),
           mediaPath:     _absUrl((m['mediaUrl'] ?? m['media_url']) as String?),
           renditions:    renditions,
           renditionsStatus: m['renditionsStatus'] as String?,

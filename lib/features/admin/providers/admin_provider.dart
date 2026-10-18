@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../l10n/app_localizations.dart';
 import '../../../core/app_constants.dart';
 import '../../../shared/models/user_model.dart' show UserRole;
 import '../../../services/api_service.dart';
@@ -316,7 +317,22 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
     final api      = ref.read(apiServiceProvider);
     final response =
         await api.get<Map<String, dynamic>>(AppConstants.adminSettings);
-    final m = response.data;
+    // Le serveur groupe les paramètres ({ general: { clé: valeur }, publishing: {…} }) :
+    // mis à plat (une ancienne réponse déjà à plat reste lue telle quelle).
+    final m = <String, dynamic>{};
+    for (final e in response.data.entries) {
+      if (e.value is Map) {
+        m.addAll(Map<String, dynamic>.from(e.value as Map));
+      } else {
+        m[e.key] = e.value;
+      }
+    }
+    bool flag(String key, bool fallback) => switch (m[key]) {
+          final bool b => b,
+          final num n => n != 0,
+          final String v => v == '1' || v.toLowerCase() == 'true',
+          _ => fallback,
+        };
     return AppSettings(
       maintenanceMode:          m['maintenance_mode']          as bool? ?? false,
       allowNewRegistrations:    m['allow_new_registrations']   as bool? ?? true,
@@ -324,10 +340,66 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
       requireEmailVerification: m['require_email_verification'] as bool? ?? true,
       autoModerationEnabled:    m['auto_moderation_enabled']   as bool? ?? false,
       pushNotificationsEnabled: m['push_notifications_enabled'] as bool? ?? true,
+      textTestimoniesEnabled:    flag('testimony_type_text_enabled', true),
+      audioTestimoniesEnabled:   flag('testimony_type_audio_enabled', true),
+      videoTestimoniesEnabled:   flag('testimony_type_video_enabled', true),
+      youtubeTestimoniesEnabled: flag('testimony_type_youtube_enabled', true),
     );
   }
 
-  void toggle(String key) {
+  /// Clé envoyée au serveur pour chaque interrupteur.
+  static const _apiKeys = {
+    'maintenanceMode': 'maintenance_mode',
+    'allowNewRegistrations': 'allow_new_registrations',
+    'allowGuestView': 'allow_guest_view',
+    'requireEmailVerification': 'require_email_verification',
+    'autoModerationEnabled': 'auto_moderation_enabled',
+    'pushNotificationsEnabled': 'push_notifications_enabled',
+    'textTestimoniesEnabled': 'testimony_type_text_enabled',
+    'audioTestimoniesEnabled': 'testimony_type_audio_enabled',
+    'videoTestimoniesEnabled': 'testimony_type_video_enabled',
+    'youtubeTestimoniesEnabled': 'testimony_type_youtube_enabled',
+  };
+
+  /// Bascule un interrupteur et l'enregistre aussitôt (PUT /admin/settings { clé: valeur }) ;
+  /// en cas d'échec, l'interrupteur revient à sa position et le message est renvoyé.
+  Future<String?> toggle(String key) async {
+    final before = state.value;
+    if (before == null) return null;
+    _flip(key);
+    final after = state.value!;
+    final apiKey = _apiKeys[key];
+    if (apiKey == null) return null;
+    try {
+      await ref.read(apiServiceProvider).put<dynamic>(
+            AppConstants.adminSettings,
+            data: {apiKey: _valueOf(after, key)},
+          );
+      return null;
+    } on LaravelApiException catch (e) {
+      state = AsyncValue.data(before);
+      return e.displayMessage;
+    } catch (_) {
+      state = AsyncValue.data(before);
+      return L10n.current.adminSettingsSaveFailed;
+    }
+  }
+
+  static bool _valueOf(AppSettings s, String key) => switch (key) {
+        'maintenanceMode' => s.maintenanceMode,
+        'allowNewRegistrations' => s.allowNewRegistrations,
+        'allowGuestView' => s.allowGuestView,
+        'requireEmailVerification' => s.requireEmailVerification,
+        'autoModerationEnabled' => s.autoModerationEnabled,
+        'pushNotificationsEnabled' => s.pushNotificationsEnabled,
+        'textTestimoniesEnabled' => s.textTestimoniesEnabled,
+        'audioTestimoniesEnabled' => s.audioTestimoniesEnabled,
+        'videoTestimoniesEnabled' => s.videoTestimoniesEnabled,
+        'youtubeTestimoniesEnabled' => s.youtubeTestimoniesEnabled,
+        _ => false,
+      };
+
+  void _flip(String key) {
     final s = state.value;
     if (s == null) return;
     state = AsyncValue.data(switch (key) {
@@ -337,6 +409,10 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
       'requireEmailVerification' => s.copyWith(requireEmailVerification: !s.requireEmailVerification),
       'autoModerationEnabled'    => s.copyWith(autoModerationEnabled: !s.autoModerationEnabled),
       'pushNotificationsEnabled' => s.copyWith(pushNotificationsEnabled: !s.pushNotificationsEnabled),
+      'textTestimoniesEnabled'    => s.copyWith(textTestimoniesEnabled: !s.textTestimoniesEnabled),
+      'audioTestimoniesEnabled'   => s.copyWith(audioTestimoniesEnabled: !s.audioTestimoniesEnabled),
+      'videoTestimoniesEnabled'   => s.copyWith(videoTestimoniesEnabled: !s.videoTestimoniesEnabled),
+      'youtubeTestimoniesEnabled' => s.copyWith(youtubeTestimoniesEnabled: !s.youtubeTestimoniesEnabled),
       _ => s,
     });
   }
@@ -353,6 +429,10 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
         'require_email_verification': s.requireEmailVerification,
         'auto_moderation_enabled':    s.autoModerationEnabled,
         'push_notifications_enabled': s.pushNotificationsEnabled,
+        'testimony_type_text_enabled':    s.textTestimoniesEnabled,
+        'testimony_type_audio_enabled':   s.audioTestimoniesEnabled,
+        'testimony_type_video_enabled':   s.videoTestimoniesEnabled,
+        'testimony_type_youtube_enabled': s.youtubeTestimoniesEnabled,
       },
     );
   }

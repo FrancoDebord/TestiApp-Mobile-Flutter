@@ -194,6 +194,10 @@ abstract final class AppConstants {
   // docs serveur fonctionnalites/temoignage-de-conversion.md
   static String userConversionTestimony(String id) => '/users/$id/conversion-testimony';
   static const String myConversionTestimony = '/me/conversion-testimony';
+  // Types de témoignages autorisés (réglages administrateur) — docs serveur types-de-temoignages.md
+  static const String mePublishing = '/me/publishing';
+  static String adminUserPublishing(String id) => '/admin/users/$id/publishing';
+  // « J'aime » des commentaires : voir lib/shared/comments/comment_likes.dart.
   static String userFollow(String id)       => '/users/$id/follow';    // POST
   static String userUnfollow(String id)     => '/users/$id/unfollow';  // DELETE
   // Communauté et abonnements — backend : docs/fonctionnalites/abonnements.md
@@ -476,6 +480,9 @@ abstract final class AppConstants {
   static const String prayerRequests = '/prayer/requests';
   static String prayerRequestById(String id)  => '/prayer/requests/$id';
   static String prayerRequestPray(String id)  => '/prayer/requests/$id/pray';
+  // Temps de prière : début des 5 minutes avant « Je prie » (docs serveur temps-de-priere.md).
+  static String prayerRequestPrayStart(String id) => '/prayer/requests/$id/pray/start';
+  static String testimonyPrayStart(String id)     => '/testimonies/$id/pray/start';
   static String prayerRequestAnswered(String id) => '/prayer/requests/$id/answered';
   static String prayerRequestMessages(String id) => '/prayer/requests/$id/messages';
   static String prayerRequestMessage(String id, String messageId) =>

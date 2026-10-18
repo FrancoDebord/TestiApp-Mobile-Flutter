@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../shared/comments/comment_likes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../features/auth/providers/auth_notifier.dart'
@@ -214,6 +215,13 @@ class _CommentTile extends StatelessWidget {
                         ),
                       ),
                     ],
+                    const SizedBox(width: 10),
+                    CommentLikeButton(
+                      comment: CommentRef.testimony(comment.id),
+                      initialCount: comment.likesCount,
+                      initialLiked: comment.isLikedByMe,
+                      iconSize: 14,
+                    ),
                     const Spacer(),
                     if (_canDelete)
                       GestureDetector(

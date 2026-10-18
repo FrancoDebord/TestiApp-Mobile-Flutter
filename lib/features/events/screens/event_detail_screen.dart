@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import '../../../shared/comments/comment_likes.dart';
 import '../../repost/content_interactions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -1322,6 +1323,12 @@ class _CommentCard extends ConsumerWidget {
                 const SizedBox(height: 4),
                 // Mentions « @Nom » cliquables (docs serveur fonctionnalites/mentions.md).
                 MentionText(c.body, mentions: c.mentions, style: AppTextStyles.bodyMedium.copyWith(height: 1.45)),
+                const SizedBox(height: 2),
+                CommentLikeButton(
+                  comment: CommentRef.event(event.id, c.id),
+                  initialCount: c.likesCount,
+                  initialLiked: c.isLikedByMe,
+                ),
                 if (promoted) ...[
                   const SizedBox(height: 8),
                   InkWell(

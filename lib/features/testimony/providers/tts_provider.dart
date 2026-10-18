@@ -145,12 +145,14 @@ class TtsController extends Notifier<TtsState> {
     } catch (_) {}
   }
 
-  /// Lit [text] (déjà assemblé : titre, corps…) pour [testimonyId].
+  /// Lit [text] (déjà assemblé : titre, corps…) pour [testimonyId], à partir
+  /// de la phrase [startIndex] (mode immersif : toucher un paragraphe).
   /// Renvoie `false` si la synthèse vocale n'est pas disponible.
   Future<bool> play({
     required String testimonyId,
     required String text,
     required String languageCode,
+    int startIndex = 0,
   }) async {
     final chunks = splitIntoSpeechChunks(text);
     if (chunks.isEmpty || !_alive) return false;
@@ -170,7 +172,7 @@ class TtsController extends Notifier<TtsState> {
       status: TtsStatus.playing,
       testimonyId: testimonyId,
       chunks: chunks,
-      index: 0,
+      index: startIndex.clamp(0, chunks.length - 1),
     );
     unawaited(_run(gen));
     return true;

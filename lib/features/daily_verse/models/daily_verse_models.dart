@@ -141,11 +141,17 @@ class VerseComment {
     this.isHidden = false,
     this.canDelete = false,
     this.canReport = false,
+    this.likesCount = 0,
+    this.isLikedByMe = false,
   });
 
   final String id;
   final String body;
   final String authorName;
+
+  /// « J'aime » (docs serveur fonctionnalites/jaime-commentaires.md).
+  final int likesCount;
+  final bool isLikedByMe;
 
   /// Comptes mentionnés (« @Nom » cliquables) — docs serveur fonctionnalites/mentions.md
   final List<MentionRef> mentions;
@@ -179,6 +185,8 @@ class VerseComment {
       isHidden: j['isHidden'] == true,
       canDelete: j['canDelete'] == true,
       canReport: j['canReport'] == true,
+      likesCount: (j['likesCount'] as num?)?.toInt() ?? 0,
+      isLikedByMe: j['isLikedByMe'] == true,
     );
   }
 }

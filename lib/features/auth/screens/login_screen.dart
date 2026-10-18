@@ -10,6 +10,8 @@ import '../../../core/theme/app_tokens.dart';
 import '../../../services/api_service.dart' show LaravelApiException;
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_logo.dart';
+import '../../../shared/widgets/country_picker.dart' show PhoneNumberField;
+import '../../../core/data/countries.dart' show Country, countryByCode;
 import '../providers/auth_notifier.dart';
 import '../widgets/auth_widgets.dart';
 import 'forgot_password_screen.dart';
@@ -44,7 +46,14 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
+
+  /// Connexion par le numéro de téléphone enregistré sur le compte (sinon e-mail).
+  bool _usePhone = false;
+
+  /// Indicatif : pays de l'appareil, Bénin à défaut.
+  Country? _phoneDial = countryByCode(L10n.deviceCountry?.toLowerCase()) ?? countryByCode('bj'); // i18n-ignore
   bool _obscurePassword = true;
   bool _isLoading = false;
 
@@ -56,6 +65,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   void dispose() {
     _emailController.dispose();
+    _phoneController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -89,10 +99,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     setState(() => _isLoading = true);
     try {
-      await ref.read(authStateProvider.notifier).loginWithEmail(
-            email:    _emailController.text.trim(),
-            password: _passwordController.text,
-          );
+      final auth = ref.read(authStateProvider.notifier);
+      if (_usePhone) {
+        await auth.loginWithPhone(
+          phone:        _phoneController.text.trim(),
+          phoneCountry: _phoneDial!.code,
+          password:     _passwordController.text,
+        );
+      } else {
+        await auth.loginWithEmail(
+          email:    _emailController.text.trim(),
+          password: _passwordController.text,
+        );
+      }
       // La redirection vers /home est gérée par le router (auth state change)
     } catch (e) {
       if (mounted) {
@@ -237,7 +256,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           label: context.l10n.authSignInWithPhone,
           leadingIcon: Icons.phone_rounded,
           fullWidth: true,
-          onPressed: isLoading ? null : _openPhoneAuth,
+          // Numéro enregistré sur le compte + mot de passe (le code SMS reste proposé).
+          onPressed: isLoading
+              ? null
+              : () => setState(() {
+                    _showEmailForm = true;
+                    _usePhone = true;
+                    _errorMessage = null;
+                  }),
         ),
         const SizedBox(height: AppSpacing.md),
         AppButton(
@@ -258,6 +284,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ? null
               : () => setState(() {
                     _showEmailForm = true;
+                    _usePhone = false;
                     _errorMessage = null;
                   }),
         ),
@@ -303,7 +330,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           AuthScreenHeader(
-            title: context.l10n.authEmailSignInTitle,
+            title: _usePhone ? context.l10n.authPhoneSignInTitle : context.l10n.authEmailSignInTitle,
             subtitle: context.l10n.authSignInSubtitle,
             onBack: isLoading
                 ? null
@@ -312,18 +339,52 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       _errorMessage = null;
                     }),
           ),
-          const SizedBox(height: AppSpacing.xxl),
-          _errorBanner(),
-          AuthTextField(
-            controller: _emailController,
-            label: context.l10n.authEmailLabel,
-            hint: context.l10n.authEmailHint,
-            prefixIcon: Icons.mail_outline_rounded,
-            keyboardType: TextInputType.emailAddress,
-            textInputAction: TextInputAction.next,
-            validator: _validateEmail,
-            enabled: !isLoading,
+          const SizedBox(height: AppSpacing.xl),
+          // E-mail ou numéro de téléphone enregistré sur le compte.
+          SegmentedButton<bool>(
+            key: const ValueKey('login-identifier'),
+            showSelectedIcon: false,
+            segments: [
+              ButtonSegment(
+                value: false,
+                icon: const Icon(Icons.mail_outline_rounded, size: 18),
+                label: Text(context.l10n.authEmailLabel),
+              ),
+              ButtonSegment(
+                value: true,
+                icon: const Icon(Icons.phone_rounded, size: 18),
+                label: Text(context.l10n.authPhoneLabel),
+              ),
+            ],
+            selected: {_usePhone},
+            onSelectionChanged: isLoading
+                ? null
+                : (v) => setState(() {
+                      _usePhone = v.first;
+                      _errorMessage = null;
+                    }),
           ),
+          const SizedBox(height: AppSpacing.xl),
+          _errorBanner(),
+          if (_usePhone)
+            PhoneNumberField(
+              dial: _phoneDial,
+              onDialChanged: (c) => setState(() => _phoneDial = c),
+              controller: _phoneController,
+              required: true,
+              enabled: !isLoading,
+            )
+          else
+            AuthTextField(
+              controller: _emailController,
+              label: context.l10n.authEmailLabel,
+              hint: context.l10n.authEmailHint,
+              prefixIcon: Icons.mail_outline_rounded,
+              keyboardType: TextInputType.emailAddress,
+              textInputAction: TextInputAction.next,
+              validator: _validateEmail,
+              enabled: !isLoading,
+            ),
           const SizedBox(height: AppSpacing.lg),
           AuthTextField(
             controller: _passwordController,
@@ -369,6 +430,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             isLoading: isLoading && !_googleLoading,
             onPressed: isLoading ? null : _submit,
           ),
+          // Sans mot de passe : code reçu par SMS (numéro vérifié).
+          if (_usePhone)
+            TextButton.icon(
+              onPressed: isLoading ? null : _openPhoneAuth,
+              icon: const Icon(Icons.sms_outlined, size: 18),
+              label: Text(context.l10n.authPhoneUseSmsCode),
+            ),
           const SizedBox(height: AppSpacing.lg),
           AuthOrDivider(label: context.l10n.authOr),
           const SizedBox(height: AppSpacing.lg),

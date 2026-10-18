@@ -14,6 +14,7 @@ import '../../../../core/theme/app_tokens.dart';
 import '../../auth/providers/auth_notifier.dart' show currentUserProvider;
 import '../models/publish_models.dart';
 import '../providers/publish_provider.dart';
+import '../providers/publishing_rules_provider.dart';
 import 'short_record_screen.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../conversion/providers/conversion_providers.dart' show myConversionProvider;
@@ -189,6 +190,35 @@ class PublishScreen extends ConsumerWidget {
     // fonctionnalites/temoignage-de-conversion.md).
     final forConversion = ref.watch(publishConversionProvider);
     final myConversion = ref.watch(myConversionProvider).value;
+    // Types de témoignages autorisés (réglages de l'administrateur, globaux ou du profil).
+    final allowed = ref.watch(publishingRulesProvider).value;
+    bool can(String type) => allowed?.contains(type) ?? (user?.canPublishType(type) ?? type != 'youtube');
+    final formatTiles = <Widget>[
+      if (can('video'))
+        _PublishTile(
+          icon: Icons.videocam_rounded,
+          label: context.l10n.publishRecordVideo,
+          onTap: () => _openFormat(context, ref, TestimonyFormat.video),
+        ),
+      if (can('audio'))
+        _PublishTile(
+          icon: Icons.mic_rounded,
+          label: context.l10n.publishRecordAudio,
+          onTap: () => _openFormat(context, ref, TestimonyFormat.audio),
+        ),
+      if (can('text')) ...[
+        _PublishTile(
+          icon: Icons.article_rounded,
+          label: context.l10n.publishWriteText,
+          onTap: () => _openFormat(context, ref, TestimonyFormat.text),
+        ),
+        _PublishTile(
+          icon: Icons.add_photo_alternate_rounded,
+          label: context.l10n.publishImportTitle,
+          onTap: () => _import(context, ref),
+        ),
+      ],
+    ];
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -290,39 +320,14 @@ class PublishScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.lg),
-                // ── Grille 2×2 (maquette) ────────────────────────────────
-                _TileRow(
-                  children: [
-                    _PublishTile(
-                      icon: Icons.videocam_rounded,
-                      label: context.l10n.publishRecordVideo,
-                      onTap: () =>
-                          _openFormat(context, ref, TestimonyFormat.video),
-                    ),
-                    _PublishTile(
-                      icon: Icons.mic_rounded,
-                      label: context.l10n.publishRecordAudio,
-                      onTap: () =>
-                          _openFormat(context, ref, TestimonyFormat.audio),
-                    ),
+                // ── Grille 2×2 (maquette) : types autorisés par l'administrateur ──
+                if (formatTiles.isEmpty)
+                  _NoTypeAllowedNotice()
+                else
+                  for (var i = 0; i < formatTiles.length; i += 2) ...[
+                    if (i > 0) const SizedBox(height: AppSpacing.md),
+                    _TileRow(children: formatTiles.skip(i).take(2).toList()),
                   ],
-                ),
-                const SizedBox(height: AppSpacing.md),
-                _TileRow(
-                  children: [
-                    _PublishTile(
-                      icon: Icons.article_rounded,
-                      label: context.l10n.publishWriteText,
-                      onTap: () =>
-                          _openFormat(context, ref, TestimonyFormat.text),
-                    ),
-                    _PublishTile(
-                      icon: Icons.add_photo_alternate_rounded,
-                      label: context.l10n.publishImportTitle,
-                      onTap: () => _import(context, ref),
-                    ),
-                  ],
-                ),
                 const SizedBox(height: AppSpacing.xxl),
                 // ── Autres entrées ───────────────────────────────────────
                 Text(
@@ -332,6 +337,7 @@ class PublishScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
+                if (can('video'))
                 _OptionTile(
                   icon: Icons.slow_motion_video_rounded,
                   title: context.l10n.publishShortTitle,
@@ -370,7 +376,7 @@ class PublishScreen extends ConsumerWidget {
                   ),
                 // Lien YouTube (administrateurs) : docs serveur
                 // fonctionnalites/videos-youtube.md
-                if (isAdmin)
+                if (can('youtube'))
                   _OptionTile(
                     icon: Icons.smart_display_rounded,
                     title: context.l10n.publishYouTubeLink,
@@ -396,6 +402,7 @@ class PublishScreen extends ConsumerWidget {
 class _TileRow extends StatelessWidget {
   const _TileRow({required this.children});
 
+  /// Une ou deux tuiles (une seule : la place de la seconde reste vide).
   final List<Widget> children;
 
   @override
@@ -406,7 +413,29 @@ class _TileRow extends StatelessWidget {
         children: [
           Expanded(child: children[0]),
           const SizedBox(width: AppSpacing.md),
-          Expanded(child: children[1]),
+          Expanded(child: children.length > 1 ? children[1] : const SizedBox.shrink()),
+        ],
+      ),
+    );
+  }
+}
+
+/// Aucun type de témoignage n'est ouvert pour ce compte.
+class _NoTypeAllowedNotice extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.sunSoft,
+        borderRadius: AppRadius.cardRadius,
+        border: Border.all(color: AppColors.sunBorder),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.lock_outline_rounded, color: AppColors.sunText),
+          const SizedBox(width: 10),
+          Expanded(child: Text(context.l10n.publishNoTypeAllowed, style: AppTextStyles.bodyMedium)),
         ],
       ),
     );

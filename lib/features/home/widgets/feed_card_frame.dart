@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../testimony/prayer/pray_for_testimony.dart' show prayForTestimony;
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
@@ -72,7 +73,7 @@ class FeedCardFrame extends ConsumerWidget {
 
     Future<void> pray() async {
       if (!await ensureMember(context, ref, context.l10n.homeReasonReact)) return;
-      interactions.togglePray(t);
+      if (context.mounted) await prayForTestimony(context, ref, t);
     }
 
     void shareFull() => showTestimonyShareSheet(context, ref, t, excerpt: shareExcerpt);

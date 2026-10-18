@@ -373,15 +373,21 @@ class PushService {
             ? videoPushTestimonyId(message.data)
             : null);
 
-    // 1. Refresh local data immediately.
-    await _deltaSync();
-
-    // 2. Show local notification if user has the preference enabled
-    //    (bloc « notification », ou title/body dans les données).
+    // 1. Notification affichée tout de suite (préférence de l'utilisateur ;
+    //    bloc « notification », ou title/body dans les données). Elle passait
+    //    après la synchronisation : sur un réseau lent elle arrivait en retard,
+    //    ou jamais si l'application repartait en arrière-plan entre-temps.
     if (_shouldShow(message) && foregroundContent(message.notification?.title,
             message.notification?.body, message.data) != null) {
-      await _showLocalNotif(message);
+      try {
+        await _showLocalNotif(message);
+      } catch (e, stack) {
+        _log('show', e, stack);
+      }
     }
+
+    // 2. Puis données locales rafraîchies.
+    await _deltaSync();
   }
 
   // ── Notification filter (respects UserSettings) ───────────────────────────
@@ -390,7 +396,7 @@ class PushService {
     final settings = _r.read(userSettingsProvider);
     return switch (message.data['type'] as String? ?? '') {
       'comment' || 'reply' || 'mention' => settings.pushComments,
-      'like'                            => settings.pushLikes,
+      'like' || 'comment_liked'         => settings.pushLikes,
       'prayer' || 'prayer_encouragement' || 'prayer_request_prayed' => settings.pushPrayers,
       // Pas de préférence dédiée « abonnements » dans UserSettings :
       // toujours affichées.

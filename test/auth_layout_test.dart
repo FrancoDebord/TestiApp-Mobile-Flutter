@@ -77,12 +77,39 @@ void main() {
         expect(tester.takeException(), isNull);
       });
 
+      testWidgets('connexion par téléphone + mot de passe $tag', (tester) async {
+        await _setPhone(tester, width, height: 568);
+        await tester.pumpWidget(_app(const LoginScreen(), textScale: scale));
+        await tester.pump();
+        await tester.tap(find.text('Se connecter avec numéro'));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(find.text('Connexion par téléphone'), findsOneWidget);
+        expect(find.byKey(const ValueKey('login-identifier')), findsOneWidget);
+        expect(find.text('Recevoir plutôt un code par SMS'), findsOneWidget);
+        // Numéro obligatoire.
+        await tester.ensureVisible(find.text('Se connecter'));
+        await tester.tap(find.text('Se connecter'));
+        await tester.pump();
+        expect(tester.takeException(), isNull);
+        expect(find.text('Mot de passe oublié ?'), findsOneWidget);
+        // Bascule vers l'e-mail.
+        await tester.ensureVisible(find.byKey(const ValueKey('login-identifier')));
+        await tester.tap(find.text('Adresse e-mail').first);
+        await tester.pumpAndSettle();
+        expect(find.text('Recevoir plutôt un code par SMS'), findsNothing);
+        expect(tester.takeException(), isNull);
+      });
+
       testWidgets('inscription : personne et organisation $tag',
           (tester) async {
         await _setPhone(tester, width);
         await tester.pumpWidget(_app(const RegisterScreen(), textScale: scale));
         await tester.pump();
         expect(find.text('Créer un compte'), findsOneWidget);
+        // Google en premier, avant le formulaire.
+        expect(find.byKey(const ValueKey('register-google')), findsOneWidget);
+        expect(find.text('Créer mon compte avec Google'), findsOneWidget);
         expect(tester.takeException(), isNull);
 
         final orgCard = find.textContaining('organisation').first;

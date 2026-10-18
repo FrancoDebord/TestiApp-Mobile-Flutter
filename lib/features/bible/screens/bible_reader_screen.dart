@@ -53,9 +53,9 @@ class BibleReaderScreen extends ConsumerWidget {
               backgroundColor: AppColors.surface,
               elevation: 0,
             ),
-            body: Center(
-              child: Text(context.l10n.bibleNoContent),
-            ),
+            // Traduction pas encore sur l'appareil (ouverte depuis le menu) :
+            // téléchargement lancé d'office, puis lecture.
+            body: _AutoDownload(translationCode: translationCode),
           );
         }
         return _ReaderBody(
@@ -63,6 +63,88 @@ class BibleReaderScreen extends ConsumerWidget {
           books: books,
         );
       },
+    );
+  }
+}
+
+// ── Téléchargement automatique ──────────────────────────────────────────────
+
+class _AutoDownload extends ConsumerStatefulWidget {
+  const _AutoDownload({required this.translationCode});
+  final String translationCode;
+
+  @override
+  ConsumerState<_AutoDownload> createState() => _AutoDownloadState();
+}
+
+class _AutoDownloadState extends ConsumerState<_AutoDownload> {
+  bool _started = false;
+
+  void _start(List<BibleTranslation> list) {
+    final t = list.where((t) => t.code == widget.translationCode).firstOrNull;
+    if (t == null || t.isDownloading || t.isDownloaded || _started) return;
+    _started = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.read(bibleTranslationsProvider.notifier).download(widget.translationCode);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final async = ref.watch(bibleTranslationsProvider);
+    // Téléchargement terminé : relire les livres.
+    ref.listen(bibleTranslationsProvider, (prev, next) {
+      final t = next.value?.where((t) => t.code == widget.translationCode).firstOrNull;
+      if (t?.isDownloaded ?? false) ref.invalidate(bibleBookListProvider(widget.translationCode));
+    });
+    final list = async.value;
+    if (list != null) _start(list);
+    final t = list?.where((t) => t.code == widget.translationCode).firstOrNull;
+
+    if (list != null && (t == null || t.downloadStatus == DownloadStatus.error)) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.cloud_off_rounded, size: 40, color: AppColors.textSecondary),
+              const SizedBox(height: 10),
+              Text(t?.errorMessage ?? l10n.bibleNoContent, textAlign: TextAlign.center),
+              const SizedBox(height: 12),
+              if (t != null)
+                FilledButton(
+                  onPressed: () => ref.read(bibleTranslationsProvider.notifier).download(widget.translationCode),
+                  child: Text(l10n.commonRetry),
+                ),
+              TextButton(
+                onPressed: () => context.go('/bible'),
+                child: Text(l10n.bibleOtherVersions),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.auto_stories_rounded, size: 44, color: AppColors.primary),
+            const SizedBox(height: 14),
+            Text(l10n.bibleDownloadingVersion(t?.name ?? widget.translationCode),
+                textAlign: TextAlign.center, style: AppTextStyles.bodyMedium),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: 220,
+              child: LinearProgressIndicator(value: t?.downloadProgress, color: AppColors.primary),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

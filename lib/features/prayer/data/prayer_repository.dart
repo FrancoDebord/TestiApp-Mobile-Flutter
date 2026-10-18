@@ -126,6 +126,11 @@ class PrayerRepository {
       });
 
   /// « Je prie » : fixe l'état ([prayed]) et renvoie la requête à jour.
+  /// Début du temps de prière (5 minutes avant de pouvoir « prier »).
+  Future<void> startPrayer(String id) => _guard(() async {
+        await _api.post<dynamic>(AppConstants.prayerRequestPrayStart(id));
+      });
+
   Future<PrayerRequest> pray(String id, {required bool prayed}) => _guard(() async {
         final res = await _api.post<dynamic>(AppConstants.prayerRequestPray(id), data: {'prayed': prayed});
         return PrayerRequest.fromJson(_map(res.data));

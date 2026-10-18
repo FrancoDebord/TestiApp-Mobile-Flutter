@@ -264,6 +264,17 @@ class _TemoignagesAppState extends ConsumerState<TemoignagesApp>
         } else {
           router.pushNamed(AppRoutes.notifications);
         }
+      // « J'aime » sur un de mes commentaires (docs serveur jaime-commentaires.md) :
+      // le contenu commenté — événement, verset du jour, sinon le témoignage (plus bas).
+      case 'comment_liked' when testimonyId == null && intent.eventId != null:
+        router.push('/events/${intent.eventId}');
+      case 'comment_liked' when testimonyId == null && intent.dailyVerseId != null:
+        final ctx = router.routerDelegate.navigatorKey.currentContext;
+        if (ctx != null) {
+          openDailyVerse(ctx, initialTab: 1);
+        } else {
+          router.pushNamed(AppRoutes.notifications);
+        }
       // Nouvel abonné : son profil.
       case 'follow':
         final actorId = intent.actorId;
@@ -281,6 +292,7 @@ class _TemoignagesAppState extends ConsumerState<TemoignagesApp>
       case 'reply':
       case 'mention':
       case 'like':
+      case 'comment_liked':
       case 'prayer':
       // Partage d'un de mes témoignages, nouveau témoignage d'un compte suivi.
       case 'share':

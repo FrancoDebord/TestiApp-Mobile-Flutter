@@ -9827,4 +9827,171 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get prayerFocusTitle => 'Time of prayer';
+
+  @override
+  String prayerFocusFor(String name) {
+    return 'With $name, bring this need before God';
+  }
+
+  @override
+  String get prayerFocusSubject => 'Prayer request';
+
+  @override
+  String get prayerFocusWait =>
+      'Take these 5 minutes to pray. You can then confirm your prayer.';
+
+  @override
+  String get prayerFocusConfirm => 'I prayed for this request';
+
+  @override
+  String get prayerFocusValidate => 'Confirm my prayer';
+
+  @override
+  String get prayerFocusLeave => 'Leave without confirming';
+
+  @override
+  String get prayerFocusDone => 'Prayer time completed';
+
+  @override
+  String prayerFocusRemaining(String time) {
+    return 'Time left: $time';
+  }
+
+  @override
+  String get prayerFocusVerseRef => 'James 5:16';
+
+  @override
+  String get immersiveLayoutClassic => 'Classic';
+
+  @override
+  String get immersiveLayoutImmersive => 'Immersive';
+
+  @override
+  String get immersiveSwitchToImmersive => 'Immersive view';
+
+  @override
+  String get immersiveSwitchToClassic => 'Classic view';
+
+  @override
+  String immersiveBy(String name) {
+    return 'Testimony by $name';
+  }
+
+  @override
+  String get immersiveTextHint => 'Listen · tap a paragraph to hear it';
+
+  @override
+  String get immersiveNoTranscript =>
+      'This audio testimony has no transcript yet. Listen and let it touch you.';
+
+  @override
+  String get immersiveApproxSync => 'Text approximately synced with the audio';
+
+  @override
+  String get immersiveSettingTitle => 'Immersive testimony view';
+
+  @override
+  String get immersiveSettingSubtitle =>
+      'Full screen, text scrolling while it plays: made for prayer';
+
+  @override
+  String get prayerFocusTestimonyLabel => 'Testimony';
+
+  @override
+  String get prayerFocusTestimonyConfirm => 'I prayed for this testimony';
+
+  @override
+  String get bibleOtherVersions => 'Other versions';
+
+  @override
+  String bibleDownloadingVersion(String name) {
+    return 'Getting the $name ready on your phone…\nOnly once: it will then be readable offline.';
+  }
+
+  @override
+  String get commentLike => 'Like this comment';
+
+  @override
+  String get commentUnlike => 'Unlike this comment';
+
+  @override
+  String get commentLikeReason => 'like a comment';
+
+  @override
+  String get commentLikeFailed => 'Couldn\'t save your like. Try again.';
+
+  @override
+  String get adminSettingsPublishing => 'Publishing';
+
+  @override
+  String get adminSettingsTypeText => 'Written testimonies';
+
+  @override
+  String get adminSettingsTypeAudio => 'Audio testimonies';
+
+  @override
+  String get adminSettingsTypeVideo => 'Video testimonies';
+
+  @override
+  String get adminSettingsTypeYoutube => 'YouTube links';
+
+  @override
+  String get adminSettingsTypeSub =>
+      'Accepted across the platform (a profile can have an exception)';
+
+  @override
+  String get adminSettingsTypeYoutubeSub =>
+      'Administrators, and profiles allowed one by one';
+
+  @override
+  String get adminSettingsSaveFailed =>
+      'The setting couldn\'t be saved. Try again.';
+
+  @override
+  String get adminUserPublishingTitle => 'Testimony types';
+
+  @override
+  String adminUserPublishingSubtitle(String name) {
+    return 'What $name can publish';
+  }
+
+  @override
+  String get adminUserPublishingAllowed => 'Allowed';
+
+  @override
+  String get adminUserPublishingBlocked => 'Disabled';
+
+  @override
+  String get adminUserPublishingDefaultOn => 'Default (yes)';
+
+  @override
+  String get adminUserPublishingDefaultOff => 'Default (no)';
+
+  @override
+  String get adminUserPublishingAllow => 'Allow';
+
+  @override
+  String get adminUserPublishingDeny => 'Block';
+
+  @override
+  String get publishNoTypeAllowed =>
+      'Publishing testimonies isn\'t open for your account at the moment.';
+
+  @override
+  String get authPhoneLabel => 'Phone';
+
+  @override
+  String get authPhoneSignInTitle => 'Sign in with your phone';
+
+  @override
+  String get authPhoneUseSmsCode => 'Get a code by SMS instead';
+
+  @override
+  String get authSignUpWithGoogle => 'Sign up with Google';
+
+  @override
+  String get authOrFillForm => 'or fill in the form';
 }

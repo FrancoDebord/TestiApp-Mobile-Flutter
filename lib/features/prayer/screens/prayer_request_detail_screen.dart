@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'prayer_focus_screen.dart' show openPrayerFocus;
 import '../../repost/content_interactions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -61,6 +62,9 @@ class _PrayerRequestDetailScreenState extends ConsumerState<PrayerRequestDetailS
 
   Future<void> _togglePray(PrayerRequest r) async {
     if (!await requireAccount(context, ref, reason: context.l10n.prayerReasonPray)) return;
+    // Prier : temps de prière immersif de 5 minutes, puis validation.
+    if (!r.hasPrayed && (!mounted || !await openPrayerFocus(context, r, onStart: () => _repo.startPrayer(_id)))) return;
+    if (!mounted) return;
     ref.read(prayerRequestProvider(_id).notifier).replace(r.withPrayed(!r.hasPrayed));
     await _run(() => _repo.pray(_id, prayed: !r.hasPrayed));
   }

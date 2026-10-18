@@ -7,15 +7,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart' show ShareParams, SharePlus;
 import 'package:video_player/video_player.dart';
 
-import '../../../core/local_db/daos/comment_dao.dart';
-import '../../../core/local_db/database_service.dart';
+import '../providers/comments_provider.dart' show commentsProvider;
+import '../../../shared/widgets/mention_text.dart' show MentionText;
+import '../../../shared/models/mention.dart' show MentionCodec;
+import '../../../shared/models/comment_model.dart';
+import '../../../shared/comments/comment_likes.dart';
+import '../prayer/pray_for_testimony.dart' show prayForTestimony;
 import '../../../core/media/media_quality.dart';
 import '../../../core/media/video_source.dart' show networkVideoController, videoPlaybackChain;
 import '../../../core/media/playback_preferences.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
-import '../../../features/auth/providers/auth_notifier.dart'
-    show currentUserProvider;
 import '../../../l10n/app_localizations.dart';
 import '../../home/models/testimony_model.dart';
 import '../../home/providers/home_providers.dart';
@@ -855,7 +857,7 @@ class _ShortActions extends ConsumerWidget {
           label: _formatCount(effectivePrayers),
           onTap: () => guarded(
             context.l10n.homeReasonReact,
-            () => ref.read(interactionProvider.notifier).togglePray(testimony),
+            () => prayForTestimony(context, ref, testimony),
           ),
         ),
         const SizedBox(height: 20),
@@ -980,8 +982,6 @@ class _ShortsCommentsSheetState
   final _scrollCtrl = ScrollController();
   bool _sending    = false;
 
-  final List<_ShortsComment> _comments = [];
-
   @override
   void initState() {
     super.initState();
@@ -999,46 +999,24 @@ class _ShortsCommentsSheetState
     super.dispose();
   }
 
+  /// Envoi au serveur (POST /testimonies/{id}/comments) : affiché tout de suite,
+  /// remplacé par la version du serveur. Les commentaires restaient avant sur le
+  /// téléphone, invisibles des autres.
   Future<void> _send() async {
     final text = _ctrl.text.trim();
     if (text.isEmpty || _sending) return;
-    setState(() => _sending = true);
-
-    final user = ref.read(currentUserProvider);
-
-    // Persist to SQLite
-    try {
-      final dao = CommentDao(DatabaseService());
-      await dao.insert({
-        'id': 'sc_${DateTime.now().millisecondsSinceEpoch}',
-        'testimony_id': widget.testimonyId,
-        'user_id': user?.id ?? 'anon',
-        'author_name': user?.displayName ?? context.l10n.shortsMe,
-        'body': text,
-        'created_at': DateTime.now().toIso8601String(),
-        'like_count': 0,
-        'user_liked': 0,
-      });
-    } catch (_) {}
-
+    if (!await requireAccount(context, ref, reason: context.l10n.homeReasonReact)) return;
     if (!mounted) return;
-    setState(() {
-      _comments.add(_ShortsComment(
-        author: user?.displayName ?? context.l10n.shortsMe,
-        text: text,
-        createdAt: DateTime.now(),
-      ));
-      _sending = false;
-    });
-    _ctrl.clear();
-
+    setState(() => _sending = true);
+    try {
+      await ref.read(commentsProvider(widget.testimonyId).notifier).addComment(text);
+      _ctrl.clear();
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollCtrl.hasClients) {
-        _scrollCtrl.animateTo(
-          _scrollCtrl.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeOut,
-        );
+        _scrollCtrl.animateTo(0, duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
       }
     });
   }
@@ -1047,6 +1025,9 @@ class _ShortsCommentsSheetState
   Widget build(BuildContext context) {
     // viewInsets.bottom = keyboard height; animates with keyboard
     final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    final async = ref.watch(commentsProvider(widget.testimonyId));
+    // Erreur réseau : liste vide plutôt qu'un indicateur sans fin.
+    final List<CommentModel>? comments = async.hasError ? const [] : async.value;
 
     return Container(
       // Sheet height: 70% of screen + keyboard height so it rises with keyboard
@@ -1084,9 +1065,11 @@ class _ShortsCommentsSheetState
           ),
           const Divider(height: 1, color: AppColors.border),
 
-          // Comments list
+          // Commentaires du serveur (« J'aime » compris).
           Expanded(
-            child: _comments.isEmpty
+            child: comments == null
+                ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
+                : comments.isEmpty
                 ? Center(
                     child: Text(
                       context.l10n.detailFirstComment,
@@ -1101,9 +1084,9 @@ class _ShortsCommentsSheetState
                     controller: _scrollCtrl,
                     padding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 8),
-                    itemCount: _comments.length,
+                    itemCount: comments.length,
                     itemBuilder: (_, i) =>
-                        _CommentTile(comment: _comments[i]),
+                        _CommentTile(comment: comments[i]),
                   ),
           ),
 
@@ -1197,14 +1180,14 @@ class _ShortsCommentsSheetState
 
 class _CommentTile extends StatelessWidget {
   const _CommentTile({required this.comment});
-  final _ShortsComment comment;
+  final CommentModel comment;
 
   @override
   Widget build(BuildContext context) {
-    final initials = comment.author.isNotEmpty
-        ? comment.author[0].toUpperCase()
-        : '?';
-    final diff = DateTime.now().difference(comment.createdAt);
+    final author = comment.user?.displayName ?? context.l10n.commonAnonymous;
+    final initials = author.isNotEmpty ? author[0].toUpperCase() : '?';
+    final createdAt = DateTime.tryParse(comment.createdAt ?? '')?.toLocal() ?? DateTime.now();
+    final diff = DateTime.now().difference(createdAt);
     final timeAgo = diff.inMinutes < 1
         ? context.l10n.timeJustNow
         : diff.inMinutes < 60
@@ -1245,8 +1228,11 @@ class _CommentTile extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(
-                      comment.author,
+                    Flexible(
+                      child: Text(
+                      author,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontFamily: AppFonts.family,
                         fontWeight: FontWeight.w600,
@@ -1254,16 +1240,21 @@ class _CommentTile extends StatelessWidget {
                         color: AppColors.textPrimary,
                       ),
                     ),
+                    ),
                     const SizedBox(width: 6),
                     Text(timeAgo,
                         style: AppTextStyles.bodySmall),
                   ],
                 ),
                 const SizedBox(height: 3),
-                Text(
-                  comment.text,
-                  style:
-                      AppTextStyles.bodyMedium.copyWith(height: 1.4),
+                MentionText(
+                  MentionCodec.encode(comment.text, comment.mentions),
+                  style: AppTextStyles.bodyMedium.copyWith(height: 1.4),
+                ),
+                CommentLikeButton(
+                  comment: CommentRef.testimony(comment.id),
+                  initialCount: comment.likesCount,
+                  initialLiked: comment.isLikedByMe,
                 ),
               ],
             ),
@@ -1274,13 +1265,4 @@ class _CommentTile extends StatelessWidget {
   }
 }
 
-class _ShortsComment {
-  const _ShortsComment({
-    required this.author,
-    required this.text,
-    required this.createdAt,
-  });
-  final String author;
-  final String text;
-  final DateTime createdAt;
-}
+

@@ -17119,6 +17119,306 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'{count, plural, =0{Aucun témoignage} =1{1 témoignage} other{{count} témoignages}}'**
   String pastEventsTestimonyCount(int count);
+
+  /// No description provided for @prayerFocusTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Temps de prière'**
+  String get prayerFocusTitle;
+
+  /// No description provided for @prayerFocusFor.
+  ///
+  /// In fr, this message translates to:
+  /// **'Avec {name}, présentez ce besoin à Dieu'**
+  String prayerFocusFor(String name);
+
+  /// No description provided for @prayerFocusSubject.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sujet de prière'**
+  String get prayerFocusSubject;
+
+  /// No description provided for @prayerFocusWait.
+  ///
+  /// In fr, this message translates to:
+  /// **'Prenez ces 5 minutes pour prier. Vous pourrez ensuite confirmer votre prière.'**
+  String get prayerFocusWait;
+
+  /// No description provided for @prayerFocusConfirm.
+  ///
+  /// In fr, this message translates to:
+  /// **'J\'ai prié pour cette requête'**
+  String get prayerFocusConfirm;
+
+  /// No description provided for @prayerFocusValidate.
+  ///
+  /// In fr, this message translates to:
+  /// **'Valider ma prière'**
+  String get prayerFocusValidate;
+
+  /// No description provided for @prayerFocusLeave.
+  ///
+  /// In fr, this message translates to:
+  /// **'Quitter sans valider'**
+  String get prayerFocusLeave;
+
+  /// No description provided for @prayerFocusDone.
+  ///
+  /// In fr, this message translates to:
+  /// **'Temps de prière terminé'**
+  String get prayerFocusDone;
+
+  /// No description provided for @prayerFocusRemaining.
+  ///
+  /// In fr, this message translates to:
+  /// **'Temps restant : {time}'**
+  String prayerFocusRemaining(String time);
+
+  /// No description provided for @prayerFocusVerseRef.
+  ///
+  /// In fr, this message translates to:
+  /// **'Jacques 5:16'**
+  String get prayerFocusVerseRef;
+
+  /// No description provided for @immersiveLayoutClassic.
+  ///
+  /// In fr, this message translates to:
+  /// **'Classique'**
+  String get immersiveLayoutClassic;
+
+  /// No description provided for @immersiveLayoutImmersive.
+  ///
+  /// In fr, this message translates to:
+  /// **'Immersif'**
+  String get immersiveLayoutImmersive;
+
+  /// No description provided for @immersiveSwitchToImmersive.
+  ///
+  /// In fr, this message translates to:
+  /// **'Affichage immersif'**
+  String get immersiveSwitchToImmersive;
+
+  /// No description provided for @immersiveSwitchToClassic.
+  ///
+  /// In fr, this message translates to:
+  /// **'Affichage classique'**
+  String get immersiveSwitchToClassic;
+
+  /// No description provided for @immersiveBy.
+  ///
+  /// In fr, this message translates to:
+  /// **'Témoignage de {name}'**
+  String immersiveBy(String name);
+
+  /// No description provided for @immersiveTextHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Écouter · touchez un paragraphe pour le lire'**
+  String get immersiveTextHint;
+
+  /// No description provided for @immersiveNoTranscript.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ce témoignage audio n\'a pas encore de transcription. Écoutez-le et laissez-vous toucher.'**
+  String get immersiveNoTranscript;
+
+  /// No description provided for @immersiveApproxSync.
+  ///
+  /// In fr, this message translates to:
+  /// **'Texte synchronisé approximativement sur l\'audio'**
+  String get immersiveApproxSync;
+
+  /// No description provided for @immersiveSettingTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Affichage immersif des témoignages'**
+  String get immersiveSettingTitle;
+
+  /// No description provided for @immersiveSettingSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Plein écran, texte qui défile pendant la lecture : propice à la prière'**
+  String get immersiveSettingSubtitle;
+
+  /// No description provided for @prayerFocusTestimonyLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Témoignage'**
+  String get prayerFocusTestimonyLabel;
+
+  /// No description provided for @prayerFocusTestimonyConfirm.
+  ///
+  /// In fr, this message translates to:
+  /// **'J\'ai prié pour ce témoignage'**
+  String get prayerFocusTestimonyConfirm;
+
+  /// No description provided for @bibleOtherVersions.
+  ///
+  /// In fr, this message translates to:
+  /// **'Autres versions'**
+  String get bibleOtherVersions;
+
+  /// No description provided for @bibleDownloadingVersion.
+  ///
+  /// In fr, this message translates to:
+  /// **'Préparation de la {name} sur votre téléphone…\nUne seule fois : elle sera ensuite lisible hors ligne.'**
+  String bibleDownloadingVersion(String name);
+
+  /// No description provided for @commentLike.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aimer ce commentaire'**
+  String get commentLike;
+
+  /// No description provided for @commentUnlike.
+  ///
+  /// In fr, this message translates to:
+  /// **'Je n\'aime plus ce commentaire'**
+  String get commentUnlike;
+
+  /// No description provided for @commentLikeReason.
+  ///
+  /// In fr, this message translates to:
+  /// **'aimer un commentaire'**
+  String get commentLikeReason;
+
+  /// No description provided for @commentLikeFailed.
+  ///
+  /// In fr, this message translates to:
+  /// **'Impossible d\'enregistrer votre « J\'aime ». Réessayez.'**
+  String get commentLikeFailed;
+
+  /// No description provided for @adminSettingsPublishing.
+  ///
+  /// In fr, this message translates to:
+  /// **'Publication'**
+  String get adminSettingsPublishing;
+
+  /// No description provided for @adminSettingsTypeText.
+  ///
+  /// In fr, this message translates to:
+  /// **'Témoignages écrits'**
+  String get adminSettingsTypeText;
+
+  /// No description provided for @adminSettingsTypeAudio.
+  ///
+  /// In fr, this message translates to:
+  /// **'Témoignages audio'**
+  String get adminSettingsTypeAudio;
+
+  /// No description provided for @adminSettingsTypeVideo.
+  ///
+  /// In fr, this message translates to:
+  /// **'Témoignages vidéo'**
+  String get adminSettingsTypeVideo;
+
+  /// No description provided for @adminSettingsTypeYoutube.
+  ///
+  /// In fr, this message translates to:
+  /// **'Liens YouTube'**
+  String get adminSettingsTypeYoutube;
+
+  /// No description provided for @adminSettingsTypeSub.
+  ///
+  /// In fr, this message translates to:
+  /// **'Accepté sur toute la plateforme (un profil peut avoir une exception)'**
+  String get adminSettingsTypeSub;
+
+  /// No description provided for @adminSettingsTypeYoutubeSub.
+  ///
+  /// In fr, this message translates to:
+  /// **'Administrateurs, et profils autorisés un par un'**
+  String get adminSettingsTypeYoutubeSub;
+
+  /// No description provided for @adminSettingsSaveFailed.
+  ///
+  /// In fr, this message translates to:
+  /// **'Le réglage n\'a pas pu être enregistré. Réessayez.'**
+  String get adminSettingsSaveFailed;
+
+  /// No description provided for @adminUserPublishingTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Types de témoignages'**
+  String get adminUserPublishingTitle;
+
+  /// No description provided for @adminUserPublishingSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ce que {name} peut publier'**
+  String adminUserPublishingSubtitle(String name);
+
+  /// No description provided for @adminUserPublishingAllowed.
+  ///
+  /// In fr, this message translates to:
+  /// **'Autorisé'**
+  String get adminUserPublishingAllowed;
+
+  /// No description provided for @adminUserPublishingBlocked.
+  ///
+  /// In fr, this message translates to:
+  /// **'Désactivé'**
+  String get adminUserPublishingBlocked;
+
+  /// No description provided for @adminUserPublishingDefaultOn.
+  ///
+  /// In fr, this message translates to:
+  /// **'Par défaut (oui)'**
+  String get adminUserPublishingDefaultOn;
+
+  /// No description provided for @adminUserPublishingDefaultOff.
+  ///
+  /// In fr, this message translates to:
+  /// **'Par défaut (non)'**
+  String get adminUserPublishingDefaultOff;
+
+  /// No description provided for @adminUserPublishingAllow.
+  ///
+  /// In fr, this message translates to:
+  /// **'Autoriser'**
+  String get adminUserPublishingAllow;
+
+  /// No description provided for @adminUserPublishingDeny.
+  ///
+  /// In fr, this message translates to:
+  /// **'Interdire'**
+  String get adminUserPublishingDeny;
+
+  /// No description provided for @publishNoTypeAllowed.
+  ///
+  /// In fr, this message translates to:
+  /// **'La publication de témoignages n\'est pas ouverte pour votre compte pour le moment.'**
+  String get publishNoTypeAllowed;
+
+  /// No description provided for @authPhoneLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Téléphone'**
+  String get authPhoneLabel;
+
+  /// No description provided for @authPhoneSignInTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Connexion par téléphone'**
+  String get authPhoneSignInTitle;
+
+  /// No description provided for @authPhoneUseSmsCode.
+  ///
+  /// In fr, this message translates to:
+  /// **'Recevoir plutôt un code par SMS'**
+  String get authPhoneUseSmsCode;
+
+  /// No description provided for @authSignUpWithGoogle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Créer mon compte avec Google'**
+  String get authSignUpWithGoogle;
+
+  /// No description provided for @authOrFillForm.
+  ///
+  /// In fr, this message translates to:
+  /// **'ou remplissez le formulaire'**
+  String get authOrFillForm;
 }
 
 class _AppLocalizationsDelegate

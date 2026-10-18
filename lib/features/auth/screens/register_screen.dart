@@ -388,7 +388,20 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             ? context.pop()
                             : context.goNamed(AppRoutes.login),
                       ),
-                      const SizedBox(height: AppSpacing.xxl),
+                      const SizedBox(height: AppSpacing.xl),
+                      // Google en premier : compte créé en un geste (connexion s'il existe déjà).
+                      AppButton(
+                        key: const ValueKey('register-google'),
+                        label: context.l10n.authSignUpWithGoogle,
+                        variant: AppButtonVariant.outline,
+                        leading: const GoogleGMark(size: 20),
+                        fullWidth: true,
+                        isLoading: _googleLoading,
+                        onPressed: isLoading ? null : _signInWithGoogle,
+                      ),
+                      const SizedBox(height: 16),
+                      AuthOrDivider(label: context.l10n.authOrFillForm),
+                      const SizedBox(height: 16),
                       // Choix du type de compte.
                       _AccountTypeSelector(
                         value: _accountType,
@@ -599,23 +612,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         label: context.l10n.authSignUp,
                         isLoading: isLoading && !_googleLoading,
                         onPressed: isLoading ? null : _submit,
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      // Séparateur « ou ».
-                      AuthOrDivider(label: context.l10n.authOr),
-
-                      const SizedBox(height: 16),
-
-                      // Google sign-in.
-                      AppButton(
-                        label: context.l10n.authContinueWithGoogle,
-                        variant: AppButtonVariant.outline,
-                        leading: const GoogleGMark(size: 20),
-                        fullWidth: true,
-                        isLoading: _googleLoading,
-                        onPressed: isLoading ? null : _signInWithGoogle,
                       ),
 
                       const SizedBox(height: 28),

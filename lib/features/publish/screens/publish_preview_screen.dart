@@ -832,7 +832,8 @@ class _Step2VideoState extends ConsumerState<_Step2Video> {
         ? _videoDuration
         : const Duration(seconds: 60);
     // Publication par lien YouTube : réservée aux administrateurs (403 sinon).
-    final isAdmin    = ref.watch(currentUserProvider)?.isAdmin ?? false;
+    // Lien YouTube : administrateurs, ou profil autorisé (docs serveur types-de-temoignages.md).
+    final isAdmin    = ref.watch(currentUserProvider)?.canPublishType('youtube') ?? false;
     final useYouTube = isAdmin && draft.useYouTube;
 
     return SingleChildScrollView(
@@ -1320,7 +1321,7 @@ class _BottomNavButtonsState extends ConsumerState<_BottomNavButtons> {
               draft.audioPath != null;
         }
         if (draft.useYouTube &&
-            (ref.read(currentUserProvider)?.isAdmin ?? false)) {
+            (ref.read(currentUserProvider)?.canPublishType('youtube') ?? false)) {
           return extractYouTubeId(draft.youtubeUrl) != null;
         }
         return draft.videoPath != null;

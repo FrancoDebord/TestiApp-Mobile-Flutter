@@ -8,6 +8,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../testimony/prayer/pray_for_testimony.dart' show prayForTestimony;
 import '../../repost/testimony_share_sheet.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -543,7 +544,7 @@ class _ExpandedDetails extends ConsumerWidget {
                   context, ref, context.l10n.homeReasonReact)) {
                 return;
               }
-              ref.read(interactionProvider.notifier).togglePray(t);
+              if (context.mounted) await prayForTestimony(context, ref, t);
             },
             onComment: () => context.push('/testimony/${t.id}/comments'),
             onShare: onShare,

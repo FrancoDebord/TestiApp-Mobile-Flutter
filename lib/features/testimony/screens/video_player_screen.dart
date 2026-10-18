@@ -1,3 +1,4 @@
+import '../prayer/pray_for_testimony.dart' show prayForTestimony;
 import '../../home/widgets/testimony_card_header.dart' show openAuthorProfile;
 import '../../community/widgets/follow_button.dart';
 import 'dart:async';
@@ -795,7 +796,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
       return;
     }
     if (!mounted || t == null) return;
-    ref.read(interactionProvider.notifier).togglePray(t);
+    await prayForTestimony(context, ref, t);
   }
 
   Future<void> _toggleSave() async {

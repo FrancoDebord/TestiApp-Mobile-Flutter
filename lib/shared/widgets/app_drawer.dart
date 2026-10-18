@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/bible/models/bible_models.dart' show kDefaultBibleTranslation;
 import '../../core/theme/app_colors.dart';
 import '../../features/accounts/providers/acting_account_provider.dart'
     show actingAccountProvider, myAccountsProvider;
@@ -102,7 +103,8 @@ class AppDrawer extends ConsumerWidget {
             const Divider(height: 1),
             item(Icons.groups_rounded, l10n.settingsCommunity, '/community', subtitle: l10n.sharedDrawerCommunitySubtitle),
             // Bible : branche du shell (pas d'onglet dans la barre du bas) → go.
-            item(Icons.auto_stories_rounded, l10n.sharedDrawerBible, '/bible',
+            // Ouvre directement la Louis Segond (retour : liste des versions).
+            item(Icons.auto_stories_rounded, l10n.sharedDrawerBible, '/bible/$kDefaultBibleTranslation',
                 subtitle: l10n.sharedDrawerBibleSubtitle, tab: true),
             item(Icons.sensors_rounded, l10n.sharedDrawerLives, '/lives'),
             item(Icons.event_rounded, l10n.navEvents, '/events',

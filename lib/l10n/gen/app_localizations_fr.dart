@@ -9911,4 +9911,174 @@ class AppLocalizationsFr extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get prayerFocusTitle => 'Temps de prière';
+
+  @override
+  String prayerFocusFor(String name) {
+    return 'Avec $name, présentez ce besoin à Dieu';
+  }
+
+  @override
+  String get prayerFocusSubject => 'Sujet de prière';
+
+  @override
+  String get prayerFocusWait =>
+      'Prenez ces 5 minutes pour prier. Vous pourrez ensuite confirmer votre prière.';
+
+  @override
+  String get prayerFocusConfirm => 'J\'ai prié pour cette requête';
+
+  @override
+  String get prayerFocusValidate => 'Valider ma prière';
+
+  @override
+  String get prayerFocusLeave => 'Quitter sans valider';
+
+  @override
+  String get prayerFocusDone => 'Temps de prière terminé';
+
+  @override
+  String prayerFocusRemaining(String time) {
+    return 'Temps restant : $time';
+  }
+
+  @override
+  String get prayerFocusVerseRef => 'Jacques 5:16';
+
+  @override
+  String get immersiveLayoutClassic => 'Classique';
+
+  @override
+  String get immersiveLayoutImmersive => 'Immersif';
+
+  @override
+  String get immersiveSwitchToImmersive => 'Affichage immersif';
+
+  @override
+  String get immersiveSwitchToClassic => 'Affichage classique';
+
+  @override
+  String immersiveBy(String name) {
+    return 'Témoignage de $name';
+  }
+
+  @override
+  String get immersiveTextHint =>
+      'Écouter · touchez un paragraphe pour le lire';
+
+  @override
+  String get immersiveNoTranscript =>
+      'Ce témoignage audio n\'a pas encore de transcription. Écoutez-le et laissez-vous toucher.';
+
+  @override
+  String get immersiveApproxSync =>
+      'Texte synchronisé approximativement sur l\'audio';
+
+  @override
+  String get immersiveSettingTitle => 'Affichage immersif des témoignages';
+
+  @override
+  String get immersiveSettingSubtitle =>
+      'Plein écran, texte qui défile pendant la lecture : propice à la prière';
+
+  @override
+  String get prayerFocusTestimonyLabel => 'Témoignage';
+
+  @override
+  String get prayerFocusTestimonyConfirm => 'J\'ai prié pour ce témoignage';
+
+  @override
+  String get bibleOtherVersions => 'Autres versions';
+
+  @override
+  String bibleDownloadingVersion(String name) {
+    return 'Préparation de la $name sur votre téléphone…\nUne seule fois : elle sera ensuite lisible hors ligne.';
+  }
+
+  @override
+  String get commentLike => 'Aimer ce commentaire';
+
+  @override
+  String get commentUnlike => 'Je n\'aime plus ce commentaire';
+
+  @override
+  String get commentLikeReason => 'aimer un commentaire';
+
+  @override
+  String get commentLikeFailed =>
+      'Impossible d\'enregistrer votre « J\'aime ». Réessayez.';
+
+  @override
+  String get adminSettingsPublishing => 'Publication';
+
+  @override
+  String get adminSettingsTypeText => 'Témoignages écrits';
+
+  @override
+  String get adminSettingsTypeAudio => 'Témoignages audio';
+
+  @override
+  String get adminSettingsTypeVideo => 'Témoignages vidéo';
+
+  @override
+  String get adminSettingsTypeYoutube => 'Liens YouTube';
+
+  @override
+  String get adminSettingsTypeSub =>
+      'Accepté sur toute la plateforme (un profil peut avoir une exception)';
+
+  @override
+  String get adminSettingsTypeYoutubeSub =>
+      'Administrateurs, et profils autorisés un par un';
+
+  @override
+  String get adminSettingsSaveFailed =>
+      'Le réglage n\'a pas pu être enregistré. Réessayez.';
+
+  @override
+  String get adminUserPublishingTitle => 'Types de témoignages';
+
+  @override
+  String adminUserPublishingSubtitle(String name) {
+    return 'Ce que $name peut publier';
+  }
+
+  @override
+  String get adminUserPublishingAllowed => 'Autorisé';
+
+  @override
+  String get adminUserPublishingBlocked => 'Désactivé';
+
+  @override
+  String get adminUserPublishingDefaultOn => 'Par défaut (oui)';
+
+  @override
+  String get adminUserPublishingDefaultOff => 'Par défaut (non)';
+
+  @override
+  String get adminUserPublishingAllow => 'Autoriser';
+
+  @override
+  String get adminUserPublishingDeny => 'Interdire';
+
+  @override
+  String get publishNoTypeAllowed =>
+      'La publication de témoignages n\'est pas ouverte pour votre compte pour le moment.';
+
+  @override
+  String get authPhoneLabel => 'Téléphone';
+
+  @override
+  String get authPhoneSignInTitle => 'Connexion par téléphone';
+
+  @override
+  String get authPhoneUseSmsCode => 'Recevoir plutôt un code par SMS';
+
+  @override
+  String get authSignUpWithGoogle => 'Créer mon compte avec Google';
+
+  @override
+  String get authOrFillForm => 'ou remplissez le formulaire';
 }

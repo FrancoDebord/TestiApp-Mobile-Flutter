@@ -14,6 +14,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../shared/comments/comment_likes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
@@ -1420,6 +1421,7 @@ class _CommentsTabState extends ConsumerState<_CommentsTab> {
           async: ref.watch(dailyVerseCommentsProvider(widget.verseId)),
           empty: context.l10n.verseCommentsEmpty,
           itemBuilder: (c) => _CommentTile(
+            verseId: widget.verseId,
             comment: c,
             onDelete: c.canDelete ? () => _delete(c) : null,
             onReport: c.canReport ? () => _report(c) : null,
@@ -1432,7 +1434,9 @@ class _CommentsTabState extends ConsumerState<_CommentsTab> {
 }
 
 class _CommentTile extends StatelessWidget {
-  const _CommentTile({required this.comment, this.onDelete, this.onReport});
+  const _CommentTile({required this.verseId, required this.comment, this.onDelete, this.onReport});
+
+  final int verseId;
 
   final VerseComment comment;
   final VoidCallback? onDelete;
@@ -1474,6 +1478,11 @@ class _CommentTile extends StatelessWidget {
                   ),
                 const SizedBox(height: 4),
                 MentionText(c.body, mentions: c.mentions, style: AppTextStyles.bodyMedium),
+                CommentLikeButton(
+                  comment: CommentRef.verse('$verseId', c.id),
+                  initialCount: c.likesCount,
+                  initialLiked: c.isLikedByMe,
+                ),
               ],
             ),
           ),

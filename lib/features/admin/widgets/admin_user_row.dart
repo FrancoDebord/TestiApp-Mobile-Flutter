@@ -16,6 +16,7 @@ class AdminUserRow extends StatelessWidget {
     required this.onBan,
     required this.onPromote,
     required this.onRestore,
+    this.onPublishing,
     super.key,
   });
 
@@ -24,6 +25,9 @@ class AdminUserRow extends StatelessWidget {
   final VoidCallback onBan;
   final VoidCallback onPromote;
   final VoidCallback onRestore;
+
+  /// Types de témoignages du profil (administrateurs) ; null : action masquée.
+  final VoidCallback? onPublishing;
 
   @override
   Widget build(BuildContext context) {
@@ -80,6 +84,7 @@ class AdminUserRow extends StatelessWidget {
             onBan: onBan,
             onPromote: onPromote,
             onRestore: onRestore,
+            onPublishing: onPublishing,
           ),
         ],
       ),
@@ -244,6 +249,7 @@ class _ActionsMenu extends StatelessWidget {
     required this.onBan,
     required this.onPromote,
     required this.onRestore,
+    this.onPublishing,
   });
 
   final AdminUser user;
@@ -251,6 +257,7 @@ class _ActionsMenu extends StatelessWidget {
   final VoidCallback onBan;
   final VoidCallback onPromote;
   final VoidCallback onRestore;
+  final VoidCallback? onPublishing;
 
   @override
   Widget build(BuildContext context) {
@@ -260,6 +267,9 @@ class _ActionsMenu extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       elevation: 8,
       itemBuilder: (_) => [
+        if (onPublishing != null)
+          _menuItem('publishing', Icons.post_add_rounded, context.l10n.adminUserPublishingTitle,
+              const Color(0xFF184797)),
         if (user.status != UserAccountStatus.active)
           _menuItem('restore', Icons.restore_rounded, context.l10n.adminRestore,
               const Color(0xFF12B76A)),
@@ -287,6 +297,8 @@ class _ActionsMenu extends StatelessWidget {
             onPromote();
           case 'restore':
             onRestore();
+          case 'publishing':
+            onPublishing?.call();
         }
       },
     );

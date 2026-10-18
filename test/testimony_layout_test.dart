@@ -14,6 +14,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:testi_app/features/testimony/immersive/reading_passages.dart';
+import 'package:testi_app/features/testimony/providers/detail_layout_provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:testi_app/features/auth/providers/auth_notifier.dart'
@@ -179,8 +181,17 @@ List<Override> get _overrides => [
       ttsEngineProvider.overrideWithValue(_SilentTts()),
     ];
 
-Widget _app(Widget child, {double textScale = 1.0}) => ProviderScope(
-      overrides: _overrides,
+/// Affichage immersif choisi par l'utilisateur.
+class _Immersive extends TestimonyDetailLayoutNotifier {
+  @override
+  TestimonyDetailLayout build() => TestimonyDetailLayout.immersive;
+}
+
+Widget _app(Widget child, {double textScale = 1.0, bool immersive = false}) => ProviderScope(
+      overrides: [
+        ..._overrides,
+        if (immersive) testimonyDetailLayoutProvider.overrideWith(_Immersive.new),
+      ],
       child: MaterialApp.router(
         routerConfig: GoRouter(routes: [
           GoRoute(path: '/', builder: (_, _) => child),
@@ -218,6 +229,20 @@ Future<void> _settle(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets('bascule classique ⇄ immersif depuis la page', (tester) async {
+    await _setPhone(tester, 390);
+    await tester.pumpWidget(_app(const TestimonyDetailScreen(testimonyId: 't1')));
+    await _settle(tester);
+    expect(find.byKey(const ValueKey('immersive-testimony')), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('detail-immersive')));
+    await _settle(tester);
+    expect(find.byKey(const ValueKey('immersive-testimony')), findsOneWidget);
+    await tester.tap(find.byTooltip('Affichage classique'));
+    await _settle(tester);
+    expect(find.byKey(const ValueKey('immersive-testimony')), findsNothing);
+    expect(find.text('Écouter ce témoignage'), findsOneWidget);
+  });
+
   setUpAll(() => GoogleFonts.config.allowRuntimeFetching = false);
 
   setUp(() {
@@ -296,6 +321,50 @@ void main() {
         expect(container.read(ttsControllerProvider).autoRead, isTrue);
 
         await _scrollAll(tester);
+      });
+
+      testWidgets('immersif texte : paragraphes, lecture depuis un paragraphe ($width px, ×$scale)',
+          (tester) async {
+        await _setPhone(tester, width);
+        await tester.pumpWidget(_app(const TestimonyDetailScreen(testimonyId: 't1'),
+            textScale: scale, immersive: true));
+        await _settle(tester);
+        expect(tester.takeException(), isNull);
+        expect(find.byKey(const ValueKey('immersive-testimony')), findsOneWidget);
+        expect(find.textContaining('Gloire à Lui'), findsOneWidget);
+        // Toucher le 2ᵉ paragraphe (le corps) : la lecture vocale part de lui.
+        await tester.ensureVisible(find.textContaining('Gloire à Lui'));
+        await _settle(tester);
+        await tester.tap(find.textContaining('Gloire à Lui'));
+        await _settle(tester);
+        final container = ProviderScope.containerOf(
+            tester.element(find.byKey(const ValueKey('immersive-testimony'))));
+        final tts = container.read(ttsControllerProvider);
+        expect(tts.status, TtsStatus.playing);
+        expect(tts.index, chunkStarts(textPassages(_text))![1]);
+        expect(find.text('Lecture en cours'), findsWidgets);
+        expect(tester.takeException(), isNull);
+      });
+
+      testWidgets('immersif audio : transcription défilante ($width px, ×$scale)', (tester) async {
+        await _setPhone(tester, width);
+        await tester.pumpWidget(_app(const TestimonyDetailScreen(testimonyId: 'a1'),
+            textScale: scale, immersive: true));
+        await _settle(tester);
+        expect(tester.takeException(), isNull);
+        expect(find.byKey(const ValueKey('immersive-testimony')), findsOneWidget);
+        expect(find.textContaining('état très critique'), findsOneWidget);
+        expect(find.text('02:45 / 05:12'), findsOneWidget);
+      });
+
+      testWidgets('immersif vidéo ($width px, ×$scale)', (tester) async {
+        await _setPhone(tester, width);
+        await tester.pumpWidget(_app(const TestimonyDetailScreen(testimonyId: 'v1'),
+            textScale: scale, immersive: true));
+        await _settle(tester);
+        expect(tester.takeException(), isNull);
+        expect(find.text('05:12'), findsOneWidget);
+        expect(find.text(_verse), findsOneWidget);
       });
 
       testWidgets('détail audio ($width px, ×$scale)', (tester) async {

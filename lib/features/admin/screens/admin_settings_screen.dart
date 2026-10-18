@@ -34,7 +34,7 @@ class AdminSettingsScreen extends ConsumerWidget {
       children: [
         // ── Maintenance warning banner ────────────────────────────────────
         if (settings.maintenanceMode) ...[
-          _MaintenanceBanner(onDisable: () => notifier.toggle('maintenanceMode')),
+          _MaintenanceBanner(onDisable: () => _toggle(context, notifier, 'maintenanceMode')),
           const SizedBox(height: 16),
         ],
 
@@ -48,21 +48,21 @@ class AdminSettingsScreen extends ConsumerWidget {
               label: l10n.adminSettingsNewSignups,
               sublabel: l10n.adminSettingsNewSignupsSub,
               value: settings.allowNewRegistrations,
-              onChanged: (_) => notifier.toggle('allowNewRegistrations'),
+              onChanged: (_) => _toggle(context, notifier, 'allowNewRegistrations'),
             ),
             _ToggleTile(
               icon: Icons.visibility_outlined,
               label: l10n.adminSettingsGuestAccess,
               sublabel: l10n.adminSettingsGuestAccessSub,
               value: settings.allowGuestView,
-              onChanged: (_) => notifier.toggle('allowGuestView'),
+              onChanged: (_) => _toggle(context, notifier, 'allowGuestView'),
             ),
             _ToggleTile(
               icon: Icons.mark_email_read_outlined,
               label: l10n.adminSettingsEmailVerification,
               sublabel: l10n.adminSettingsEmailVerificationSub,
               value: settings.requireEmailVerification,
-              onChanged: (_) => notifier.toggle('requireEmailVerification'),
+              onChanged: (_) => _toggle(context, notifier, 'requireEmailVerification'),
             ),
           ],
         ),
@@ -78,8 +78,45 @@ class AdminSettingsScreen extends ConsumerWidget {
               label: l10n.adminSettingsAutoModeration,
               sublabel: l10n.adminSettingsAutoModerationSub,
               value: settings.autoModerationEnabled,
-              onChanged: (_) => notifier.toggle('autoModerationEnabled'),
+              onChanged: (_) => _toggle(context, notifier, 'autoModerationEnabled'),
               isExperimental: true,
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        // ── Publication : types de témoignages acceptés ───────────────────
+        _SettingsSection(
+          title: l10n.adminSettingsPublishing,
+          icon: Icons.post_add_rounded,
+          tiles: [
+            _ToggleTile(
+              icon: Icons.article_outlined,
+              label: l10n.adminSettingsTypeText,
+              sublabel: l10n.adminSettingsTypeSub,
+              value: settings.textTestimoniesEnabled,
+              onChanged: (_) => _toggle(context, notifier, 'textTestimoniesEnabled'),
+            ),
+            _ToggleTile(
+              icon: Icons.mic_none_rounded,
+              label: l10n.adminSettingsTypeAudio,
+              sublabel: l10n.adminSettingsTypeSub,
+              value: settings.audioTestimoniesEnabled,
+              onChanged: (_) => _toggle(context, notifier, 'audioTestimoniesEnabled'),
+            ),
+            _ToggleTile(
+              icon: Icons.videocam_outlined,
+              label: l10n.adminSettingsTypeVideo,
+              sublabel: l10n.adminSettingsTypeSub,
+              value: settings.videoTestimoniesEnabled,
+              onChanged: (_) => _toggle(context, notifier, 'videoTestimoniesEnabled'),
+            ),
+            _ToggleTile(
+              icon: Icons.smart_display_outlined,
+              label: l10n.adminSettingsTypeYoutube,
+              sublabel: l10n.adminSettingsTypeYoutubeSub,
+              value: settings.youtubeTestimoniesEnabled,
+              onChanged: (_) => _toggle(context, notifier, 'youtubeTestimoniesEnabled'),
             ),
           ],
         ),
@@ -95,7 +132,7 @@ class AdminSettingsScreen extends ConsumerWidget {
               label: l10n.adminSettingsPush,
               sublabel: l10n.adminSettingsPushSub,
               value: settings.pushNotificationsEnabled,
-              onChanged: (_) => notifier.toggle('pushNotificationsEnabled'),
+              onChanged: (_) => _toggle(context, notifier, 'pushNotificationsEnabled'),
             ),
           ],
         ),
@@ -104,10 +141,19 @@ class AdminSettingsScreen extends ConsumerWidget {
         // ── Danger zone ───────────────────────────────────────────────────
         _DangerZone(
           maintenanceMode: settings.maintenanceMode,
-          onToggleMaintenance: () => notifier.toggle('maintenanceMode'),
+          onToggleMaintenance: () => _toggle(context, notifier, 'maintenanceMode'),
         ),
       ],
     );
+  }
+}
+
+/// Enregistre l'interrupteur ; message si le serveur refuse.
+Future<void> _toggle(BuildContext context, AppSettingsNotifier notifier, String key) async {
+  final messenger = ScaffoldMessenger.maybeOf(context);
+  final err = await notifier.toggle(key);
+  if (err != null) {
+    messenger?.showSnackBar(SnackBar(behavior: SnackBarBehavior.floating, content: Text(err)));
   }
 }
 

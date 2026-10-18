@@ -2,6 +2,7 @@ import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../prayer/pray_for_testimony.dart' show prayForTestimony;
 import '../../../core/app_constants.dart';
 import '../../../core/media/media_quality.dart' show OfflineMedia;
 import '../../../core/media/playback_preferences.dart';
@@ -217,7 +218,7 @@ class _AudioPlayerScreenState extends ConsumerState<AudioPlayerScreen>
 
   Future<void> _togglePray(AudioTestimony? t) async {
     if (!await _member(context.l10n.homeReasonReact) || !mounted || t == null) return;
-    ref.read(interactionProvider.notifier).togglePray(t);
+    await prayForTestimony(context, ref, t);
   }
 
   Future<void> _toggleBookmark(AudioTestimony? t) async {

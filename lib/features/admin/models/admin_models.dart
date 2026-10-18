@@ -152,6 +152,10 @@ class AppSettings {
     this.requireEmailVerification = true,
     this.autoModerationEnabled = false,
     this.pushNotificationsEnabled = true,
+    this.textTestimoniesEnabled = true,
+    this.audioTestimoniesEnabled = true,
+    this.videoTestimoniesEnabled = true,
+    this.youtubeTestimoniesEnabled = true,
   });
 
   final bool maintenanceMode;
@@ -161,6 +165,13 @@ class AppSettings {
   final bool autoModerationEnabled;
   final bool pushNotificationsEnabled;
 
+  /// Types de témoignages acceptés sur la plateforme (docs serveur
+  /// fonctionnalites/types-de-temoignages.md) ; un profil peut avoir une exception.
+  final bool textTestimoniesEnabled;
+  final bool audioTestimoniesEnabled;
+  final bool videoTestimoniesEnabled;
+  final bool youtubeTestimoniesEnabled;
+
   AppSettings copyWith({
     bool? maintenanceMode,
     bool? allowNewRegistrations,
@@ -168,6 +179,10 @@ class AppSettings {
     bool? requireEmailVerification,
     bool? autoModerationEnabled,
     bool? pushNotificationsEnabled,
+    bool? textTestimoniesEnabled,
+    bool? audioTestimoniesEnabled,
+    bool? videoTestimoniesEnabled,
+    bool? youtubeTestimoniesEnabled,
   }) {
     return AppSettings(
       maintenanceMode: maintenanceMode ?? this.maintenanceMode,
@@ -180,6 +195,10 @@ class AppSettings {
           autoModerationEnabled ?? this.autoModerationEnabled,
       pushNotificationsEnabled:
           pushNotificationsEnabled ?? this.pushNotificationsEnabled,
+      textTestimoniesEnabled: textTestimoniesEnabled ?? this.textTestimoniesEnabled,
+      audioTestimoniesEnabled: audioTestimoniesEnabled ?? this.audioTestimoniesEnabled,
+      videoTestimoniesEnabled: videoTestimoniesEnabled ?? this.videoTestimoniesEnabled,
+      youtubeTestimoniesEnabled: youtubeTestimoniesEnabled ?? this.youtubeTestimoniesEnabled,
     );
   }
 }

@@ -1,5 +1,8 @@
 import 'package:flutter/foundation.dart';
 
+/// Traduction ouverte par défaut (menu « Bible ») : Louis Segond 1910.
+const String kDefaultBibleTranslation = 'LSG'; // i18n-ignore
+
 enum DownloadStatus { notDownloaded, downloading, downloaded, error }
 
 @immutable

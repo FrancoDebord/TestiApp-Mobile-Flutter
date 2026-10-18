@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart' show ShareParams, SharePlus;
 
+import '../../testimony/providers/detail_layout_provider.dart';
 import '../../../core/media/playback_preferences.dart';
 import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
@@ -160,6 +161,15 @@ class SettingsScreen extends ConsumerWidget {
           ProfileMenuCard(
             title: l10n.settingsPlayback,
             children: [
+              // Affichage d'un témoignage : classique ou immersif.
+              _toggle(
+                icon: Icons.self_improvement_rounded,
+                title: l10n.immersiveSettingTitle,
+                subtitle: l10n.immersiveSettingSubtitle,
+                value: ref.watch(testimonyDetailLayoutProvider) == TestimonyDetailLayout.immersive,
+                onChanged: (v) => ref.read(testimonyDetailLayoutProvider.notifier).set(
+                    v ? TestimonyDetailLayout.immersive : TestimonyDetailLayout.classic),
+              ),
               ProfileMenuTile(
                 icon: Icons.hd_outlined,
                 title: l10n.settingsVideoQuality,

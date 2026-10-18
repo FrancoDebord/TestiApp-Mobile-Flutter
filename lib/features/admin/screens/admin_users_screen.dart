@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../widgets/user_publishing_sheet.dart' show showUserPublishingSheet;
+import '../../auth/providers/auth_notifier.dart' show currentUserProvider;
 import '../../../shared/models/user_model.dart' show UserRole;
 import '../providers/admin_provider.dart';
 import '../widgets/admin_user_row.dart';
@@ -252,6 +254,10 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                               .read(adminUsersNotifierProvider.notifier)
                               .activate(user.uid),
                         ),
+                        // Types de témoignages propres au profil : administrateurs seulement.
+                        onPublishing: (ref.read(currentUserProvider)?.isAdmin ?? false)
+                            ? () => showUserPublishingSheet(context, userId: user.uid, userName: user.displayName)
+                            : null,
                       );
                     },
                   ),

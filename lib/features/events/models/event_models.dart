@@ -646,6 +646,8 @@ class EventComment {
     this.canDelete = false,
     this.createdAt,
     this.mentions = const [],
+    this.likesCount = 0,
+    this.isLikedByMe = false,
   });
 
   factory EventComment.fromJson(Map<String, dynamic> m) => EventComment(
@@ -657,9 +659,15 @@ class EventComment {
         canDelete: m['canDelete'] == true,
         createdAt: _date(m['createdAt']),
         mentions: MentionRef.listFrom(m['mentions']),
+        likesCount: _int(m['likesCount']),
+        isLikedByMe: m['isLikedByMe'] == true,
       );
 
   final String id;
+
+  /// « J'aime » (docs serveur fonctionnalites/jaime-commentaires.md).
+  final int likesCount;
+  final bool isLikedByMe;
 
   /// Texte lisible (« @Nom ») ; les comptes mentionnés sont dans [mentions].
   final String body;
@@ -685,6 +693,8 @@ class EventComment {
         canDelete: canDelete,
         createdAt: createdAt,
         mentions: mentions,
+        likesCount: likesCount,
+        isLikedByMe: isLikedByMe,
       );
 }
 

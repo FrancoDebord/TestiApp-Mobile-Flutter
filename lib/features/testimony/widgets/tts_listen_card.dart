@@ -39,8 +39,9 @@ String ttsTextFor(TextTestimony t, {bool includeVerse = true}) {
 Future<void> startTestimonyReading(
   BuildContext context,
   WidgetRef ref,
-  TextTestimony t,
-) async {
+  TextTestimony t, {
+  int startIndex = 0,
+}) async {
   final l10n = context.l10n;
   final messenger = ScaffoldMessenger.maybeOf(context);
   // Un seul son à la fois : mettre en pause un témoignage audio en cours.
@@ -54,6 +55,7 @@ Future<void> startTestimonyReading(
         testimonyId: t.id,
         text: text,
         languageCode: detectTextLanguage(text, fallback: l10n.isFr ? 'fr' : 'en'),
+        startIndex: startIndex,
       );
   if (!ok) {
     messenger?.showSnackBar(

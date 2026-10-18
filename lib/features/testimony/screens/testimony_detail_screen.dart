@@ -1,4 +1,8 @@
 import 'dart:async';
+import '../../../shared/comments/comment_likes.dart';
+import '../prayer/pray_for_testimony.dart' show prayForTestimony;
+import '../immersive/immersive_testimony_view.dart';
+import '../providers/detail_layout_provider.dart';
 import '../../conversion/widgets/conversion_widgets.dart' show ConversionBanner;
 import '../../prophecies/widgets/public_prophecy_card.dart';
 import '../testimony_delete.dart';
@@ -56,6 +60,8 @@ class _LocalComment {
     required this.body,
     required this.createdAt,
     this.authorId = '',
+    this.likes = 0,
+    this.isLikedByMe = false,
   });
 
   final String id;
@@ -65,7 +71,10 @@ class _LocalComment {
   /// Texte avec mentions sous forme de jetons `@[Nom](user:id)` (affiché par MentionText).
   final String body;
   final DateTime createdAt;
-  final int likes = 0;
+
+  /// « J'aime » du commentaire (docs serveur fonctionnalites/jaime-commentaires.md).
+  final int likes;
+  final bool isLikedByMe;
 
   String get initials {
     final parts = authorName.trim().split(' ');
@@ -90,6 +99,8 @@ class _LocalComment {
     authorId: m.userId,
     body: MentionCodec.encode(m.text, m.mentions),
     createdAt: DateTime.tryParse(m.createdAt ?? '') ?? DateTime.now(),
+    likes: m.likesCount,
+    isLikedByMe: m.isLikedByMe,
   );
 }
 
@@ -432,6 +443,29 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
 
     final verse = _extractBibleVerse(testimony);
 
+    // Affichage immersif (choix mémorisé de l'utilisateur).
+    if (ref.watch(testimonyDetailLayoutProvider) == TestimonyDetailLayout.immersive) {
+      return PopScope(
+        canPop: context.canPop(),
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) context.go('/home');
+        },
+        child: ImmersiveTestimonyView(
+          testimony: testimony,
+          isLiked: isLiked,
+          isPraying: isPraying,
+          onLike: () => _toggleLike(testimony),
+          onPray: () => _togglePray(testimony),
+          onComment: () => _showCommentsSheet(context),
+          onShare: () => _onShare(testimony),
+          onClassic: () => ref.read(testimonyDetailLayoutProvider.notifier).set(TestimonyDetailLayout.classic),
+          onBack: () => _leaveDetail(context),
+          verse: verse,
+          verseRef: _extractBibleVerseRef(testimony),
+        ),
+      );
+    }
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       // Ouvert depuis un lien partagé, le détail est seul dans la pile :
@@ -451,6 +485,7 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
                 isBookmarked: _isBookmarked,
                 onBookmark: _toggleSave,
                 onShare: () => _shareTestimony(testimony),
+                onImmersive: () => ref.read(testimonyDetailLayoutProvider.notifier).set(TestimonyDetailLayout.immersive),
                 // Auteur ou administrateur (jamais un modérateur).
                 onDelete: canDeleteTestimony(ref, testimony)
                     ? () async {
@@ -617,7 +652,7 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
       return;
     }
     if (!mounted) return;
-    ref.read(interactionProvider.notifier).togglePray(t);
+    await prayForTestimony(context, ref, t);
   }
 
   Future<void> _toggleSave() async {
@@ -699,10 +734,14 @@ class _HeroSliverAppBar extends StatelessWidget {
     required this.isBookmarked,
     required this.onBookmark,
     required this.onShare,
+    required this.onImmersive,
     this.onDelete,
   });
 
   final TestimonyCategory category;
+
+  /// Passer à l'affichage immersif (mémorisé).
+  final VoidCallback onImmersive;
   final bool isBookmarked;
   final VoidCallback onBookmark;
   final VoidCallback onShare;
@@ -739,6 +778,15 @@ class _HeroSliverAppBar extends StatelessWidget {
         ),
       ),
       actions: [
+        Tooltip(
+          message: context.l10n.immersiveSwitchToImmersive,
+          child: _CircleIconButton(
+            key: const ValueKey('detail-immersive'),
+            icon: Icons.self_improvement_rounded,
+            onTap: onImmersive,
+          ),
+        ),
+        const SizedBox(width: 6),
         _CircleIconButton(
           icon: isBookmarked
               ? Icons.bookmark_rounded
@@ -821,6 +869,7 @@ class _HeroSliverAppBar extends StatelessWidget {
 
 class _CircleIconButton extends StatelessWidget {
   const _CircleIconButton({
+    super.key,
     required this.icon,
     required this.onTap,
     this.color = AppColors.primary,
@@ -1311,11 +1360,13 @@ class _CommentsSection extends StatelessWidget {
         else
           ...preview.map(
             (c) => _CommentItem(
+              commentId: c.id,
               name: c.authorName,
               initials: c.initials,
               text: c.body,
               time: c.timeAgo,
               likeCount: c.likes,
+              isLiked: c.isLikedByMe,
             ),
           ),
       ],
@@ -1325,24 +1376,24 @@ class _CommentsSection extends StatelessWidget {
 
 class _CommentItem extends StatelessWidget {
   const _CommentItem({
+    required this.commentId,
     required this.name,
     required this.initials,
     required this.text,
     required this.time,
     required this.likeCount,
     this.isLiked = false,
-    this.onLike,
     this.onReply,
     this.onDelete,
   });
 
+  final String commentId;
   final String name;
   final String initials;
   final String text;
   final String time;
   final int likeCount;
   final bool isLiked;
-  final VoidCallback? onLike;
   final VoidCallback? onReply;
 
   /// Auteur ou administrateur ; null : pas de « Supprimer ».
@@ -1401,23 +1452,12 @@ class _CommentItem extends StatelessWidget {
                   children: [
                     Text(time, style: AppTextStyles.bodySmall),
                     const SizedBox(width: 16),
-                    GestureDetector(
-                      onTap: onLike,
-                      child: Row(
-                        children: [
-                          Icon(
-                            isLiked
-                                ? Icons.favorite_rounded
-                                : Icons.favorite_border_rounded,
-                            size: 13,
-                            color: isLiked
-                                ? AppColors.danger
-                                : AppColors.textSecondary,
-                          ),
-                          const SizedBox(width: 3),
-                          Text('$likeCount', style: AppTextStyles.bodySmall),
-                        ],
-                      ),
+                    // « J'aime » enregistré sur le serveur (état partagé avec la feuille des commentaires).
+                    CommentLikeButton(
+                      comment: CommentRef.testimony(commentId),
+                      initialCount: likeCount,
+                      initialLiked: isLiked,
+                      iconSize: 13,
                     ),
                     const SizedBox(width: 16),
                     GestureDetector(
@@ -1682,8 +1722,7 @@ class _CommentsBottomSheetState extends State<_CommentsBottomSheet> {
   // Copie locale mise à jour immédiatement (optimistic UI)
   late List<_LocalComment> _local;
 
-  // ── Likes et réponses ─────────────────────────────────────────────────────
-  final Set<String> _likedIds = {};
+  // ── Réponses ──────────────────────────────────────────────────────────────
   String? _replyingToName; // nom de l'auteur auquel on répond
 
   @override
@@ -1701,16 +1740,6 @@ class _CommentsBottomSheetState extends State<_CommentsBottomSheet> {
     _ctrl.dispose();
     _focusNode.dispose();
     super.dispose();
-  }
-
-  void _toggleLike(String commentId) {
-    setState(() {
-      if (_likedIds.contains(commentId)) {
-        _likedIds.remove(commentId);
-      } else {
-        _likedIds.add(commentId);
-      }
-    });
   }
 
   Future<void> _delete(_LocalComment c) async {
@@ -1843,15 +1872,14 @@ class _CommentsBottomSheetState extends State<_CommentsBottomSheet> {
                         itemCount: _local.length,
                         itemBuilder: (_, i) {
                           final c = _local[i];
-                          final isLiked = _likedIds.contains(c.id);
                           return _CommentItem(
+                            commentId: c.id,
                             name: c.authorName,
                             initials: c.initials,
                             text: c.body,
                             time: c.timeAgo,
-                            likeCount: c.likes + (isLiked ? 1 : 0),
-                            isLiked: isLiked,
-                            onLike: () => _toggleLike(c.id),
+                            likeCount: c.likes,
+                            isLiked: c.isLikedByMe,
                             onReply: () => _startReply(c),
                             onDelete: widget.canDelete(c) ? () => _delete(c) : null,
                           );

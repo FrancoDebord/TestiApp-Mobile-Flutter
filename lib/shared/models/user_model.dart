@@ -90,6 +90,7 @@ class UserModel {
     this.phoneCountry,
     this.isPhoneVerified = false,
     this.hasConversionTestimony = false,
+    this.allowedTestimonyTypes,
     this.avatarUrl,
     this.coverUrl,
     this.country = '',
@@ -129,6 +130,19 @@ class UserModel {
   /// Témoignage de conversion publié (`has_conversion_testimony` de GET /me et
   /// GET /users/{id} ; docs serveur fonctionnalites/temoignage-de-conversion.md).
   final bool hasConversionTestimony;
+
+  /// Types de témoignages que ce compte peut publier (`allowed_testimony_types` :
+  /// text, audio, video, youtube) — réglages de l'administrateur, globaux ou propres
+  /// au profil (docs serveur fonctionnalites/types-de-temoignages.md). null : serveur
+  /// plus ancien, règles d'avant (tout sauf YouTube, réservé aux administrateurs).
+  final List<String>? allowedTestimonyTypes;
+
+  /// Ce compte peut-il publier un témoignage de ce type ?
+  bool canPublishType(String type) {
+    final allowed = allowedTestimonyTypes;
+    if (allowed != null) return allowed.contains(type);
+    return type == 'youtube' ? isAdmin : true;
+  }
   final String? avatarUrl;
 
   /// Photo de couverture du profil (bandeau), null si aucune.
@@ -195,6 +209,9 @@ class UserModel {
       phoneCountry:     _str(j['phone_country']),
       isPhoneVerified:  _bool(j['is_phone_verified']),
       hasConversionTestimony: _bool(j['has_conversion_testimony']),
+      allowedTestimonyTypes: j['allowed_testimony_types'] is List
+          ? [for (final t in j['allowed_testimony_types'] as List) '$t']
+          : null,
       avatarUrl:        j['avatar_url']       as String?,
       coverUrl:         _str(j['cover_url']),
       country:          j['country']          as String? ?? '',
@@ -229,6 +246,7 @@ class UserModel {
     if (phoneCountry != null) 'phone_country': phoneCountry,
     'is_phone_verified': isPhoneVerified,
     'has_conversion_testimony': hasConversionTestimony,
+    'allowed_testimony_types': ?allowedTestimonyTypes,
     if (avatarUrl != null) 'avatar_url': avatarUrl,
     if (coverUrl != null) 'cover_url': coverUrl,
     'country': country, 'bio': bio, 'has_password': hasPassword, 'role': role.toJson(), 'is_email_verified': isEmailVerified,
@@ -283,6 +301,7 @@ class UserModel {
     phoneCountry:    phoneCountry    ?? this.phoneCountry,
     isPhoneVerified: isPhoneVerified ?? this.isPhoneVerified,
     hasConversionTestimony: hasConversionTestimony,
+    allowedTestimonyTypes: allowedTestimonyTypes,
     avatarUrl:       avatarUrl       ?? this.avatarUrl,
     coverUrl:        clearCoverUrl ? null : (coverUrl ?? this.coverUrl),
     country:         country         ?? this.country,

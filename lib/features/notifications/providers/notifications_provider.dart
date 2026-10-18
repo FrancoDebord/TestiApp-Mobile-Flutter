@@ -38,6 +38,8 @@ AppNotification? notificationFromJson(dynamic raw) {
 
 NotificationType _parseType(String v) => switch (v) {
       'like'                  => NotificationType.like,
+      // « J'aime » sur un de mes commentaires (ouvre le contenu commenté).
+      'comment_liked'         => NotificationType.like,
       'comment'               => NotificationType.comment,
       'reply'                 => NotificationType.comment,
       'mention'               => NotificationType.mention,

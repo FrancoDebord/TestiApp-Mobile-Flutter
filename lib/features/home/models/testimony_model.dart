@@ -323,6 +323,37 @@ final class TextTestimony extends Testimony {
   TestimonyType get type => TestimonyType.text;
 }
 
+// ── Transcription horodatée ──────────────────────────────────────────────────
+
+/// Passage d'une transcription : texte prononcé entre [start] et [end].
+class TranscriptSegment {
+  const TranscriptSegment({required this.start, required this.end, required this.text});
+
+  final Duration start;
+  final Duration end;
+  final String text;
+
+  /// `[{start, end, text}]` (secondes) ; éléments inexploitables ignorés.
+  static List<TranscriptSegment> parseList(Object? raw) {
+    if (raw is! List) return const [];
+    Duration? sec(Object? v) {
+      final n = v is num ? v.toDouble() : double.tryParse('$v');
+      return n == null || n < 0 ? null : Duration(milliseconds: (n * 1000).round());
+    }
+
+    final out = <TranscriptSegment>[];
+    for (final m in raw.whereType<Map>()) {
+      final start = sec(m['start']);
+      final end = sec(m['end']);
+      final text = '${m['text'] ?? ''}'.trim();
+      if (start == null || end == null || text.isEmpty || end < start) continue;
+      out.add(TranscriptSegment(start: start, end: end, text: text));
+    }
+    out.sort((a, b) => a.start.compareTo(b.start));
+    return out;
+  }
+}
+
 // ── Audio testimony ────────────────────────────────────────────────────────────
 
 final class AudioTestimony extends Testimony {
@@ -335,6 +366,8 @@ final class AudioTestimony extends Testimony {
     required super.stats,
     required this.durationSeconds,
     required this.transcriptPreview,
+    this.transcript = '',
+    this.transcriptSegments = const [],
     this.mediaPath,
     this.renditions = const [],
     this.renditionsStatus,
@@ -358,6 +391,13 @@ final class AudioTestimony extends Testimony {
 
   final int     durationSeconds;
   final String  transcriptPreview;
+
+  /// Transcription complète (texte du témoignage audio, saisi à la publication).
+  final String  transcript;
+
+  /// Transcription horodatée (`transcriptSegments` de l'API, si le serveur l'a
+  /// produite) : le texte défilant suit alors exactement l'audio.
+  final List<TranscriptSegment> transcriptSegments;
   final String? mediaPath;
 
   /// Versions disponibles (débits), de la plus basse à la plus haute.
