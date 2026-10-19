@@ -265,6 +265,7 @@ abstract final class AppConstants {
 
   static const String verseToday  = '/daily-verse';
   static const String verseReact  = '/daily-verse/react';  // POST + DELETE
+  static String versePrayStart(int id) => '/daily-verse/$id/pray/start'; // temps de prière
   static const String verseShare  = '/daily-verse/share';  // POST
 
   // Page plein écran (docs serveur fonctionnalites/verset-du-jour.md)
@@ -321,6 +322,8 @@ abstract final class AppConstants {
   static const String adminTestimonies = '/admin/testimonies';
   static const String adminCategories  = '/admin/categories';
   static const String adminSettings    = '/admin/settings';
+  // Description des réglages (mêmes groupes et libellés que le site) — docs serveur parametres-globaux.md
+  static const String adminSettingsSchema = '/admin/settings/schema';
 
   static String adminCategoryById(String id) => '/admin/categories/$id'; // PUT / DELETE
 
@@ -344,7 +347,8 @@ abstract final class AppConstants {
   //   GET  /lives                     → { configured, canGoLive, active[], recent[] }
   //   GET  /lives/{id}                → direct + liveStats
   //   POST /lives/{id}/viewer-token   → { url, token, identity }
-  //   GET  /lives/{id}/comments       → 100 derniers commentaires
+  //   GET  /lives/{id}/comments       → 100 derniers commentaires (direct terminé : tous, ?page, offsetSeconds)
+  //   GET  /lives/{id}/testimonies    → témoignages rattachés au direct (live_id)
   //   GET  /lives/{id}/stats          → { status, viewers, peakViewers, commentCount, reactions }
   // Authentifié :
   //   POST   /lives                   { title, description?, category_slug?, comments_enabled? }
@@ -367,6 +371,7 @@ abstract final class AppConstants {
   static String liveStats(String id)      => '/lives/$id/stats';
   static String liveViewers(String id)    => '/lives/$id/viewers'; // qui regarde (public)
   static String liveComments(String id)   => '/lives/$id/comments';
+  static String liveTestimonies(String id) => '/lives/$id/testimonies';
   static String liveComment(String id, String commentId) =>
       '/lives/$id/comments/$commentId';
   static String livePinComment(String id, String commentId) =>
@@ -407,6 +412,7 @@ abstract final class AppConstants {
   static const String prophecies = '/prophecies';
   static String prophecyById(String id) => '/prophecies/$id';
   static String prophecyPrayers(String id) => '/prophecies/$id/prayers';
+  static String prophecyPrayStart(String id) => '/prophecies/$id/pray/start'; // temps de prière
   static String prophecyPrayer(String id, int prayerId) => '/prophecies/$id/prayers/$prayerId';
 
   // Mon fil (tous les témoignages, comptes suivis d'abord) : GET /feed → feedReason

@@ -210,6 +210,33 @@ class PushService {
     return _messaging.getToken();
   }
 
+  /// La personne n'a encore ni accepté ni refusé les notifications sur cet appareil.
+  Future<bool> needsConsent() async {
+    try {
+      final status = (await _messaging.getNotificationSettings()).authorizationStatus;
+      return status == AuthorizationStatus.notDetermined;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Accord donné dans l'application : demande du système, puis jeton envoyé.
+  Future<bool> requestConsent() async {
+    try {
+      final settings = await _messaging.requestPermission(alert: true, badge: true, sound: true);
+      final ok = settings.authorizationStatus == AuthorizationStatus.authorized ||
+          settings.authorizationStatus == AuthorizationStatus.provisional;
+      if (ok) {
+        await _presentationOptions();
+        await registerDevice();
+      }
+      return ok;
+    } catch (e, stack) {
+      _log('consent', e, stack);
+      return false;
+    }
+  }
+
   /// « Tester les notifications » (Paramètres) : vérifie l'autorisation,
   /// réenregistre le jeton de l'appareil, puis POST /me/push-test.
   Future<PushTestResult> sendTestPush() async {
@@ -288,12 +315,16 @@ class PushService {
 
   // ── Permissions ───────────────────────────────────────────────────────────
 
+  /// Consentement : la fenêtre du système n'est plus ouverte d'office à la
+  /// connexion. Si la personne n'a encore rien décidé, l'application lui explique
+  /// d'abord à quoi servent les notifications ([needsConsent], [requestConsent]).
   Future<void> _requestPermissions() async {
-    await _messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+    final status = (await _messaging.getNotificationSettings()).authorizationStatus;
+    if (status == AuthorizationStatus.notDetermined) return;
+    await _presentationOptions();
+  }
+
+  Future<void> _presentationOptions() async {
     // Foreground display off: we show our own styled local notifications.
     await _messaging.setForegroundNotificationPresentationOptions(
       alert: false,
@@ -396,7 +427,15 @@ class PushService {
     final settings = _r.read(userSettingsProvider);
     return switch (message.data['type'] as String? ?? '') {
       'comment' || 'reply' || 'mention' => settings.pushComments,
-      'like' || 'comment_liked'         => settings.pushLikes,
+      'like' || 'comment_liked' || 'share' => settings.pushLikes,
+      'new_followed_testimony' || 'live_started' => settings.push('push_new_followed'),
+      'follow' => settings.push('push_follows'),
+      'event_postponed' || 'event_cancelled' || 'event_survey'
+          || 'prayer_session_started' || 'prayer_session_reminder' => settings.push('push_events'),
+      'organization_verified' || 'organization_rejected' || 'account_verified'
+          || 'account_verification_rejected' || 'account_approval_revoked'
+          || 'account_manager_added' || 'account_manager_removed' => settings.push('push_account'),
+      'testimony_resubmitted' || 'video_stuck' => settings.push('push_moderation'),
       'prayer' || 'prayer_encouragement' || 'prayer_request_prayed' => settings.pushPrayers,
       // Pas de préférence dédiée « abonnements » dans UserSettings :
       // toujours affichées.

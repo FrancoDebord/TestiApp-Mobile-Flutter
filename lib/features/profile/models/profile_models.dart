@@ -175,14 +175,30 @@ extension CommentPermissionLabel on CommentPermission {
   };
 }
 
+/// Autres catégories de notifications push (consentement par catégorie, docs serveur
+/// fonctionnalites/notifications-push.md) : clé de user_settings → valeur.
+const kExtraPushCategories = [
+  'push_new_followed', // nouveaux témoignages et directs des comptes suivis
+  'push_follows', // nouveaux abonnés
+  'push_events', // événements et sessions de prière
+  'push_account', // mon compte (vérification, administrateurs…)
+  'push_moderation', // équipe de modération
+];
+
 class UserSettings {
   const UserSettings({
     this.pushComments    = true,
     this.pushLikes       = true,
     this.pushPrayers     = true,
     this.pushApproval    = true,
+    this.extraPush       = const {},
     this.commentPermission = CommentPermission.everyone,
   });
+
+  /// [kExtraPushCategories] : absent = activé (valeur par défaut du serveur).
+  final Map<String, bool> extraPush;
+
+  bool push(String key) => extraPush[key] ?? true;
 
   final bool               pushComments;
   final bool               pushLikes;
@@ -205,6 +221,7 @@ class UserSettings {
       pushLikes: b('push_likes'),
       pushPrayers: b('push_prayers'),
       pushApproval: b('push_approval'),
+      extraPush: {for (final k in kExtraPushCategories) k: b(k)},
       commentPermission:
           CommentPermission.fromJson(j['comment_permission'] as String?),
     );
@@ -215,6 +232,7 @@ class UserSettings {
     'push_likes': pushLikes,
     'push_prayers': pushPrayers,
     'push_approval': pushApproval,
+    ...extraPush,
     'comment_permission': commentPermission.toJson(),
   };
 
@@ -223,12 +241,14 @@ class UserSettings {
     bool? pushLikes,
     bool? pushPrayers,
     bool? pushApproval,
+    Map<String, bool>? extraPush,
     CommentPermission? commentPermission,
   }) => UserSettings(
     pushComments:      pushComments      ?? this.pushComments,
     pushLikes:         pushLikes         ?? this.pushLikes,
     pushPrayers:       pushPrayers       ?? this.pushPrayers,
     pushApproval:      pushApproval      ?? this.pushApproval,
+    extraPush:         extraPush         ?? this.extraPush,
     commentPermission: commentPermission ?? this.commentPermission,
   );
 }

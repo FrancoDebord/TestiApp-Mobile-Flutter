@@ -30,6 +30,7 @@ class PrayerFocusSubject {
     required this.label,
     required this.confirmLabel,
     this.title,
+    this.subtitle,
     this.mentions = const [],
     this.onStart,
   });
@@ -45,6 +46,9 @@ class PrayerFocusSubject {
       );
 
   final String? title;
+
+  /// Sous le titre de l'écran ; par défaut « Avec {auteur}, présentez ce besoin à Dieu ».
+  final String? subtitle;
   final String body;
   final List<MentionRef> mentions;
   final String authorName;
@@ -212,7 +216,7 @@ class _PrayerFocusScreenState extends State<PrayerFocusScreen>
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          l10n.prayerFocusFor(r.authorName),
+                          r.subtitle ?? l10n.prayerFocusFor(r.authorName),
                           textAlign: TextAlign.center,
                           style: AppTextStyles.bodyMedium.copyWith(color: Colors.white70),
                         ),

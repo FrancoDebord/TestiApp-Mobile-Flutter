@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import '../providers/home_providers.dart' show dailyVerseProvider;
 import '../../events/widgets/past_events_widgets.dart' show PastEventsStrip;
 import '../../conversion/providers/conversion_providers.dart' show latestConversionsProvider;
 import '../../conversion/widgets/conversion_widgets.dart' show HomeConversionSection;
@@ -94,6 +97,8 @@ class HomeScreen extends ConsumerWidget {
             ..invalidate(featuredFromApiProvider)
             ..invalidate(latestConversionsProvider)
             ..invalidate(prayerRequestsPageProvider(homePrayerRequests));
+          // Verset du jour : réactions faites ailleurs (site, autre téléphone).
+          unawaited(ref.read(dailyVerseProvider.notifier).refresh());
           return ref.read(feedNotifierProvider.notifier).refresh();
         },
         // Défilement infini : page suivante du fil « Pour vous » à l'approche du bas.

@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../daily_verse/pray_for_verse.dart';
+import '../../../shared/widgets/guest_gate.dart' show requireAccount;
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
@@ -301,7 +303,11 @@ class _ExpandedBanner extends ConsumerWidget {
                             active: verse.isPrayed,
                             ink: r.ink,
                             accent: r.accent,
-                            onTap: notifier.togglePray,
+                            // Temps de prière immersif, comme partout ailleurs.
+                            onTap: () async {
+                              if (!await requireAccount(context, ref, reason: l10n.verseReasonPray)) return;
+                              if (context.mounted) await prayForDailyVerse(context, ref);
+                            },
                           )),
                           const Spacer(),
                           Flexible(child: _InteractionButton(

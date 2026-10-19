@@ -849,12 +849,14 @@ class _Step2VideoState extends ConsumerState<_Step2Video> {
             ),
             const SizedBox(height: 16),
           ],
-          if (useYouTube)
+          if (useYouTube) ...[
             _YouTubeLinkField(
               initialValue: draft.youtubeUrl,
               onChanged: notifier.updateYouTubeUrl,
-            )
-          else ...[
+            ),
+            const SizedBox(height: 16),
+            _YouTubeCreditFields(draft: draft, onChanged: notifier.updateYouTubeCredit),
+          ] else ...[
           // ── Camera preview / placeholder ─────────────────────────────────
           _VideoCameraPreview(
             videoPath: draft.videoPath,
@@ -1047,6 +1049,72 @@ class _YouTubeLinkFieldState extends State<_YouTubeLinkField> {
             ),
           ),
         ],
+      ],
+    );
+  }
+}
+
+/// Crédit de la vidéo YouTube d'origine : auteur, chaîne, lien (facultatifs).
+class _YouTubeCreditFields extends StatelessWidget {
+  const _YouTubeCreditFields({required this.draft, required this.onChanged});
+
+  final PublishDraft draft;
+  final void Function({String? author, String? channel, String? url}) onChanged;
+
+  static bool _validUrl(String v) {
+    final uri = Uri.tryParse(v.trim());
+    return uri != null && (uri.scheme == 'http' || uri.scheme == 'https') && uri.host.isNotEmpty;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final url = draft.youtubeCreditUrl.trim();
+    return Column(
+      key: const ValueKey('youtube-credit'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _FieldLabel(label: l10n.publishYouTubeCreditTitle, required: false),
+        const SizedBox(height: 4),
+        Text(l10n.publishYouTubeCreditHint,
+            style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary, height: 1.4)),
+        const SizedBox(height: 10),
+        TextFormField(
+          initialValue: draft.youtubeCreditAuthor,
+          maxLength: 150,
+          textCapitalization: TextCapitalization.words,
+          onChanged: (v) => onChanged(author: v),
+          decoration: _inputDecoration(hint: l10n.publishYouTubeCreditAuthorHint, counterText: '').copyWith(
+            labelText: l10n.publishYouTubeCreditAuthor,
+            prefixIcon: const Icon(Icons.person_outline_rounded, color: AppColors.textSecondary),
+          ),
+          style: _inputTextStyle,
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          initialValue: draft.youtubeCreditChannel,
+          maxLength: 150,
+          onChanged: (v) => onChanged(channel: v),
+          decoration: _inputDecoration(hint: l10n.publishYouTubeCreditChannelHint, counterText: '').copyWith(
+            labelText: l10n.publishYouTubeCreditChannel,
+            prefixIcon: const Icon(Icons.smart_display_outlined, color: AppColors.textSecondary),
+          ),
+          style: _inputTextStyle,
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          initialValue: draft.youtubeCreditUrl,
+          maxLength: 300,
+          keyboardType: TextInputType.url,
+          autocorrect: false,
+          onChanged: (v) => onChanged(url: v),
+          decoration: _inputDecoration(hint: 'https://www.youtube.com/@…', counterText: '').copyWith( // i18n-ignore
+            labelText: l10n.publishYouTubeCreditUrl,
+            errorText: url.isNotEmpty && !_validUrl(url) ? l10n.publishYouTubeCreditUrlInvalid : null,
+            prefixIcon: const Icon(Icons.link_rounded, color: AppColors.textSecondary),
+          ),
+          style: _inputTextStyle,
+        ),
       ],
     );
   }

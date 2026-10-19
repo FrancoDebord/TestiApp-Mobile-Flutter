@@ -4,6 +4,9 @@
 // Remplace video_player/chewie : pas de sélection de qualité (gérée par YouTube).
 
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../../features/home/models/testimony_model.dart' show YouTubeCredit;
 import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 
 import '../../l10n/app_localizations.dart';
@@ -68,6 +71,7 @@ class _YouTubeVideoPlayerState extends State<YouTubeVideoPlayer> {
 
   @override
   Widget build(BuildContext context) {
+    // Le lecteur gère lui-même son bouton plein écran (OverlayPortal).
     return YoutubePlayer(
       key: ValueKey(widget.videoId),
       controller: _controller,
@@ -112,6 +116,46 @@ class YouTubeBadge extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// « Vidéo de {auteur} · {chaîne} » sous un témoignage publié par lien YouTube ;
+/// le lien (chaîne ou vidéo d'origine) s'ouvre dans YouTube / le navigateur.
+class YouTubeCreditLine extends StatelessWidget {
+  const YouTubeCreditLine({required this.credit, this.onDark = false, super.key});
+
+  final YouTubeCredit credit;
+  final bool onDark;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final parts = [
+      if (credit.author != null) l10n.youtubeCreditBy(credit.author!),
+      if (credit.channel != null) l10n.youtubeCreditChannel(credit.channel!),
+    ];
+    final color = onDark ? Colors.white70 : AppColors.textSecondary;
+    final text = Text(
+      parts.isEmpty ? l10n.youtubeCreditSource : parts.join(' · '),
+      style: AppTextStyles.bodySmall.copyWith(color: color),
+    );
+    final url = credit.url;
+    return Padding(
+      key: const ValueKey('youtube-credit-line'),
+      padding: const EdgeInsets.only(top: 6),
+      child: Row(
+        children: [
+          Icon(Icons.smart_display_outlined, size: 15, color: color),
+          const SizedBox(width: 6),
+          Expanded(child: text),
+          if (url != null)
+            TextButton(
+              onPressed: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+              child: Text(l10n.youtubeCreditOpen),
+            ),
         ],
       ),
     );

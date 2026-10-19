@@ -487,6 +487,7 @@ class _ImmersiveVideo extends StatelessWidget {
               child: AspectRatio(aspectRatio: 16 / 9, child: media),
             ),
           ),
+          if (t.youtubeCredit != null) YouTubeCreditLine(credit: t.youtubeCredit!, onDark: true),
           if (verse != null && verse!.trim().isNotEmpty) ...[
             const SizedBox(height: 28),
             const Icon(Icons.format_quote_rounded, color: AppColors.sun, size: 28),

@@ -1050,8 +1050,12 @@ class LiveEndedView extends StatelessWidget {
     this.commentCount,
     this.reactions,
     this.asHost = false,
+    this.footer,
     super.key,
   });
+
+  /// Sous le bilan : revoir la discussion, témoigner (LiveAfterwardsSection).
+  final Widget? footer;
 
   final String title;
   final String reason;
@@ -1274,6 +1278,7 @@ class LiveEndedView extends StatelessWidget {
                           ),
                         ],
 
+                        ?footer,
                         const SizedBox(height: 28),
                         SizedBox(
                           width: double.infinity,

@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:livekit_client/livekit_client.dart' as lk;
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../widgets/live_replay.dart' show LiveAfterwardsSection;
 import '../../../core/theme/app_colors.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../auth/providers/auth_notifier.dart' show currentUserProvider;
@@ -148,6 +149,7 @@ class _LiveViewerScreenState extends ConsumerState<LiveViewerScreen> {
             ? ctrl.reactions
             : live.reactions,
         onClose: _close,
+        footer: LiveAfterwardsSection(liveId: live.id, title: live.title),
       );
     }
 

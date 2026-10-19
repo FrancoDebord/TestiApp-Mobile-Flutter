@@ -152,7 +152,7 @@ Testimony _applyStatsDelta(
       durationSeconds: t.durationSeconds, thumbnailUrl: t.thumbnailUrl,
       mediaPath: t.mediaPath, renditions: t.renditions, renditionsStatus: t.renditionsStatus,
       bibleVerse: t.bibleVerse, bibleVerseRef: t.bibleVerseRef,
-      youtubeId: t.youtubeId, hlsUrl: t.hlsUrl, mp4Url: t.mp4Url,
+      youtubeId: t.youtubeId, youtubeCredit: t.youtubeCredit, hlsUrl: t.hlsUrl, mp4Url: t.mp4Url,
       videoStatus: t.videoStatus,
       isFeatured: t.isFeatured, isLiked: t.isLiked,
       isPrayed: t.isPrayed, isSaved: t.isSaved,
@@ -354,6 +354,7 @@ Testimony? testimonyFromApiJson(dynamic raw) {
           renditionsStatus: m['renditionsStatus'] as String?,
           bibleVerse: bibleVerse, bibleVerseRef: bibleVerseRef,
           youtubeId: youtubeId,
+          youtubeCredit: YouTubeCredit.fromJson(m['youtubeCredit'] ?? m['youtube_credit']),
           hlsUrl: bunny?.hlsUrl,
           mp4Url: bunny?.mp4Url,
           videoStatus: bunny?.status,
@@ -1123,6 +1124,7 @@ class DailyVerseNotifier extends AsyncNotifier<DailyVerse> {
         'prayer_count':  verse.prayerCount,
         'is_liked':      verse.isLiked,
         'is_prayed':     verse.isPrayed,
+        'comment_count': verse.commentCount,
         // Hors connexion le même jour : design du jour du serveur (pas les
         // préférences du membre, gardées dans shared_preferences).
         'design_of_the_day': verse.designOfTheDay,
@@ -1132,43 +1134,55 @@ class DailyVerseNotifier extends AsyncNotifier<DailyVerse> {
     }
   }
 
-  Future<void> toggleLike() async {
-    final verse = state.value;
-    if (verse == null) return;
-    final wasLiked = verse.isLiked;
-    state = AsyncValue.data(verse.copyWith(
-      isLiked:   !wasLiked,
-      likeCount: verse.likeCount + (wasLiked ? -1 : 1),
-    ));
+  /// Relit le verset du jour sur le serveur sans indicateur de chargement :
+  /// « J'aime », « Je prie » et commentaires faits ailleurs (site, autre
+  /// téléphone) apparaissent dans l'application. Erreur réseau : rien ne change.
+  Future<void> refresh() async {
     try {
-      final api = ref.read(apiServiceProvider);
-      if (wasLiked) {
-        await api.delete<void>(AppConstants.verseReact, data: {'type': 'like'});
-      } else {
-        await api.post<void>(AppConstants.verseReact, data: {'type': 'like'});
-      }
-    } catch (_) {
+      final result = await ref.read(apiServiceProvider).get<Map<String, dynamic>>(AppConstants.verseToday);
+      final verse = DailyVerse.fromJson(result.data);
+      if (verse.text.isEmpty || !ref.mounted) return;
       state = AsyncValue.data(verse);
-    }
+      await _saveToCache(verse);
+    } catch (_) {}
   }
 
-  Future<void> togglePray() async {
+  Future<void> toggleLike() => _react('like');
+
+  /// « Je prie » : l'écran appelant ouvre d'abord le temps de prière
+  /// (`prayForDailyVerse`), comme partout ailleurs.
+  Future<void> togglePray() => _react('pray');
+
+  /// Réaction posée ou retirée ; la réponse du serveur (compteurs et réactions à jour,
+  /// y compris celles faites ailleurs) remplace l'état optimiste.
+  Future<void> _react(String type) async {
     final verse = state.value;
     if (verse == null) return;
-    final wasPrayed = verse.isPrayed;
-    state = AsyncValue.data(verse.copyWith(
-      isPrayed:    !wasPrayed,
-      prayerCount: verse.prayerCount + (wasPrayed ? -1 : 1),
-    ));
+    final like = type == 'like';
+    final was = like ? verse.isLiked : verse.isPrayed;
+    state = AsyncValue.data(like
+        ? verse.copyWith(isLiked: !was, likeCount: (verse.likeCount + (was ? -1 : 1)).clamp(0, 1 << 30))
+        : verse.copyWith(isPrayed: !was, prayerCount: (verse.prayerCount + (was ? -1 : 1)).clamp(0, 1 << 30)));
     try {
       final api = ref.read(apiServiceProvider);
-      if (wasPrayed) {
-        await api.delete<void>(AppConstants.verseReact, data: {'type': 'pray'});
+      if (verse.id > 0) {
+        // POST /daily-verse/{id}/react { type, active } → verset complet à jour.
+        final res = await api.post<Map<String, dynamic>>(
+          AppConstants.verseReactTo(verse.id),
+          data: {'type': type, 'active': !was},
+        );
+        final fresh = DailyVerse.fromJson(res.data);
+        if (fresh.text.isNotEmpty && ref.mounted) {
+          state = AsyncValue.data(fresh);
+          await _saveToCache(fresh);
+        }
+      } else if (was) {
+        await api.delete<void>(AppConstants.verseReact, data: {'type': type});
       } else {
-        await api.post<void>(AppConstants.verseReact, data: {'type': 'pray'});
+        await api.post<void>(AppConstants.verseReact, data: {'type': type});
       }
     } catch (_) {
-      state = AsyncValue.data(verse);
+      if (ref.mounted) state = AsyncValue.data(verse);
     }
   }
 

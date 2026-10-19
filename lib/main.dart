@@ -18,7 +18,7 @@ import 'features/auth/providers/auth_notifier.dart'
 import 'features/downloads/providers/downloads_provider.dart'
     show downloadsProvider;
 import 'features/daily_verse/screens/daily_verse_screen.dart' show openDailyVerse;
-import 'features/home/providers/home_providers.dart' show feedNotifierProvider;
+import 'features/home/providers/home_providers.dart' show dailyVerseProvider, feedNotifierProvider;
 import 'features/prophecies/data/prophecy_reminders.dart';
 import 'firebase_options.dart';
 import 'core/theme/app_colors.dart';
@@ -28,6 +28,8 @@ import 'features/daily_verse/design/verse_style_prefs.dart'
 import 'features/publish/upload/video_upload_controller.dart' show videoUploadProvider;
 import 'l10n/app_localizations.dart';
 import 'services/database_seed_service.dart';
+import 'shared/widgets/push_consent_sheet.dart';
+import 'services/api_service.dart' show secureStorageProvider;
 import 'services/push_service.dart';
 import 'features/testimony/providers/testimony_refresh.dart'
     show kVideoPushTypes, rememberVideoPush, testimonyReloaderProvider;
@@ -130,6 +132,8 @@ class _TemoignagesAppState extends ConsumerState<TemoignagesApp>
       case AppLifecycleState.resumed:
         // Nouveau jour : nouveau design du verset (sauf choix de l'utilisateur).
         ref.invalidate(currentVerseDesignProvider);
+        // Verset du jour : réactions et commentaires faits ailleurs (site, autre téléphone).
+        if (ref.exists(dailyVerseProvider)) unawaited(ref.read(dailyVerseProvider.notifier).refresh());
         // Vidéos prêtes ou en échec pendant que l'application était en arrière-plan.
         unawaited(ref.read(testimonyReloaderProvider).reloadPending());
         _triggerSync();
@@ -176,6 +180,14 @@ class _TemoignagesAppState extends ConsumerState<TemoignagesApp>
     unawaited(() async {
       await push.init();
       await push.registerDevice();
+      // Notifications sur consentement : explication puis accord (une seule fois).
+      if (await push.needsConsent() && mounted) {
+        final router = ref.read(appRouterProvider);
+        _whenPastSplash(router, () {
+          final ctx = router.routerDelegate.navigatorKey.currentContext;
+          if (ctx != null) unawaited(askPushConsent(ctx, push, ref.read(secureStorageProvider)));
+        });
+      }
     }());
     // Préférences du verset : créées maintenant pour se synchroniser avec le
     // serveur (changement en attente envoyé, sinon valeurs du serveur).

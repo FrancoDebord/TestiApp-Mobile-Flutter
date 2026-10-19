@@ -10081,4 +10081,183 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get authOrFillForm => 'ou remplissez le formulaire';
+
+  @override
+  String get prayerFocusVerseSubtitle => 'Méditez ce verset et priez avec lui';
+
+  @override
+  String get prayerFocusVerseLabel => 'Verset du jour';
+
+  @override
+  String get prayerFocusVerseConfirm => 'J\'ai prié avec ce verset';
+
+  @override
+  String get prayerFocusContentSubtitle => 'Présentez ce sujet à Dieu';
+
+  @override
+  String get prayerFocusContentConfirm => 'J\'ai prié pour ce sujet';
+
+  @override
+  String get prayerFocusKindEvent => 'Événement';
+
+  @override
+  String get prayerFocusKindSession => 'Session de prière';
+
+  @override
+  String get prayerFocusProphecySubtitle => 'Priez sur cette parole reçue';
+
+  @override
+  String get prayerFocusProphecyLabel => 'Parole prophétique';
+
+  @override
+  String get prayerFocusProphecyConfirm => 'J\'ai prié sur cette parole';
+
+  @override
+  String get pushConsentTitle => 'Recevoir les notifications ?';
+
+  @override
+  String get pushConsentBody =>
+      'TestiApp vous prévient quand il se passe quelque chose pour vous.';
+
+  @override
+  String get pushConsentComments => 'Commentaires, mentions et « J\'aime »';
+
+  @override
+  String get pushConsentPrayers =>
+      'Prières pour vos requêtes et vos témoignages';
+
+  @override
+  String get pushConsentEvents => 'Directs, événements et sessions de prière';
+
+  @override
+  String get pushConsentAccount =>
+      'Validation de vos témoignages et de votre compte';
+
+  @override
+  String get pushConsentChoose =>
+      'Vous choisissez ensuite quoi recevoir dans Paramètres › Notifications.';
+
+  @override
+  String get pushConsentAccept => 'Activer les notifications';
+
+  @override
+  String get pushConsentLater => 'Plus tard';
+
+  @override
+  String get eventsNoYoutubeLive => 'Aucun direct YouTube pour cet événement.';
+
+  @override
+  String get eventsLiveFullscreen => 'Plein écran';
+
+  @override
+  String get eventsLiveExitFullscreen => 'Quitter le plein écran';
+
+  @override
+  String get eventsLiveChat => 'Discussion en direct';
+
+  @override
+  String get eventsWatchLive => 'Regarder le direct';
+
+  @override
+  String get liveTestify => 'Témoigner sur ce direct';
+
+  @override
+  String get liveTestifyReason => 'témoigner sur ce direct';
+
+  @override
+  String get liveReplayChat => 'Revoir la discussion';
+
+  @override
+  String get liveReplayEmpty =>
+      'Aucun message n\'a été laissé pendant ce direct.';
+
+  @override
+  String liveTestimoniesTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count témoignages sur ce direct',
+      one: '1 témoignage sur ce direct',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get publishLiveTestimony => 'Témoignage sur le direct';
+
+  @override
+  String get settingsNotifFollowedTitle => 'Comptes suivis';
+
+  @override
+  String get settingsNotifFollowed =>
+      'Nouveaux témoignages et directs des comptes que vous suivez';
+
+  @override
+  String get settingsNotifFollowsTitle => 'Nouveaux abonnés';
+
+  @override
+  String get settingsNotifFollows => 'Quand quelqu\'un s\'abonne à vous';
+
+  @override
+  String get settingsNotifEventsTitle => 'Événements et prière';
+
+  @override
+  String get settingsNotifEvents =>
+      'Événements reportés ou annulés, sessions de prière qui commencent';
+
+  @override
+  String get settingsNotifAccountTitle => 'Mon compte';
+
+  @override
+  String get settingsNotifAccount =>
+      'Vérification, badge, administrateurs du compte';
+
+  @override
+  String get settingsNotifModerationTitle => 'Modération';
+
+  @override
+  String get settingsNotifModeration =>
+      'Témoignages renvoyés en relecture, vidéos bloquées';
+
+  @override
+  String get publishYouTubeCreditTitle => 'Crédit de la vidéo';
+
+  @override
+  String get publishYouTubeCreditHint =>
+      'Citez l\'auteur de la vidéo d\'origine et sa chaîne YouTube.';
+
+  @override
+  String get publishYouTubeCreditAuthor => 'Auteur de la vidéo';
+
+  @override
+  String get publishYouTubeCreditAuthorHint => 'Ex. Pasteur Jean Mukendi';
+
+  @override
+  String get publishYouTubeCreditChannel => 'Chaîne YouTube';
+
+  @override
+  String get publishYouTubeCreditChannelHint => 'Nom de la chaîne';
+
+  @override
+  String get publishYouTubeCreditUrl =>
+      'Lien de la chaîne ou de la vidéo d\'origine';
+
+  @override
+  String get publishYouTubeCreditUrlInvalid => 'Lien non valide (https://…)';
+
+  @override
+  String youtubeCreditBy(String name) {
+    return 'Vidéo de $name';
+  }
+
+  @override
+  String youtubeCreditChannel(String name) {
+    return 'Chaîne $name';
+  }
+
+  @override
+  String get youtubeCreditSource => 'Vidéo d\'origine sur YouTube';
+
+  @override
+  String get youtubeCreditOpen => 'Voir la chaîne';
 }

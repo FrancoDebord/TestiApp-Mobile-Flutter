@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart' show ShareParams, SharePlus;
 
+import '../../auth/providers/auth_notifier.dart' show currentUserProvider;
 import '../../testimony/providers/detail_layout_provider.dart';
 import '../../../core/media/playback_preferences.dart';
 import '../../../core/router/app_routes.dart';
@@ -377,6 +378,42 @@ class SettingsScreen extends ConsumerWidget {
                 value: settings.pushApproval,
                 onChanged: (_) => notifier.togglePushApproval(),
               ),
+              _toggle(
+                icon: Icons.person_add_alt_outlined,
+                title: l10n.settingsNotifFollowedTitle,
+                subtitle: l10n.settingsNotifFollowed,
+                value: settings.push('push_new_followed'),
+                onChanged: (_) => notifier.togglePush('push_new_followed'),
+              ),
+              _toggle(
+                icon: Icons.group_add_outlined,
+                title: l10n.settingsNotifFollowsTitle,
+                subtitle: l10n.settingsNotifFollows,
+                value: settings.push('push_follows'),
+                onChanged: (_) => notifier.togglePush('push_follows'),
+              ),
+              _toggle(
+                icon: Icons.event_outlined,
+                title: l10n.settingsNotifEventsTitle,
+                subtitle: l10n.settingsNotifEvents,
+                value: settings.push('push_events'),
+                onChanged: (_) => notifier.togglePush('push_events'),
+              ),
+              _toggle(
+                icon: Icons.manage_accounts_outlined,
+                title: l10n.settingsNotifAccountTitle,
+                subtitle: l10n.settingsNotifAccount,
+                value: settings.push('push_account'),
+                onChanged: (_) => notifier.togglePush('push_account'),
+              ),
+              if (ref.watch(currentUserProvider)?.canModerate ?? false)
+                _toggle(
+                  icon: Icons.shield_outlined,
+                  title: l10n.settingsNotifModerationTitle,
+                  subtitle: l10n.settingsNotifModeration,
+                  value: settings.push('push_moderation'),
+                  onChanged: (_) => notifier.togglePush('push_moderation'),
+                ),
             ],
           );
         }),

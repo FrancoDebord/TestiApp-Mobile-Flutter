@@ -323,6 +323,24 @@ final class TextTestimony extends Testimony {
   TestimonyType get type => TestimonyType.text;
 }
 
+// ── Crédit d'une vidéo YouTube ───────────────────────────────────────────────
+
+/// Auteur / chaîne de la vidéo YouTube d'origine (`youtubeCredit` de l'API).
+class YouTubeCredit {
+  const YouTubeCredit({this.author, this.channel, this.url});
+
+  static YouTubeCredit? fromJson(Object? raw) {
+    if (raw is! Map) return null;
+    String? str(Object? v) => (v?.toString().trim().isEmpty ?? true) ? null : v.toString().trim();
+    final c = YouTubeCredit(author: str(raw['author']), channel: str(raw['channel']), url: str(raw['url']));
+    return c.author == null && c.channel == null && c.url == null ? null : c;
+  }
+
+  final String? author;
+  final String? channel;
+  final String? url;
+}
+
 // ── Transcription horodatée ──────────────────────────────────────────────────
 
 /// Passage d'une transcription : texte prononcé entre [start] et [end].
@@ -438,6 +456,7 @@ final class VideoTestimony extends Testimony {
     this.bibleVerse,
     this.bibleVerseRef,
     this.youtubeId,
+    this.youtubeCredit,
     this.hlsUrl,
     this.mp4Url,
     this.videoStatus,
@@ -474,6 +493,9 @@ final class VideoTestimony extends Testimony {
   final String? youtubeId;
 
   bool get isYouTube => youtubeId != null && youtubeId!.isNotEmpty;
+
+  /// Auteur et chaîne de la vidéo YouTube d'origine (null : non renseigné).
+  final YouTubeCredit? youtubeCredit;
 
   /// Flux HLS adaptatif (Bunny Stream, `video.playback_url`) : lu en mode
   /// Auto. Les versions MP4 (`mp4_urls`) sont dans [renditions].
@@ -525,6 +547,7 @@ final class VideoTestimony extends Testimony {
         renditionsStatus: renditionsStatus,
         bibleVerse: bibleVerse, bibleVerseRef: bibleVerseRef,
         youtubeId: youtubeId,
+        youtubeCredit: youtubeCredit,
         hlsUrl: hlsUrl ?? this.hlsUrl,
         mp4Url: mp4Url ?? this.mp4Url,
         videoStatus: videoStatus,
@@ -555,6 +578,7 @@ class DailyVerse {
     this.prayerCount = 0,
     this.isLiked  = false,
     this.isPrayed = false,
+    this.commentCount = 0,
     this.designOfTheDay,
     this.effectiveDesignId,
     this.userStyle,
@@ -567,6 +591,9 @@ class DailyVerse {
   final int    prayerCount;
   final bool   isLiked;
   final bool   isPrayed;
+
+  /// Commentaires (`counts.comments`), relus avec le reste à chaque synchronisation.
+  final int    commentCount;
 
   /// Design du jour calculé par le serveur (fuseau Africa/Porto-Novo).
   final String? designOfTheDay;
@@ -609,6 +636,8 @@ class DailyVerse {
                 reactions.contains('like'),
       isPrayed: j['is_prayed'] as bool? ?? j['isPrayed'] as bool? ??
                 reactions.contains('pray'),
+      commentCount: (j['comment_count'] as num?)?.toInt() ??
+                    (counts?['comments'] as num?)?.toInt() ?? 0,
       designOfTheDay: j['design_of_the_day'] as String?,
       effectiveDesignId: j['effective_design_id'] as String?,
       userStyle: j['user_style'] is Map
@@ -622,6 +651,7 @@ class DailyVerse {
     int? prayerCount,
     bool? isLiked,
     bool? isPrayed,
+    int? commentCount,
   }) => DailyVerse(
     id:          id,
     text:        text,
@@ -630,6 +660,7 @@ class DailyVerse {
     prayerCount: prayerCount ?? this.prayerCount,
     isLiked:     isLiked     ?? this.isLiked,
     isPrayed:    isPrayed    ?? this.isPrayed,
+    commentCount: commentCount ?? this.commentCount,
     designOfTheDay:    designOfTheDay,
     effectiveDesignId: effectiveDesignId,
     userStyle:         userStyle,

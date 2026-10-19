@@ -185,6 +185,7 @@ class PublishScreen extends ConsumerWidget {
     final canCreateEvents =
         isAdmin || ((user?.isOrganization ?? false) && (user?.isVerified ?? false));
     final forEvent = ref.watch(publishEventProvider);
+    final forLive = ref.watch(publishLiveProvider);
     final forProphecy = ref.watch(publishProphecyProvider);
     // Témoignage de conversion : un seul par compte personnel (docs serveur
     // fonctionnalites/temoignage-de-conversion.md).
@@ -268,6 +269,16 @@ class PublishScreen extends ConsumerWidget {
                 24,
               ),
               children: [
+                // Témoignage sur un direct terminé.
+                if (forLive != null) ...[
+                  _EventAttachBanner(
+                    title: forLive.title,
+                    label: context.l10n.publishLiveTestimony,
+                    icon: Icons.sensors_rounded,
+                    onClear: () => ref.read(publishLiveProvider.notifier).clear(),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                ],
                 // Témoignage officiel d'un événement (choisi depuis sa page).
                 if (forEvent != null) ...[
                   _EventAttachBanner(
@@ -759,10 +770,14 @@ class _ConversionAttachBanner extends StatelessWidget {
 
 /// « Témoignage pour l'événement … » : le témoignage publié y sera rattaché.
 class _EventAttachBanner extends StatelessWidget {
-  const _EventAttachBanner({required this.title, required this.onClear});
+  const _EventAttachBanner({required this.title, required this.onClear, this.label, this.icon = Icons.event_rounded});
 
   final String title;
   final VoidCallback onClear;
+
+  /// « Témoignage pour l'événement » par défaut (aussi : direct terminé).
+  final String? label;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
@@ -775,12 +790,12 @@ class _EventAttachBanner extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.event_rounded, color: AppColors.primary),
+          Icon(icon, color: AppColors.primary),
           const SizedBox(width: 10),
           Expanded(
             child: Text.rich(
               TextSpan(children: [
-                TextSpan(text: '${context.l10n.publishEventTestimony}\n'),
+                TextSpan(text: '${label ?? context.l10n.publishEventTestimony}\n'),
                 TextSpan(
                   text: title,
                   style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary),

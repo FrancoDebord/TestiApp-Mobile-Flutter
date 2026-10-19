@@ -523,6 +523,12 @@ class UserSettingsNotifier extends Notifier<UserSettings> {
   Future<void> togglePushApproval() => _save(
       state.copyWith(pushApproval: !state.pushApproval),
       {'push_approval': !state.pushApproval});
+
+  /// Catégories supplémentaires ([kExtraPushCategories]).
+  Future<void> togglePush(String key) {
+    final next = !state.push(key);
+    return _save(state.copyWith(extraPush: {...state.extraPush, key: next}), {key: next});
+  }
 }
 
 final userSettingsProvider =

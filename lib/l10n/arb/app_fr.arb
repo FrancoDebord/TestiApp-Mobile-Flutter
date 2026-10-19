@@ -5073,5 +5073,78 @@
   "authPhoneSignInTitle": "Connexion par téléphone",
   "authPhoneUseSmsCode": "Recevoir plutôt un code par SMS",
   "authSignUpWithGoogle": "Créer mon compte avec Google",
-  "authOrFillForm": "ou remplissez le formulaire"
+  "authOrFillForm": "ou remplissez le formulaire",
+  "prayerFocusVerseSubtitle": "Méditez ce verset et priez avec lui",
+  "prayerFocusVerseLabel": "Verset du jour",
+  "prayerFocusVerseConfirm": "J'ai prié avec ce verset",
+  "prayerFocusContentSubtitle": "Présentez ce sujet à Dieu",
+  "prayerFocusContentConfirm": "J'ai prié pour ce sujet",
+  "prayerFocusKindEvent": "Événement",
+  "prayerFocusKindSession": "Session de prière",
+  "prayerFocusProphecySubtitle": "Priez sur cette parole reçue",
+  "prayerFocusProphecyLabel": "Parole prophétique",
+  "prayerFocusProphecyConfirm": "J'ai prié sur cette parole",
+  "pushConsentTitle": "Recevoir les notifications ?",
+  "pushConsentBody": "TestiApp vous prévient quand il se passe quelque chose pour vous.",
+  "pushConsentComments": "Commentaires, mentions et « J'aime »",
+  "pushConsentPrayers": "Prières pour vos requêtes et vos témoignages",
+  "pushConsentEvents": "Directs, événements et sessions de prière",
+  "pushConsentAccount": "Validation de vos témoignages et de votre compte",
+  "pushConsentChoose": "Vous choisissez ensuite quoi recevoir dans Paramètres › Notifications.",
+  "pushConsentAccept": "Activer les notifications",
+  "pushConsentLater": "Plus tard",
+  "eventsNoYoutubeLive": "Aucun direct YouTube pour cet événement.",
+  "eventsLiveFullscreen": "Plein écran",
+  "eventsLiveExitFullscreen": "Quitter le plein écran",
+  "eventsLiveChat": "Discussion en direct",
+  "eventsWatchLive": "Regarder le direct",
+  "liveTestify": "Témoigner sur ce direct",
+  "liveTestifyReason": "témoigner sur ce direct",
+  "liveReplayChat": "Revoir la discussion",
+  "liveReplayEmpty": "Aucun message n'a été laissé pendant ce direct.",
+  "liveTestimoniesTitle": "{count, plural, =1{1 témoignage sur ce direct} other{{count} témoignages sur ce direct}}",
+  "@liveTestimoniesTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "publishLiveTestimony": "Témoignage sur le direct",
+  "settingsNotifFollowedTitle": "Comptes suivis",
+  "settingsNotifFollowed": "Nouveaux témoignages et directs des comptes que vous suivez",
+  "settingsNotifFollowsTitle": "Nouveaux abonnés",
+  "settingsNotifFollows": "Quand quelqu'un s'abonne à vous",
+  "settingsNotifEventsTitle": "Événements et prière",
+  "settingsNotifEvents": "Événements reportés ou annulés, sessions de prière qui commencent",
+  "settingsNotifAccountTitle": "Mon compte",
+  "settingsNotifAccount": "Vérification, badge, administrateurs du compte",
+  "settingsNotifModerationTitle": "Modération",
+  "settingsNotifModeration": "Témoignages renvoyés en relecture, vidéos bloquées",
+  "publishYouTubeCreditTitle": "Crédit de la vidéo",
+  "publishYouTubeCreditHint": "Citez l'auteur de la vidéo d'origine et sa chaîne YouTube.",
+  "publishYouTubeCreditAuthor": "Auteur de la vidéo",
+  "publishYouTubeCreditAuthorHint": "Ex. Pasteur Jean Mukendi",
+  "publishYouTubeCreditChannel": "Chaîne YouTube",
+  "publishYouTubeCreditChannelHint": "Nom de la chaîne",
+  "publishYouTubeCreditUrl": "Lien de la chaîne ou de la vidéo d'origine",
+  "publishYouTubeCreditUrlInvalid": "Lien non valide (https://…)",
+  "youtubeCreditBy": "Vidéo de {name}",
+  "@youtubeCreditBy": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "youtubeCreditChannel": "Chaîne {name}",
+  "@youtubeCreditChannel": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "youtubeCreditSource": "Vidéo d'origine sur YouTube",
+  "youtubeCreditOpen": "Voir la chaîne"
 }

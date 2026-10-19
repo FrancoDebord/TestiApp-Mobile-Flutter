@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../prayer/screens/prayer_focus_screen.dart' show PrayerFocusSubject, openPrayerFocusFor;
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
@@ -59,6 +60,23 @@ class _ProphecyDetailScreenState extends ConsumerState<ProphecyDetailScreen> {
 
   Future<void> _pray() async {
     final saved = context.l10n.prophecyPrayerSaved;
+    final p = ref.read(prophecyProvider(_id)).value;
+    if (p == null) return;
+    // Temps de prière immersif de 5 minutes, puis note facultative.
+    final l10n = context.l10n;
+    final prayed = await openPrayerFocusFor(
+      context,
+      PrayerFocusSubject(
+        title: p.title,
+        body: p.bodyText ?? '',
+        authorName: '',
+        subtitle: l10n.prayerFocusProphecySubtitle,
+        label: l10n.prayerFocusProphecyLabel,
+        confirmLabel: l10n.prayerFocusProphecyConfirm,
+        onStart: () => _repo.startPrayer(_id),
+      ),
+    );
+    if (!prayed || !mounted) return;
     final note = await showDialog<String>(
       context: context,
       builder: (_) => const _PrayDialog(),

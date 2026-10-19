@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:livekit_client/livekit_client.dart' as lk;
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../widgets/live_replay.dart' show LiveAfterwardsSection;
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart' show AppFonts;
 import '../../../l10n/app_localizations.dart';
@@ -225,6 +226,7 @@ class _LiveStudioScreenState extends ConsumerState<LiveStudioScreen> {
         reactions:
             ctrl.reactions.total >= live.reactions.total ? ctrl.reactions : live.reactions,
         onClose: _close,
+        footer: LiveAfterwardsSection(liveId: live.id, title: live.title),
       );
     }
 

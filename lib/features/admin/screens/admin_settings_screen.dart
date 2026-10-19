@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/admin_models.dart' show AppSettings;
 import '../providers/admin_provider.dart';
+import '../providers/admin_settings_schema.dart';
+import '../../../services/api_service.dart' show LaravelApiException;
 import '../../../l10n/app_localizations.dart';
 
 // =============================================================================
@@ -22,6 +24,147 @@ import '../../../l10n/app_localizations.dart';
 
 class AdminSettingsScreen extends ConsumerWidget {
   const AdminSettingsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Réglages décrits par le serveur : exactement ceux de la page du site.
+    final schema = ref.watch(adminSettingsSchemaProvider);
+    return switch (schema) {
+      AsyncValue(:final value?) when value.isNotEmpty => _SchemaSettings(groups: value),
+      AsyncValue(:final error?) => _SchemaError(
+          message: error is LaravelApiException ? error.displayMessage : context.l10n.adminSettingsSaveFailed,
+          onRetry: () => ref.invalidate(adminSettingsSchemaProvider),
+        ),
+      AsyncValue(isLoading: true) => const Center(child: CircularProgressIndicator()),
+      // Serveur plus ancien (pas de description) : réglages fixes de l'application.
+      _ => const _StaticSettings(),
+    };
+  }
+}
+
+/// Réglages construits depuis GET /admin/settings/schema.
+class _SchemaSettings extends ConsumerWidget {
+  const _SchemaSettings({required this.groups});
+  final List<AdminSettingsGroup> groups;
+
+  static IconData _groupIcon(String key) => switch (key) {
+        'general' => Icons.tune_rounded,
+        'access' || 'auth' => Icons.lock_outline_rounded,
+        'moderation' => Icons.shield_outlined,
+        'notifications' => Icons.notifications_outlined,
+        'publishing' => Icons.post_add_rounded,
+        'media' || 'videos' => Icons.video_library_outlined,
+        'features' => Icons.extension_outlined,
+        _ => Icons.settings_outlined,
+      };
+
+  Future<void> _set(BuildContext context, WidgetRef ref, String key, Object? value) async {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    final err = await ref.read(adminSettingsSchemaProvider.notifier).set(key, value);
+    if (err != null) {
+      messenger?.showSnackBar(SnackBar(behavior: SnackBarBehavior.floating, content: Text(err)));
+    }
+  }
+
+  Future<void> _edit(BuildContext context, WidgetRef ref, AdminSetting s) async {
+    final ctrl = TextEditingController(text: s.value?.toString() ?? '');
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(s.label),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          keyboardType: s.type == 'integer' ? TextInputType.number : TextInputType.text,
+          decoration: InputDecoration(helperText: s.description, helperMaxLines: 3),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(ctx.l10n.commonCancel)),
+          FilledButton(onPressed: () => Navigator.pop(ctx, ctrl.text), child: Text(ctx.l10n.commonSave)),
+        ],
+      ),
+    );
+    ctrl.dispose();
+    if (result == null || !context.mounted) return;
+    if (s.type == 'integer') {
+      final n = int.tryParse(result.trim());
+      if (n == null) return;
+      await _set(context, ref, s.key, n);
+    } else {
+      await _set(context, ref, s.key, result.trim());
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final maintenance = groups.expand((g) => g.settings).where((s) => s.key == 'maintenance_mode').firstOrNull;
+    return RefreshIndicator(
+      onRefresh: () async => ref.invalidate(adminSettingsSchemaProvider),
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
+        children: [
+          if (maintenance != null && maintenance.boolValue) ...[
+            _MaintenanceBanner(onDisable: () => _set(context, ref, 'maintenance_mode', false)),
+            const SizedBox(height: 16),
+          ],
+          for (final g in groups) ...[
+            _SettingsSection(
+              title: g.label,
+              icon: _groupIcon(g.key),
+              tiles: [
+                for (final s in g.settings)
+                  if (s.isBoolean)
+                    _ToggleTile(
+                      icon: Icons.toggle_on_outlined,
+                      label: s.label,
+                      sublabel: s.description ?? '',
+                      value: s.boolValue,
+                      onChanged: (v) => _set(context, ref, s.key, v),
+                    )
+                  else
+                    ListTile(
+                      title: Text(s.label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                      subtitle: Text(
+                        [if (s.description != null) s.description!, s.value?.toString() ?? '—'].join('\n'),
+                        style: const TextStyle(fontSize: 12.5),
+                      ),
+                      trailing: s.type == 'json' ? null : const Icon(Icons.edit_outlined, size: 18),
+                      onTap: s.type == 'json' ? null : () => _edit(context, ref, s),
+                    ),
+              ],
+            ),
+            const SizedBox(height: 16),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _SchemaError extends StatelessWidget {
+  const _SchemaError({required this.message, required this.onRetry});
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(message, textAlign: TextAlign.center),
+              const SizedBox(height: 8),
+              TextButton(onPressed: onRetry, child: Text(context.l10n.commonRetry)),
+            ],
+          ),
+        ),
+      );
+}
+
+/// Réglages fixes (serveur sans GET /admin/settings/schema).
+class _StaticSettings extends ConsumerWidget {
+  const _StaticSettings();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

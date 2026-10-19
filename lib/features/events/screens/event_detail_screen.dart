@@ -14,7 +14,6 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/guest_gate.dart' show requireAccount;
-import '../../../shared/widgets/youtube_video_player.dart';
 import '../../../shared/widgets/mention_text.dart';
 import '../../../shared/widgets/mention_text_field.dart';
 import '../../auth/providers/auth_notifier.dart' show currentUserProvider;
@@ -621,7 +620,39 @@ class _YouTubeLiveCard extends StatelessWidget {
               ],
             ),
           ),
-          YouTubeVideoPlayer(videoId: event.youtubeLiveId!, autoPlay: false),
+          // Miniature : le direct s'ouvre dans sa page (vue « YouTube », plein écran, discussion).
+          AspectRatio(
+            aspectRatio: 16 / 9,
+            child: Material(
+              color: Colors.black,
+              child: InkWell(
+                key: const ValueKey('event-youtube-watch'),
+                onTap: () => context.push('/events/${event.id}/live'),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Image.network(
+                      'https://i.ytimg.com/vi/${event.youtubeLiveId}/hqdefault.jpg', // i18n-ignore
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                    ),
+                    Container(color: Colors.black.withAlpha(70)),
+                    Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.play_circle_fill_rounded, size: 56, color: Colors.white),
+                          const SizedBox(height: 6),
+                          Text(context.l10n.eventsWatchLive,
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );

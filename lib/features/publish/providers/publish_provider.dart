@@ -66,6 +66,12 @@ final publishEventProvider =
     NotifierProvider<PublishEventNotifier, ({String id, String title})?>(
         PublishEventNotifier.new);
 
+/// Direct terminé dont le prochain témoignage parle (`live_id`, docs serveur
+/// fonctionnalites/lives.md) : n'importe quel compte peut témoigner après la fin.
+final publishLiveProvider =
+    NotifierProvider<PublishEventNotifier, ({String id, String title})?>(
+        PublishEventNotifier.new);
+
 /// Parole prophétique dont le prochain témoignage raconte l'accomplissement
 /// (`prophecy_id`) ; [makePublic] : la parole est montrée avec le témoignage.
 /// Doc serveur : docs/fonctionnalites/paroles-prophetiques.md
@@ -211,6 +217,13 @@ class PublishNotifier extends Notifier<PublishDraft> {
 
   void updateYouTubeUrl(String value) =>
       state = state.copyWith(youtubeUrl: value.trim());
+
+  /// Crédit de la vidéo d'origine (auteur, chaîne YouTube, lien).
+  void updateYouTubeCredit({String? author, String? channel, String? url}) => state = state.copyWith(
+        youtubeCreditAuthor: author,
+        youtubeCreditChannel: channel,
+        youtubeCreditUrl: url,
+      );
 
   // ── Preuves (2 emplacements) ────────────────────────────────────────────────
 
@@ -376,12 +389,22 @@ class PublishNotifier extends Notifier<PublishDraft> {
       // Administrateurs seulement (403 sinon) : le serveur force le type vidéo,
       // aucun fichier et la miniature YouTube en couverture.
       if (youtubeId != null) 'youtube_url': state.youtubeUrl,
+      // Crédit de la vidéo d'origine (docs serveur videos-youtube.md).
+      if (youtubeId != null) ...{
+        'youtube_credit_author': state.youtubeCreditAuthor.trim().isEmpty ? null : state.youtubeCreditAuthor.trim(),
+        'youtube_credit_channel': state.youtubeCreditChannel.trim().isEmpty ? null : state.youtubeCreditChannel.trim(),
+        'youtube_credit_url': state.youtubeCreditUrl.trim().isEmpty ? null : state.youtubeCreditUrl.trim(),
+      },
       // Preuves montrées au public (une fois le témoignage publié) si l'auteur l'accepte.
       if (state.proofs.isNotEmpty) 'proofs_public': state.proofsPublic,
       // Témoignage officiel d'un événement (gestionnaires ; jamais pour le carnet privé).
       if (ref.read(publishEventProvider) case final ev?
           when state.visibility != TestimonyVisibility.private)
         'event_id': ev.id,
+      // Témoignage sur un direct terminé.
+      if (ref.read(publishLiveProvider) case final live?
+          when state.visibility != TestimonyVisibility.private)
+        'live_id': live.id,
       // Accomplissement d'une parole prophétique (et parole rendue publique ou non).
       if (ref.read(publishProphecyProvider) case final p?) ...{
         'prophecy_id': p.id,
@@ -421,6 +444,7 @@ class PublishNotifier extends Notifier<PublishDraft> {
         return;
       }
       ref.read(publishEventProvider.notifier).clear();
+      ref.read(publishLiveProvider.notifier).clear();
       ref.read(bibleVerseRefProvider.notifier).clear();
       _conversionPublished();
       if (ref.read(publishProphecyProvider) != null) {
@@ -445,6 +469,7 @@ class PublishNotifier extends Notifier<PublishDraft> {
       id = result.data['id']?.toString() ?? id;
       created = true;
       ref.read(publishEventProvider.notifier).clear();
+      ref.read(publishLiveProvider.notifier).clear();
       // La référence ne doit pas suivre le témoignage suivant.
       ref.read(bibleVerseRefProvider.notifier).clear();
       _conversionPublished();

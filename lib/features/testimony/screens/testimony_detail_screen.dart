@@ -520,6 +520,13 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
                     else if (testimony is VideoTestimony)
                       _VideoPlayerEmbed(testimony: testimony),
 
+                    // Auteur et chaîne de la vidéo YouTube d'origine.
+                    if (testimony is VideoTestimony && testimony.isYouTube && testimony.youtubeCredit != null)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                        child: YouTubeCreditLine(credit: testimony.youtubeCredit!),
+                      ),
+
                     // « À la une » / « Témoignage approuvé »
                     TestimonyLabels(
                       testimony: testimony,

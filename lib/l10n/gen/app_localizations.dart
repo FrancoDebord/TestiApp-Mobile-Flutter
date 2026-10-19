@@ -17419,6 +17419,318 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'ou remplissez le formulaire'**
   String get authOrFillForm;
+
+  /// No description provided for @prayerFocusVerseSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Méditez ce verset et priez avec lui'**
+  String get prayerFocusVerseSubtitle;
+
+  /// No description provided for @prayerFocusVerseLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Verset du jour'**
+  String get prayerFocusVerseLabel;
+
+  /// No description provided for @prayerFocusVerseConfirm.
+  ///
+  /// In fr, this message translates to:
+  /// **'J\'ai prié avec ce verset'**
+  String get prayerFocusVerseConfirm;
+
+  /// No description provided for @prayerFocusContentSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Présentez ce sujet à Dieu'**
+  String get prayerFocusContentSubtitle;
+
+  /// No description provided for @prayerFocusContentConfirm.
+  ///
+  /// In fr, this message translates to:
+  /// **'J\'ai prié pour ce sujet'**
+  String get prayerFocusContentConfirm;
+
+  /// No description provided for @prayerFocusKindEvent.
+  ///
+  /// In fr, this message translates to:
+  /// **'Événement'**
+  String get prayerFocusKindEvent;
+
+  /// No description provided for @prayerFocusKindSession.
+  ///
+  /// In fr, this message translates to:
+  /// **'Session de prière'**
+  String get prayerFocusKindSession;
+
+  /// No description provided for @prayerFocusProphecySubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Priez sur cette parole reçue'**
+  String get prayerFocusProphecySubtitle;
+
+  /// No description provided for @prayerFocusProphecyLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Parole prophétique'**
+  String get prayerFocusProphecyLabel;
+
+  /// No description provided for @prayerFocusProphecyConfirm.
+  ///
+  /// In fr, this message translates to:
+  /// **'J\'ai prié sur cette parole'**
+  String get prayerFocusProphecyConfirm;
+
+  /// No description provided for @pushConsentTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Recevoir les notifications ?'**
+  String get pushConsentTitle;
+
+  /// No description provided for @pushConsentBody.
+  ///
+  /// In fr, this message translates to:
+  /// **'TestiApp vous prévient quand il se passe quelque chose pour vous.'**
+  String get pushConsentBody;
+
+  /// No description provided for @pushConsentComments.
+  ///
+  /// In fr, this message translates to:
+  /// **'Commentaires, mentions et « J\'aime »'**
+  String get pushConsentComments;
+
+  /// No description provided for @pushConsentPrayers.
+  ///
+  /// In fr, this message translates to:
+  /// **'Prières pour vos requêtes et vos témoignages'**
+  String get pushConsentPrayers;
+
+  /// No description provided for @pushConsentEvents.
+  ///
+  /// In fr, this message translates to:
+  /// **'Directs, événements et sessions de prière'**
+  String get pushConsentEvents;
+
+  /// No description provided for @pushConsentAccount.
+  ///
+  /// In fr, this message translates to:
+  /// **'Validation de vos témoignages et de votre compte'**
+  String get pushConsentAccount;
+
+  /// No description provided for @pushConsentChoose.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vous choisissez ensuite quoi recevoir dans Paramètres › Notifications.'**
+  String get pushConsentChoose;
+
+  /// No description provided for @pushConsentAccept.
+  ///
+  /// In fr, this message translates to:
+  /// **'Activer les notifications'**
+  String get pushConsentAccept;
+
+  /// No description provided for @pushConsentLater.
+  ///
+  /// In fr, this message translates to:
+  /// **'Plus tard'**
+  String get pushConsentLater;
+
+  /// No description provided for @eventsNoYoutubeLive.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun direct YouTube pour cet événement.'**
+  String get eventsNoYoutubeLive;
+
+  /// No description provided for @eventsLiveFullscreen.
+  ///
+  /// In fr, this message translates to:
+  /// **'Plein écran'**
+  String get eventsLiveFullscreen;
+
+  /// No description provided for @eventsLiveExitFullscreen.
+  ///
+  /// In fr, this message translates to:
+  /// **'Quitter le plein écran'**
+  String get eventsLiveExitFullscreen;
+
+  /// No description provided for @eventsLiveChat.
+  ///
+  /// In fr, this message translates to:
+  /// **'Discussion en direct'**
+  String get eventsLiveChat;
+
+  /// No description provided for @eventsWatchLive.
+  ///
+  /// In fr, this message translates to:
+  /// **'Regarder le direct'**
+  String get eventsWatchLive;
+
+  /// No description provided for @liveTestify.
+  ///
+  /// In fr, this message translates to:
+  /// **'Témoigner sur ce direct'**
+  String get liveTestify;
+
+  /// No description provided for @liveTestifyReason.
+  ///
+  /// In fr, this message translates to:
+  /// **'témoigner sur ce direct'**
+  String get liveTestifyReason;
+
+  /// No description provided for @liveReplayChat.
+  ///
+  /// In fr, this message translates to:
+  /// **'Revoir la discussion'**
+  String get liveReplayChat;
+
+  /// No description provided for @liveReplayEmpty.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun message n\'a été laissé pendant ce direct.'**
+  String get liveReplayEmpty;
+
+  /// No description provided for @liveTestimoniesTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count, plural, =1{1 témoignage sur ce direct} other{{count} témoignages sur ce direct}}'**
+  String liveTestimoniesTitle(int count);
+
+  /// No description provided for @publishLiveTestimony.
+  ///
+  /// In fr, this message translates to:
+  /// **'Témoignage sur le direct'**
+  String get publishLiveTestimony;
+
+  /// No description provided for @settingsNotifFollowedTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Comptes suivis'**
+  String get settingsNotifFollowedTitle;
+
+  /// No description provided for @settingsNotifFollowed.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nouveaux témoignages et directs des comptes que vous suivez'**
+  String get settingsNotifFollowed;
+
+  /// No description provided for @settingsNotifFollowsTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nouveaux abonnés'**
+  String get settingsNotifFollowsTitle;
+
+  /// No description provided for @settingsNotifFollows.
+  ///
+  /// In fr, this message translates to:
+  /// **'Quand quelqu\'un s\'abonne à vous'**
+  String get settingsNotifFollows;
+
+  /// No description provided for @settingsNotifEventsTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Événements et prière'**
+  String get settingsNotifEventsTitle;
+
+  /// No description provided for @settingsNotifEvents.
+  ///
+  /// In fr, this message translates to:
+  /// **'Événements reportés ou annulés, sessions de prière qui commencent'**
+  String get settingsNotifEvents;
+
+  /// No description provided for @settingsNotifAccountTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mon compte'**
+  String get settingsNotifAccountTitle;
+
+  /// No description provided for @settingsNotifAccount.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vérification, badge, administrateurs du compte'**
+  String get settingsNotifAccount;
+
+  /// No description provided for @settingsNotifModerationTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Modération'**
+  String get settingsNotifModerationTitle;
+
+  /// No description provided for @settingsNotifModeration.
+  ///
+  /// In fr, this message translates to:
+  /// **'Témoignages renvoyés en relecture, vidéos bloquées'**
+  String get settingsNotifModeration;
+
+  /// No description provided for @publishYouTubeCreditTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Crédit de la vidéo'**
+  String get publishYouTubeCreditTitle;
+
+  /// No description provided for @publishYouTubeCreditHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Citez l\'auteur de la vidéo d\'origine et sa chaîne YouTube.'**
+  String get publishYouTubeCreditHint;
+
+  /// No description provided for @publishYouTubeCreditAuthor.
+  ///
+  /// In fr, this message translates to:
+  /// **'Auteur de la vidéo'**
+  String get publishYouTubeCreditAuthor;
+
+  /// No description provided for @publishYouTubeCreditAuthorHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ex. Pasteur Jean Mukendi'**
+  String get publishYouTubeCreditAuthorHint;
+
+  /// No description provided for @publishYouTubeCreditChannel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Chaîne YouTube'**
+  String get publishYouTubeCreditChannel;
+
+  /// No description provided for @publishYouTubeCreditChannelHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nom de la chaîne'**
+  String get publishYouTubeCreditChannelHint;
+
+  /// No description provided for @publishYouTubeCreditUrl.
+  ///
+  /// In fr, this message translates to:
+  /// **'Lien de la chaîne ou de la vidéo d\'origine'**
+  String get publishYouTubeCreditUrl;
+
+  /// No description provided for @publishYouTubeCreditUrlInvalid.
+  ///
+  /// In fr, this message translates to:
+  /// **'Lien non valide (https://…)'**
+  String get publishYouTubeCreditUrlInvalid;
+
+  /// No description provided for @youtubeCreditBy.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vidéo de {name}'**
+  String youtubeCreditBy(String name);
+
+  /// No description provided for @youtubeCreditChannel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Chaîne {name}'**
+  String youtubeCreditChannel(String name);
+
+  /// No description provided for @youtubeCreditSource.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vidéo d\'origine sur YouTube'**
+  String get youtubeCreditSource;
+
+  /// No description provided for @youtubeCreditOpen.
+  ///
+  /// In fr, this message translates to:
+  /// **'Voir la chaîne'**
+  String get youtubeCreditOpen;
 }
 
 class _AppLocalizationsDelegate

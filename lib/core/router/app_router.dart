@@ -49,6 +49,7 @@ import '../../features/testimony/screens/testimony_comments_screen.dart';
 import '../../features/testimony/screens/testimony_detail_screen.dart';
 import '../../features/conversion/screens/conversion_edit_screen.dart';
 import '../../features/events/screens/past_events_screen.dart';
+import '../../features/events/screens/event_live_screen.dart';
 import '../../features/conversion/screens/conversion_testimonies_screen.dart';
 import '../../features/auth/guest_access.dart';
 import '../../features/auth/providers/auth_notifier.dart'
@@ -785,6 +786,12 @@ List<RouteBase> _buildRoutes() {
                       path: 'edit',
                       builder: (context, state) =>
                           EventFormScreen(eventId: state.pathParameters['id']),
+                    ),
+                    // Direct YouTube de l'événement (vue « YouTube », plein écran).
+                    GoRoute(
+                      path: 'live',
+                      builder: (context, state) =>
+                          EventLiveScreen(eventId: state.pathParameters['id']!),
                     ),
                   ],
                 ),

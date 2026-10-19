@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
 
+import '../prayer/screens/prayer_focus_screen.dart' show PrayerFocusSubject, openPrayerFocusFor;
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../services/api_service.dart';
@@ -280,7 +281,33 @@ class ContentReactionBar extends ConsumerWidget {
 
     Future<void> pray() async {
       if (!await member()) return;
-      report(await notifier.togglePray(kind, id, ref.read(contentInteractionsProvider)[ContentInteractionsNotifier.key(kind, id)] ?? initial));
+      final current = ref.read(contentInteractionsProvider)[ContentInteractionsNotifier.key(kind, id)] ?? initial;
+      // Prier : temps de prière immersif de 5 minutes d'abord (retirer reste immédiat).
+      if (!current.isPrayed) {
+        if (!context.mounted) return;
+        final l10n = context.l10n;
+        final api = ref.read(apiServiceProvider);
+        final ok = await openPrayerFocusFor(
+          context,
+          PrayerFocusSubject(
+            title: title,
+            body: '',
+            authorName: '',
+            subtitle: l10n.prayerFocusContentSubtitle,
+            label: switch (kind) {
+              ContentKind.event => l10n.prayerFocusKindEvent,
+              ContentKind.prayerRequest => l10n.prayerFocusSubject,
+              ContentKind.prayerSession => l10n.prayerFocusKindSession,
+            },
+            confirmLabel: l10n.prayerFocusContentConfirm,
+            onStart: () => api.post<dynamic>(kind.path(id, 'pray/start')),
+          ),
+        );
+        if (!ok) return;
+      }
+      final latest = ref.read(contentInteractionsProvider)[ContentInteractionsNotifier.key(kind, id)] ?? initial;
+      if (latest.isPrayed != current.isPrayed) return;
+      report(await notifier.togglePray(kind, id, latest));
     }
 
     final likeIcon = (mine == null || mine == ReactionType.like)

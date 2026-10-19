@@ -159,6 +159,9 @@ class PublishDraft {
     this.videoRemoteUrl,
     this.useYouTube = false,
     this.youtubeUrl = '',
+    this.youtubeCreditAuthor = '',
+    this.youtubeCreditChannel = '',
+    this.youtubeCreditUrl = '',
     this.proofs = const {},
     this.proofsPublic = false,
     this.failedProofPositions = const [],
@@ -201,6 +204,11 @@ class PublishDraft {
   /// Administrateurs : vidéo publiée par lien YouTube au lieu d'un fichier.
   bool useYouTube;
   String youtubeUrl;
+
+  /// Crédit de la vidéo YouTube d'origine : auteur / intervenant, chaîne, lien.
+  String youtubeCreditAuthor;
+  String youtubeCreditChannel;
+  String youtubeCreditUrl;
 
   // preuves : emplacement (1 ou 2) → fichier local
   Map<int, ProofAttachment> proofs;
@@ -267,6 +275,9 @@ class PublishDraft {
     int? videoThumbnailIndex,
     bool? useYouTube,
     String? youtubeUrl,
+    String? youtubeCreditAuthor,
+    String? youtubeCreditChannel,
+    String? youtubeCreditUrl,
     Map<int, ProofAttachment>? proofs,
     bool? proofsPublic,
     List<int>? failedProofPositions,
@@ -309,6 +320,9 @@ class PublishDraft {
           : videoRemoteUrl as String?,
       useYouTube: useYouTube ?? this.useYouTube,
       youtubeUrl: youtubeUrl ?? this.youtubeUrl,
+      youtubeCreditAuthor: youtubeCreditAuthor ?? this.youtubeCreditAuthor,
+      youtubeCreditChannel: youtubeCreditChannel ?? this.youtubeCreditChannel,
+      youtubeCreditUrl: youtubeCreditUrl ?? this.youtubeCreditUrl,
       proofs: proofs ?? this.proofs,
       proofsPublic: proofsPublic ?? this.proofsPublic,
       failedProofPositions: failedProofPositions ?? this.failedProofPositions,

@@ -14,6 +14,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../pray_for_verse.dart';
 import '../../../shared/comments/comment_likes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -103,10 +104,24 @@ class _DailyVerseScreenState extends ConsumerState<DailyVerseScreen>
     _tabs.addListener(() {
       if (!_tabs.indexIsChanging && mounted) setState(() {});
     });
+    // Synchronisation avec le serveur : « J'aime », « Je prie » et commentaires faits
+    // sur le site ou un autre téléphone. À l'ouverture, puis toutes les 30 s.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _sync());
+    _syncTimer = Timer.periodic(const Duration(seconds: 30), (_) => _sync());
+  }
+
+  Timer? _syncTimer;
+
+  void _sync() {
+    if (!mounted) return;
+    unawaited(ref.read(dailyVerseProvider.notifier).refresh());
+    final id = ref.read(dailyVerseProvider).value?.id ?? 0;
+    if (id > 0) ref.invalidate(dailyVerseCommentsProvider(id));
   }
 
   @override
   void dispose() {
+    _syncTimer?.cancel();
     _scroll.dispose();
     _tabs.dispose();
     if (_speaking) unawaited(ref.read(ttsEngineProvider).stop());
@@ -191,8 +206,12 @@ class _DailyVerseScreenState extends ConsumerState<DailyVerseScreen>
 
   Future<void> _react({required bool pray}) async {
     if (!await requireAccount(context, ref, reason: pray ? context.l10n.verseReasonPray : context.l10n.verseReasonLike)) return;
-    final notifier = ref.read(dailyVerseProvider.notifier);
-    await (pray ? notifier.togglePray() : notifier.toggleLike());
+    if (!mounted) return;
+    if (pray) {
+      await prayForDailyVerse(context, ref);
+    } else {
+      await ref.read(dailyVerseProvider.notifier).toggleLike();
+    }
   }
 
   Future<void> _testify(DailyVerse verse, DailyVerseVersions? data) async {

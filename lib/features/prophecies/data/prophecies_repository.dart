@@ -94,6 +94,11 @@ class PropheciesRepository {
       });
 
   /// « J'ai prié » : renvoie la parole à jour (compteur).
+  /// Début du temps de prière (5 minutes avant « J'ai prié »).
+  Future<void> startPrayer(String id) => _guard(() async {
+        await _api.post<dynamic>(AppConstants.prophecyPrayStart(id));
+      });
+
   Future<Prophecy> pray(String id, {String? note}) => _guard(() async {
         final res = await _api.post<dynamic>(AppConstants.prophecyPrayers(id),
             data: {if (note != null && note.trim().isNotEmpty) 'note': note.trim()});
