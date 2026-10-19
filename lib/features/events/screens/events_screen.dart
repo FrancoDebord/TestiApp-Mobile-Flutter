@@ -12,6 +12,7 @@ import '../../auth/providers/auth_notifier.dart' show currentUserProvider;
 import '../data/events_repository.dart';
 import '../models/event_models.dart';
 import '../providers/events_providers.dart';
+import '../providers/event_types_providers.dart' show eventTypesProvider;
 import '../widgets/event_widgets.dart';
 import '../../../l10n/app_localizations.dart';
 
@@ -43,6 +44,8 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Types d'événements gérés par les administrateurs (recharge à l'arrivée de la liste).
+    ref.watch(eventTypesProvider);
     final loggedIn = ref.watch(currentUserProvider) != null;
     final canCreate = ref.watch(canCreateEventsProvider);
     final l10n = context.l10n;

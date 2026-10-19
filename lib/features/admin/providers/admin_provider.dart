@@ -447,7 +447,7 @@ final appSettingsProvider =
 // Active admin section
 // =============================================================================
 
-enum AdminSection { users, content, moderators, categories, stats, settings }
+enum AdminSection { users, content, moderators, categories, eventTypes, stats, settings }
 
 class _AdminSectionNotifier extends Notifier<AdminSection> {
   @override

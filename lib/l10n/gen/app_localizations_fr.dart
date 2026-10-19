@@ -10330,4 +10330,61 @@ class AppLocalizationsFr extends AppLocalizations {
   String verseHistoryOfDay(String date) {
     return 'Verset du $date';
   }
+
+  @override
+  String get adminEventTypes => 'Types d\'événements';
+
+  @override
+  String get adminEventTypesSub =>
+      'Croisades, conférences, camps… : ajouter, modifier, réordonner';
+
+  @override
+  String get adminEventTypesIntro =>
+      'Les catégories proposées aux organisateurs. Faites glisser pour changer l\'ordre ; un type désactivé n\'est plus proposé mais reste sur les événements existants.';
+
+  @override
+  String get adminEventTypeAdd => 'Ajouter un type';
+
+  @override
+  String get adminEventTypeEdit => 'Modifier le type';
+
+  @override
+  String get adminEventTypeNameFr => 'Nom (français)';
+
+  @override
+  String get adminEventTypeNameEn => 'Nom (anglais, facultatif)';
+
+  @override
+  String get adminEventTypeIcon => 'Icône';
+
+  @override
+  String get adminEventTypeInactive => 'désactivé';
+
+  @override
+  String adminEventTypeCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count événements',
+      one: '1 événement',
+      zero: 'Aucun événement',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String adminEventTypeDeleteTitle(String name) {
+    return 'Supprimer le type « $name » ?';
+  }
+
+  @override
+  String adminEventTypeReplaceTitle(String name, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count événements',
+      one: '1 événement',
+    );
+    return '« $name » est utilisé par $_temp0. Quel type les reprend ?';
+  }
 }

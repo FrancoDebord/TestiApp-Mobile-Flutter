@@ -5174,5 +5174,41 @@
         "type": "String"
       }
     }
+  },
+  "adminEventTypes": "Types d'événements",
+  "adminEventTypesSub": "Croisades, conférences, camps… : ajouter, modifier, réordonner",
+  "adminEventTypesIntro": "Les catégories proposées aux organisateurs. Faites glisser pour changer l'ordre ; un type désactivé n'est plus proposé mais reste sur les événements existants.",
+  "adminEventTypeAdd": "Ajouter un type",
+  "adminEventTypeEdit": "Modifier le type",
+  "adminEventTypeNameFr": "Nom (français)",
+  "adminEventTypeNameEn": "Nom (anglais, facultatif)",
+  "adminEventTypeIcon": "Icône",
+  "adminEventTypeInactive": "désactivé",
+  "adminEventTypeCount": "{count, plural, =0{Aucun événement} =1{1 événement} other{{count} événements}}",
+  "@adminEventTypeCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "adminEventTypeDeleteTitle": "Supprimer le type « {name} » ?",
+  "@adminEventTypeDeleteTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "adminEventTypeReplaceTitle": "« {name} » est utilisé par {count, plural, =1{1 événement} other{{count} événements}}. Quel type les reprend ?",
+  "@adminEventTypeReplaceTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
   }
 }

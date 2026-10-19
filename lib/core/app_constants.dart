@@ -429,6 +429,11 @@ abstract final class AppConstants {
 
   static const String events = '/events';
   static String eventById(String id)          => '/events/$id';
+  // Types d'événements gérés par les administrateurs (docs serveur types-evenements.md).
+  static const String eventTypes = '/event-types';
+  static const String adminEventTypes = '/admin/event-types';
+  static const String adminEventTypesReorder = '/admin/event-types/reorder';
+  static String adminEventType(int id) => '/admin/event-types/$id';
   static String eventImages(String id)        => '/events/$id/images';
   static String eventImage(String id, String imageId) => '/events/$id/images/$imageId';
   static String eventImageCover(String id, String imageId) =>

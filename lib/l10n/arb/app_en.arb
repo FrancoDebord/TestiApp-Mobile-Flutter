@@ -2958,5 +2958,17 @@
   "verseHistoryComments": "comments",
   "verseHistoryTestimonies": "testimonies",
   "verseHistoryOpen": "Previous verses",
-  "verseHistoryOfDay": "Verse of {date}"
+  "verseHistoryOfDay": "Verse of {date}",
+  "adminEventTypes": "Event types",
+  "adminEventTypesSub": "Crusades, conferences, camps…: add, edit, reorder",
+  "adminEventTypesIntro": "Categories offered to organizers. Drag to reorder; a disabled type is no longer offered but stays on existing events.",
+  "adminEventTypeAdd": "Add a type",
+  "adminEventTypeEdit": "Edit type",
+  "adminEventTypeNameFr": "Name (French)",
+  "adminEventTypeNameEn": "Name (English, optional)",
+  "adminEventTypeIcon": "Icon",
+  "adminEventTypeInactive": "disabled",
+  "adminEventTypeCount": "{count, plural, =0{No events} =1{1 event} other{{count} events}}",
+  "adminEventTypeDeleteTitle": "Delete the type “{name}”?",
+  "adminEventTypeReplaceTitle": "“{name}” is used by {count, plural, =1{1 event} other{{count} events}}. Which type takes them over?"
 }

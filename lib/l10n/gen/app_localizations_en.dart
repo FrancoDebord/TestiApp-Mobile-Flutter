@@ -10237,4 +10237,61 @@ class AppLocalizationsEn extends AppLocalizations {
   String verseHistoryOfDay(String date) {
     return 'Verse of $date';
   }
+
+  @override
+  String get adminEventTypes => 'Event types';
+
+  @override
+  String get adminEventTypesSub =>
+      'Crusades, conferences, camps…: add, edit, reorder';
+
+  @override
+  String get adminEventTypesIntro =>
+      'Categories offered to organizers. Drag to reorder; a disabled type is no longer offered but stays on existing events.';
+
+  @override
+  String get adminEventTypeAdd => 'Add a type';
+
+  @override
+  String get adminEventTypeEdit => 'Edit type';
+
+  @override
+  String get adminEventTypeNameFr => 'Name (French)';
+
+  @override
+  String get adminEventTypeNameEn => 'Name (English, optional)';
+
+  @override
+  String get adminEventTypeIcon => 'Icon';
+
+  @override
+  String get adminEventTypeInactive => 'disabled';
+
+  @override
+  String adminEventTypeCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count events',
+      one: '1 event',
+      zero: 'No events',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String adminEventTypeDeleteTitle(String name) {
+    return 'Delete the type “$name”?';
+  }
+
+  @override
+  String adminEventTypeReplaceTitle(String name, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count events',
+      one: '1 event',
+    );
+    return '“$name” is used by $_temp0. Which type takes them over?';
+  }
 }

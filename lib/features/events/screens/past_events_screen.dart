@@ -14,6 +14,7 @@ import '../../../l10n/app_localizations.dart';
 import '../data/events_repository.dart';
 import '../models/event_models.dart';
 import '../providers/events_providers.dart';
+import '../providers/event_types_providers.dart' show eventTypesProvider;
 import '../widgets/event_widgets.dart' show eventTypeIcon;
 import '../widgets/past_events_widgets.dart';
 
@@ -50,6 +51,8 @@ class _PastEventsScreenState extends ConsumerState<PastEventsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Types d'événements gérés par les administrateurs (recharge à l'arrivée de la liste).
+    ref.watch(eventTypesProvider);
     final l10n = context.l10n;
     final async = ref.watch(eventListProvider(_key));
     return Scaffold(

@@ -59,16 +59,32 @@ String compactCount(int n) {
 }
 
 /// Icône du type d'événement.
-IconData eventTypeIcon(EventType t) => switch (t) {
-      EventType.crusade => Icons.campaign_rounded,
-      EventType.conference => Icons.mic_external_on_rounded,
-      EventType.seminar => Icons.co_present_rounded,
-      EventType.camp => Icons.cabin_rounded,
-      EventType.tour => Icons.route_rounded,
-      EventType.worship => Icons.music_note_rounded,
-      EventType.retreat => Icons.self_improvement_rounded,
-      EventType.other => Icons.event_rounded,
-    };
+IconData eventTypeIcon(EventType t) => eventTypeIconFor(t.icon);
+
+/// Icônes proposées aux administrateurs (mêmes clés que le serveur).
+const kEventTypeIcons = <String, IconData>{
+  'bullhorn': Icons.campaign_rounded,
+  'microphone': Icons.mic_external_on_rounded,
+  'chalkboard': Icons.co_present_rounded,
+  'campground': Icons.cabin_rounded,
+  'route': Icons.route_rounded,
+  'music': Icons.music_note_rounded,
+  'dove': Icons.self_improvement_rounded,
+  'calendar': Icons.event_rounded,
+  'church': Icons.church_rounded,
+  'users': Icons.groups_rounded,
+  'hands': Icons.volunteer_activism_rounded,
+  'star': Icons.star_rounded,
+  'book': Icons.menu_book_rounded,
+  'heart': Icons.favorite_rounded,
+  'globe': Icons.public_rounded,
+  'cross': Icons.add_rounded,
+  'fire': Icons.local_fire_department_rounded,
+  'child': Icons.child_care_rounded,
+  'graduation': Icons.school_rounded,
+};
+
+IconData eventTypeIconFor(String key) => kEventTypeIcons[key] ?? Icons.event_rounded;
 
 // ── Pastilles ────────────────────────────────────────────────────────────────
 

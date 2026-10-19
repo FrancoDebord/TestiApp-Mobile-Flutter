@@ -7,6 +7,7 @@ import '../providers/admin_provider.dart';
 import '../widgets/admin_metric_card.dart';
 import '../widgets/admin_section_tile.dart';
 import 'admin_categories_screen.dart';
+import 'admin_event_types_screen.dart';
 import 'admin_content_screen.dart';
 import 'admin_moderators_screen.dart';
 import 'admin_settings_screen.dart';
@@ -264,6 +265,13 @@ class _SectionNavList extends ConsumerWidget {
         null,
       ),
       (
+        AdminSection.eventTypes,
+        Icons.event_note_outlined,
+        l10n.adminEventTypes,
+        l10n.adminEventTypesSub,
+        null,
+      ),
+      (
         AdminSection.stats,
         Icons.bar_chart_rounded,
         l10n.adminStats,
@@ -312,6 +320,7 @@ class _SectionTitleBar extends StatelessWidget {
       AdminSection.moderators =>
         (l10n.adminModerators, Icons.admin_panel_settings_rounded),
       AdminSection.categories => (l10n.adminCategories, Icons.category_rounded),
+      AdminSection.eventTypes => (l10n.adminEventTypes, Icons.event_note_rounded),
       AdminSection.stats => (l10n.adminStats, Icons.analytics_rounded),
       AdminSection.settings => (l10n.adminSettings, Icons.settings_rounded),
     };
@@ -355,6 +364,7 @@ class _SectionBody extends StatelessWidget {
       AdminSection.content => const AdminContentScreen(),
       AdminSection.moderators => const AdminModeratorsScreen(),
       AdminSection.categories => const AdminCategoriesScreen(),
+      AdminSection.eventTypes => const AdminEventTypesScreen(),
       AdminSection.stats => const AdminStatsScreen(),
       AdminSection.settings => const AdminSettingsScreen(),
     };

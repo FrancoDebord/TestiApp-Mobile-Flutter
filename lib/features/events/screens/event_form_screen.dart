@@ -11,6 +11,7 @@ import '../../../core/theme/app_tokens.dart';
 import '../data/events_repository.dart';
 import '../models/event_models.dart';
 import '../providers/events_providers.dart';
+import '../providers/event_types_providers.dart' show eventTypesProvider;
 import '../widgets/event_location_widgets.dart';
 import '../widgets/event_widgets.dart';
 import '../../../core/media/youtube.dart' show extractYouTubeId;
@@ -213,6 +214,8 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Types d'événements gérés par les administrateurs (recharge à l'arrivée de la liste).
+    ref.watch(eventTypesProvider);
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -315,7 +318,10 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
                   isExpanded: true,
                   decoration: InputDecoration(labelText: l10n.eventsFormTypeLabel),
                   items: [
-                    for (final t in EventType.values)
+                    for (final t in [
+                      ...EventType.values,
+                      if (!EventType.values.contains(d.type)) d.type,
+                    ])
                       DropdownMenuItem(
                         value: t,
                         child: Row(

@@ -26,35 +26,113 @@ String? _str(Object? v) {
 double? _double(Object? v) => v is num ? v.toDouble() : (v is String ? double.tryParse(v.trim()) : null);
 
 /// Nature de l'événement (`type`).
-enum EventType {
-  crusade('crusade'),
-  conference('conference'),
-  seminar('seminar'),
-  camp('camp'),
-  tour('tour'),
-  worship('worship'),
-  retreat('retreat'),
-  other('other');
+/// Type (catégorie) d'événement, géré par les administrateurs (GET /event-types,
+/// docs serveur fonctionnalites/types-evenements.md) : identifiant `slug`, nom
+/// dans la langue de l'application, icône. Les 8 types d'origine servent de repli
+/// hors ligne ou avec un serveur plus ancien.
+class EventType {
+  const EventType(
+    this.apiValue, {
+    this.name,
+    this.iconKey,
+    this.id,
+    this.nameFr,
+    this.nameEn,
+    this.position = 0,
+    this.isActive = true,
+    this.eventsCount = 0,
+  });
 
-  const EventType(this.apiValue);
+  factory EventType.fromJson(Map<String, dynamic> m) => EventType(
+        '${m['slug'] ?? m['value'] ?? 'other'}',
+        name: _str(m['name'] ?? m['label']),
+        iconKey: _str(m['icon']),
+        id: (m['id'] as num?)?.toInt(),
+        nameFr: _str(m['nameFr']),
+        nameEn: _str(m['nameEn']),
+        position: _int(m['position']),
+        isActive: m['isActive'] != false,
+        eventsCount: _int(m['eventsCount']),
+      );
+
+  /// Identifiant envoyé au serveur (`type` d'un événement).
   final String apiValue;
 
+  /// Nom fourni par le serveur (déjà dans la langue de l'application).
+  final String? name;
+
+  /// Clé d'icône (bullhorn, microphone, music…), voir `eventTypeIcon`.
+  final String? iconKey;
+
+  // Gestion (administrateurs).
+  final int? id;
+  final String? nameFr;
+  final String? nameEn;
+  final int position;
+  final bool isActive;
+  final int eventsCount;
+
+  static const crusade = EventType('crusade', iconKey: 'bullhorn');
+  static const conference = EventType('conference', iconKey: 'microphone');
+  static const seminar = EventType('seminar', iconKey: 'chalkboard');
+  static const camp = EventType('camp', iconKey: 'campground');
+  static const tour = EventType('tour', iconKey: 'route');
+  static const worship = EventType('worship', iconKey: 'music');
+  static const retreat = EventType('retreat', iconKey: 'dove');
+  static const other = EventType('other', iconKey: 'calendar');
+
+  /// Types d'origine (repli sans serveur).
+  static const builtins = [crusade, conference, seminar, camp, tour, worship, retreat, other];
+
+  static List<EventType> _registry = builtins;
+
+  /// Types proposés (actifs, dans l'ordre choisi par l'administrateur).
+  static List<EventType> get values => _registry.where((t) => t.isActive).toList();
+
+  /// Liste reçue du serveur (eventTypesProvider) ; vide : on garde les types d'origine.
+  static void register(List<EventType> types) {
+    if (types.isNotEmpty) _registry = [...types]..sort((a, b) => a.position.compareTo(b.position));
+  }
+
   String get label {
+    final n = name;
+    if (n != null && n.isNotEmpty) return n;
+    final known = _registry.where((t) => t.apiValue == apiValue && (t.name?.isNotEmpty ?? false)).firstOrNull;
+    if (known != null) return known.name!;
     final l = L10n.current;
-    return switch (this) {
-      EventType.crusade => l.eventsTypeCrusade,
-      EventType.conference => l.eventsTypeConference,
-      EventType.seminar => l.eventsTypeSeminar,
-      EventType.camp => l.eventsTypeCamp,
-      EventType.tour => l.eventsTypeTour,
-      EventType.worship => l.eventsTypeWorship,
-      EventType.retreat => l.eventsTypeRetreat,
-      EventType.other => l.eventsTypeOther,
+    return switch (apiValue) {
+      'crusade' => l.eventsTypeCrusade,
+      'conference' => l.eventsTypeConference,
+      'seminar' => l.eventsTypeSeminar,
+      'camp' => l.eventsTypeCamp,
+      'tour' => l.eventsTypeTour,
+      'worship' => l.eventsTypeWorship,
+      'retreat' => l.eventsTypeRetreat,
+      'other' => l.eventsTypeOther,
+      _ => apiValue.replaceAll('-', ' ').replaceAll('_', ' '),
     };
   }
 
-  static EventType parse(Object? raw) =>
-      values.firstWhere((t) => t.apiValue == raw, orElse: () => EventType.other);
+  /// Clé d'icône : celle du serveur, sinon celle du type connu.
+  String get icon =>
+      iconKey ?? _registry.where((t) => t.apiValue == apiValue).firstOrNull?.iconKey ?? 'calendar';
+
+  /// [label] / [icon] : `typeLabel` / `typeIcon` de l'événement.
+  static EventType parse(Object? raw, {Object? label, Object? icon}) {
+    final slug = _str(raw) ?? 'other';
+    final known = _registry.where((t) => t.apiValue == slug).firstOrNull ??
+        builtins.where((t) => t.apiValue == slug).firstOrNull;
+    final l = _str(label);
+    final i = _str(icon);
+    if (known != null && l == null && i == null) return known;
+    return EventType(slug, name: l ?? known?.name, iconKey: i ?? known?.iconKey);
+  }
+
+  @override
+  bool operator ==(Object other) => other is EventType && other.apiValue == apiValue;
+
+  @override
+  int get hashCode => apiValue.hashCode;
 }
 
 /// Publication : brouillon (gestionnaires seulement), publié, reporté (date à
@@ -435,7 +513,7 @@ class ChristianEvent {
       id: '${m['id']}',
       title: _str(m['title']) ?? L10n.current.eventsDefaultTitle,
       description: _str(m['description']),
-      type: EventType.parse(m['type']),
+      type: EventType.parse(m['type'], label: m['typeLabel'], icon: m['typeIcon']),
       status: EventStatus.parse(m['status']),
       phase: EventPhase.parse(m['phase']),
       startsAt: _date(m['startsAt']),

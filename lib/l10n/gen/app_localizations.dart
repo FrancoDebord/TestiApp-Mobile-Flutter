@@ -17857,6 +17857,78 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Verset du {date}'**
   String verseHistoryOfDay(String date);
+
+  /// No description provided for @adminEventTypes.
+  ///
+  /// In fr, this message translates to:
+  /// **'Types d\'événements'**
+  String get adminEventTypes;
+
+  /// No description provided for @adminEventTypesSub.
+  ///
+  /// In fr, this message translates to:
+  /// **'Croisades, conférences, camps… : ajouter, modifier, réordonner'**
+  String get adminEventTypesSub;
+
+  /// No description provided for @adminEventTypesIntro.
+  ///
+  /// In fr, this message translates to:
+  /// **'Les catégories proposées aux organisateurs. Faites glisser pour changer l\'ordre ; un type désactivé n\'est plus proposé mais reste sur les événements existants.'**
+  String get adminEventTypesIntro;
+
+  /// No description provided for @adminEventTypeAdd.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ajouter un type'**
+  String get adminEventTypeAdd;
+
+  /// No description provided for @adminEventTypeEdit.
+  ///
+  /// In fr, this message translates to:
+  /// **'Modifier le type'**
+  String get adminEventTypeEdit;
+
+  /// No description provided for @adminEventTypeNameFr.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nom (français)'**
+  String get adminEventTypeNameFr;
+
+  /// No description provided for @adminEventTypeNameEn.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nom (anglais, facultatif)'**
+  String get adminEventTypeNameEn;
+
+  /// No description provided for @adminEventTypeIcon.
+  ///
+  /// In fr, this message translates to:
+  /// **'Icône'**
+  String get adminEventTypeIcon;
+
+  /// No description provided for @adminEventTypeInactive.
+  ///
+  /// In fr, this message translates to:
+  /// **'désactivé'**
+  String get adminEventTypeInactive;
+
+  /// No description provided for @adminEventTypeCount.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count, plural, =0{Aucun événement} =1{1 événement} other{{count} événements}}'**
+  String adminEventTypeCount(int count);
+
+  /// No description provided for @adminEventTypeDeleteTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Supprimer le type « {name} » ?'**
+  String adminEventTypeDeleteTitle(String name);
+
+  /// No description provided for @adminEventTypeReplaceTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'« {name} » est utilisé par {count, plural, =1{1 événement} other{{count} événements}}. Quel type les reprend ?'**
+  String adminEventTypeReplaceTitle(String name, int count);
 }
 
 class _AppLocalizationsDelegate
