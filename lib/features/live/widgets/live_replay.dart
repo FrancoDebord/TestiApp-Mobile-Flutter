@@ -15,6 +15,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../services/api_service.dart';
 import '../../../shared/widgets/guest_gate.dart' show requireAccount;
 import '../../../shared/widgets/mention_text.dart';
+import '../../../shared/widgets/youtube_video_player.dart';
 import '../../home/models/testimony_model.dart';
 import '../../home/providers/home_providers.dart' show testimonyFromApiJson, parsePageMeta;
 import '../../home/widgets/compact_testimony_tile.dart';
@@ -64,10 +65,13 @@ String formatLiveOffset(int seconds) {
 
 /// Section sous le bilan d'un direct terminé.
 class LiveAfterwardsSection extends ConsumerWidget {
-  const LiveAfterwardsSection({required this.liveId, required this.title, super.key});
+  const LiveAfterwardsSection({required this.liveId, required this.title, this.youtubeId, super.key});
 
   final String liveId;
   final String title;
+
+  /// Direct diffusé sur YouTube : la vidéo sert de rediffusion.
+  final String? youtubeId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -77,6 +81,14 @@ class LiveAfterwardsSection extends ConsumerWidget {
       key: const ValueKey('live-afterwards'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (youtubeId != null) ...[
+          const SizedBox(height: 22),
+          ClipRRect(
+            key: const ValueKey('live-youtube-replay'),
+            borderRadius: BorderRadius.circular(14),
+            child: YouTubeVideoPlayer(videoId: youtubeId!, autoPlay: false),
+          ),
+        ],
         const SizedBox(height: 22),
         FilledButton.icon(
           key: const ValueKey('live-testify'),

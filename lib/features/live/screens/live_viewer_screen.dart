@@ -18,6 +18,7 @@ import '../models/live_models.dart';
 import '../widgets/live_stage_widgets.dart';
 import '../widgets/live_viewers_sheet.dart';
 import '../widgets/live_widgets.dart';
+import '../widgets/live_youtube_view.dart';
 
 /// Regarder un direct : vidéo, réactions et commentaires en temps réel.
 class LiveViewerScreen extends ConsumerStatefulWidget {
@@ -31,6 +32,9 @@ class LiveViewerScreen extends ConsumerStatefulWidget {
 
 class _LiveViewerScreenState extends ConsumerState<LiveViewerScreen> {
   LiveRoomController? _ctrl;
+
+  /// Direct diffusé sur YouTube, à l'antenne (pas de LiveKit).
+  LiveSession? _youtubeLive;
   String? _loadError;
   bool _showComments = true;
 
@@ -85,6 +89,11 @@ class _LiveViewerScreenState extends ConsumerState<LiveViewerScreen> {
     try {
       final live = await repo.show(widget.liveId);
       if (!mounted) return;
+      if (live.isYoutube && live.status != LiveStatus.ended) {
+        setState(() => _youtubeLive = live);
+        return;
+      }
+      if (_youtubeLive != null) setState(() => _youtubeLive = null);
       _ctrl?.removeListener(_onControllerChange);
       _ctrl?.dispose(); // « Réessayer » : fermer l'ancienne connexion
       final ctrl = LiveRoomController(
@@ -122,7 +131,14 @@ class _LiveViewerScreenState extends ConsumerState<LiveViewerScreen> {
       child: Scaffold(
         backgroundColor: Colors.black,
         resizeToAvoidBottomInset: true,
-        body: ctrl == null
+        body: _youtubeLive != null
+            ? LiveYoutubeView(
+                live: _youtubeLive!,
+                onClose: _close,
+                // Fin du direct : écran de fin (bilan, rediffusion YouTube).
+                onEnded: () => unawaited(_open()),
+              )
+            : ctrl == null
             ? _Loading(error: _loadError, onRetry: _open, onClose: _close)
             : ListenableBuilder(
                 listenable: ctrl,
@@ -149,7 +165,7 @@ class _LiveViewerScreenState extends ConsumerState<LiveViewerScreen> {
             ? ctrl.reactions
             : live.reactions,
         onClose: _close,
-        footer: LiveAfterwardsSection(liveId: live.id, title: live.title),
+        footer: LiveAfterwardsSection(liveId: live.id, title: live.title, youtubeId: live.isYoutube ? live.youtubeId : null),
       );
     }
 

@@ -17929,6 +17929,60 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'« {name} » est utilisé par {count, plural, =1{1 événement} other{{count} événements}}. Quel type les reprend ?'**
   String adminEventTypeReplaceTitle(String name, int count);
+
+  /// No description provided for @liveSourceYoutube.
+  ///
+  /// In fr, this message translates to:
+  /// **'Lien d\'un direct YouTube'**
+  String get liveSourceYoutube;
+
+  /// No description provided for @liveSourceYoutubeHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Diffusez sur YouTube, sans LiveKit ; la discussion reste dans l\'application'**
+  String get liveSourceYoutubeHint;
+
+  /// No description provided for @liveYoutubeUrlLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Lien du direct YouTube'**
+  String get liveYoutubeUrlLabel;
+
+  /// No description provided for @liveYoutubeUrlInvalid.
+  ///
+  /// In fr, this message translates to:
+  /// **'Lien YouTube invalide.'**
+  String get liveYoutubeUrlInvalid;
+
+  /// No description provided for @liveYoutubeHelpTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Diffuser avec YouTube'**
+  String get liveYoutubeHelpTitle;
+
+  /// No description provided for @liveYoutubeStep1.
+  ///
+  /// In fr, this message translates to:
+  /// **'Lancez votre direct sur YouTube (application YouTube, YouTube Studio ou OBS).'**
+  String get liveYoutubeStep1;
+
+  /// No description provided for @liveYoutubeStep2.
+  ///
+  /// In fr, this message translates to:
+  /// **'Copiez son lien et collez-le ci-dessus.'**
+  String get liveYoutubeStep2;
+
+  /// No description provided for @liveYoutubeStep3.
+  ///
+  /// In fr, this message translates to:
+  /// **'Le direct s\'ouvre aussitôt dans l\'application ; terminez-le ici quand la diffusion YouTube est finie.'**
+  String get liveYoutubeStep3;
+
+  /// No description provided for @liveCheckYoutubeOk.
+  ///
+  /// In fr, this message translates to:
+  /// **'Diffusion par YouTube'**
+  String get liveCheckYoutubeOk;
 }
 
 class _AppLocalizationsDelegate

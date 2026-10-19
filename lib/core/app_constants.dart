@@ -371,6 +371,7 @@ abstract final class AppConstants {
   static String liveGoLive(String id)     => '/lives/$id/go-live';
   static String liveEnd(String id)        => '/lives/$id/end';
   static String liveStats(String id)      => '/lives/$id/stats';
+  static String liveHeartbeat(String id)  => '/lives/$id/heartbeat'; // direct YouTube (public)
   static String liveViewers(String id)    => '/lives/$id/viewers'; // qui regarde (public)
   static String liveComments(String id)   => '/lives/$id/comments';
   static String liveTestimonies(String id) => '/lives/$id/testimonies';

@@ -5210,5 +5210,14 @@
         "type": "int"
       }
     }
-  }
+  },
+  "liveSourceYoutube": "Lien d'un direct YouTube",
+  "liveSourceYoutubeHint": "Diffusez sur YouTube, sans LiveKit ; la discussion reste dans l'application",
+  "liveYoutubeUrlLabel": "Lien du direct YouTube",
+  "liveYoutubeUrlInvalid": "Lien YouTube invalide.",
+  "liveYoutubeHelpTitle": "Diffuser avec YouTube",
+  "liveYoutubeStep1": "Lancez votre direct sur YouTube (application YouTube, YouTube Studio ou OBS).",
+  "liveYoutubeStep2": "Copiez son lien et collez-le ci-dessus.",
+  "liveYoutubeStep3": "Le direct s'ouvre aussitôt dans l'application ; terminez-le ici quand la diffusion YouTube est finie.",
+  "liveCheckYoutubeOk": "Diffusion par YouTube"
 }

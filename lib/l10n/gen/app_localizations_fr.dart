@@ -10387,4 +10387,34 @@ class AppLocalizationsFr extends AppLocalizations {
     );
     return '« $name » est utilisé par $_temp0. Quel type les reprend ?';
   }
+
+  @override
+  String get liveSourceYoutube => 'Lien d\'un direct YouTube';
+
+  @override
+  String get liveSourceYoutubeHint =>
+      'Diffusez sur YouTube, sans LiveKit ; la discussion reste dans l\'application';
+
+  @override
+  String get liveYoutubeUrlLabel => 'Lien du direct YouTube';
+
+  @override
+  String get liveYoutubeUrlInvalid => 'Lien YouTube invalide.';
+
+  @override
+  String get liveYoutubeHelpTitle => 'Diffuser avec YouTube';
+
+  @override
+  String get liveYoutubeStep1 =>
+      'Lancez votre direct sur YouTube (application YouTube, YouTube Studio ou OBS).';
+
+  @override
+  String get liveYoutubeStep2 => 'Copiez son lien et collez-le ci-dessus.';
+
+  @override
+  String get liveYoutubeStep3 =>
+      'Le direct s\'ouvre aussitôt dans l\'application ; terminez-le ici quand la diffusion YouTube est finie.';
+
+  @override
+  String get liveCheckYoutubeOk => 'Diffusion par YouTube';
 }

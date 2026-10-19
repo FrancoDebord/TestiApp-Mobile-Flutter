@@ -25,7 +25,10 @@ enum LiveStatus {
 enum LiveSource {
   browser('browser'),
   rtmp('rtmp'),
-  url('url');
+  url('url'),
+
+  /// Lien d'un direct YouTube : pas de LiveKit (vidéo YouTube, discussion par l'API).
+  youtube('youtube');
 
   const LiveSource(this.apiValue);
   final String apiValue;
@@ -33,8 +36,11 @@ enum LiveSource {
   static LiveSource parse(Object? raw) => switch (raw) {
         'rtmp' => LiveSource.rtmp,
         'url'  => LiveSource.url,
+        'youtube' => LiveSource.youtube,
         _      => LiveSource.browser,
       };
+
+  bool get isYoutube => this == LiveSource.youtube;
 
   /// Caméra externe : rien n'est publié depuis l'appareil du diffuseur.
   bool get isExternal => this != LiveSource.browser;
@@ -219,6 +225,8 @@ class LiveSession {
     this.pinnedComment,
     this.source = LiveSource.browser,
     this.camera,
+    this.youtubeId,
+    this.youtubeUrl,
   });
 
   factory LiveSession.fromJson(Map<String, dynamic> m) {
@@ -251,8 +259,17 @@ class LiveSession {
       pinnedComment: _commentOrNull(m['pinnedComment']),
       source: LiveSource.parse(m['source']),
       camera: LiveCamera.fromJson(m['camera']),
+      youtubeId: _map(m['youtube'])['id'] as String?,
+      youtubeUrl: _map(m['youtube'])['url'] as String?,
     );
   }
+
+  /// Direct YouTube (source youtube) : identifiant et lien de la vidéo, qui
+  /// reste la rediffusion une fois le direct terminé.
+  final String? youtubeId;
+  final String? youtubeUrl;
+
+  bool get isYoutube => source.isYoutube && youtubeId != null;
 
   final String id;
   final String title;
@@ -315,6 +332,7 @@ class LivesIndex {
     required this.canGoLive,
     required this.active,
     required this.recent,
+    this.youtubeEnabled = false,
   });
 
   factory LivesIndex.fromJson(Map<String, dynamic> m) {
@@ -329,8 +347,15 @@ class LivesIndex {
       canGoLive: m['canGoLive'] as bool? ?? false,
       active: list(m['active']),
       recent: list(m['recent']),
+      youtubeEnabled: m['youtubeEnabled'] as bool? ?? false,
     );
   }
+
+  /// Directs par lien YouTube possibles (même sans LiveKit).
+  final bool youtubeEnabled;
+
+  /// Un direct peut être lancé (LiveKit ou YouTube).
+  bool get canStart => configured || youtubeEnabled;
 
   /// false : le service vidéo n'est pas configuré côté serveur.
   final bool configured;

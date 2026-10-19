@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:livekit_client/livekit_client.dart' as lk;
 import 'package:permission_handler/permission_handler.dart';
 
+import '../../../core/media/youtube.dart' show extractYouTubeId;
 import '../../../core/providers/categories_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -65,6 +66,12 @@ class _LiveSetupScreenState extends ConsumerState<LiveSetupScreen>
   final _form = GlobalKey<FormState>();
   final _title = TextEditingController();
   final _description = TextEditingController();
+
+  /// Lien du direct YouTube (source youtube).
+  final _youtubeUrl = TextEditingController();
+
+  /// Réponse de GET /lives : LiveKit configuré, directs YouTube possibles (null : pas encore lu).
+  ({bool liveKit, bool youtube})? _services;
   /// Caméra IP (mode url) : adresse composée par [IpCameraForm] et réglage
   /// structuré (mémorisé sans mot de passe après la création du direct).
   String _cameraUrl = '';
@@ -122,6 +129,7 @@ class _LiveSetupScreenState extends ConsumerState<LiveSetupScreen>
     WidgetsBinding.instance.removeObserver(this);
     _title.dispose();
     _description.dispose();
+    _youtubeUrl.dispose();
     if (!_handedOff) unawaited(_preview?.stop());
     super.dispose();
   }
@@ -164,6 +172,7 @@ class _LiveSetupScreenState extends ConsumerState<LiveSetupScreen>
   Future<void> _selectSource(LiveSource source) async {
     if (source == _source) return;
     setState(() => _source = source);
+    _applyService();
     if (source.isExternal) {
       final preview = _preview;
       setState(() => _preview = null);
@@ -177,12 +186,28 @@ class _LiveSetupScreenState extends ConsumerState<LiveSetupScreen>
     try {
       final index = await ref.read(liveRepositoryProvider).index();
       if (!mounted) return;
-      setState(() => _service = index.configured
-          ? _Check.l10n(_CheckState.ok, (l) => l.liveCheckServiceOk)
-          : _Check.l10n(_CheckState.failed, (l) => l.liveCheckServiceMissing));
+      _services = (liveKit: index.configured, youtube: index.youtubeEnabled);
+      // Pas de LiveKit sur ce serveur : le lien YouTube est la seule possibilité.
+      if (!index.configured && index.youtubeEnabled && !_source.isYoutube) {
+        await _selectSource(LiveSource.youtube);
+      }
+      _applyService();
     } on LiveFailure catch (e) {
       if (mounted) setState(() => _service = _Check(_CheckState.failed, e.message));
     }
+  }
+
+  /// Service vidéo selon la source : LiveKit, ou YouTube (pas de LiveKit).
+  void _applyService() {
+    final s = _services;
+    if (s == null || !mounted) return;
+    setState(() => _service = _source.isYoutube
+        ? (s.youtube
+            ? _Check.l10n(_CheckState.ok, (l) => l.liveCheckYoutubeOk)
+            : _Check.l10n(_CheckState.failed, (l) => l.liveCheckServiceMissing))
+        : (s.liveKit
+            ? _Check.l10n(_CheckState.ok, (l) => l.liveCheckServiceOk)
+            : _Check.l10n(_CheckState.failed, (l) => l.liveCheckServiceMissing)));
   }
 
   Future<void> _checkNetwork() async {
@@ -288,12 +313,18 @@ class _LiveSetupScreenState extends ConsumerState<LiveSetupScreen>
         commentsEnabled: _commentsEnabled,
         source: _source,
         cameraUrl: _source == LiveSource.url ? _cameraUrl : null,
+        youtubeUrl: _source.isYoutube ? _youtubeUrl.text.trim() : null,
         eventId: widget.eventId,
       );
       if (_source == LiveSource.url && _ipCamera != null) {
         unawaited(IpCameraForm.remember(ref, _ipCamera!));
       }
       if (!mounted) return;
+      if (creds == null || live.source.isYoutube) {
+        // Direct YouTube : à l'antenne dès sa création, ouvert dans la vue YouTube.
+        context.pushReplacement('/lives/${live.id}');
+        return;
+      }
       _openStudio(LiveStudioArgs(
         live: live,
         credentials: creds,
@@ -417,6 +448,13 @@ class _LiveSetupScreenState extends ConsumerState<LiveSetupScreen>
                     title: Text(l10n.liveSourceUrl),
                     subtitle: Text(l10n.liveSourceUrlHint),
                   ),
+                  RadioListTile<LiveSource>(
+                    key: const ValueKey('live-source-youtube'),
+                    contentPadding: EdgeInsets.zero,
+                    value: LiveSource.youtube,
+                    title: Text(l10n.liveSourceYoutube),
+                    subtitle: Text(l10n.liveSourceYoutubeHint),
+                  ),
                 ],
               ),
             ),
@@ -430,7 +468,22 @@ class _LiveSetupScreenState extends ConsumerState<LiveSetupScreen>
               ),
             ],
             const SizedBox(height: 12),
-            if (_source.isExternal)
+            if (_source.isYoutube) ...[
+              TextFormField(
+                key: const ValueKey('live-youtube-url'),
+                controller: _youtubeUrl,
+                keyboardType: TextInputType.url,
+                autocorrect: false,
+                decoration: InputDecoration(
+                  labelText: l10n.liveYoutubeUrlLabel,
+                  hintText: 'https://www.youtube.com/live/…', // i18n-ignore
+                  prefixIcon: const Icon(Icons.smart_display_outlined),
+                ),
+                validator: (v) => extractYouTubeId(v ?? '') != null ? null : l10n.liveYoutubeUrlInvalid,
+              ),
+              const SizedBox(height: 12),
+              const _YoutubeHelp(),
+            ] else if (_source.isExternal)
               _ExternalCameraHelp(source: _source)
             else
               _PreviewBox(
@@ -521,6 +574,43 @@ class _LiveSetupScreenState extends ConsumerState<LiveSetupScreen>
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Mode d'emploi d'un direct YouTube (pas de LiveKit).
+class _YoutubeHelp extends StatelessWidget {
+  const _YoutubeHelp();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final steps = [l10n.liveYoutubeStep1, l10n.liveYoutubeStep2, l10n.liveYoutubeStep3];
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.primarySoft,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.smart_display_rounded, color: Color(0xFFE11D48)),
+              const SizedBox(width: 8),
+              Expanded(child: Text(l10n.liveYoutubeHelpTitle, style: AppTextStyles.h4)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          for (var i = 0; i < steps.length; i++)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text('${i + 1}. ${steps[i]}',
+                  style: AppTextStyles.bodySmall.copyWith(color: AppColors.textPrimary, height: 1.5)),
+            ),
+        ],
       ),
     );
   }

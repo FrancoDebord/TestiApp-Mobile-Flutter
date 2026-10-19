@@ -10294,4 +10294,34 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '“$name” is used by $_temp0. Which type takes them over?';
   }
+
+  @override
+  String get liveSourceYoutube => 'YouTube live link';
+
+  @override
+  String get liveSourceYoutubeHint =>
+      'Stream on YouTube, without LiveKit; the chat stays in the app';
+
+  @override
+  String get liveYoutubeUrlLabel => 'YouTube live link';
+
+  @override
+  String get liveYoutubeUrlInvalid => 'Invalid YouTube link.';
+
+  @override
+  String get liveYoutubeHelpTitle => 'Stream with YouTube';
+
+  @override
+  String get liveYoutubeStep1 =>
+      'Start your live on YouTube (YouTube app, YouTube Studio or OBS).';
+
+  @override
+  String get liveYoutubeStep2 => 'Copy its link and paste it above.';
+
+  @override
+  String get liveYoutubeStep3 =>
+      'The live opens in the app right away; end it here when the YouTube stream is over.';
+
+  @override
+  String get liveCheckYoutubeOk => 'Streaming through YouTube';
 }

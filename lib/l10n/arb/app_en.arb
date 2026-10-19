@@ -2970,5 +2970,14 @@
   "adminEventTypeInactive": "disabled",
   "adminEventTypeCount": "{count, plural, =0{No events} =1{1 event} other{{count} events}}",
   "adminEventTypeDeleteTitle": "Delete the type “{name}”?",
-  "adminEventTypeReplaceTitle": "“{name}” is used by {count, plural, =1{1 event} other{{count} events}}. Which type takes them over?"
+  "adminEventTypeReplaceTitle": "“{name}” is used by {count, plural, =1{1 event} other{{count} events}}. Which type takes them over?",
+  "liveSourceYoutube": "YouTube live link",
+  "liveSourceYoutubeHint": "Stream on YouTube, without LiveKit; the chat stays in the app",
+  "liveYoutubeUrlLabel": "YouTube live link",
+  "liveYoutubeUrlInvalid": "Invalid YouTube link.",
+  "liveYoutubeHelpTitle": "Stream with YouTube",
+  "liveYoutubeStep1": "Start your live on YouTube (YouTube app, YouTube Studio or OBS).",
+  "liveYoutubeStep2": "Copy its link and paste it above.",
+  "liveYoutubeStep3": "The live opens in the app right away; end it here when the YouTube stream is over.",
+  "liveCheckYoutubeOk": "Streaming through YouTube"
 }

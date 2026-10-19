@@ -18,16 +18,21 @@ import '../../../shared/widgets/guest_gate.dart' show requireAccount;
 import '../../home/providers/home_providers.dart' show ReactionType;
 import '../../live/models/live_models.dart' show LiveComment, LivePerson;
 import '../../live/widgets/live_widgets.dart' show LiveChatHeader, LiveChatWelcome, LiveCommentInput, LiveCommentsList;
-import '../../repost/content_interactions.dart' show ContentInteractionsNotifier, ContentKind, contentInteractionsProvider;
+import '../../repost/content_interactions.dart'
+    show ContentInteractionsNotifier, ContentKind, contentInteractionsProvider;
 import '../../../shared/widgets/youtube_video_player.dart';
 import '../models/event_models.dart';
 import '../providers/events_providers.dart';
 import '../widgets/event_widgets.dart' show EventLiveBadge;
 
 class EventLiveScreen extends ConsumerStatefulWidget {
-  const EventLiveScreen({required this.eventId, this.keepScreenOn = true, super.key});
+  const EventLiveScreen({required this.eventId, this.keepScreenOn = true, this.playerBuilder, super.key});
 
   final String eventId;
+
+  /// Tests : remplace le lecteur YouTube (WebView indisponible).
+  @visibleForTesting
+  final Widget Function(String videoId)? playerBuilder;
 
   /// Désactivé dans les tests (pas de plugin).
   final bool keepScreenOn;
@@ -70,8 +75,12 @@ class _EventLiveScreenState extends ConsumerState<EventLiveScreen> {
     setState(() => _fullscreen = !_fullscreen);
     if (_fullscreen) {
       unawaited(SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky));
-      unawaited(SystemChrome.setPreferredOrientations(
-          const [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]));
+      unawaited(
+        SystemChrome.setPreferredOrientations(const [
+          DeviceOrientation.landscapeLeft,
+          DeviceOrientation.landscapeRight,
+        ]),
+      );
     } else {
       _restoreSystemUi();
     }
@@ -109,30 +118,32 @@ class _EventLiveScreenState extends ConsumerState<EventLiveScreen> {
                       : Text(context.l10n.eventsNoYoutubeLive, style: const TextStyle(color: Colors.white70)),
                 )
               : (_fullscreen || landscape)
-                  ? _fullscreenLayout(videoId)
-                  : _dockedLayout(e, videoId),
+              ? _fullscreenLayout(videoId)
+              : _dockedLayout(e, videoId),
         ),
       ),
     );
   }
 
+  Widget _player(String videoId) => widget.playerBuilder?.call(videoId) ?? YouTubeVideoPlayer(videoId: videoId);
+
   /// Plein écran : la vidéo seule, bouton pour revenir.
   Widget _fullscreenLayout(String videoId) => Stack(
-        children: [
-          Center(child: YouTubeVideoPlayer(videoId: videoId)),
-          Positioned(
-            top: 8,
-            left: 8,
-            child: SafeArea(
-              child: IconButton(
-                tooltip: context.l10n.eventsLiveExitFullscreen,
-                onPressed: _fullscreen ? _toggleFullscreen : _close,
-                icon: const Icon(Icons.fullscreen_exit_rounded, color: Colors.white),
-              ),
-            ),
+    children: [
+      Center(child: _player(videoId)),
+      Positioned(
+        top: 8,
+        left: 8,
+        child: SafeArea(
+          child: IconButton(
+            tooltip: context.l10n.eventsLiveExitFullscreen,
+            onPressed: _fullscreen ? _toggleFullscreen : _close,
+            icon: const Icon(Icons.fullscreen_exit_rounded, color: Colors.white),
           ),
-        ],
-      );
+        ),
+      ),
+    ],
+  );
 
   /// Vue « YouTube » : vidéo en haut, feuille « Discussion en direct » dessous
   /// (mêmes éléments que les directs de l'application).
@@ -155,8 +166,14 @@ class _EventLiveScreenState extends ConsumerState<EventLiveScreen> {
                   onPressed: _close,
                   icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white, size: 28),
                 ),
-                if (e.isLiveNow) const EventLiveBadge(),
-                const Spacer(),
+                // Texte agrandi : le badge se réduit plutôt que de déborder.
+                if (e.isLiveNow)
+                  const Flexible(
+                    child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: EventLiveBadge()),
+                  )
+                else
+                  const Spacer(),
+                if (e.isLiveNow) const Spacer(),
                 IconButton(
                   tooltip: l10n.eventsOpenOnYoutube,
                   onPressed: () => launchUrl(Uri.parse(e.youtubeLiveUrl!), mode: LaunchMode.externalApplication),
@@ -171,7 +188,7 @@ class _EventLiveScreenState extends ConsumerState<EventLiveScreen> {
               ],
             ),
           ),
-          if (!keyboardOpen) YouTubeVideoPlayer(videoId: videoId),
+          if (!keyboardOpen) _player(videoId),
           if (!_chatVisible)
             Expanded(
               child: Align(
@@ -199,54 +216,61 @@ class _EventLiveScreenState extends ConsumerState<EventLiveScreen> {
                 ),
                 child: SafeArea(
                   top: false,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (!keyboardOpen) ...[
-                        Center(
-                          child: Container(
-                            margin: const EdgeInsets.only(top: 8),
-                            width: 36,
-                            height: 4,
-                            decoration: BoxDecoration(
-                              color: AppColors.border,
-                              borderRadius: BorderRadius.circular(2),
+                  // Carte de bienvenue seulement s'il reste de la place pour la
+                  // discussion (texte agrandi, petits écrans).
+                  child: LayoutBuilder(
+                    builder: (context, box) {
+                      final ts = MediaQuery.textScalerOf(context).scale(100) / 100;
+                      final showWelcome = !keyboardOpen && box.maxHeight >= 200 + 260 * ts;
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (!keyboardOpen) ...[
+                            Center(
+                              child: Container(
+                                margin: const EdgeInsets.only(top: 8),
+                                width: 36,
+                                height: 4,
+                                decoration: BoxDecoration(
+                                  color: AppColors.border,
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                              ),
+                            ),
+                            LiveChatHeader(
+                              subtitle: e.title,
+                              count: e.goingCount > 0 ? e.goingCount : null,
+                              onClose: () => setState(() => _chatVisible = false),
+                            ),
+                            const Divider(height: 1, color: AppColors.border),
+                          ],
+                          Expanded(
+                            child: Stack(
+                              children: [
+                                Positioned.fill(child: _LiveChat(event: e)),
+                                if (!keyboardOpen) Positioned(right: 12, bottom: 8, child: _HeartFab(event: e)),
+                              ],
                             ),
                           ),
-                        ),
-                        LiveChatHeader(
-                          subtitle: e.title,
-                          count: e.goingCount > 0 ? e.goingCount : null,
-                          onClose: () => setState(() => _chatVisible = false),
-                        ),
-                        const Divider(height: 1, color: AppColors.border),
-                      ],
-                      Expanded(
-                        child: Stack(
-                          children: [
-                            Positioned.fill(child: _LiveChat(event: e)),
-                            if (!keyboardOpen)
-                              Positioned(right: 12, bottom: 8, child: _HeartFab(event: e)),
-                          ],
-                        ),
-                      ),
-                      if (!keyboardOpen && MediaQuery.sizeOf(context).height >= 700) const LiveChatWelcome(),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-                        child: LiveCommentInput(
-                          light: true,
-                          hint: l10n.liveChatHint,
-                          enabled: canWrite,
-                          disabledHint: l10n.eventsCommentsClosed,
-                          onSend: (text, {bool pin = false}) async {
-                            if (!await requireAccount(context, ref, reason: l10n.eventsReasonComment)) {
-                              return l10n.liveChatLoginRequired;
-                            }
-                            return ref.read(eventCommentsProvider(e.id).notifier).add(text);
-                          },
-                        ),
-                      ),
-                    ],
+                          if (showWelcome) const LiveChatWelcome(),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+                            child: LiveCommentInput(
+                              light: true,
+                              hint: l10n.liveChatHint,
+                              enabled: canWrite,
+                              disabledHint: l10n.eventsCommentsClosed,
+                              onSend: (text, {bool pin = false}) async {
+                                if (!await requireAccount(context, ref, reason: l10n.eventsReasonComment)) {
+                                  return l10n.liveChatLoginRequired;
+                                }
+                                return ref.read(eventCommentsProvider(e.id).notifier).add(text);
+                              },
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ),
               ),
@@ -303,8 +327,11 @@ class _LiveChat extends ConsumerWidget {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: Text(context.l10n.eventsNoComments,
-              textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textSecondary)),
+          child: Text(
+            context.l10n.eventsNoComments,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: AppColors.textSecondary),
+          ),
         ),
       );
     }
@@ -326,12 +353,7 @@ class _LiveChat extends ConsumerWidget {
     ];
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: LiveCommentsList(
-        comments: comments,
-        hostId: event.organizer.id,
-        fadeTop: false,
-        light: true,
-      ),
+      child: LiveCommentsList(comments: comments, hostId: event.organizer.id, fadeTop: false, light: true),
     );
   }
 }

@@ -94,6 +94,10 @@ class _LiveStudioScreenState extends ConsumerState<LiveStudioScreen> {
     try {
       final args = widget.args;
       final live = args.live ?? await repo.show(args.liveId);
+      if (live.source.isYoutube) {
+        if (mounted) context.pushReplacement('/lives/${live.id}');
+        return;
+      }
       final creds = args.credentials ?? await repo.hostToken(args.liveId);
       if (!mounted) return;
       _ctrl?.removeListener(_onControllerChange);

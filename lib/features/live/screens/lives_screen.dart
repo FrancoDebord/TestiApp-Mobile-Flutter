@@ -38,7 +38,7 @@ class _LivesScreenState extends ConsumerState<LivesScreen> {
 
   void _openLive(LiveSession live) {
     // Son propre direct pas encore terminé → retour au studio (reprise).
-    if (live.isHost && live.status != LiveStatus.ended) {
+    if (live.isHost && live.status != LiveStatus.ended && !live.source.isYoutube) {
       context.push('/lives/${live.id}/studio');
     } else {
       context.push('/lives/${live.id}');
@@ -49,7 +49,7 @@ class _LivesScreenState extends ConsumerState<LivesScreen> {
   Widget build(BuildContext context) {
     final async = ref.watch(livesIndexProvider);
     final index = async.value;
-    final canGoLive = (index?.canGoLive ?? false) && (index?.configured ?? false);
+    final canGoLive = (index?.canGoLive ?? false) && (index?.canStart ?? false);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -97,7 +97,7 @@ class _List extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!index.configured) {
+    if (!index.canStart) {
       return _Message(
         icon: Icons.videocam_off_outlined,
         text: context.l10n.livesNotAvailable,

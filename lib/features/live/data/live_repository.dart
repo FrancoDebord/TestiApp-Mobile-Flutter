@@ -77,6 +77,13 @@ class LiveRepository {
         return LiveSession.fromJson(_asMap(res.data));
       });
 
+  /// Direct YouTube : « je regarde » (toutes les 30 s) ; renvoie les chiffres.
+  Future<LiveStats> heartbeat(String id, {String? viewerId}) => _guard(() async {
+        final res = await _api.post<dynamic>(AppConstants.liveHeartbeat(id),
+            data: {'viewer_id': ?viewerId});
+        return LiveStats.fromJson(_asMap(res.data));
+      });
+
   Future<LiveStats> stats(String id) => _guard(() async {
         final res = await _api.get<dynamic>(AppConstants.liveStats(id));
         return LiveStats.fromJson(_asMap(res.data));
@@ -106,14 +113,16 @@ class LiveRepository {
 
   // ── Diffusion (modérateurs / administrateurs) ─────────────────────────────
 
-  /// Crée le direct : renvoie le direct et l'accès diffuseur.
-  Future<(LiveSession, LiveCredentials)> start({
+  /// Crée le direct : renvoie le direct et l'accès diffuseur (null pour un
+  /// direct YouTube, à l'antenne dès sa création).
+  Future<(LiveSession, LiveCredentials?)> start({
     required String title,
     String? description,
     String? categorySlug,
     bool commentsEnabled = true,
     LiveSource source = LiveSource.browser,
     String? cameraUrl,
+    String? youtubeUrl,
     String? eventId,
   }) =>
       _guard(() async {
@@ -122,6 +131,8 @@ class LiveRepository {
           'source': source.apiValue,
           if (source == LiveSource.url && cameraUrl != null)
             'camera_url': cameraUrl.trim(),
+          if (source == LiveSource.youtube && youtubeUrl != null)
+            'youtube_url': youtubeUrl.trim(),
           'title': title,
           if (description != null && description.isNotEmpty)
             'description': description,
@@ -134,7 +145,7 @@ class LiveRepository {
         final data = _asMap(res.data);
         return (
           LiveSession.fromJson(_asMap(data['live'])),
-          LiveCredentials.fromJson(_asMap(data['video'])),
+          data['video'] is Map ? LiveCredentials.fromJson(_asMap(data['video'])) : null,
         );
       });
 
