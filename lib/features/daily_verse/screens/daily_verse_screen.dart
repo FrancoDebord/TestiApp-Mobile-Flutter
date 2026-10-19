@@ -15,6 +15,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../pray_for_verse.dart';
+import '../providers/verse_history_providers.dart' show verseByIdProvider;
+import 'verse_history_screen.dart';
 import '../../../shared/comments/comment_likes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -70,10 +72,16 @@ const _kFallbackVerse = DailyVerse(
 );
 
 class DailyVerseScreen extends ConsumerStatefulWidget {
-  const DailyVerseScreen({this.initialTab = 0, super.key});
+  const DailyVerseScreen({this.initialTab = 0, this.verseId, this.date, super.key});
 
   /// 0 : sujets de prière · 1 : commentaires · 2 : témoignages.
   final int initialTab;
+
+  /// Verset d'un jour passé (historique) ; null : verset du jour.
+  final int? verseId;
+
+  /// Jour affiché pour un verset de l'historique.
+  final DateTime? date;
 
   @override
   ConsumerState<DailyVerseScreen> createState() => _DailyVerseScreenState();
@@ -114,8 +122,13 @@ class _DailyVerseScreenState extends ConsumerState<DailyVerseScreen>
 
   void _sync() {
     if (!mounted) return;
-    unawaited(ref.read(dailyVerseProvider.notifier).refresh());
-    final id = ref.read(dailyVerseProvider).value?.id ?? 0;
+    final pastId = widget.verseId;
+    if (pastId != null) {
+      unawaited(ref.read(verseByIdProvider(pastId).notifier).refresh());
+    } else {
+      unawaited(ref.read(dailyVerseProvider.notifier).refresh());
+    }
+    final id = pastId ?? ref.read(dailyVerseProvider).value?.id ?? 0;
     if (id > 0) ref.invalidate(dailyVerseCommentsProvider(id));
   }
 
@@ -156,7 +169,7 @@ class _DailyVerseScreenState extends ConsumerState<DailyVerseScreen>
       version: version,
       shareText: context.l10n.verseShareText(_strip(text), '$reference$suffix'),
     );
-    await ref.read(dailyVerseProvider.notifier).recordShare();
+    if (widget.verseId == null) await ref.read(dailyVerseProvider.notifier).recordShare();
   }
 
   /// Ouvre l'onglet Commentaires et fait défiler jusqu'à lui.
@@ -207,7 +220,17 @@ class _DailyVerseScreenState extends ConsumerState<DailyVerseScreen>
   Future<void> _react({required bool pray}) async {
     if (!await requireAccount(context, ref, reason: pray ? context.l10n.verseReasonPray : context.l10n.verseReasonLike)) return;
     if (!mounted) return;
-    if (pray) {
+    final pastId = widget.verseId;
+    if (pastId != null) {
+      // Verset d'un jour passé : mêmes gestes, sur ce verset-là.
+      final n = ref.read(verseByIdProvider(pastId).notifier);
+      if (pray) {
+        final v = ref.read(verseByIdProvider(pastId)).value;
+        if (v != null) await prayForVerse(context, ref, verse: v, toggle: n.togglePray);
+      } else {
+        await n.toggleLike();
+      }
+    } else if (pray) {
       await prayForDailyVerse(context, ref);
     } else {
       await ref.read(dailyVerseProvider.notifier).toggleLike();
@@ -238,7 +261,10 @@ class _DailyVerseScreenState extends ConsumerState<DailyVerseScreen>
 
   @override
   Widget build(BuildContext context) {
-    final verse = ref.watch(dailyVerseProvider).value ?? _kFallbackVerse;
+    final verse = (widget.verseId != null
+            ? ref.watch(verseByIdProvider(widget.verseId!)).value
+            : ref.watch(dailyVerseProvider).value) ??
+        _kFallbackVerse;
     final versionsAsync = ref.watch(dailyVerseVersionsProvider(dailyVerseKey(verse)));
     final data = versionsAsync.value;
     final shown = _display(verse, data);
@@ -317,6 +343,38 @@ class _DailyVerseScreenState extends ConsumerState<DailyVerseScreen>
               ),
               onScrollHint: () => _scrollDown(hero.height),
             ),
+            // Verset du jour : accès à l'historique des versets.
+            if (widget.date == null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(AppSpacing.screen, AppSpacing.md, AppSpacing.screen, 0),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    key: const ValueKey('verse-open-history'),
+                    onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(builder: (_) => const VerseHistoryScreen())),
+                    icon: const Icon(Icons.history_rounded, size: 18),
+                    label: Text(context.l10n.verseHistoryOpen),
+                  ),
+                ),
+              ),
+            // Verset d'un jour passé : sa date.
+            if (widget.date != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(AppSpacing.screen, AppSpacing.lg, AppSpacing.screen, 0),
+                child: Row(
+                  children: [
+                    const Icon(Icons.history_rounded, size: 18, color: AppColors.secondaryDark),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        context.l10n.verseHistoryOfDay(formatDateLong(widget.date!)),
+                        style: AppTextStyles.labelMedium.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             // ── Sous le premier écran : cartes blanches ─────────────────
             const SizedBox(height: AppSpacing.lg),
             _WhiteCard(

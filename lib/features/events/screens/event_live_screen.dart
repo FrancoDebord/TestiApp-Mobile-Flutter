@@ -13,15 +13,16 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_text_styles.dart';
 import '../../../l10n/app_localizations.dart';
-import '../../../shared/comments/comment_likes.dart';
-import '../../../shared/widgets/mention_text.dart';
+import '../../../shared/widgets/guest_gate.dart' show requireAccount;
+import '../../home/providers/home_providers.dart' show ReactionType;
+import '../../live/models/live_models.dart' show LiveComment, LivePerson;
+import '../../live/widgets/live_widgets.dart' show LiveChatHeader, LiveChatWelcome, LiveCommentInput, LiveCommentsList;
+import '../../repost/content_interactions.dart' show ContentInteractionsNotifier, ContentKind, contentInteractionsProvider;
 import '../../../shared/widgets/youtube_video_player.dart';
 import '../models/event_models.dart';
 import '../providers/events_providers.dart';
 import '../widgets/event_widgets.dart' show EventLiveBadge;
-import 'event_detail_screen.dart' show openEventComposer;
 
 class EventLiveScreen extends ConsumerStatefulWidget {
   const EventLiveScreen({required this.eventId, this.keepScreenOn = true, super.key});
@@ -37,6 +38,9 @@ class EventLiveScreen extends ConsumerStatefulWidget {
 
 class _EventLiveScreenState extends ConsumerState<EventLiveScreen> {
   bool _fullscreen = false;
+
+  /// Discussion affichée sous la vidéo (la croix la masque).
+  bool _chatVisible = true;
   Timer? _chatTimer;
 
   @override
@@ -130,80 +134,159 @@ class _EventLiveScreenState extends ConsumerState<EventLiveScreen> {
         ],
       );
 
-  /// Vue « YouTube » : vidéo en haut, informations et discussion en dessous.
+  /// Vue « YouTube » : vidéo en haut, feuille « Discussion en direct » dessous
+  /// (mêmes éléments que les directs de l'application).
   Widget _dockedLayout(ChristianEvent e, String videoId) {
     final l10n = context.l10n;
+    final keyboardOpen = View.of(context).viewInsets.bottom > 0;
+    final canWrite = e.commentsEnabled || e.canManage;
     return SafeArea(
       bottom: false,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              IconButton(
-                tooltip: l10n.commonBack,
-                onPressed: _close,
-                icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-              ),
-              if (e.isLiveNow) const EventLiveBadge(),
-              const Spacer(),
-              IconButton(
-                tooltip: l10n.eventsOpenOnYoutube,
-                onPressed: () => launchUrl(Uri.parse(e.youtubeLiveUrl!), mode: LaunchMode.externalApplication),
-                icon: const Icon(Icons.open_in_new_rounded, color: Colors.white70),
-              ),
-              IconButton(
-                key: const ValueKey('event-live-fullscreen'),
-                tooltip: l10n.eventsLiveFullscreen,
-                onPressed: _toggleFullscreen,
-                icon: const Icon(Icons.fullscreen_rounded, color: Colors.white),
-              ),
-            ],
-          ),
-          YouTubeVideoPlayer(videoId: videoId),
-          Expanded(
-            child: Container(
-              color: AppColors.surface,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                    child: Text(e.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.h4.copyWith(color: AppColors.primary, fontWeight: FontWeight.w800)),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                    child: Text(e.organizer.displayName,
-                        style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
-                  ),
-                  const Divider(height: 1),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
-                    child: Text(l10n.eventsLiveChat,
-                        style: AppTextStyles.labelMedium.copyWith(fontWeight: FontWeight.w800)),
-                  ),
-                  Expanded(child: _LiveChat(event: e)),
-                  SafeArea(
-                    top: false,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
-                      child: e.commentsEnabled || e.canManage
-                          ? OutlinedButton.icon(
-                              onPressed: () => openEventComposer(context, ref, e),
-                              icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
-                              label: Text(l10n.eventsCommentPrompt, maxLines: 1, overflow: TextOverflow.ellipsis),
-                            )
-                          : Text(l10n.eventsCommentsClosed, textAlign: TextAlign.center),
-                    ),
-                  ),
-                ],
-              ),
+          // Barre fine au-dessus de la vidéo : retour, EN DIRECT, YouTube, plein écran.
+          SizedBox(
+            height: 44,
+            child: Row(
+              children: [
+                IconButton(
+                  tooltip: l10n.commonBack,
+                  onPressed: _close,
+                  icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white, size: 28),
+                ),
+                if (e.isLiveNow) const EventLiveBadge(),
+                const Spacer(),
+                IconButton(
+                  tooltip: l10n.eventsOpenOnYoutube,
+                  onPressed: () => launchUrl(Uri.parse(e.youtubeLiveUrl!), mode: LaunchMode.externalApplication),
+                  icon: const Icon(Icons.open_in_new_rounded, color: Colors.white70, size: 20),
+                ),
+                IconButton(
+                  key: const ValueKey('event-live-fullscreen'),
+                  tooltip: l10n.eventsLiveFullscreen,
+                  onPressed: _toggleFullscreen,
+                  icon: const Icon(Icons.fullscreen_rounded, color: Colors.white),
+                ),
+              ],
             ),
           ),
+          if (!keyboardOpen) YouTubeVideoPlayer(videoId: videoId),
+          if (!_chatVisible)
+            Expanded(
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: const BorderSide(color: Colors.white38),
+                    ),
+                    onPressed: () => setState(() => _chatVisible = true),
+                    icon: const Icon(Icons.forum_outlined),
+                    label: Text(l10n.liveChatShow),
+                  ),
+                ),
+              ),
+            )
+          else
+            Expanded(
+              child: DecoratedBox(
+                decoration: const BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                ),
+                child: SafeArea(
+                  top: false,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (!keyboardOpen) ...[
+                        Center(
+                          child: Container(
+                            margin: const EdgeInsets.only(top: 8),
+                            width: 36,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: AppColors.border,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        ),
+                        LiveChatHeader(
+                          subtitle: e.title,
+                          count: e.goingCount > 0 ? e.goingCount : null,
+                          onClose: () => setState(() => _chatVisible = false),
+                        ),
+                        const Divider(height: 1, color: AppColors.border),
+                      ],
+                      Expanded(
+                        child: Stack(
+                          children: [
+                            Positioned.fill(child: _LiveChat(event: e)),
+                            if (!keyboardOpen)
+                              Positioned(right: 12, bottom: 8, child: _HeartFab(event: e)),
+                          ],
+                        ),
+                      ),
+                      if (!keyboardOpen && MediaQuery.sizeOf(context).height >= 700) const LiveChatWelcome(),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+                        child: LiveCommentInput(
+                          light: true,
+                          hint: l10n.liveChatHint,
+                          enabled: canWrite,
+                          disabledHint: l10n.eventsCommentsClosed,
+                          onSend: (text, {bool pin = false}) async {
+                            if (!await requireAccount(context, ref, reason: l10n.eventsReasonComment)) {
+                              return l10n.liveChatLoginRequired;
+                            }
+                            return ref.read(eventCommentsProvider(e.id).notifier).add(text);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
         ],
+      ),
+    );
+  }
+}
+
+/// Cœur flottant : « J'aime » sur l'événement (comme le cœur du chat YouTube).
+class _HeartFab extends ConsumerWidget {
+  const _HeartFab({required this.event});
+  final ChristianEvent event;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final key = ContentInteractionsNotifier.key(ContentKind.event, event.id);
+    final r = ref.watch(contentInteractionsProvider.select((m) => m[key])) ?? event.reactions;
+    return Material(
+      color: AppColors.surface,
+      shape: const CircleBorder(),
+      elevation: 4,
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: () async {
+          if (!await requireAccount(context, ref, reason: context.l10n.eventsReasonComment)) return;
+          unawaited(HapticFeedback.lightImpact());
+          await ref
+              .read(contentInteractionsProvider.notifier)
+              .react(ContentKind.event, event.id, r, r.isLiked ? null : ReactionType.like);
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Icon(
+            r.isLiked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+            color: const Color(0xFFE11D48),
+            size: 30,
+          ),
+        ),
       ),
     );
   }
@@ -218,44 +301,37 @@ class _LiveChat extends ConsumerWidget {
     final items = ref.watch(eventCommentsProvider(event.id)).value?.items ?? const <EventComment>[];
     if (items.isEmpty) {
       return Center(
-        child: Text(context.l10n.eventsNoComments,
-            textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textSecondary)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(context.l10n.eventsNoComments,
+              textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textSecondary)),
+        ),
       );
     }
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      itemCount: items.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 10),
-      itemBuilder: (_, i) {
-        final c = items[i];
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            CircleAvatar(
-              radius: 14,
-              backgroundColor: AppColors.primarySoft,
-              child: Text(c.user.displayName.isEmpty ? '?' : c.user.displayName[0].toUpperCase(),
-                  style: const TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w700)),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(c.user.displayName,
-                      style: AppTextStyles.labelSmall.copyWith(fontWeight: FontWeight.w700)),
-                  MentionText(c.body, mentions: c.mentions, style: AppTextStyles.bodyMedium),
-                ],
-              ),
-            ),
-            CommentLikeButton(
-              comment: CommentRef.event(event.id, c.id),
-              initialCount: c.likesCount,
-              initialLiked: c.isLikedByMe,
-            ),
-          ],
-        );
-      },
+    // Commentaires de l'événement (du plus récent au plus ancien) → chat chronologique.
+    final comments = [
+      for (final c in items.reversed)
+        LiveComment(
+          id: c.id,
+          body: c.body,
+          mentions: c.mentions,
+          createdAt: c.createdAt,
+          user: LivePerson.fromJson({
+            'id': c.user.id,
+            'displayName': c.user.displayName,
+            'initials': c.user.initials,
+            'avatarUrl': c.user.avatarUrl,
+          }),
+        ),
+    ];
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: LiveCommentsList(
+        comments: comments,
+        hostId: event.organizer.id,
+        fadeTop: false,
+        light: true,
+      ),
     );
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/daily_verse/screens/daily_verse_screen.dart' show openDailyVerse;
 import '../../features/bible/models/bible_models.dart' show kDefaultBibleTranslation;
 import '../../core/theme/app_colors.dart';
 import '../../features/accounts/providers/acting_account_provider.dart'
@@ -102,6 +103,20 @@ class AppDrawer extends ConsumerWidget {
               ),
             const Divider(height: 1),
             item(Icons.groups_rounded, l10n.settingsCommunity, '/community', subtitle: l10n.sharedDrawerCommunitySubtitle),
+            // Verset du jour et historique des versets (page dédiée).
+            ListTile(
+              key: const ValueKey('drawer-daily-verse'),
+              leading: const Icon(Icons.wb_sunny_outlined, color: AppColors.primary),
+              title: Text(l10n.verseOfTheDayMenu,
+                  style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w500)), // i18n-ignore
+              subtitle: Text(l10n.verseOfTheDayMenuSubtitle, style: const TextStyle(fontSize: 12)),
+              onTap: () {
+                Navigator.of(context).pop();
+                openDailyVerse(context);
+              },
+            ),
+            item(Icons.history_rounded, l10n.verseHistoryTitle, '/verse-history',
+                subtitle: l10n.verseHistoryMenuSubtitle),
             // Bible : branche du shell (pas d'onglet dans la barre du bas) → go.
             // Ouvre directement la Louis Segond (retour : liste des versions).
             item(Icons.auto_stories_rounded, l10n.sharedDrawerBible, '/bible/$kDefaultBibleTranslation',

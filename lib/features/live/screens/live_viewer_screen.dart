@@ -263,12 +263,14 @@ class _LiveViewerScreenState extends ConsumerState<LiveViewerScreen> {
       bottom: false,
       child: LayoutBuilder(
         builder: (context, box) {
+          // Carte d'accueil seulement s'il y a la place (pas sur un petit écran).
+          final showWelcome = !keyboardOpen && box.maxHeight >= 640;
           // Vidéo en 16:9, réduite si le chat n'a plus la place (clavier, petit écran).
           final videoHeight = math.max(
             0.0,
             math.min(
               box.maxWidth * 9 / 16,
-              box.maxHeight - (keyboardOpen ? 150 : 260),
+              box.maxHeight - (keyboardOpen ? 150 : (showWelcome ? 350 : 260)),
             ),
           );
           return Column(
@@ -302,6 +304,26 @@ class _LiveViewerScreenState extends ConsumerState<LiveViewerScreen> {
                 ),
               ),
               LiveConnectionBanner(link: ctrl.link),
+              if (!_showComments)
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: OutlinedButton.icon(
+                        key: const ValueKey('live-show-chat'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          side: const BorderSide(color: Colors.white38),
+                        ),
+                        onPressed: () => setState(() => _showComments = true),
+                        icon: const Icon(Icons.forum_outlined),
+                        label: Text(context.l10n.liveChatShow),
+                      ),
+                    ),
+                  ),
+                )
+              else
               Expanded(
                 child: DecoratedBox(
                   decoration: const BoxDecoration(
@@ -329,10 +351,11 @@ class _LiveViewerScreenState extends ConsumerState<LiveViewerScreen> {
                               ),
                             ),
                           ),
-                          _ChatHeader(
-                            live: live,
-                            viewers: ctrl.viewers,
-                            stage: showStage
+                          LiveChatHeader(
+                            subtitle: live.title.isEmpty ? live.host.displayName : live.title,
+                            count: ctrl.viewers,
+                            onClose: () => setState(() => _showComments = false),
+                            trailing: showStage
                                 ? LiveStageButton(
                                     ctrl: ctrl,
                                     labeled: true,
@@ -405,9 +428,10 @@ class _LiveViewerScreenState extends ConsumerState<LiveViewerScreen> {
                           ),
                         ),
                         LiveStageSelfBar(ctrl: ctrl),
-                        const Divider(height: 1, color: AppColors.border),
+                        // Accueil (bienveillance, vie privée), comme sur YouTube.
+                        if (showWelcome) const LiveChatWelcome(),
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                          padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
                           child: LiveCommentInput(
                             light: true,
                             hint: context.l10n.liveChatHint,
@@ -741,81 +765,6 @@ class _VideoOverlayBar extends StatelessWidget {
   }
 }
 
-/// En-tête du panneau : « Chat en direct », diffuseur · spectateurs, Intervenir.
-class _ChatHeader extends StatelessWidget {
-  const _ChatHeader({required this.live, required this.viewers, this.stage});
-
-  final LiveSession live;
-  final int viewers;
-  final Widget? stage;
-
-  @override
-  Widget build(BuildContext context) {
-    const font = 'Plus Jakarta Sans'; // i18n-ignore
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 12, 10),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  context.l10n.liveChatTitle,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontFamily: font,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 18,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        live.title.isEmpty ? live.host.displayName : live.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontFamily: font,
-                          fontSize: 12.5,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    const Icon(
-                      Icons.person_rounded,
-                      size: 14,
-                      color: AppColors.textSecondary,
-                    ),
-                    const SizedBox(width: 2),
-                    Text(
-                      '$viewers',
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontFamily: font,
-                        fontSize: 12.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          if (stage != null) ...[
-            const SizedBox(width: 8),
-            Flexible(child: stage!),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-/// Bouton cœur flottant (comme YouTube) : un appui ouvre les réactions, chaque
-/// réaction choisie s'envoie ; le choix se referme seul après quelques secondes.
 class _ReactionFab extends StatefulWidget {
   const _ReactionFab({required this.enabled, required this.onReact});
 

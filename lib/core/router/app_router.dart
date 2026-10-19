@@ -47,6 +47,8 @@ import '../../features/testimony/screens/featured_testimony_screen.dart';
 import '../../features/testimony/screens/report_testimony_screen.dart';
 import '../../features/testimony/screens/testimony_comments_screen.dart';
 import '../../features/testimony/screens/testimony_detail_screen.dart';
+import '../../features/daily_verse/screens/daily_verse_screen.dart' show DailyVerseScreen;
+import '../../features/daily_verse/screens/verse_history_screen.dart';
 import '../../features/conversion/screens/conversion_edit_screen.dart';
 import '../../features/events/screens/past_events_screen.dart';
 import '../../features/events/screens/event_live_screen.dart';
@@ -351,6 +353,35 @@ List<RouteBase> _buildRoutes() {
       path: '/testimonies/:id',
       redirect: (_, state) => '/testimony/${state.pathParameters['id']}',
     ),
+
+    // ── Liens partagés du site ouverts dans l'app (App Links / Universal Links,
+    // docs serveur fonctionnalites/app-links.md) : adresses du site → écrans.
+    GoRoute(path: '/videos/:id', redirect: (_, state) => '/testimony/${state.pathParameters['id']}'),
+    GoRoute(path: '/evenements/passes', redirect: (_, _) => '/events/past'),
+    GoRoute(path: '/evenements', redirect: (_, _) => '/events'),
+    GoRoute(path: '/evenements/:id', redirect: (_, state) => '/events/${state.pathParameters['id']}'),
+    GoRoute(path: '/priere/requetes', redirect: (_, _) => '/prayer-requests'),
+    GoRoute(
+      path: '/priere/requetes/:id',
+      redirect: (_, state) => '/prayer-requests/${state.pathParameters['id']}',
+    ),
+    GoRoute(path: '/priere/sessions', redirect: (_, _) => '/prayer-sessions'),
+    GoRoute(
+      path: '/priere/sessions/:id',
+      redirect: (_, state) => '/prayer-sessions/${state.pathParameters['id']}',
+    ),
+    // Verset du jour (le lien d'un jour passé ouvre le verset du jour).
+    GoRoute(
+      path: '/verset-du-jour',
+      builder: (context, state) => const DailyVerseScreen(),
+      routes: [
+        // Avant ':date' : sinon « historique » serait lu comme une date.
+        GoRoute(path: 'historique', redirect: (_, _) => '/verse-history'),
+        GoRoute(path: ':date', builder: (context, state) => const DailyVerseScreen()),
+      ],
+    ),
+    // Historique des versets du jour (page dédiée).
+    GoRoute(path: '/verse-history', builder: (context, state) => const VerseHistoryScreen()),
 
     GoRoute(
       path: '/testimony/:id',

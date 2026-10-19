@@ -142,8 +142,9 @@ flutter:
         - asset: assets/fonts/NunitoSans-SemiBold.ttf
           weight: 600
 
-# Icône de l'application (logo ARISE & SHINE Krea, assets/icon/ générés depuis
-# assets/images/arise_shine_krea.png). Après modification : dart run flutter_launcher_icons
+# Icône de l'application : logo actuel de l'app (AppLogoPainter : rayons, soleil, croix,
+# colline). Images assets/icon/ générées par : flutter test tool/generate_app_icon_test.dart
+# puis : dart run flutter_launcher_icons
 flutter_launcher_icons:
   image_path: assets/icon/app_icon.png
   android: launcher_icon

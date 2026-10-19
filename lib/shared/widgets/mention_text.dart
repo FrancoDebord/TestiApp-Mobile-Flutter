@@ -24,8 +24,13 @@ class MentionText extends StatefulWidget {
     this.maxLines,
     this.overflow,
     this.onMentionTap,
+    this.prefix = const [],
     super.key,
   });
+
+  /// Morceaux affichés avant le texte, sur la même ligne (ex. nom de l'auteur
+  /// d'un message de chat, comme sur YouTube).
+  final List<InlineSpan> prefix;
 
   /// Texte lisible (« @Nom ») ou contenant des jetons `@[Nom](user:id)`.
   final String text;
@@ -76,11 +81,11 @@ class _MentionTextState extends State<MentionText> {
     final linkStyle = widget.mentionStyle ?? base.copyWith(color: AppColors.primary, fontWeight: FontWeight.w600);
 
     final ranges = MentionCodec.ranges(text, mentions);
-    if (ranges.isEmpty) {
+    if (ranges.isEmpty && widget.prefix.isEmpty) {
       return Text(text, style: base, maxLines: widget.maxLines, overflow: widget.overflow);
     }
 
-    final spans = <InlineSpan>[];
+    final spans = <InlineSpan>[...widget.prefix];
     var last = 0;
     for (final r in ranges) {
       if (r.start > last) spans.add(TextSpan(text: text.substring(last, r.start)));

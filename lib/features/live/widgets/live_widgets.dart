@@ -427,7 +427,8 @@ class _LiveCommentsListState extends State<LiveCommentsList> {
   }
 }
 
-/// Rangée de chat claire : avatar, nom en gris (badge « Diffuseur »), texte.
+/// Rangée de chat claire, comme le chat en direct de YouTube : avatar, puis le
+/// nom en gris et le message à la suite, sur la même ligne (badge « Diffuseur »).
 class _LightCommentRow extends StatelessWidget {
   const _LightCommentRow({
     required this.comment,
@@ -442,83 +443,190 @@ class _LightCommentRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const font = 'Plus Jakarta Sans'; // i18n-ignore
+    const body = TextStyle(
+      color: AppColors.textPrimary,
+      fontFamily: font,
+      fontSize: 14,
+      height: 1.4,
+    );
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 7),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          LiveAvatar(person: comment.user, size: 26),
+          LiveAvatar(person: comment.user, size: 30),
           const SizedBox(width: 12),
+          Expanded(
+            child: MentionText(
+              comment.body,
+              mentions: comment.mentions,
+              style: body,
+              mentionStyle: body.copyWith(color: AppColors.primary, fontWeight: FontWeight.w700),
+              prefix: [
+                if (isPinned)
+                  const WidgetSpan(
+                    alignment: PlaceholderAlignment.middle,
+                    child: Padding(
+                      padding: EdgeInsets.only(right: 3),
+                      child: Icon(Icons.push_pin_rounded, size: 12, color: AppColors.textSecondary),
+                    ),
+                  ),
+                TextSpan(
+                  text: comment.user.displayName,
+                  style: TextStyle(
+                    color: isHost ? AppColors.primary : AppColors.textSecondary,
+                    fontFamily: font,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13.5,
+                  ),
+                ),
+                if (isHost)
+                  WidgetSpan(
+                    alignment: PlaceholderAlignment.middle,
+                    child: Container(
+                      margin: const EdgeInsets.only(left: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        context.l10n.liveHostTag,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontFamily: font,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 9.5,
+                        ),
+                      ),
+                    ),
+                  ),
+                const TextSpan(text: '   '),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// En-tête du chat sous la vidéo (comme YouTube) : « Discussion en direct »,
+/// sous-titre et spectateurs, actions éventuelles, croix pour masquer le chat.
+class LiveChatHeader extends StatelessWidget {
+  const LiveChatHeader({
+    required this.subtitle,
+    this.count,
+    this.trailing,
+    this.onClose,
+    super.key,
+  });
+
+  final String subtitle;
+  final int? count;
+  final Widget? trailing;
+  final VoidCallback? onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    const font = 'Plus Jakarta Sans'; // i18n-ignore
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 8, 10),
+      child: Row(
+        children: [
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Text(
+                  context.l10n.liveChatTitle,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontFamily: font,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 18,
+                  ),
+                ),
+                const SizedBox(height: 2),
                 Row(
                   children: [
-                    if (isPinned) ...[
-                      const Icon(
-                        Icons.push_pin_rounded,
-                        size: 12,
-                        color: AppColors.textSecondary,
-                      ),
-                      const SizedBox(width: 3),
-                    ],
                     Flexible(
                       child: Text(
-                        comment.user.displayName,
+                        subtitle,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: isHost
-                              ? AppColors.primary
-                              : AppColors.textSecondary,
-                          fontFamily: font,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12.5,
-                        ),
+                        style: const TextStyle(color: AppColors.textSecondary, fontFamily: font, fontSize: 12.5),
                       ),
                     ),
-                    if (isHost) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 1,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          context.l10n.liveHostTag,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontFamily: font,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 9.5,
-                          ),
-                        ),
+                    if (count != null) ...[
+                      const SizedBox(width: 8),
+                      const Icon(Icons.person_rounded, size: 14, color: AppColors.textSecondary),
+                      const SizedBox(width: 2),
+                      Text(
+                        formatCompactNumber(count!),
+                        style: const TextStyle(color: AppColors.textSecondary, fontFamily: font, fontSize: 12.5),
                       ),
                     ],
                   ],
                 ),
-                const SizedBox(height: 1),
-                MentionText(
-                  comment.body,
-                  mentions: comment.mentions,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontFamily: font,
-                    fontSize: 14,
-                    height: 1.35,
+              ],
+            ),
+          ),
+          if (trailing != null) Flexible(child: trailing!),
+          if (onClose != null)
+            IconButton(
+              tooltip: context.l10n.liveChatHide,
+              onPressed: onClose,
+              icon: const Icon(Icons.close_rounded, color: AppColors.textPrimary),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Carte d'accueil au bas du chat : bienveillance et vie privée, règles à lire.
+class LiveChatWelcome extends StatelessWidget {
+  const LiveChatWelcome({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Container(
+      key: const ValueKey('live-chat-welcome'),
+      margin: const EdgeInsets.fromLTRB(12, 4, 12, 6),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0F1F4),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 2),
+            child: Icon(Icons.smart_display_rounded, color: Color(0xFFE11D48), size: 26),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l10n.liveChatWelcome,
+                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, height: 1.35)),
+                TextButton(
+                  style: TextButton.styleFrom(padding: EdgeInsets.zero, visualDensity: VisualDensity.compact),
+                  onPressed: () => showDialog<void>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: Text(l10n.liveChatRulesTitle),
+                      content: Text(l10n.liveChatRules),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l10n.commonClose)),
+                      ],
+                    ),
                   ),
-                  mentionStyle: const TextStyle(
-                    color: AppColors.primary,
-                    fontFamily: font,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                    height: 1.35,
-                  ),
+                  child: Text(l10n.liveChatLearnMore),
                 ),
               ],
             ),

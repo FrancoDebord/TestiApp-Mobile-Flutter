@@ -17731,6 +17731,132 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Voir la chaîne'**
   String get youtubeCreditOpen;
+
+  /// No description provided for @liveChatHide.
+  ///
+  /// In fr, this message translates to:
+  /// **'Masquer la discussion'**
+  String get liveChatHide;
+
+  /// No description provided for @liveChatShow.
+  ///
+  /// In fr, this message translates to:
+  /// **'Afficher la discussion'**
+  String get liveChatShow;
+
+  /// No description provided for @liveChatWelcome.
+  ///
+  /// In fr, this message translates to:
+  /// **'Bienvenue dans la discussion en direct ! Protégez votre vie privée et restez bienveillant.'**
+  String get liveChatWelcome;
+
+  /// No description provided for @liveChatLearnMore.
+  ///
+  /// In fr, this message translates to:
+  /// **'En savoir plus'**
+  String get liveChatLearnMore;
+
+  /// No description provided for @liveChatRulesTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Règles de la discussion'**
+  String get liveChatRulesTitle;
+
+  /// No description provided for @liveChatRules.
+  ///
+  /// In fr, this message translates to:
+  /// **'• Parlez avec respect et bienveillance.\n• Ne partagez pas d\'informations personnelles (téléphone, adresse…).\n• Pas de publicité, de spam ni de propos blessants.\n• Les modérateurs peuvent retirer un message ou exclure un participant.'**
+  String get liveChatRules;
+
+  /// No description provided for @liveChatLoginRequired.
+  ///
+  /// In fr, this message translates to:
+  /// **'Connectez-vous pour écrire dans la discussion.'**
+  String get liveChatLoginRequired;
+
+  /// No description provided for @verseOfTheDayMenu.
+  ///
+  /// In fr, this message translates to:
+  /// **'Verset du jour'**
+  String get verseOfTheDayMenu;
+
+  /// No description provided for @verseOfTheDayMenuSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Méditer, prier et réagir'**
+  String get verseOfTheDayMenuSubtitle;
+
+  /// No description provided for @verseHistoryTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Versets précédents'**
+  String get verseHistoryTitle;
+
+  /// No description provided for @verseHistoryMenuSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Historique des versets du jour'**
+  String get verseHistoryMenuSubtitle;
+
+  /// No description provided for @verseHistoryIntro.
+  ///
+  /// In fr, this message translates to:
+  /// **'Retrouvez les versets des jours passés, avec les « J\'aime », les prières, les commentaires et les témoignages de la communauté.'**
+  String get verseHistoryIntro;
+
+  /// No description provided for @verseHistoryEmpty.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun verset pour le moment.'**
+  String get verseHistoryEmpty;
+
+  /// No description provided for @verseHistoryLoadError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Impossible de charger l\'historique des versets.'**
+  String get verseHistoryLoadError;
+
+  /// No description provided for @verseHistoryToday.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aujourd\'hui'**
+  String get verseHistoryToday;
+
+  /// No description provided for @verseHistoryLikes.
+  ///
+  /// In fr, this message translates to:
+  /// **'j\'aime'**
+  String get verseHistoryLikes;
+
+  /// No description provided for @verseHistoryPrayers.
+  ///
+  /// In fr, this message translates to:
+  /// **'prières'**
+  String get verseHistoryPrayers;
+
+  /// No description provided for @verseHistoryComments.
+  ///
+  /// In fr, this message translates to:
+  /// **'commentaires'**
+  String get verseHistoryComments;
+
+  /// No description provided for @verseHistoryTestimonies.
+  ///
+  /// In fr, this message translates to:
+  /// **'témoignages'**
+  String get verseHistoryTestimonies;
+
+  /// No description provided for @verseHistoryOpen.
+  ///
+  /// In fr, this message translates to:
+  /// **'Versets précédents'**
+  String get verseHistoryOpen;
+
+  /// No description provided for @verseHistoryOfDay.
+  ///
+  /// In fr, this message translates to:
+  /// **'Verset du {date}'**
+  String verseHistoryOfDay(String date);
 }
 
 class _AppLocalizationsDelegate

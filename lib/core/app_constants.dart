@@ -266,6 +266,8 @@ abstract final class AppConstants {
   static const String verseToday  = '/daily-verse';
   static const String verseReact  = '/daily-verse/react';  // POST + DELETE
   static String versePrayStart(int id) => '/daily-verse/$id/pray/start'; // temps de prière
+  static const String verseHistory = '/daily-verse/history'; // ?page=&limit= — versets des jours passés
+  static String verseById(int id) => '/daily-verse/$id';
   static const String verseShare  = '/daily-verse/share';  // POST
 
   // Page plein écran (docs serveur fonctionnalites/verset-du-jour.md)

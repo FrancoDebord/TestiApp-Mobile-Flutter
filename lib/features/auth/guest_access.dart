@@ -50,7 +50,16 @@ bool guestCanAccess(String location) {
     // Prière : lecture libre ; confier, programmer, modifier demandent un compte.
     '/prayer-requests',
     '/prayer-sessions',
+    // Adresses du site (liens partagés), traduites vers les écrans ci-dessus.
+    '/videos',
+    '/evenements',
+    '/priere',
+    '/verset-du-jour',
+    '/verse-history',
+    '/temoignages-de-conversion',
   ];
+  // Section des témoignages de conversion (pas la modification du sien).
+  if (path == '/conversions') return true;
   for (final prefix in allowedPrefixes) {
     if (path == prefix || path.startsWith(prefix.endsWith('/') ? prefix : '$prefix/')) {
       return true;

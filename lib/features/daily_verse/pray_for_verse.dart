@@ -8,15 +8,25 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/app_constants.dart';
 import '../../l10n/app_localizations.dart';
 import '../../services/api_service.dart' show apiServiceProvider;
+import '../home/models/testimony_model.dart' show DailyVerse;
 import '../home/providers/home_providers.dart' show dailyVerseProvider;
 import '../prayer/screens/prayer_focus_screen.dart';
 
 Future<void> prayForDailyVerse(BuildContext context, WidgetRef ref) async {
-  final notifier = ref.read(dailyVerseProvider.notifier);
   final verse = ref.read(dailyVerseProvider).value;
   if (verse == null) return;
+  await prayForVerse(context, ref, verse: verse, toggle: ref.read(dailyVerseProvider.notifier).togglePray);
+}
+
+/// « Je prie » d'un verset (du jour ou de l'historique) : temps de prière, puis [toggle].
+Future<void> prayForVerse(
+  BuildContext context,
+  WidgetRef ref, {
+  required DailyVerse verse,
+  required Future<void> Function() toggle,
+}) async {
   if (verse.isPrayed) {
-    await notifier.togglePray();
+    await toggle();
     return;
   }
   final l10n = context.l10n;
@@ -33,7 +43,5 @@ Future<void> prayForDailyVerse(BuildContext context, WidgetRef ref) async {
       onStart: verse.id > 0 ? () => api.post<dynamic>(AppConstants.versePrayStart(verse.id)) : null,
     ),
   );
-  if (ok && context.mounted && !(ref.read(dailyVerseProvider).value?.isPrayed ?? true)) {
-    await notifier.togglePray();
-  }
+  if (ok && context.mounted) await toggle();
 }

@@ -88,6 +88,15 @@
                       android:pathPrefix="/testimonies/"/>
                 <!-- Pages web des directs : /lives/{id} -->
                 <data android:pathPrefix="/lives/"/>
+                <!-- Autres partages (mêmes chemins que config/applinks.php du serveur) :
+                     vidéos, événements, requêtes et sessions de prière, verset du jour,
+                     témoignages de conversion. -->
+                <data android:pathPrefix="/videos/"/>
+                <data android:pathPrefix="/evenements/"/>
+                <data android:pathPrefix="/priere/requetes/"/>
+                <data android:pathPrefix="/priere/sessions/"/>
+                <data android:pathPrefix="/verset-du-jour"/>
+                <data android:path="/temoignages-de-conversion"/>
             </intent-filter>
         </activity>
 

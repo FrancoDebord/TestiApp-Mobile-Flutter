@@ -10169,4 +10169,72 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get youtubeCreditOpen => 'View channel';
+
+  @override
+  String get liveChatHide => 'Hide chat';
+
+  @override
+  String get liveChatShow => 'Show chat';
+
+  @override
+  String get liveChatWelcome =>
+      'Welcome to live chat! Protect your privacy and be kind.';
+
+  @override
+  String get liveChatLearnMore => 'Learn more';
+
+  @override
+  String get liveChatRulesTitle => 'Chat rules';
+
+  @override
+  String get liveChatRules =>
+      '• Speak with respect and kindness.\n• Don\'t share personal information (phone, address…).\n• No advertising, spam or hurtful words.\n• Moderators may remove a message or exclude a participant.';
+
+  @override
+  String get liveChatLoginRequired => 'Sign in to write in the chat.';
+
+  @override
+  String get verseOfTheDayMenu => 'Verse of the day';
+
+  @override
+  String get verseOfTheDayMenuSubtitle => 'Meditate, pray and react';
+
+  @override
+  String get verseHistoryTitle => 'Previous verses';
+
+  @override
+  String get verseHistoryMenuSubtitle => 'History of the verses of the day';
+
+  @override
+  String get verseHistoryIntro =>
+      'Find the verses of past days, with the community\'s likes, prayers, comments and testimonies.';
+
+  @override
+  String get verseHistoryEmpty => 'No verse yet.';
+
+  @override
+  String get verseHistoryLoadError => 'Couldn\'t load the verse history.';
+
+  @override
+  String get verseHistoryToday => 'Today';
+
+  @override
+  String get verseHistoryLikes => 'likes';
+
+  @override
+  String get verseHistoryPrayers => 'prayers';
+
+  @override
+  String get verseHistoryComments => 'comments';
+
+  @override
+  String get verseHistoryTestimonies => 'testimonies';
+
+  @override
+  String get verseHistoryOpen => 'Previous verses';
+
+  @override
+  String verseHistoryOfDay(String date) {
+    return 'Verse of $date';
+  }
 }

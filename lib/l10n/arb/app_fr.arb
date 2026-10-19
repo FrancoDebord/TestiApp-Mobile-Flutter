@@ -5146,5 +5146,33 @@
     }
   },
   "youtubeCreditSource": "Vidéo d'origine sur YouTube",
-  "youtubeCreditOpen": "Voir la chaîne"
+  "youtubeCreditOpen": "Voir la chaîne",
+  "liveChatHide": "Masquer la discussion",
+  "liveChatShow": "Afficher la discussion",
+  "liveChatWelcome": "Bienvenue dans la discussion en direct ! Protégez votre vie privée et restez bienveillant.",
+  "liveChatLearnMore": "En savoir plus",
+  "liveChatRulesTitle": "Règles de la discussion",
+  "liveChatRules": "• Parlez avec respect et bienveillance.\n• Ne partagez pas d'informations personnelles (téléphone, adresse…).\n• Pas de publicité, de spam ni de propos blessants.\n• Les modérateurs peuvent retirer un message ou exclure un participant.",
+  "liveChatLoginRequired": "Connectez-vous pour écrire dans la discussion.",
+  "verseOfTheDayMenu": "Verset du jour",
+  "verseOfTheDayMenuSubtitle": "Méditer, prier et réagir",
+  "verseHistoryTitle": "Versets précédents",
+  "verseHistoryMenuSubtitle": "Historique des versets du jour",
+  "verseHistoryIntro": "Retrouvez les versets des jours passés, avec les « J'aime », les prières, les commentaires et les témoignages de la communauté.",
+  "verseHistoryEmpty": "Aucun verset pour le moment.",
+  "verseHistoryLoadError": "Impossible de charger l'historique des versets.",
+  "verseHistoryToday": "Aujourd'hui",
+  "verseHistoryLikes": "j'aime",
+  "verseHistoryPrayers": "prières",
+  "verseHistoryComments": "commentaires",
+  "verseHistoryTestimonies": "témoignages",
+  "verseHistoryOpen": "Versets précédents",
+  "verseHistoryOfDay": "Verset du {date}",
+  "@verseHistoryOfDay": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  }
 }

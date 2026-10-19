@@ -10260,4 +10260,74 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get youtubeCreditOpen => 'Voir la chaîne';
+
+  @override
+  String get liveChatHide => 'Masquer la discussion';
+
+  @override
+  String get liveChatShow => 'Afficher la discussion';
+
+  @override
+  String get liveChatWelcome =>
+      'Bienvenue dans la discussion en direct ! Protégez votre vie privée et restez bienveillant.';
+
+  @override
+  String get liveChatLearnMore => 'En savoir plus';
+
+  @override
+  String get liveChatRulesTitle => 'Règles de la discussion';
+
+  @override
+  String get liveChatRules =>
+      '• Parlez avec respect et bienveillance.\n• Ne partagez pas d\'informations personnelles (téléphone, adresse…).\n• Pas de publicité, de spam ni de propos blessants.\n• Les modérateurs peuvent retirer un message ou exclure un participant.';
+
+  @override
+  String get liveChatLoginRequired =>
+      'Connectez-vous pour écrire dans la discussion.';
+
+  @override
+  String get verseOfTheDayMenu => 'Verset du jour';
+
+  @override
+  String get verseOfTheDayMenuSubtitle => 'Méditer, prier et réagir';
+
+  @override
+  String get verseHistoryTitle => 'Versets précédents';
+
+  @override
+  String get verseHistoryMenuSubtitle => 'Historique des versets du jour';
+
+  @override
+  String get verseHistoryIntro =>
+      'Retrouvez les versets des jours passés, avec les « J\'aime », les prières, les commentaires et les témoignages de la communauté.';
+
+  @override
+  String get verseHistoryEmpty => 'Aucun verset pour le moment.';
+
+  @override
+  String get verseHistoryLoadError =>
+      'Impossible de charger l\'historique des versets.';
+
+  @override
+  String get verseHistoryToday => 'Aujourd\'hui';
+
+  @override
+  String get verseHistoryLikes => 'j\'aime';
+
+  @override
+  String get verseHistoryPrayers => 'prières';
+
+  @override
+  String get verseHistoryComments => 'commentaires';
+
+  @override
+  String get verseHistoryTestimonies => 'témoignages';
+
+  @override
+  String get verseHistoryOpen => 'Versets précédents';
+
+  @override
+  String verseHistoryOfDay(String date) {
+    return 'Verset du $date';
+  }
 }
