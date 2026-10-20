@@ -1,5 +1,6 @@
 import '../../../core/data/countries.dart';
 import '../services/social_auth_service.dart' show googleSignInErrorMessage;
+import '../../../shared/widgets/privacy_policy.dart';
 import '../../../shared/widgets/country_picker.dart';
 import 'dart:async' show unawaited;
 import 'dart:io' show File;
@@ -305,7 +306,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
 
     if (!_acceptedTerms) {
-      setState(() => _errorMessage = context.l10n.authAcceptTerms);
+      setState(() => _errorMessage = context.l10n.privacyConsentRequired);
       return;
     }
 
@@ -329,6 +330,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           organizationType:    _orgType,
           organizationCity:    _orgCityController.text.trim(),
           organizationWebsite: _normalizeWebsite(_orgWebsiteController.text),
+          acceptedPrivacy:     true,
         );
       } else {
         await notifier.register(
@@ -339,6 +341,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           country:   _country!.name,
           phoneCountry: _phoneDial?.code,
           phone:        _phoneController.text.trim(),
+          acceptedPrivacy: true,
         );
       }
       // La redirection vers /home est gérée par le router (auth state change)
@@ -399,6 +402,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         isLoading: _googleLoading,
                         onPressed: isLoading ? null : _signInWithGoogle,
                       ),
+                      const GooglePrivacyNotice(),
                       const SizedBox(height: 16),
                       AuthOrDivider(label: context.l10n.authOrFillForm),
                       const SizedBox(height: 16),
@@ -600,6 +604,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
                       // Terms checkbox.
                       _TermsCheckbox(
+                        key: const ValueKey('privacy-consent'),
                         checked: _acceptedTerms,
                         onChanged: (v) =>
                             setState(() => _acceptedTerms = v ?? false),
@@ -1047,6 +1052,7 @@ class _TermsCheckbox extends StatelessWidget {
   const _TermsCheckbox({
     required this.checked,
     required this.onChanged,
+    super.key,
   });
 
   final bool checked;
@@ -1072,33 +1078,39 @@ class _TermsCheckbox extends StatelessWidget {
         ),
         const SizedBox(width: 10),
         Expanded(
-          child: RichText(
-            text: TextSpan(
-              style: const TextStyle(
-                fontFamily: AppFonts.family,
-                fontSize: 13,
-                color: AppColors.textSecondary,
-                height: 1.5,
+          // « J'accepte la politique de confidentialité » : le texte coche la case,
+          // le lien ouvre la politique (navigateur intégré).
+          child: Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              GestureDetector(
+                onTap: () => onChanged(!checked),
+                child: Text(
+                  '${context.l10n.privacyConsentPrefix} ',
+                  style: const TextStyle(
+                    fontFamily: AppFonts.family,
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                    height: 1.5,
+                  ),
+                ),
               ),
-              children: [
-                TextSpan(text: context.l10n.authAcceptPrefix),
-                TextSpan(
-                  text: context.l10n.authTermsOfUse,
+              InkWell(
+                key: const ValueKey('privacy-consent-link'),
+                onTap: () => openPrivacyPolicy(context),
+                child: Text(
+                  context.l10n.privacyPolicyLinkLower,
                   style: const TextStyle(
+                    fontFamily: AppFonts.family,
+                    fontSize: 13,
+                    height: 1.5,
                     color: AppColors.primary,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
+                    decoration: TextDecoration.underline,
                   ),
                 ),
-                TextSpan(text: context.l10n.authAcceptAnd),
-                TextSpan(
-                  text: context.l10n.authPrivacyPolicy,
-                  style: const TextStyle(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ],

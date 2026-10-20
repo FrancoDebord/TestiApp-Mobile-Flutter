@@ -288,6 +288,18 @@ class PushService {
     }
   }
 
+  /// Compte supprimé : le serveur a déjà effacé les jetons ; on supprime seulement
+  /// le jeton de l'appareil (un nouveau sera créé à la prochaine connexion).
+  Future<void> forgetDevice() async {
+    await _tokenRefresh?.cancel();
+    _tokenRefresh = null;
+    try {
+      await _messaging.deleteToken();
+    } catch (e, stack) {
+      _log('deleteToken', e, stack);
+    }
+  }
+
   /// Recharge ce que le push [type] a changé (toucher d'une notification, main.dart).
   void refreshFor(String? type, {String? testimonyId}) =>
       refreshForPush(_r, type, testimonyId: testimonyId);

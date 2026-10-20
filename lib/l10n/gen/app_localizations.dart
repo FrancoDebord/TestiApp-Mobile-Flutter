@@ -551,7 +551,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsDelete.
   ///
   /// In fr, this message translates to:
-  /// **'Supprimer le compte'**
+  /// **'Supprimer mon compte'**
   String get settingsDelete;
 
   /// No description provided for @liveTitle.
@@ -18013,6 +18013,114 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Pas de nom anglais'**
   String get adminCategoryNoEnglish;
+
+  /// No description provided for @privacyPolicyLink.
+  ///
+  /// In fr, this message translates to:
+  /// **'Politique de confidentialité'**
+  String get privacyPolicyLink;
+
+  /// No description provided for @privacyPolicyLinkLower.
+  ///
+  /// In fr, this message translates to:
+  /// **'politique de confidentialité'**
+  String get privacyPolicyLinkLower;
+
+  /// No description provided for @privacyGoogleNoticePrefix.
+  ///
+  /// In fr, this message translates to:
+  /// **'En continuant, vous acceptez la'**
+  String get privacyGoogleNoticePrefix;
+
+  /// No description provided for @privacyConsentPrefix.
+  ///
+  /// In fr, this message translates to:
+  /// **'J\'accepte la'**
+  String get privacyConsentPrefix;
+
+  /// No description provided for @privacyConsentRequired.
+  ///
+  /// In fr, this message translates to:
+  /// **'Veuillez accepter la politique de confidentialité pour créer votre compte.'**
+  String get privacyConsentRequired;
+
+  /// No description provided for @privacyOffline.
+  ///
+  /// In fr, this message translates to:
+  /// **'Pas de connexion Internet. Connectez-vous pour lire la politique de confidentialité.'**
+  String get privacyOffline;
+
+  /// No description provided for @privacyOpenFailed.
+  ///
+  /// In fr, this message translates to:
+  /// **'Impossible d\'ouvrir la politique de confidentialité. Vérifiez votre connexion et réessayez.'**
+  String get privacyOpenFailed;
+
+  /// No description provided for @accountDeleteWhatTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ce qui sera supprimé'**
+  String get accountDeleteWhatTitle;
+
+  /// No description provided for @accountDeleteWhatProfile.
+  ///
+  /// In fr, this message translates to:
+  /// **'Votre profil, votre photo, votre couverture et vos pièces de vérification.'**
+  String get accountDeleteWhatProfile;
+
+  /// No description provided for @accountDeleteWhatTestimonies.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tous vos témoignages, avec leurs vidéos, audios, images et preuves.'**
+  String get accountDeleteWhatTestimonies;
+
+  /// No description provided for @accountDeleteWhatPrayers.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vos sujets de prière, sessions de prière et paroles prophétiques.'**
+  String get accountDeleteWhatPrayers;
+
+  /// No description provided for @accountDeleteWhatEvents.
+  ///
+  /// In fr, this message translates to:
+  /// **'Les événements de votre organisation et leurs images.'**
+  String get accountDeleteWhatEvents;
+
+  /// No description provided for @accountDeleteWhatInteractions.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vos commentaires, réactions, abonnements, enregistrements et notifications.'**
+  String get accountDeleteWhatInteractions;
+
+  /// No description provided for @accountDeleteWhatDevice.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sur ce téléphone : votre session, vos brouillons, votre journal hors ligne et vos notifications.'**
+  String get accountDeleteWhatDevice;
+
+  /// No description provided for @accountDeleteWhatNote.
+  ///
+  /// In fr, this message translates to:
+  /// **'La suppression est immédiate et définitive. Votre e-mail et votre compte Google pourront servir à créer un nouveau compte.'**
+  String get accountDeleteWhatNote;
+
+  /// No description provided for @accountDeleteFinalTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Supprimer définitivement votre compte ?'**
+  String get accountDeleteFinalTitle;
+
+  /// No description provided for @accountDeleteFinalBody.
+  ///
+  /// In fr, this message translates to:
+  /// **'Votre compte et toutes vos données seront effacés tout de suite. Cette action ne peut pas être annulée.'**
+  String get accountDeleteFinalBody;
+
+  /// No description provided for @accountDeletedDone.
+  ///
+  /// In fr, this message translates to:
+  /// **'Votre compte a été supprimé. Vous pouvez continuer en mode invité.'**
+  String get accountDeletedDone;
 }
 
 class _AppLocalizationsDelegate

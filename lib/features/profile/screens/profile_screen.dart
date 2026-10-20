@@ -24,6 +24,7 @@ import '../../../shared/widgets/app_badge.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_logo.dart';
 import '../../../shared/widgets/guest_gate.dart' show isGuestProvider;
+import '../../../shared/widgets/privacy_policy.dart' show openPrivacyPolicy;
 import '../../../shared/widgets/organization_badge.dart';
 import '../../../shared/widgets/profile_cover.dart';
 import '../models/profile_models.dart';
@@ -156,6 +157,12 @@ class _GuestProfile extends StatelessWidget {
                   icon: Icons.info_outline_rounded,
                   title: l10n.profileAbout,
                   onTap: () => context.pushNamed(AppRoutes.about),
+                ),
+                ProfileMenuTile(
+                  key: const ValueKey('guest-privacy-policy'),
+                  icon: Icons.privacy_tip_outlined,
+                  title: l10n.privacyPolicyLink,
+                  onTap: () => openPrivacyPolicy(context),
                 ),
               ],
             ),

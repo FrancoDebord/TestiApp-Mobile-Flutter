@@ -9,6 +9,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_logo.dart';
+import '../../../shared/widgets/privacy_policy.dart' show openPrivacyPolicy;
 import '../widgets/profile_menu.dart';
 
 /// À propos de l'application.
@@ -97,6 +98,12 @@ class AboutScreen extends StatelessWidget {
                 icon: Icons.help_outline_rounded,
                 title: l10n.profileHelp,
                 onTap: () => context.pushNamed(AppRoutes.help),
+              ),
+              ProfileMenuTile(
+                key: const ValueKey('about-privacy-policy'),
+                icon: Icons.privacy_tip_outlined,
+                title: l10n.privacyPolicyLink,
+                onTap: () => openPrivacyPolicy(context),
               ),
               ProfileMenuTile(
                 icon: Icons.description_outlined,

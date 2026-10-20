@@ -235,7 +235,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsLogout => 'Sign out';
 
   @override
-  String get settingsDelete => 'Delete account';
+  String get settingsDelete => 'Delete my account';
 
   @override
   String get liveTitle => 'Live Testimony';
@@ -10338,4 +10338,70 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get adminCategoryNoEnglish => 'No English name';
+
+  @override
+  String get privacyPolicyLink => 'Privacy policy';
+
+  @override
+  String get privacyPolicyLinkLower => 'privacy policy';
+
+  @override
+  String get privacyGoogleNoticePrefix => 'By continuing, you accept the';
+
+  @override
+  String get privacyConsentPrefix => 'I accept the';
+
+  @override
+  String get privacyConsentRequired =>
+      'Please accept the privacy policy to create your account.';
+
+  @override
+  String get privacyOffline =>
+      'No internet connection. Connect to read the privacy policy.';
+
+  @override
+  String get privacyOpenFailed =>
+      'Couldn\'t open the privacy policy. Check your connection and try again.';
+
+  @override
+  String get accountDeleteWhatTitle => 'What will be deleted';
+
+  @override
+  String get accountDeleteWhatProfile =>
+      'Your profile, photo, cover and verification documents.';
+
+  @override
+  String get accountDeleteWhatTestimonies =>
+      'All your testimonies, with their videos, audio, images and proofs.';
+
+  @override
+  String get accountDeleteWhatPrayers =>
+      'Your prayer requests, prayer sessions and prophetic words.';
+
+  @override
+  String get accountDeleteWhatEvents =>
+      'Your organization\'s events and their images.';
+
+  @override
+  String get accountDeleteWhatInteractions =>
+      'Your comments, reactions, follows, saved items and notifications.';
+
+  @override
+  String get accountDeleteWhatDevice =>
+      'On this phone: your session, drafts, offline journal and notifications.';
+
+  @override
+  String get accountDeleteWhatNote =>
+      'Deletion is immediate and permanent. Your email and Google account can be used to create a new account.';
+
+  @override
+  String get accountDeleteFinalTitle => 'Permanently delete your account?';
+
+  @override
+  String get accountDeleteFinalBody =>
+      'Your account and all your data will be erased right away. This can\'t be undone.';
+
+  @override
+  String get accountDeletedDone =>
+      'Your account has been deleted. You can keep browsing as a guest.';
 }

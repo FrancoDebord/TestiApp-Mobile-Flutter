@@ -1,7 +1,15 @@
+// Supprimer mon compte (Paramètres › Compte) : explique ce qui est supprimé,
+// double confirmation (mot à saisir, puis fenêtre finale), DELETE /me ;
+// ensuite déconnexion, effacement des données du téléphone et du jeton de
+// notification, retour à l'accueil en mode invité.
+// Serveur : docs/fonctionnalites/confidentialite-et-suppression.md
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/app_constants.dart';
+import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../l10n/app_localizations.dart';
@@ -48,13 +56,40 @@ class _DeleteAccountScreenState
 
   bool get _hasPassword => ref.read(currentUserProvider)?.hasPassword ?? true;
 
-  /// DELETE /users/me : `{ password }` pour un compte e-mail, `{ confirm: true }`
-  /// pour un compte téléphone / Google / Facebook (sans mot de passe).
+  /// Seconde confirmation : fenêtre « Supprimer définitivement ? ».
+  Future<bool> _confirmFinal() async {
+    final l10n = context.l10n;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: const Icon(Icons.warning_rounded, color: AppColors.danger),
+        title: Text(l10n.accountDeleteFinalTitle),
+        content: Text(l10n.accountDeleteFinalBody),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.commonCancel)),
+          FilledButton(
+            key: const ValueKey('delete-account-final'),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.profileDeleteForever),
+          ),
+        ],
+      ),
+    );
+    return ok == true;
+  }
+
+  /// DELETE /me : `{ password }` pour un compte e-mail, `{ confirm: true }`
+  /// pour un compte téléphone / Google (sans mot de passe).
   Future<void> _delete() async {
     if (_hasPassword && _passwordCtrl.text.isEmpty) {
       setState(() => _error = context.l10n.profileDeleteEnterPassword);
       return;
     }
+    if (!await _confirmFinal() || !mounted) return;
+    final router = GoRouter.of(context);
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    final deletedMessage = context.l10n.accountDeletedDone;
     setState(() {
       _isDeleting = true;
       _error = null;
@@ -83,8 +118,11 @@ class _DeleteAccountScreenState
       });
       return;
     }
-    // Compte supprimé : déconnexion locale ; GoRouter redirige vers l'accueil invité.
-    await ref.read(authStateProvider.notifier).logout();
+    // Compte supprimé : données du téléphone et jeton de notification effacés,
+    // mode invité, retour à l'accueil.
+    await ref.read(authStateProvider.notifier).accountDeleted();
+    router.go(AppPaths.homePath);
+    messenger?.showSnackBar(SnackBar(behavior: SnackBarBehavior.floating, content: Text(deletedMessage)));
   }
 
   @override
@@ -141,16 +179,20 @@ class _DeleteAccountScreenState
             ),
             const SizedBox(height: 16),
 
-            // Conséquences
-            _WarningItem(
-                icon: Icons.auto_stories_outlined,
-                text: l10n.profileDeleteWarnTestimonies),
-            _WarningItem(
-                icon: Icons.person_off_outlined,
-                text: l10n.profileDeleteWarnAccount),
-            _WarningItem(
-                icon: Icons.bookmark_remove_outlined,
-                text: l10n.profileDeleteWarnSaved),
+            // Ce qui est supprimé (même liste que la page /suppression-compte du site).
+            Text(l10n.accountDeleteWhatTitle, style: AppTextStyles.h4),
+            const SizedBox(height: 12),
+            _WarningItem(icon: Icons.person_off_outlined, text: l10n.accountDeleteWhatProfile),
+            _WarningItem(icon: Icons.auto_stories_outlined, text: l10n.accountDeleteWhatTestimonies),
+            _WarningItem(icon: Icons.volunteer_activism_outlined, text: l10n.accountDeleteWhatPrayers),
+            _WarningItem(icon: Icons.event_busy_outlined, text: l10n.accountDeleteWhatEvents),
+            _WarningItem(icon: Icons.forum_outlined, text: l10n.accountDeleteWhatInteractions),
+            _WarningItem(icon: Icons.phone_android_rounded, text: l10n.accountDeleteWhatDevice),
+            const SizedBox(height: 4),
+            Text(
+              l10n.accountDeleteWhatNote,
+              style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary, height: 1.5),
+            ),
 
             const SizedBox(height: 32),
 
@@ -190,6 +232,7 @@ class _DeleteAccountScreenState
                   ),
                   const SizedBox(height: 12),
                   TextField(
+                    key: const ValueKey('delete-account-word'),
                     controller: _ctrl,
                     autocorrect: false,
                     style: const TextStyle(
@@ -260,6 +303,7 @@ class _DeleteAccountScreenState
 
             // Bouton supprimer
             AppButton(
+              key: const ValueKey('delete-account-submit'),
               label: l10n.profileDeleteForever,
               variant: AppButtonVariant.danger,
               size: AppButtonSize.large,

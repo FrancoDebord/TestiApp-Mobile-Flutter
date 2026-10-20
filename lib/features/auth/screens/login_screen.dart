@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/social_auth_service.dart' show googleSignInErrorMessage;
+import '../../../shared/widgets/privacy_policy.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -274,6 +275,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           isLoading: _googleLoading,
           onPressed: isLoading ? null : _signInWithGoogle,
         ),
+        const GooglePrivacyNotice(),
         const SizedBox(height: AppSpacing.md),
         AppButton(
           label: context.l10n.authSignInWithEmail,
@@ -316,6 +318,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         _RegisterLink(
           onTap: isLoading ? null : () => context.goNamed(AppRoutes.register),
         ),
+        const PrivacyPolicyLink(),
       ],
     );
   }
@@ -448,11 +451,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             isLoading: _googleLoading,
             onPressed: isLoading ? null : _signInWithGoogle,
           ),
+          const GooglePrivacyNotice(),
           const SizedBox(height: AppSpacing.xl),
           _RegisterLink(
             onTap:
                 isLoading ? null : () => context.goNamed(AppRoutes.register),
           ),
+          const PrivacyPolicyLink(),
         ],
       ),
     );

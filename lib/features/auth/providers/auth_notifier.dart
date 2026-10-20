@@ -18,6 +18,7 @@ import '../../../shared/models/models.dart';
 import '../../daily_verse/design/verse_style_prefs.dart' show VerseStylePrefsNotifier;
 import '../../accounts/providers/acting_account_provider.dart'
     show actingAccountProvider, kActingAccountStorageKey, loadActingSnapshot;
+import '../services/local_account_data.dart' show localAccountDataProvider;
 import '../services/social_auth_service.dart';
 import '../../../l10n/app_localizations.dart';
 
@@ -475,6 +476,8 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     OrganizationType? organizationType,
     String? organizationCity,
     String? organizationWebsite,
+    // Case « J'accepte la politique de confidentialité » (obligatoire côté serveur).
+    bool acceptedPrivacy = false,
   }) async {
     final isOrg = accountType == AccountType.organization;
     final phoneNumber = phone?.trim() ?? '';
@@ -494,6 +497,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
         'email':                  email,
         'password':               password,
         'password_confirmation':  password,
+        'accepted_privacy':       acceptedPrivacy,
         'country': ?country,
         if (phoneNumber.isNotEmpty && phoneCountry != null) ...{
           'phone_country': phoneCountry,
@@ -611,7 +615,8 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
       case SocialAuthSuccess(:final token):
         final response = await _api.post<Map<String, dynamic>>(
           AppConstants.authGoogle,
-          data: {'id_token': token},
+          // Mention « En continuant, vous acceptez la politique de confidentialité » sous le bouton.
+          data: {'id_token': token, 'accepted_privacy': true},
         );
         state = AsyncValue.data(await _handleTokenResponse(response.data));
     }
@@ -666,6 +671,30 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
       VerseStylePrefsNotifier.clearStored(),
     ]);
     state = const AsyncValue.data(AuthStateUnauthenticated());
+  }
+
+  // ── Compte supprimé ─────────────────────────────────────────────────────────
+
+  /// Après DELETE /me : la session n'existe plus côté serveur. Efface le jeton de
+  /// notification et les données du téléphone, puis passe en mode invité (accueil).
+  Future<void> accountDeleted() async {
+    final current = state.value;
+    final userId = current is AuthStateAuthenticated ? current.user.id : null;
+    try {
+      await ref.read(pushServiceProvider).forgetDevice();
+    } catch (_) {}
+    try {
+      await _firebaseAuth.signOut();
+    } catch (_) {}
+    try {
+      await ref.read(socialAuthServiceProvider).signOutAll();
+    } catch (_) {}
+    await ref.read(localAccountDataProvider).wipe(userId: userId);
+    try {
+      await ref.read(secureStorageProvider).write(key: kGuestModeStorageKey, value: '1');
+    } catch (_) {}
+    // Toujours le mode invité, même si une étape d'effacement a échoué.
+    state = const AsyncValue.data(AuthStateGuest());
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────────

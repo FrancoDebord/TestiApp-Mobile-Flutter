@@ -236,7 +236,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsLogout => 'Se déconnecter';
 
   @override
-  String get settingsDelete => 'Supprimer le compte';
+  String get settingsDelete => 'Supprimer mon compte';
 
   @override
   String get liveTitle => 'Témoignage en Direct';
@@ -10432,4 +10432,71 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get adminCategoryNoEnglish => 'Pas de nom anglais';
+
+  @override
+  String get privacyPolicyLink => 'Politique de confidentialité';
+
+  @override
+  String get privacyPolicyLinkLower => 'politique de confidentialité';
+
+  @override
+  String get privacyGoogleNoticePrefix => 'En continuant, vous acceptez la';
+
+  @override
+  String get privacyConsentPrefix => 'J\'accepte la';
+
+  @override
+  String get privacyConsentRequired =>
+      'Veuillez accepter la politique de confidentialité pour créer votre compte.';
+
+  @override
+  String get privacyOffline =>
+      'Pas de connexion Internet. Connectez-vous pour lire la politique de confidentialité.';
+
+  @override
+  String get privacyOpenFailed =>
+      'Impossible d\'ouvrir la politique de confidentialité. Vérifiez votre connexion et réessayez.';
+
+  @override
+  String get accountDeleteWhatTitle => 'Ce qui sera supprimé';
+
+  @override
+  String get accountDeleteWhatProfile =>
+      'Votre profil, votre photo, votre couverture et vos pièces de vérification.';
+
+  @override
+  String get accountDeleteWhatTestimonies =>
+      'Tous vos témoignages, avec leurs vidéos, audios, images et preuves.';
+
+  @override
+  String get accountDeleteWhatPrayers =>
+      'Vos sujets de prière, sessions de prière et paroles prophétiques.';
+
+  @override
+  String get accountDeleteWhatEvents =>
+      'Les événements de votre organisation et leurs images.';
+
+  @override
+  String get accountDeleteWhatInteractions =>
+      'Vos commentaires, réactions, abonnements, enregistrements et notifications.';
+
+  @override
+  String get accountDeleteWhatDevice =>
+      'Sur ce téléphone : votre session, vos brouillons, votre journal hors ligne et vos notifications.';
+
+  @override
+  String get accountDeleteWhatNote =>
+      'La suppression est immédiate et définitive. Votre e-mail et votre compte Google pourront servir à créer un nouveau compte.';
+
+  @override
+  String get accountDeleteFinalTitle =>
+      'Supprimer définitivement votre compte ?';
+
+  @override
+  String get accountDeleteFinalBody =>
+      'Votre compte et toutes vos données seront effacés tout de suite. Cette action ne peut pas être annulée.';
+
+  @override
+  String get accountDeletedDone =>
+      'Votre compte a été supprimé. Vous pouvez continuer en mode invité.';
 }

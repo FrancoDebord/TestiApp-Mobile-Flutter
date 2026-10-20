@@ -245,6 +245,12 @@ class JournalOfflineStore {
     );
   }
 
+  /// Compte supprimé : efface la copie et ses réglages.
+  Future<void> wipe(String userId) async {
+    final dir = await _userDir(userId);
+    if (await dir.exists()) await dir.delete(recursive: true);
+  }
+
   /// Efface la copie du téléphone (le serveur n'est pas touché).
   /// Les réglages sont conservés, pour ne pas reposer la question.
   Future<void> clear(String userId) async {

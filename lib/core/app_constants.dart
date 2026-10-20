@@ -225,7 +225,9 @@ abstract final class AppConstants {
   static const String updateSettings   = '/users/me/settings'; // GET · PUT (clés snake_case)
   // Localisation privée (fils classés par zone) : GET · PUT { use_gps, latitude, longitude, home_city } · DELETE
   static const String myLocation       = '/users/me/location';
-  static const String deleteAccount    = '/users/me';          // DELETE
+  // DELETE /me { password } ou { confirm: true } : compte et données supprimés
+  // (docs serveur fonctionnalites/confidentialite-et-suppression.md).
+  static const String deleteAccount    = '/me';
   // Vérification d'un compte personnel (docs/fonctionnalites/verification-des-comptes.md) :
   // GET → {status: none|pending|verified|rejected|revoked, canRequest, blockReason, retryAt, reason, request, roles, limits}
   // POST multipart { full_name, role, role_other?, church, links[]?, message?, documents[] (1 à 3 : jpg/png/webp/pdf, 8 Mo) } → 201 même forme
