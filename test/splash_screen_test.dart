@@ -42,7 +42,7 @@ void main() {
 
       expect(tester.takeException(), isNull);
       expect(find.text('Chargement…'), findsOneWidget);
-      expect(find.bySemanticsLabel(RegExp('Témoignages de Gloire')),
+      expect(find.bySemanticsLabel(RegExp('My Testimony')),
           findsOneWidget);
     });
   }

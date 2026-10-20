@@ -1,6 +1,6 @@
 // lib/shared/widgets/app_logo.dart
 //
-// Logo « Témoignages de Gloire » : rayons, soleil, croix et colline, dessinés
+// Logo « My Testimony » : rayons, soleil, croix et colline, dessinés
 // (net à toutes les tailles, sans image), plus le nom de l'application.
 //
 //   AppLogoMark(size: 64)          → le dessin seul
@@ -28,7 +28,7 @@ class AppLogoMark extends StatelessWidget {
       );
 }
 
-/// Dessin + nom « Témoignages de Gloire » (« Gloire » en orange).
+/// Dessin + nom « My Testimony » (« Testimony » en orange).
 class AppLogo extends StatelessWidget {
   const AppLogo({
     super.key,
@@ -59,10 +59,10 @@ class AppLogo extends StatelessWidget {
     );
     final name = Text.rich(
       TextSpan(children: [
-        const TextSpan(text: 'Témoignages\n'), // i18n-ignore (nom de l'application)
-        const TextSpan(text: 'de '), // i18n-ignore
+        // Nom de l'application (jamais traduit) : « My » en bleu, « Testimony » en orange.
+        TextSpan(text: horizontal ? 'My ' : 'My\n'), // i18n-ignore
         TextSpan(
-            text: 'Gloire', // i18n-ignore
+            text: 'Testimony', // i18n-ignore
             style: style.copyWith(color: AppColors.secondary)),
       ]),
       style: style,
@@ -71,7 +71,7 @@ class AppLogo extends StatelessWidget {
     );
 
     return Semantics(
-      label: 'Témoignages de Gloire', // i18n-ignore (nom de l'application)
+      label: 'My Testimony', // i18n-ignore (nom de l'application)
       excludeSemantics: true,
       child: horizontal
           ? LayoutBuilder(builder: (context, constraints) {

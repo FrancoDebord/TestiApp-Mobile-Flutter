@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "566166419345",
+    "project_id": "as-krea",
+    "storage_bucket": "as-krea.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:566166419345:android:096a0b9e6bd7d354400c30",
+        "android_client_info": {
+          "package_name": "com.askrea.temoignage"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "566166419345-h4campla1p5udkf3cojlrunqrr0okb93.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.askrea.temoignage",
+            "certificate_hash": "90bde94436816d8598a3693e8c9cd9c853e69ed5"
+          }
+        },
+        {
+          "client_id": "566166419345-b78faa624rdlcqeigmublhhbseqvhofr.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBvF6cf8po-CooVYFh6mf1Kod_L7D0Y1v4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "566166419345-b78faa624rdlcqeigmublhhbseqvhofr.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "566166419345-b23457evjev68itjt09upl22gusr1625.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.testiApp"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1001,7 +1001,7 @@ abstract class AppLocalizations {
   /// No description provided for @authJoinCommunity.
   ///
   /// In fr, this message translates to:
-  /// **'Rejoignez la communauté Témoignages'**
+  /// **'Rejoignez la communauté My Testimony'**
   String get authJoinCommunity;
 
   /// No description provided for @authFirstNameLabel.
@@ -1211,7 +1211,7 @@ abstract class AppLocalizations {
   /// No description provided for @onboardingBody3.
   ///
   /// In fr, this message translates to:
-  /// **'Rejoignez la communauté Témoignages et soyez une lumière dans la vie de quelqu\'un aujourd\'hui.'**
+  /// **'Rejoignez la communauté My Testimony et soyez une lumière dans la vie de quelqu\'un aujourd\'hui.'**
   String get onboardingBody3;
 
   /// No description provided for @authPhoneTitle.
@@ -3215,7 +3215,7 @@ abstract class AppLocalizations {
   /// No description provided for @authSplashSemantics.
   ///
   /// In fr, this message translates to:
-  /// **'Témoignages de Gloire. Des vies transformées pour la gloire de Dieu.'**
+  /// **'My Testimony. Des vies transformées pour la gloire de Dieu.'**
   String get authSplashSemantics;
 
   /// No description provided for @authSplashTagline.
@@ -3479,7 +3479,7 @@ abstract class AppLocalizations {
   /// No description provided for @commonAppName.
   ///
   /// In fr, this message translates to:
-  /// **'Témoignages'**
+  /// **'My Testimony'**
   String get commonAppName;
 
   /// No description provided for @timeJustNow.
@@ -3671,7 +3671,7 @@ abstract class AppLocalizations {
   /// No description provided for @pushFallbackTitle.
   ///
   /// In fr, this message translates to:
-  /// **'Témoignages'**
+  /// **'My Testimony'**
   String get pushFallbackTitle;
 
   /// No description provided for @pushChannelName.
@@ -10727,7 +10727,7 @@ abstract class AppLocalizations {
   /// No description provided for @shortsSharedFromApp.
   ///
   /// In fr, this message translates to:
-  /// **'Partagé depuis l\'application Témoignages ✝️'**
+  /// **'Partagé depuis l\'application My Testimony ✝️'**
   String get shortsSharedFromApp;
 
   /// No description provided for @shortsMe.
@@ -11417,7 +11417,7 @@ abstract class AppLocalizations {
   /// No description provided for @profileAboutMissionBody.
   ///
   /// In fr, this message translates to:
-  /// **'Témoignages de Gloire rassemble les récits de vies transformées pour la gloire de Dieu. Partagez ce que Dieu a fait pour vous en vidéo, en audio, en texte ou en image, et soyez édifiés par les témoignages de la communauté — même hors connexion.'**
+  /// **'My Testimony rassemble les récits de vies transformées pour la gloire de Dieu. Partagez ce que Dieu a fait pour vous en vidéo, en audio, en texte ou en image, et soyez édifiés par les témoignages de la communauté — même hors connexion.'**
   String get profileAboutMissionBody;
 
   /// No description provided for @profileAboutVerse.
@@ -11447,7 +11447,7 @@ abstract class AppLocalizations {
   /// No description provided for @profileAboutCopyright.
   ///
   /// In fr, this message translates to:
-  /// **'© {year} Témoignages de Gloire. Tous droits réservés.'**
+  /// **'© {year} My Testimony. Tous droits réservés.'**
   String profileAboutCopyright(String year);
 
   /// No description provided for @profileFaqPublishQ.
@@ -11561,7 +11561,7 @@ abstract class AppLocalizations {
   /// No description provided for @profileHelpReportSubject.
   ///
   /// In fr, this message translates to:
-  /// **'Témoignages de Gloire — signalement d\'un problème'**
+  /// **'My Testimony — signalement d\'un problème'**
   String get profileHelpReportSubject;
 
   /// No description provided for @profileHelpReportBody.
@@ -11669,13 +11669,13 @@ abstract class AppLocalizations {
   /// No description provided for @settingsInviteSubject.
   ///
   /// In fr, this message translates to:
-  /// **'Découvre l\'application Témoignages'**
+  /// **'Découvre l\'application My Testimony'**
   String get settingsInviteSubject;
 
   /// No description provided for @settingsInviteText.
   ///
   /// In fr, this message translates to:
-  /// **'Je t\'invite à rejoindre l\'application Témoignages — un espace pour partager et vivre les miracles de Dieu 🙏\n\nTélécharge-la ici : {url}'**
+  /// **'Je t\'invite à rejoindre l\'application My Testimony — un espace pour partager et vivre les miracles de Dieu 🙏\n\nTélécharge-la ici : {url}'**
   String settingsInviteText(String url);
 
   /// No description provided for @settingsSecurityPassword.
@@ -15791,13 +15791,13 @@ abstract class AppLocalizations {
   /// No description provided for @repostOnTestiApp.
   ///
   /// In fr, this message translates to:
-  /// **'Sur TestiApp'**
+  /// **'Sur My Testimony'**
   String get repostOnTestiApp;
 
   /// No description provided for @repostCannotShare.
   ///
   /// In fr, this message translates to:
-  /// **'Impossible de partager {what} sur TestiApp : la publication est la vôtre, ou elle n’est pas publique.'**
+  /// **'Impossible de partager {what} sur My Testimony : la publication est la vôtre, ou elle n’est pas publique.'**
   String repostCannotShare(String what);
 
   /// No description provided for @repostLinkCopied.
@@ -15827,7 +15827,7 @@ abstract class AppLocalizations {
   /// No description provided for @repostShareOnTestiApp.
   ///
   /// In fr, this message translates to:
-  /// **'Partager sur TestiApp'**
+  /// **'Partager sur My Testimony'**
   String get repostShareOnTestiApp;
 
   /// No description provided for @repostContentExplain.
@@ -17489,7 +17489,7 @@ abstract class AppLocalizations {
   /// No description provided for @pushConsentBody.
   ///
   /// In fr, this message translates to:
-  /// **'TestiApp vous prévient quand il se passe quelque chose pour vous.'**
+  /// **'My Testimony vous prévient quand il se passe quelque chose pour vous.'**
   String get pushConsentBody;
 
   /// No description provided for @pushConsentComments.
@@ -17983,6 +17983,36 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Diffusion par YouTube'**
   String get liveCheckYoutubeOk;
+
+  /// No description provided for @adminCategoryNameFr.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nom (français)'**
+  String get adminCategoryNameFr;
+
+  /// No description provided for @adminCategoryNameEn.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nom anglais (facultatif)'**
+  String get adminCategoryNameEn;
+
+  /// No description provided for @adminCategoryNameEnHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ex. : Healing'**
+  String get adminCategoryNameEnHint;
+
+  /// No description provided for @adminNewCategoryEnHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nom anglais (facultatif)…'**
+  String get adminNewCategoryEnHint;
+
+  /// No description provided for @adminCategoryNoEnglish.
+  ///
+  /// In fr, this message translates to:
+  /// **'Pas de nom anglais'**
+  String get adminCategoryNoEnglish;
 }
 
 class _AppLocalizationsDelegate

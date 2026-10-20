@@ -400,10 +400,11 @@ Testimony? testimonyFromApiJson(dynamic raw) {
 // Tri et filtre du fil (docs serveur fonctionnalites/gestion-des-temoignages.md)
 // ============================================================================
 
-/// Tri du fil : `?sort=` de GET /testimonies.
+/// Tri du fil : `?sort=` de GET /testimonies. Par défaut « Récents » : du plus
+/// récent au plus ancien (le plus récent entre aussi « À la une »).
 enum FeedSort {
-  forYou('for_you'),
   recent('recent'),
+  forYou('for_you'),
   popular('popular'),
   mostViewed('most_viewed');
 
@@ -426,7 +427,7 @@ enum FeedSort {
 /// effectif est donc « Récents ».
 @immutable
 class FeedQuery {
-  const FeedQuery({this.sort = FeedSort.forYou, this.verifiedOnly = false});
+  const FeedQuery({this.sort = FeedSort.recent, this.verifiedOnly = false});
 
   final FeedSort sort;
   final bool verifiedOnly;
@@ -469,7 +470,7 @@ class FeedQueryNotifier extends Notifier<FeedQuery> {
 
 final feedQueryProvider = NotifierProvider<FeedQueryNotifier, FeedQuery>(FeedQueryNotifier.new);
 
-/// Fil « Pour vous » : GET /testimonies?sort=for_you&limit=20&page=N.
+/// Fil d'accueil : GET /testimonies?sort=recent&limit=20&page=N (« Pour vous » : sort=for_you).
 /// Tri et filtre « Approuvés » : [feedQueryProvider] (le fil se recharge à chaque changement).
 /// Le serveur mélange récents et plus vus pour un nouveau compte, puis classe
 /// selon les centres d'intérêt et les comptes suivis.
@@ -777,12 +778,16 @@ final featuredFromApiProvider = FutureProvider.autoDispose<List<Testimony>>((ref
   }
 });
 
-/// « À la une », du plus récent au plus ancien : la liste du serveur (déjà triée), sinon
-/// les témoignages à la une du fil chargé, triés par date décroissante.
+/// « À la une », du plus récent au plus ancien : la liste du serveur (déjà triée ; le
+/// témoignage publié le plus récent y entre toujours), sinon, hors ligne, les
+/// témoignages à la une du fil chargé plus le plus récent, triés par date décroissante.
 final featuredProvider = Provider<List<Testimony>>((ref) {
   final fromApi = ref.watch(featuredFromApiProvider).value ?? const <Testimony>[];
   if (fromApi.isNotEmpty) return fromApi;
-  return ref.watch(feedNotifierProvider).where((t) => t.isFeatured).toList()
+  final feed = ref.watch(feedNotifierProvider);
+  if (feed.isEmpty) return const [];
+  final newest = feed.reduce((a, b) => b.createdAt.isAfter(a.createdAt) ? b : a);
+  return {newest, ...feed.where((t) => t.isFeatured)}.toList()
     ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 });
 

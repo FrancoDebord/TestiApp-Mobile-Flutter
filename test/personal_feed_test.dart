@@ -1,6 +1,6 @@
 // « Mon fil » : partages (« X a partagé »), suggestions et tous les types d'éléments insérés
 // (événement, session de prière, requête de prière, parole prophétique) sans débordement
-// sur un petit écran avec une grande police ; feuille « Partager sur TestiApp ».
+// sur un petit écran avec une grande police ; feuille « Partager sur My Testimony ».
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -260,7 +260,7 @@ void main() {
     }
   }
 
-  testWidgets('feuille « Partager sur TestiApp » : commentaire, partage puis annulation', (tester) async {
+  testWidgets('feuille « Partager sur My Testimony » : commentaire, partage puis annulation', (tester) async {
     final repo = _FakeRepostRepository();
     final container = ProviderContainer(overrides: [
       repostRepositoryProvider.overrideWithValue(repo),
@@ -283,7 +283,7 @@ void main() {
 
     await tester.tap(find.text('ouvrir'));
     await tester.pumpAndSettle();
-    expect(find.text('Partager sur TestiApp'), findsOneWidget);
+    expect(find.text('Partager sur My Testimony'), findsOneWidget);
     expect(find.textContaining('avec son auteur'), findsOneWidget);
     await tester.enterText(find.byType(TextField), 'Dieu est fidèle');
     await tester.tap(find.text('Partager avec mes abonnés'));

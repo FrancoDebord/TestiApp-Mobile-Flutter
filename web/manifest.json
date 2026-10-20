@@ -1,11 +1,11 @@
 {
-    "name": "testi_app",
-    "short_name": "testi_app",
+    "name": "My Testimony",
+    "short_name": "My Testimony",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#FFFFFF",
     "theme_color": "#184797",
-    "description": "A new Flutter project.",
+    "description": "My Testimony — partagez ce que Dieu a fait.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

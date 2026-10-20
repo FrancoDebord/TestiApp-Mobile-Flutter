@@ -132,10 +132,21 @@ class AppCategory {
     required this.order,
     required this.testimonyCount,
     this.isActive = true,
+    this.nameFr,
+    this.nameEn,
   });
 
   final String id;
+
+  /// Nom dans la langue de l'application (envoyé par le serveur).
   final String name;
+
+  /// Nom français (référence) et nom anglais facultatif (types de témoignages).
+  final String? nameFr;
+  final String? nameEn;
+
+  /// Nom français à modifier (repli : [name]).
+  String get frenchName => (nameFr ?? '').isNotEmpty ? nameFr! : name;
   final String slug;
   final int order;
   final int testimonyCount;

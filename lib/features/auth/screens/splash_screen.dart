@@ -25,7 +25,7 @@ import '../../../l10n/app_localizations.dart';
 // SPLASH SCREEN
 // =============================================================================
 // Layout   : Lever de soleil sur des montagnes, silhouette aux bras levés,
-//            logo (croix, soleil, colline), « Témoignages de Gloire », slogan,
+//            logo (croix, soleil, colline), « My Testimony », slogan,
 //            barre « Chargement… » en bas.
 // Rendu    : entièrement dessiné (CustomPainter) — aucune image à charger,
 //            net sur toutes les tailles d'écran.
@@ -212,13 +212,12 @@ class _LogoBlock extends StatelessWidget {
             fit: BoxFit.scaleDown,
             child: Column(
               children: [
-                const Text('Témoignages', style: titleStyle), // i18n-ignore
+                const Text('My', style: titleStyle), // i18n-ignore (nom de l'application)
                 Text.rich(
                   TextSpan(
                     children: [
-                      const TextSpan(text: 'de '), // i18n-ignore
                       TextSpan(
-                        text: 'Gloire', // i18n-ignore
+                        text: 'Testimony', // i18n-ignore
                         style: titleStyle.copyWith(
                             color: AppColors.secondary),
                       ),

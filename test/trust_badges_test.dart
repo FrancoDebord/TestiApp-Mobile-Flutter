@@ -251,7 +251,9 @@ void main() {
 
   group('Filtre « Approuvés » et tri', () {
     test('paramètres de GET /testimonies', () {
-      expect(const FeedQuery().toQuery(page: 1), {'sort': 'for_you', 'limit': 20, 'page': 1});
+      // Par défaut : du plus récent au plus ancien.
+      expect(const FeedQuery().toQuery(page: 1), {'sort': 'recent', 'limit': 20, 'page': 1});
+      expect(const FeedQuery(sort: FeedSort.forYou).toQuery(page: 1)['sort'], 'for_you');
       expect(
         const FeedQuery(sort: FeedSort.mostViewed, verifiedOnly: true).toQuery(page: 2),
         {'sort': 'most_viewed', 'limit': 20, 'page': 2, 'verified': 1},
@@ -280,14 +282,14 @@ void main() {
         ),
       ));
       await tester.pumpAndSettle();
-      expect(api.gets.last.$2?['sort'], 'for_you');
+      expect(api.gets.last.$2?['sort'], 'recent');
       expect(api.gets.last.$2?.containsKey('verified'), isFalse);
+      expect(find.text('Tri : Récents'), findsOneWidget);
       expect(find.text('2 témoignages'), findsOneWidget);
 
       await tester.tap(find.text('Approuvés'));
       await tester.pumpAndSettle();
       expect(api.gets.last.$2?['verified'], 1);
-      // Depuis « Pour vous » : passage à « Récents » (seul tri filtré par le serveur).
       expect(api.gets.last.$2?['sort'], 'recent');
       expect(find.text('Tri : Récents'), findsOneWidget);
       // Repli local : seul le témoignage avec le label reste, même si le serveur ignore le filtre.

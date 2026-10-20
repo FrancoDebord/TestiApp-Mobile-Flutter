@@ -65,6 +65,8 @@ class ServerCategoriesNotifier
   Future<List<CategoryModel>> build() async {
     // Rebuild quand l'état auth change (évite de fetcher avec un token local fictif)
     final authValue = ref.watch(authStateProvider).value;
+    // Noms des types dans la langue affichée (Accept-Language) : rechargés au changement de langue.
+    ref.watch(localeProvider);
     if (authValue is! AuthStateAuthenticated) {
       debugPrint('[Categories] auth non prête — fallback local');
       return _kFallbackCategories;

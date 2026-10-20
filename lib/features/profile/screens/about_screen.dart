@@ -103,7 +103,7 @@ class AboutScreen extends StatelessWidget {
                 title: l10n.profileAboutLicenses,
                 onTap: () => showLicensePage(
                   context: context,
-                  applicationName: 'Témoignages de Gloire', // i18n-ignore
+                  applicationName: 'My Testimony', // i18n-ignore
                   applicationVersion: appVersion,
                 ),
               ),

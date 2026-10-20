@@ -38,13 +38,17 @@ UserAccountStatus _parseAccountStatus(String v) => switch (v) {
 AppCategory? _categoryFromJson(dynamic raw) {
   try {
     final m = raw as Map<String, dynamic>;
+    // CategoryResource : clés camelCase (anciennes réponses : snake_case).
+    String? str(Object? v) => v is String && v.trim().isNotEmpty ? v : null;
     return AppCategory(
-      id:             m['id']              as String,
+      id:             '${m['id']}',
       name:           m['name']            as String? ?? '',
       slug:           m['slug']            as String? ?? '',
-      order:          m['display_order']   as int? ?? 0,
-      testimonyCount: m['testimony_count'] as int? ?? 0,
-      isActive:       m['is_active']       as bool? ?? true,
+      order:          ((m['displayOrder'] ?? m['display_order']) as num?)?.toInt() ?? 0,
+      testimonyCount: ((m['testimonyCount'] ?? m['testimony_count']) as num?)?.toInt() ?? 0,
+      isActive:       (m['isActive'] ?? m['is_active']) as bool? ?? true,
+      nameFr:         str(m['nameFr'] ?? m['name_fr']),
+      nameEn:         str(m['nameEn'] ?? m['name_en']),
     );
   } catch (_) {
     return null;
@@ -219,11 +223,15 @@ class AdminCategoriesNotifier extends AsyncNotifier<List<AppCategory>> {
         .toList();
   }
 
-  Future<void> create(String name) async {
+  /// [nameEn] : nom anglais facultatif (types de témoignages, docs serveur).
+  Future<void> create(String name, {String? nameEn}) async {
     final api      = ref.read(apiServiceProvider);
     final response = await api.post<Map<String, dynamic>>(
       AppConstants.adminCategories,
-      data: {'name': name},
+      data: {
+        'name': name,
+        if ((nameEn ?? '').trim().isNotEmpty) 'name_en': nameEn!.trim(),
+      },
     );
     final newCat = _categoryFromJson(response.data);
     if (newCat != null) {
@@ -231,7 +239,8 @@ class AdminCategoriesNotifier extends AsyncNotifier<List<AppCategory>> {
     }
   }
 
-  Future<void> updateName(String id, String newName) async {
+  /// Nom français et nom anglais ([nameEn] vide : effacé).
+  Future<void> updateName(String id, String newName, {String? nameEn}) async {
     // Optimistic
     final current = state.value ?? [];
     state = AsyncValue.data([
@@ -240,17 +249,19 @@ class AdminCategoriesNotifier extends AsyncNotifier<List<AppCategory>> {
           AppCategory(
             id: c.id,
             name: newName,
-            slug: newName.toLowerCase().replaceAll(' ', '-'),
+            slug: c.slug,
             order: c.order,
             testimonyCount: c.testimonyCount,
             isActive: c.isActive,
+            nameFr: newName,
+            nameEn: nameEn == null ? c.nameEn : (nameEn.trim().isEmpty ? null : nameEn.trim()),
           )
         else
           c,
     ]);
     await ref.read(apiServiceProvider).put<void>(
       AppConstants.adminCategoryById(id),
-      data: {'name': newName},
+      data: {'name': newName, 'name_en': ?nameEn?.trim()},
     );
   }
 
@@ -267,6 +278,8 @@ class AdminCategoriesNotifier extends AsyncNotifier<List<AppCategory>> {
             order: c.order,
             testimonyCount: c.testimonyCount,
             isActive: isActive,
+            nameFr: c.nameFr,
+            nameEn: c.nameEn,
           )
         else
           c,

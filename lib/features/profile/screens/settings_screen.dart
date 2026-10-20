@@ -278,7 +278,7 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: AppSpacing.xl),
           Center(
             child: Text(
-              'Témoignages de Gloire v1.0', // i18n-ignore
+              'My Testimony v1.0', // i18n-ignore
               style: AppTextStyles.bodySmall
                   .copyWith(color: AppColors.textSecondary.withAlpha(150)),
             ),

@@ -150,7 +150,7 @@
   "authSignUp": "S'inscrire",
   "authHaveAccount": "Déjà inscrit ?",
   "authCreateAccount": "Créer un compte",
-  "authJoinCommunity": "Rejoignez la communauté Témoignages",
+  "authJoinCommunity": "Rejoignez la communauté My Testimony",
   "authFirstNameLabel": "Prénom",
   "authLastNameLabel": "Nom",
   "authCountryLabel": "Pays",
@@ -185,7 +185,7 @@
   "onboardingTitle2": "Inspirez d'autres\ncroyants",
   "onboardingBody2": "Des milliers de frères et sœurs attendent d'être encouragés par ce que Dieu a accompli dans votre vie.",
   "onboardingTitle3": "Commencez votre\nvoyage",
-  "onboardingBody3": "Rejoignez la communauté Témoignages et soyez une lumière dans la vie de quelqu'un aujourd'hui.",
+  "onboardingBody3": "Rejoignez la communauté My Testimony et soyez une lumière dans la vie de quelqu'un aujourd'hui.",
   "authPhoneTitle": "Entrez votre numéro",
   "authPhoneSubtitle": "Nous vous enverrons un code de vérification par SMS.",
   "authContinue": "Continuer",
@@ -626,7 +626,7 @@
   "authCreateMyAccount": "Créer mon compte",
   "authSimpleRegisterIntro": "Entrez juste votre prénom et votre nom.\nAucun mot de passe requis.",
   "authCompleteProfileLater": "Vous pouvez compléter votre profil plus tard.",
-  "authSplashSemantics": "Témoignages de Gloire. Des vies transformées pour la gloire de Dieu.",
+  "authSplashSemantics": "My Testimony. Des vies transformées pour la gloire de Dieu.",
   "authSplashTagline": "Des vies transformées\npour la gloire de Dieu",
   "authLoadingSemantics": "Chargement",
   "authCodeInvalidOrExpired": "Code incorrect ou expiré. Veuillez réessayer.",
@@ -684,7 +684,7 @@
   "commonAnonymous": "Anonyme",
   "commonYou": "Vous",
   "commonUntitled": "(Sans titre)",
-  "commonAppName": "Témoignages",
+  "commonAppName": "My Testimony",
   "timeJustNow": "à l'instant",
   "timeMinutesAgo": "il y a {count} min",
   "@timeMinutesAgo": {
@@ -800,7 +800,7 @@
   },
   "pushTestNetworkError": "Impossible de joindre le serveur. Vérifiez votre connexion.",
   "pushTestNotReceived": "Rien reçu ? Vérifiez que les notifications sont autorisées et que le mode « Ne pas déranger » est désactivé.",
-  "pushFallbackTitle": "Témoignages",
+  "pushFallbackTitle": "My Testimony",
   "pushChannelName": "Notifications Témoignages",
   "pushChannelDescription": "Commentaires, réactions, approbations et prières.",
   "eventsTypeCrusade": "Croisade d'évangélisation",
@@ -2957,7 +2957,7 @@
   "commentsAddHintDots": "Ajouter un commentaire...",
   "shortsMobileDataTapToPlay": "Données mobiles · touchez pour lire",
   "shortsSaved": "Sauvegardé",
-  "shortsSharedFromApp": "Partagé depuis l'application Témoignages ✝️",
+  "shortsSharedFromApp": "Partagé depuis l'application My Testimony ✝️",
   "shortsMe": "Moi",
   "shortsAgoMinutes": "il y a {count}min",
   "@shortsAgoMinutes": {
@@ -3219,7 +3219,7 @@
     }
   },
   "profileAboutMission": "Notre mission",
-  "profileAboutMissionBody": "Témoignages de Gloire rassemble les récits de vies transformées pour la gloire de Dieu. Partagez ce que Dieu a fait pour vous en vidéo, en audio, en texte ou en image, et soyez édifiés par les témoignages de la communauté — même hors connexion.",
+  "profileAboutMissionBody": "My Testimony rassemble les récits de vies transformées pour la gloire de Dieu. Partagez ce que Dieu a fait pour vous en vidéo, en audio, en texte ou en image, et soyez édifiés par les témoignages de la communauté — même hors connexion.",
   "profileAboutVerse": "« Ils l'ont vaincu à cause du sang de l'Agneau et à cause de la parole de leur témoignage. » — Apocalypse 12:11",
   "profileAboutWebsite": "Site web",
   "profileAboutLicenses": "Licences open source",
@@ -3231,7 +3231,7 @@
       }
     }
   },
-  "profileAboutCopyright": "© {year} Témoignages de Gloire. Tous droits réservés.",
+  "profileAboutCopyright": "© {year} My Testimony. Tous droits réservés.",
   "@profileAboutCopyright": {
     "placeholders": {
       "year": {
@@ -3257,7 +3257,7 @@
   "profileHelpContact": "Nous contacter",
   "profileHelpReportProblem": "Signaler un problème",
   "profileHelpReportProblemHint": "Décrivez ce qui ne fonctionne pas",
-  "profileHelpReportSubject": "Témoignages de Gloire — signalement d'un problème",
+  "profileHelpReportSubject": "My Testimony — signalement d'un problème",
   "profileHelpReportBody": "{text}\n\n— Plateforme : {platform} · Version {version}",
   "@profileHelpReportBody": {
     "placeholders": {
@@ -3298,8 +3298,8 @@
   "settingsRepeat": "Répétition",
   "settingsFeedLayout": "Affichage du fil",
   "settingsPreferences": "Préférences",
-  "settingsInviteSubject": "Découvre l'application Témoignages",
-  "settingsInviteText": "Je t'invite à rejoindre l'application Témoignages — un espace pour partager et vivre les miracles de Dieu 🙏\n\nTélécharge-la ici : {url}",
+  "settingsInviteSubject": "Découvre l'application My Testimony",
+  "settingsInviteText": "Je t'invite à rejoindre l'application My Testimony — un espace pour partager et vivre les miracles de Dieu 🙏\n\nTélécharge-la ici : {url}",
   "@settingsInviteText": {
     "placeholders": {
       "url": {
@@ -4552,8 +4552,8 @@
       }
     }
   },
-  "repostOnTestiApp": "Sur TestiApp",
-  "repostCannotShare": "Impossible de partager {what} sur TestiApp : la publication est la vôtre, ou elle n’est pas publique.",
+  "repostOnTestiApp": "Sur My Testimony",
+  "repostCannotShare": "Impossible de partager {what} sur My Testimony : la publication est la vôtre, ou elle n’est pas publique.",
   "@repostCannotShare": {
     "placeholders": {
       "what": {
@@ -4565,7 +4565,7 @@
   "repostOtherApps": "Autres applis",
   "repostReasonShare": "partager avec vos abonnés",
   "repostFailed": "Le partage a échoué. Réessayez.",
-  "repostShareOnTestiApp": "Partager sur TestiApp",
+  "repostShareOnTestiApp": "Partager sur My Testimony",
   "repostContentExplain": "{what} apparaîtra dans le fil de vos abonnés, avec son auteur, pour toucher plus de monde. L’auteur sera prévenu.",
   "@repostContentExplain": {
     "placeholders": {
@@ -5085,7 +5085,7 @@
   "prayerFocusProphecyLabel": "Parole prophétique",
   "prayerFocusProphecyConfirm": "J'ai prié sur cette parole",
   "pushConsentTitle": "Recevoir les notifications ?",
-  "pushConsentBody": "TestiApp vous prévient quand il se passe quelque chose pour vous.",
+  "pushConsentBody": "My Testimony vous prévient quand il se passe quelque chose pour vous.",
   "pushConsentComments": "Commentaires, mentions et « J'aime »",
   "pushConsentPrayers": "Prières pour vos requêtes et vos témoignages",
   "pushConsentEvents": "Directs, événements et sessions de prière",
@@ -5219,5 +5219,10 @@
   "liveYoutubeStep1": "Lancez votre direct sur YouTube (application YouTube, YouTube Studio ou OBS).",
   "liveYoutubeStep2": "Copiez son lien et collez-le ci-dessus.",
   "liveYoutubeStep3": "Le direct s'ouvre aussitôt dans l'application ; terminez-le ici quand la diffusion YouTube est finie.",
-  "liveCheckYoutubeOk": "Diffusion par YouTube"
+  "liveCheckYoutubeOk": "Diffusion par YouTube",
+  "adminCategoryNameFr": "Nom (français)",
+  "adminCategoryNameEn": "Nom anglais (facultatif)",
+  "adminCategoryNameEnHint": "Ex. : Healing",
+  "adminNewCategoryEnHint": "Nom anglais (facultatif)…",
+  "adminCategoryNoEnglish": "Pas de nom anglais"
 }

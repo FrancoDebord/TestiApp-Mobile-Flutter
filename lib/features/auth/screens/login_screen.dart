@@ -22,7 +22,7 @@ import '../../../l10n/app_localizations.dart';
 // CONNEXION / INSCRIPTION (maquette, écran 3)
 // =============================================================================
 // Vue d'accueil (colonne centrée, défilante) :
-//   1. Logo « Témoignages de Gloire » + « Rejoignez une communauté… »
+//   1. Logo « My Testimony » + « Rejoignez une communauté… »
 //   2. « Se connecter avec numéro »  — bleu, icône téléphone → OTP SMS
 //   3. « Se connecter avec Google »  — contour, logo G
 //   4. « Se connecter avec Email »   — contour, icône enveloppe → sous-vue

@@ -16,7 +16,7 @@ import '../../../l10n/app_localizations.dart';
 // =============================================================================
 // 4 diapositives (PageView) illustrées en style plat, arrondi et chaleureux
 // (CustomPainter : personnages qui louent / partagent, soleil, étoiles) :
-//   1. « Bienvenue sur Témoignages de Gloire » (« Gloire » en orange)
+//   1. « Bienvenue sur My Testimony » (« Testimony » en orange)
 //   2. « Partagez ce que Dieu a fait »
 //   3. « Inspirez d'autres croyants »
 //   4. « Commencez votre voyage » (logo)
@@ -195,9 +195,9 @@ class _SlidePage extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text.rich(
                       TextSpan(children: [
-                        const TextSpan(text: 'Témoignages de '), // i18n-ignore
+                        const TextSpan(text: 'My '), // i18n-ignore (nom de l'application)
                         TextSpan(
-                          text: 'Gloire', // i18n-ignore
+                          text: 'Testimony', // i18n-ignore
                           style: titleStyle.copyWith(
                               color: AppColors.secondary),
                         ),
@@ -605,6 +605,6 @@ class _SlideData {
   final String title;
   final String body;
 
-  /// Ajoute « Témoignages de Gloire » (« Gloire » en orange) sous le titre.
+  /// Ajoute « My Testimony » (« Testimony » en orange) sous le titre.
   final bool highlightTitle;
 }

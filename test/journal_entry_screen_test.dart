@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:testi_app/l10n/app_localizations.dart';
 import 'package:testi_app/features/journal/data/journal_repository.dart';
 import 'package:testi_app/features/journal/models/journal_entry.dart';
 import 'package:testi_app/features/journal/screens/journal_entry_screen.dart';
@@ -50,7 +51,11 @@ Map<String, dynamic> _api(String type, {String? media, String body = 'Merci **Se
 
 Future<void> _open(WidgetTester tester, Map<String, dynamic> json) async {
   await tester.pumpWidget(ProviderScope(
-    overrides: [journalRepositoryProvider.overrideWithValue(_FakeJournal(json))],
+    overrides: [
+      journalRepositoryProvider.overrideWithValue(_FakeJournal(json)),
+      // Libellés en français quelle que soit la langue du système.
+      localeProvider.overrideWithValue(L10n.fr),
+    ],
     child: MaterialApp(home: JournalEntryScreen(entryId: json['id'] as String)),
   ));
   await tester.pump();

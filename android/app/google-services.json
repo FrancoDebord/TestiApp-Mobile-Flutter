@@ -14,11 +14,27 @@
       },
       "oauth_client": [
         {
+          "client_id": "566166419345-3jlnvktekbg5mjvpiqccj5b5rgs4dsp7.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.askrea.temoignage",
+            "certificate_hash": "15422134b9c6c0b23a0c3da48ae5b272040ff148"
+          }
+        },
+        {
           "client_id": "566166419345-h4campla1p5udkf3cojlrunqrr0okb93.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.askrea.temoignage",
             "certificate_hash": "90bde94436816d8598a3693e8c9cd9c853e69ed5"
+          }
+        },
+        {
+          "client_id": "566166419345-udt6nuiv0efm87675uvl3qsose7sfh0q.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.askrea.temoignage",
+            "certificate_hash": "4ae8b54dba981a44fe50223fdae2cb87c0662ed2"
           }
         },
         {

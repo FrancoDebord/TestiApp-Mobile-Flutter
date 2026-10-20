@@ -1,8 +1,8 @@
 name: testi_app
-description: "Témoignages — plateforme de partage de témoignages chrétiens."
+description: "My Testimony — plateforme de partage de témoignages chrétiens."
 publish_to: 'none'
 
-version: 1.0.0+1
+version: 1.0.0+2
 
 environment:
   sdk: ^3.11.1

@@ -465,7 +465,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get authCreateAccount => 'Créer un compte';
 
   @override
-  String get authJoinCommunity => 'Rejoignez la communauté Témoignages';
+  String get authJoinCommunity => 'Rejoignez la communauté My Testimony';
 
   @override
   String get authFirstNameLabel => 'Prénom';
@@ -577,7 +577,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get onboardingBody3 =>
-      'Rejoignez la communauté Témoignages et soyez une lumière dans la vie de quelqu\'un aujourd\'hui.';
+      'Rejoignez la communauté My Testimony et soyez une lumière dans la vie de quelqu\'un aujourd\'hui.';
 
   @override
   String get authPhoneTitle => 'Entrez votre numéro';
@@ -1667,7 +1667,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get authSplashSemantics =>
-      'Témoignages de Gloire. Des vies transformées pour la gloire de Dieu.';
+      'My Testimony. Des vies transformées pour la gloire de Dieu.';
 
   @override
   String get authSplashTagline =>
@@ -1807,7 +1807,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get commonUntitled => '(Sans titre)';
 
   @override
-  String get commonAppName => 'Témoignages';
+  String get commonAppName => 'My Testimony';
 
   @override
   String get timeJustNow => 'à l\'instant';
@@ -1961,7 +1961,7 @@ class AppLocalizationsFr extends AppLocalizations {
       'Rien reçu ? Vérifiez que les notifications sont autorisées et que le mode « Ne pas déranger » est désactivé.';
 
   @override
-  String get pushFallbackTitle => 'Témoignages';
+  String get pushFallbackTitle => 'My Testimony';
 
   @override
   String get pushChannelName => 'Notifications Témoignages';
@@ -6143,7 +6143,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get shortsSharedFromApp =>
-      'Partagé depuis l\'application Témoignages ✝️';
+      'Partagé depuis l\'application My Testimony ✝️';
 
   @override
   String get shortsMe => 'Moi';
@@ -6565,7 +6565,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get profileAboutMissionBody =>
-      'Témoignages de Gloire rassemble les récits de vies transformées pour la gloire de Dieu. Partagez ce que Dieu a fait pour vous en vidéo, en audio, en texte ou en image, et soyez édifiés par les témoignages de la communauté — même hors connexion.';
+      'My Testimony rassemble les récits de vies transformées pour la gloire de Dieu. Partagez ce que Dieu a fait pour vous en vidéo, en audio, en texte ou en image, et soyez édifiés par les témoignages de la communauté — même hors connexion.';
 
   @override
   String get profileAboutVerse =>
@@ -6584,7 +6584,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String profileAboutCopyright(String year) {
-    return '© $year Témoignages de Gloire. Tous droits réservés.';
+    return '© $year My Testimony. Tous droits réservés.';
   }
 
   @override
@@ -6652,7 +6652,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get profileHelpReportSubject =>
-      'Témoignages de Gloire — signalement d\'un problème';
+      'My Testimony — signalement d\'un problème';
 
   @override
   String profileHelpReportBody(String text, String platform, String version) {
@@ -6716,11 +6716,11 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsPreferences => 'Préférences';
 
   @override
-  String get settingsInviteSubject => 'Découvre l\'application Témoignages';
+  String get settingsInviteSubject => 'Découvre l\'application My Testimony';
 
   @override
   String settingsInviteText(String url) {
-    return 'Je t\'invite à rejoindre l\'application Témoignages — un espace pour partager et vivre les miracles de Dieu 🙏\n\nTélécharge-la ici : $url';
+    return 'Je t\'invite à rejoindre l\'application My Testimony — un espace pour partager et vivre les miracles de Dieu 🙏\n\nTélécharge-la ici : $url';
   }
 
   @override
@@ -9132,11 +9132,11 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get repostOnTestiApp => 'Sur TestiApp';
+  String get repostOnTestiApp => 'Sur My Testimony';
 
   @override
   String repostCannotShare(String what) {
-    return 'Impossible de partager $what sur TestiApp : la publication est la vôtre, ou elle n’est pas publique.';
+    return 'Impossible de partager $what sur My Testimony : la publication est la vôtre, ou elle n’est pas publique.';
   }
 
   @override
@@ -9152,7 +9152,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get repostFailed => 'Le partage a échoué. Réessayez.';
 
   @override
-  String get repostShareOnTestiApp => 'Partager sur TestiApp';
+  String get repostShareOnTestiApp => 'Partager sur My Testimony';
 
   @override
   String repostContentExplain(String what) {
@@ -10117,7 +10117,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get pushConsentBody =>
-      'TestiApp vous prévient quand il se passe quelque chose pour vous.';
+      'My Testimony vous prévient quand il se passe quelque chose pour vous.';
 
   @override
   String get pushConsentComments => 'Commentaires, mentions et « J\'aime »';
@@ -10417,4 +10417,19 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get liveCheckYoutubeOk => 'Diffusion par YouTube';
+
+  @override
+  String get adminCategoryNameFr => 'Nom (français)';
+
+  @override
+  String get adminCategoryNameEn => 'Nom anglais (facultatif)';
+
+  @override
+  String get adminCategoryNameEnHint => 'Ex. : Healing';
+
+  @override
+  String get adminNewCategoryEnHint => 'Nom anglais (facultatif)…';
+
+  @override
+  String get adminCategoryNoEnglish => 'Pas de nom anglais';
 }
