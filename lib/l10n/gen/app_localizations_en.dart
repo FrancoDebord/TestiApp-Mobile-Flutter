@@ -10404,4 +10404,90 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get accountDeletedDone =>
       'Your account has been deleted. You can keep browsing as a guest.';
+
+  @override
+  String get contentDeleted => 'Deleted';
+
+  @override
+  String get contentDeleteFailed =>
+      'Deletion failed. Check your connection and try again.';
+
+  @override
+  String contentDeleteFailedWith(String message) {
+    return 'Deletion failed: $message';
+  }
+
+  @override
+  String get editRemovePhoto => 'Remove photo';
+
+  @override
+  String get editRemovePhotoConfirmTitle => 'Remove your profile photo?';
+
+  @override
+  String get editRemovePhotoConfirmBody =>
+      'Your initials will be shown instead.';
+
+  @override
+  String get editPhotoRemoved => 'Photo removed';
+
+  @override
+  String get pushReceiveTitle => 'Receive notifications';
+
+  @override
+  String get pushReceiveSubtitleOn =>
+      'This device receives your account\'s notifications.';
+
+  @override
+  String get pushReceiveSubtitleOff =>
+      'Off: this device is no longer registered for notifications.';
+
+  @override
+  String get pushReceiveOff => 'Notifications turned off on this device.';
+
+  @override
+  String get pushReceiveOn => 'Notifications turned on on this device.';
+
+  @override
+  String get pushReceiveFailed =>
+      'Couldn\'t change notifications. Check your connection and try again.';
+
+  @override
+  String get myDataTitle => 'My data';
+
+  @override
+  String get myDataIntro =>
+      'Delete what you\'ve posted, item by item, without deleting your account.';
+
+  @override
+  String get myDataTestimonies => 'My testimonies';
+
+  @override
+  String get myDataPrayerRequests => 'My prayer requests';
+
+  @override
+  String get myDataProphecies => 'My prophetic words';
+
+  @override
+  String get myDataItemHint => 'Delete each item from its « ⋮ » menu.';
+
+  @override
+  String get myDataRequestOther => 'Request deletion of other data';
+
+  @override
+  String get myDataRequestOtherHint =>
+      'Opens the website\'s deletion page, where you can make a request.';
+
+  @override
+  String myDataRequestFailed(String email) {
+    return 'Couldn\'t open the deletion page. Email us at $email.';
+  }
+
+  @override
+  String get myDataDeleteAccountHint =>
+      'Permanently deletes your account and all your data.';
+
+  @override
+  String myDataRequestFailedNoEmail(String url) {
+    return 'Couldn\'t open the deletion page. Open $url in your browser.';
+  }
 }

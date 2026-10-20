@@ -13,6 +13,7 @@ import '../../../shared/widgets/organization_badge.dart';
 import '../data/prayer_repository.dart';
 import '../models/prayer_models.dart';
 import '../providers/prayer_providers.dart';
+import '../../../shared/content_deletion.dart';
 
 const _days = ['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.']; // i18n-ignore
 const _months = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']; // i18n-ignore
@@ -139,6 +140,7 @@ class _PrayerRequestFeedCardState extends ConsumerState<PrayerRequestFeedCard> {
   @override
   Widget build(BuildContext context) {
     final r = _r;
+    if (watchIsDeleted(ref, DeletableContent.prayerRequest, r.id)) return const SizedBox.shrink();
     return Container(
       decoration: AppShadows.cardDecoration,
       child: Material(
@@ -184,6 +186,22 @@ class _PrayerRequestFeedCardState extends ConsumerState<PrayerRequestFeedCard> {
                       ),
                     ),
                     if (r.isAnswered) ...[const SizedBox(width: 6), const PrayerAnsweredBadge()],
+                    // Auteur : « ⋮ » → Supprimer.
+                    if (r.canDelete)
+                      PopupMenuButton<String>(
+                        key: ValueKey('prayer-menu-${r.id}'),
+                        icon: const Icon(Icons.more_vert_rounded, size: 20, color: AppColors.textSecondary),
+                        onSelected: (_) => deletePrayerRequestContent(context, ref, r.id),
+                        itemBuilder: (_) => [
+                          PopupMenuItem(
+                            value: 'delete',
+                            child: ListTile(
+                              leading: const Icon(Icons.delete_outline, color: AppColors.danger),
+                              title: Text(context.l10n.commonDelete),
+                            ),
+                          ),
+                        ],
+                      ),
                   ],
                 ),
                 if (r.isHidden) ...[

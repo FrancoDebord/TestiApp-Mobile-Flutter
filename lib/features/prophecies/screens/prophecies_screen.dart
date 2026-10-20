@@ -12,6 +12,7 @@ import '../models/prophecy.dart';
 import '../providers/prophecies_providers.dart';
 import '../widgets/prophecy_widgets.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/content_deletion.dart';
 
 /// Paroles prophétiques du carnet privé : en attente / accomplies.
 /// Elles sont visibles de vous seul ; quand l'une s'accomplit, vous en témoignez.
@@ -21,7 +22,11 @@ class PropheciesScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(propheciesListProvider);
-    final list = async.value ?? const <Prophecy>[];
+    final deleted = ref.watch(deletedContentProvider);
+    final list = [
+      for (final p in async.value ?? const <Prophecy>[])
+        if (!deleted.contains('${DeletableContent.prophecy.name}:${p.id}')) p,
+    ];
     final waiting = list.where((p) => !p.fulfilled).toList();
     final fulfilled = list.where((p) => p.fulfilled).toList();
 
@@ -120,7 +125,11 @@ class _List extends ConsumerWidget {
             for (final p in items)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: ProphecyCard(prophecy: p, onTap: () => context.push('/prophecies/${p.id}')),
+                child: ProphecyCard(
+                  prophecy: p,
+                  onTap: () => context.push('/prophecies/${p.id}'),
+                  onDelete: () => deleteProphecyContent(context, ref, p.id),
+                ),
               ),
         ],
       ),

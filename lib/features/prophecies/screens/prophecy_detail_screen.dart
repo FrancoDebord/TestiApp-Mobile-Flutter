@@ -18,6 +18,7 @@ import '../providers/prophecies_providers.dart';
 import '../widgets/prophecy_widgets.dart';
 import 'prophecy_reminder_sheet.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/content_deletion.dart' show deleteProphecyContent;
 
 /// Une parole prophétique : la parole (texte / audio), le journal de prière,
 /// le rappel, la proclamation en plein écran et l'accomplissement (témoigner).
@@ -134,32 +135,7 @@ class _ProphecyDetailScreenState extends ConsumerState<ProphecyDetailScreen> {
   }
 
   Future<void> _delete() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(context.l10n.prophecyDeleteTitle),
-        content: Text(context.l10n.prophecyDeleteBody),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(context.l10n.commonCancel)),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
-            child: Text(context.l10n.commonDelete),
-          ),
-        ],
-      ),
-    );
-    if (ok != true || !mounted) return;
-    final deleted = context.l10n.prophecyDeleted;
-    try {
-      await _repo.delete(_id);
-      await ProphecyReminders.cancel(_id);
-      ref.invalidate(propheciesListProvider);
-      _snack(deleted);
-      if (mounted) context.pop();
-    } on ProphecyFailure catch (e) {
-      _snack(e.message);
-    }
+    if (await deleteProphecyContent(context, ref, _id) && mounted) context.pop();
   }
 
   @override

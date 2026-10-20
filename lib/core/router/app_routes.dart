@@ -49,6 +49,8 @@ abstract final class AppRoutes {
   static const String settings = 'settings';
   static const String changePassword = 'change-password';
   static const String deleteAccount = 'delete-account';
+  // Paramètres › Compte › Mes données (suppression élément par élément)
+  static const String myData = 'my-data';
   // Profil → « Faire vérifier mon compte » (comptes personnels)
   static const String accountVerification = 'account-verification';
   static const String language = 'language';
@@ -128,6 +130,7 @@ abstract final class AppPaths {
   static const String settings = 'settings';
   static const String changePassword = 'settings/change-password';
   static const String deleteAccount = 'settings/delete-account';
+  static const String myData = 'settings/my-data';
 
   // Shared detail routes (push on top of any tab)
   static const String testimonyDetail = '/testimony/:id';

@@ -18,6 +18,7 @@ import '../../publish/upload/video_upload_models.dart' show VideoUploadPhase;
 import '../../../services/api_service.dart' show LaravelApiException;
 import '../models/user_testimony_model.dart';
 import '../providers/profile_provider.dart';
+import '../../../shared/content_deletion.dart' show deleteTestimonyContent;
 
 // =============================================================================
 // MyTestimoniesScreen — "Mes témoignages" with status tabs
@@ -414,44 +415,8 @@ class _MyTestimonyCard extends ConsumerWidget {
     );
   }
 
-  void _confirmDelete(BuildContext context, WidgetRef ref) {
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          context.l10n.profileDeleteTestimonyTitle,
-          style: const TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600),
-        ),
-        content: Text(
-          context.l10n.profileDeleteTestimonyBody,
-          style: const TextStyle(fontFamily: AppFonts.family, fontSize: 13),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(context.l10n.commonCancel),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () async {
-              Navigator.of(ctx).pop();
-              final ok = await ref
-                  .read(myTestimoniesNotifierProvider.notifier)
-                  .deleteTestimony(testimony.id);
-              if (!ok && context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                      content: Text(context.l10n.profileDeleteTestimonyFailed)),
-                );
-              }
-            },
-            child: Text(context.l10n.commonDelete),
-          ),
-        ],
-      ),
-    );
-  }
+  void _confirmDelete(BuildContext context, WidgetRef ref) =>
+      deleteTestimonyContent(context, ref, testimony.id, body: context.l10n.profileDeleteTestimonyBody);
 
   static String _relativeDate(DateTime date) {
     final now   = DateTime.now();

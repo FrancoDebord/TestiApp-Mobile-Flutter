@@ -84,6 +84,7 @@ import 'app_routes.dart';
 import 'app_transitions.dart';
 import '../../shared/widgets/scaffold_with_bottom_nav.dart';
 import '../../l10n/app_localizations.dart';
+import '../../features/profile/screens/my_data_screen.dart';
 
 // ============================================================================
 // Router provider
@@ -273,8 +274,27 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     // â”€â”€ Route tree â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     routes: _buildRoutes(),
   );
+
+  // Connexion ouverte par-dessus un écran (feuille « compte requis » du mode
+  // invité : pushNamed('/login')) : le redirect ne voit que l'écran du dessous,
+  // la page de connexion resterait affichée. Retour à cet écran une fois connecté.
+  ref.listen(authStateProvider, (prev, next) {
+    if (next.value is! AuthStateAuthenticated ||
+        prev?.value is AuthStateAuthenticated) {
+      return;
+    }
+    final config = router.routerDelegate.currentConfiguration;
+    if (config.isEmpty) return;
+    final top = config.last.matchedLocation;
+    if (_authPages.contains(top) && config.uri.path != top) {
+      router.go(config.uri.toString());
+    }
+  });
   return router;
 });
+
+/// Pages de connexion / inscription, quittées dès que la session est ouverte.
+const _authPages = {'/login', '/register', '/phone-auth'};
 
 // ============================================================================
 // Route tree builder
@@ -540,7 +560,8 @@ List<RouteBase> _buildRoutes() {
     // sessions-de-priere.md). La salle d'une session est un direct : /lives/{id} (et son studio).
     GoRoute(
       path: '/prayer-requests',
-      builder: (context, state) => const PrayerRequestsScreen(),
+      // ?tab=mine : onglet « Mes requêtes » (Mes données).
+      builder: (context, state) => PrayerRequestsScreen(initialTab: state.uri.queryParameters['tab']),
       routes: [
         // Avant ':id' : sinon « new » serait lu comme un identifiant. ?event= : requête d'un événement.
         GoRoute(
@@ -928,6 +949,14 @@ List<RouteBase> _buildRoutes() {
                         state: state,
                         child: OwnerOnlyGate(
                             title: context.l10n.appSecurityAndPassword, child: const ChangePasswordScreen()),
+                      ),
+                    ),
+                    GoRoute(
+                      path: 'my-data',
+                      name: AppRoutes.myData,
+                      pageBuilder: (context, state) => AppTransitions.slideRight(
+                        state: state,
+                        child: OwnerOnlyGate(title: context.l10n.myDataTitle, child: const MyDataScreen()),
                       ),
                     ),
                     GoRoute(

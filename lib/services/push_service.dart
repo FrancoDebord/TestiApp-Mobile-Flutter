@@ -139,6 +139,10 @@ final fcmNavProvider =
 /// (démarrage avec une session, connexion e-mail, Google, téléphone, inscription) ;
 /// [unregisterDevice] dans AuthNotifier.logout(), avant la suppression du token Sanctum.
 /// Une erreur de l'API (404, réseau…) est seulement journalisée : jamais bloquante.
+/// « Recevoir des notifications » désactivé sur cet appareil (Paramètres) : le jeton
+/// n'est plus envoyé à l'API, même après un redémarrage ou une reconnexion.
+const kPushDeviceDisabledKey = 'push_device_disabled';
+
 class PushService {
   PushService._();
   static final PushService instance = PushService._();
@@ -177,6 +181,7 @@ class PushService {
     if (accessToken == null || accessToken == 'offline_mode' || accessToken == 'local_auth') {
       return;
     }
+    if (await storage.read(key: kPushDeviceDisabledKey) == '1') return;
     // Suivi du renouvellement d'abord : un jeton émis pendant l'attente du
     // jeton APNs (iOS) n'est pas perdu.
     await _tokenRefresh?.cancel();
@@ -281,6 +286,34 @@ class PushService {
     } catch (e, stack) {
       _log('DELETE ${AppConstants.unregisterFcmToken}', e, stack);
     }
+    try {
+      await _messaging.deleteToken();
+    } catch (e, stack) {
+      _log('deleteToken', e, stack);
+    }
+  }
+
+  /// « Recevoir des notifications » (Paramètres) : vrai sauf si désactivé sur cet appareil.
+  Future<bool> isDeviceEnabled() async =>
+      await _r.read(secureStorageProvider).read(key: kPushDeviceDisabledKey) != '1';
+
+  /// Désactivé : DELETE /devices/token puis suppression du jeton de l'appareil (une erreur
+  /// de l'API est remontée : rien n'est changé). Réactivé : jeton réenregistré.
+  Future<void> setDeviceEnabled(bool enabled) async {
+    final storage = _r.read(secureStorageProvider);
+    if (enabled) {
+      await storage.delete(key: kPushDeviceDisabledKey);
+      await init();
+      await registerDevice();
+      return;
+    }
+    await _tokenRefresh?.cancel();
+    _tokenRefresh = null;
+    final token = await _messaging.getToken();
+    if (token != null) {
+      await _r.read(apiServiceProvider).delete<void>(AppConstants.unregisterFcmToken, data: {'token': token});
+    }
+    await storage.write(key: kPushDeviceDisabledKey, value: '1');
     try {
       await _messaging.deleteToken();
     } catch (e, stack) {

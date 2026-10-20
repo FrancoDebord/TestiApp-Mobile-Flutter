@@ -16,6 +16,7 @@ import '../../home/widgets/compact_testimony_tile.dart';
 import '../../publish/providers/publish_provider.dart' show publishConversionProvider;
 import '../data/conversion_repository.dart';
 import '../providers/conversion_providers.dart';
+import '../../../shared/content_deletion.dart';
 
 /// Icône des témoignages de conversion.
 const IconData conversionIcon = Icons.volunteer_activism_rounded;
@@ -161,10 +162,14 @@ class ConversionFeaturedCard extends StatelessWidget {
     required this.testimony,
     this.statusLabel,
     this.onEdit,
+    this.onDelete,
     super.key,
   });
 
   final Testimony testimony;
+
+  /// Mon témoignage : « ⋮ » → Supprimer.
+  final VoidCallback? onDelete;
 
   /// « En attente de validation »… (mon propre témoignage seulement).
   final String? statusLabel;
@@ -202,12 +207,32 @@ class ConversionFeaturedCard extends StatelessWidget {
                     ),
                   ],
                   const Spacer(),
-                  if (onEdit != null)
+                  if (onEdit != null && onDelete == null)
                     IconButton(
                       tooltip: context.l10n.commonEdit,
                       visualDensity: VisualDensity.compact,
                       onPressed: onEdit,
                       icon: const Icon(Icons.edit_rounded, size: 18, color: AppColors.primary),
+                    ),
+                  if (onDelete != null)
+                    PopupMenuButton<String>(
+                      key: ValueKey('conversion-menu-${testimony.id}'),
+                      icon: const Icon(Icons.more_vert_rounded, size: 20, color: AppColors.primary),
+                      onSelected: (v) => v == 'edit' ? onEdit?.call() : onDelete!(),
+                      itemBuilder: (_) => [
+                        if (onEdit != null)
+                          PopupMenuItem(
+                            value: 'edit',
+                            child: ListTile(leading: const Icon(Icons.edit_rounded), title: Text(context.l10n.commonEdit)),
+                          ),
+                        PopupMenuItem(
+                          value: 'delete',
+                          child: ListTile(
+                            leading: const Icon(Icons.delete_outline, color: AppColors.danger),
+                            title: Text(context.l10n.commonDelete),
+                          ),
+                        ),
+                      ],
                     ),
                 ],
               ),
@@ -271,12 +296,16 @@ class ProfileConversionSection extends ConsumerWidget {
     // Erreur réseau : le bouton reste proposé à un compte personnel.
     final mine = async.value ?? MyConversion(canCreate: !user.isOrganization);
     if (mine.testimony case final t?) {
+      if (watchIsDeleted(ref, DeletableContent.testimony, t.id)) {
+        return Padding(padding: padding, child: const ConversionInviteCard(withButton: true));
+      }
       return Padding(
         padding: padding,
         child: ConversionFeaturedCard(
           testimony: t,
           statusLabel: conversionStatusLabel(context, mine),
           onEdit: () => context.push('/conversions/mine/edit'),
+          onDelete: () => deleteTestimonyContent(context, ref, t.id),
         ),
       );
     }

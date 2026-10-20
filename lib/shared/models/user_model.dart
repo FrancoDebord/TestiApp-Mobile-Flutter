@@ -283,7 +283,7 @@ class UserModel {
   UserModel copyWith({
     String? id, String? displayName, String? email, String? phone,
     String? phoneCountry, bool? isPhoneVerified,
-    String? avatarUrl, String? country, String? bio, bool? hasPassword, UserRole? role, bool? isEmailVerified,
+    String? avatarUrl, bool clearAvatarUrl = false, String? country, String? bio, bool? hasPassword, UserRole? role, bool? isEmailVerified,
     int? testimonyCount, int? likeCount, int? prayerCount,
     int? followerCount, int? followingCount,
     String? createdAt, String? updatedAt,
@@ -302,7 +302,7 @@ class UserModel {
     isPhoneVerified: isPhoneVerified ?? this.isPhoneVerified,
     hasConversionTestimony: hasConversionTestimony,
     allowedTestimonyTypes: allowedTestimonyTypes,
-    avatarUrl:       avatarUrl       ?? this.avatarUrl,
+    avatarUrl:       clearAvatarUrl ? null : (avatarUrl ?? this.avatarUrl),
     coverUrl:        clearCoverUrl ? null : (coverUrl ?? this.coverUrl),
     country:         country         ?? this.country,
     bio:             bio             ?? this.bio,

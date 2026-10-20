@@ -10499,4 +10499,91 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get accountDeletedDone =>
       'Votre compte a été supprimé. Vous pouvez continuer en mode invité.';
+
+  @override
+  String get contentDeleted => 'Supprimé';
+
+  @override
+  String get contentDeleteFailed =>
+      'La suppression a échoué. Vérifiez votre connexion et réessayez.';
+
+  @override
+  String contentDeleteFailedWith(String message) {
+    return 'La suppression a échoué : $message';
+  }
+
+  @override
+  String get editRemovePhoto => 'Retirer la photo';
+
+  @override
+  String get editRemovePhotoConfirmTitle => 'Retirer votre photo de profil ?';
+
+  @override
+  String get editRemovePhotoConfirmBody =>
+      'Vos initiales s\'afficheront à la place.';
+
+  @override
+  String get editPhotoRemoved => 'Photo retirée';
+
+  @override
+  String get pushReceiveTitle => 'Recevoir des notifications';
+
+  @override
+  String get pushReceiveSubtitleOn =>
+      'Cet appareil reçoit les notifications de votre compte.';
+
+  @override
+  String get pushReceiveSubtitleOff =>
+      'Désactivé : cet appareil n\'est plus enregistré pour les notifications.';
+
+  @override
+  String get pushReceiveOff => 'Notifications désactivées sur cet appareil.';
+
+  @override
+  String get pushReceiveOn => 'Notifications activées sur cet appareil.';
+
+  @override
+  String get pushReceiveFailed =>
+      'Impossible de modifier les notifications. Vérifiez votre connexion et réessayez.';
+
+  @override
+  String get myDataTitle => 'Mes données';
+
+  @override
+  String get myDataIntro =>
+      'Supprimez ce que vous avez publié, élément par élément, sans supprimer votre compte.';
+
+  @override
+  String get myDataTestimonies => 'Mes témoignages';
+
+  @override
+  String get myDataPrayerRequests => 'Mes sujets de prière';
+
+  @override
+  String get myDataProphecies => 'Mes paroles prophétiques';
+
+  @override
+  String get myDataItemHint =>
+      'Chaque élément se supprime depuis son menu « ⋮ ».';
+
+  @override
+  String get myDataRequestOther => 'Demander la suppression d\'autres données';
+
+  @override
+  String get myDataRequestOtherHint =>
+      'Ouvre la page de suppression du site, où vous pouvez faire une demande.';
+
+  @override
+  String myDataRequestFailed(String email) {
+    return 'Impossible d\'ouvrir la page de suppression. Écrivez-nous à $email.';
+  }
+
+  @override
+  String get myDataDeleteAccountHint =>
+      'Supprime définitivement votre compte et toutes vos données.';
+
+  @override
+  String myDataRequestFailedNoEmail(String url) {
+    return 'Impossible d\'ouvrir la page de suppression. Ouvrez $url dans votre navigateur.';
+  }
 }

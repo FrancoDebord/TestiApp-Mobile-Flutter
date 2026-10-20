@@ -18121,6 +18121,150 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Votre compte a été supprimé. Vous pouvez continuer en mode invité.'**
   String get accountDeletedDone;
+
+  /// No description provided for @contentDeleted.
+  ///
+  /// In fr, this message translates to:
+  /// **'Supprimé'**
+  String get contentDeleted;
+
+  /// No description provided for @contentDeleteFailed.
+  ///
+  /// In fr, this message translates to:
+  /// **'La suppression a échoué. Vérifiez votre connexion et réessayez.'**
+  String get contentDeleteFailed;
+
+  /// No description provided for @contentDeleteFailedWith.
+  ///
+  /// In fr, this message translates to:
+  /// **'La suppression a échoué : {message}'**
+  String contentDeleteFailedWith(String message);
+
+  /// No description provided for @editRemovePhoto.
+  ///
+  /// In fr, this message translates to:
+  /// **'Retirer la photo'**
+  String get editRemovePhoto;
+
+  /// No description provided for @editRemovePhotoConfirmTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Retirer votre photo de profil ?'**
+  String get editRemovePhotoConfirmTitle;
+
+  /// No description provided for @editRemovePhotoConfirmBody.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vos initiales s\'afficheront à la place.'**
+  String get editRemovePhotoConfirmBody;
+
+  /// No description provided for @editPhotoRemoved.
+  ///
+  /// In fr, this message translates to:
+  /// **'Photo retirée'**
+  String get editPhotoRemoved;
+
+  /// No description provided for @pushReceiveTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Recevoir des notifications'**
+  String get pushReceiveTitle;
+
+  /// No description provided for @pushReceiveSubtitleOn.
+  ///
+  /// In fr, this message translates to:
+  /// **'Cet appareil reçoit les notifications de votre compte.'**
+  String get pushReceiveSubtitleOn;
+
+  /// No description provided for @pushReceiveSubtitleOff.
+  ///
+  /// In fr, this message translates to:
+  /// **'Désactivé : cet appareil n\'est plus enregistré pour les notifications.'**
+  String get pushReceiveSubtitleOff;
+
+  /// No description provided for @pushReceiveOff.
+  ///
+  /// In fr, this message translates to:
+  /// **'Notifications désactivées sur cet appareil.'**
+  String get pushReceiveOff;
+
+  /// No description provided for @pushReceiveOn.
+  ///
+  /// In fr, this message translates to:
+  /// **'Notifications activées sur cet appareil.'**
+  String get pushReceiveOn;
+
+  /// No description provided for @pushReceiveFailed.
+  ///
+  /// In fr, this message translates to:
+  /// **'Impossible de modifier les notifications. Vérifiez votre connexion et réessayez.'**
+  String get pushReceiveFailed;
+
+  /// No description provided for @myDataTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mes données'**
+  String get myDataTitle;
+
+  /// No description provided for @myDataIntro.
+  ///
+  /// In fr, this message translates to:
+  /// **'Supprimez ce que vous avez publié, élément par élément, sans supprimer votre compte.'**
+  String get myDataIntro;
+
+  /// No description provided for @myDataTestimonies.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mes témoignages'**
+  String get myDataTestimonies;
+
+  /// No description provided for @myDataPrayerRequests.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mes sujets de prière'**
+  String get myDataPrayerRequests;
+
+  /// No description provided for @myDataProphecies.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mes paroles prophétiques'**
+  String get myDataProphecies;
+
+  /// No description provided for @myDataItemHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Chaque élément se supprime depuis son menu « ⋮ ».'**
+  String get myDataItemHint;
+
+  /// No description provided for @myDataRequestOther.
+  ///
+  /// In fr, this message translates to:
+  /// **'Demander la suppression d\'autres données'**
+  String get myDataRequestOther;
+
+  /// No description provided for @myDataRequestOtherHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ouvre la page de suppression du site, où vous pouvez faire une demande.'**
+  String get myDataRequestOtherHint;
+
+  /// No description provided for @myDataRequestFailed.
+  ///
+  /// In fr, this message translates to:
+  /// **'Impossible d\'ouvrir la page de suppression. Écrivez-nous à {email}.'**
+  String myDataRequestFailed(String email);
+
+  /// No description provided for @myDataDeleteAccountHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Supprime définitivement votre compte et toutes vos données.'**
+  String get myDataDeleteAccountHint;
+
+  /// No description provided for @myDataRequestFailedNoEmail.
+  ///
+  /// In fr, this message translates to:
+  /// **'Impossible d\'ouvrir la page de suppression. Ouvrez {url} dans votre navigateur.'**
+  String myDataRequestFailedNoEmail(String url);
 }
 
 class _AppLocalizationsDelegate

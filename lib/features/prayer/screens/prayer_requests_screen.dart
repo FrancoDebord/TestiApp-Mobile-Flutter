@@ -16,7 +16,10 @@ import '../widgets/prayer_widgets.dart';
 /// Requêtes de prière : toutes celles que je peux voir, ou les miennes ; filtre « Exaucées ».
 /// Docs serveur : fonctionnalites/requetes-de-priere.md
 class PrayerRequestsScreen extends ConsumerStatefulWidget {
-  const PrayerRequestsScreen({super.key});
+  const PrayerRequestsScreen({this.initialTab, super.key});
+
+  /// « mine » : ouvrir sur « Mes requêtes ».
+  final String? initialTab;
 
   @override
   ConsumerState<PrayerRequestsScreen> createState() => _PrayerRequestsScreenState();
@@ -44,6 +47,7 @@ class _PrayerRequestsScreenState extends ConsumerState<PrayerRequestsScreen> {
 
     return DefaultTabController(
       length: tabs.length,
+      initialIndex: widget.initialTab == 'mine' && tabs.length > 1 ? 1 : 0,
       child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(

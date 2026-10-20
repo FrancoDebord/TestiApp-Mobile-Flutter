@@ -24,6 +24,7 @@ import '../models/profile_models.dart';
 import '../providers/profile_provider.dart';
 import '../widgets/profile_menu.dart';
 import '../widgets/push_test.dart';
+import '../../notifications/providers/push_device_provider.dart';
 
 /// Écran 12 de la maquette : « Paramètres ».
 class SettingsScreen extends ConsumerWidget {
@@ -99,6 +100,8 @@ class SettingsScreen extends ConsumerWidget {
                   }
                 },
               ),
+              // « Recevoir des notifications » : jeton FCM de cet appareil enregistré ou retiré.
+              const PushReceiveTile(),
               // « Tester les notifications » : POST /me/push-test.
               ProfileMenuTile(
                 key: const ValueKey('push-test-tile'),
@@ -316,6 +319,15 @@ class SettingsScreen extends ConsumerWidget {
               onTap: () {
                 Navigator.pop(sheet);
                 context.pushNamed(AppRoutes.changePassword);
+              },
+            ),
+            ProfileMenuTile(
+              key: const ValueKey('settings-my-data'),
+              icon: Icons.folder_shared_outlined,
+              title: l10n.myDataTitle,
+              onTap: () {
+                Navigator.pop(sheet);
+                context.pushNamed(AppRoutes.myData);
               },
             ),
             ProfileMenuTile(
@@ -573,7 +585,7 @@ Widget _select<T>(
 }
 
 class _BrandSwitch extends StatelessWidget {
-  const _BrandSwitch({required this.value, required this.onChanged});
+  const _BrandSwitch({required this.value, required this.onChanged, super.key});
   final bool value;
   final ValueChanged<bool> onChanged;
 
@@ -627,6 +639,38 @@ class _SheetFrame extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// « Recevoir des notifications » : désactivé, le jeton FCM est supprimé côté serveur
+/// et sur l'appareil ; réactivé, il est réenregistré.
+class PushReceiveTile extends ConsumerWidget {
+  const PushReceiveTile({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
+    final enabled = ref.watch(pushDeviceEnabledProvider).value ?? true;
+    Future<void> change(bool v) async {
+      final messenger = ScaffoldMessenger.maybeOf(context);
+      try {
+        await ref.read(pushDeviceEnabledProvider.notifier).set(v);
+        messenger?.showSnackBar(SnackBar(
+            behavior: SnackBarBehavior.floating, content: Text(v ? l10n.pushReceiveOn : l10n.pushReceiveOff)));
+      } catch (_) {
+        messenger?.showSnackBar(
+            SnackBar(behavior: SnackBarBehavior.floating, content: Text(l10n.pushReceiveFailed)));
+      }
+    }
+
+    return ProfileMenuTile(
+      key: const ValueKey('push-receive-tile'),
+      icon: enabled ? Icons.notifications_active_rounded : Icons.notifications_off_outlined,
+      title: l10n.pushReceiveTitle,
+      subtitle: enabled ? l10n.pushReceiveSubtitleOn : l10n.pushReceiveSubtitleOff,
+      trailing: _BrandSwitch(key: const ValueKey('push-receive-switch'), value: enabled, onChanged: change),
+      onTap: () => change(!enabled),
     );
   }
 }

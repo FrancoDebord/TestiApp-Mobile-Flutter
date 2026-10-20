@@ -6,25 +6,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/app_constants.dart';
-import '../../core/theme/app_colors.dart';
 import '../../l10n/app_localizations.dart';
-import '../../services/api_service.dart';
 import '../auth/providers/auth_notifier.dart';
 import '../home/models/testimony_model.dart';
-import '../home/providers/home_providers.dart';
+import '../../shared/content_deletion.dart';
 
 /// Témoignages supprimés pendant la session : masqués dans toutes les listes déjà chargées
-/// (accueil, Mon fil, explorer, profils…).
-class DeletedTestimoniesNotifier extends Notifier<Set<String>> {
-  @override
-  Set<String> build() => const {};
-
-  void add(String id) => state = {...state, id};
-}
-
-final deletedTestimoniesProvider =
-    NotifierProvider<DeletedTestimoniesNotifier, Set<String>>(DeletedTestimoniesNotifier.new);
+/// (accueil, Mon fil, explorer, profils…). Voir [deletedContentProvider].
+final deletedTestimoniesProvider = Provider<Set<String>>((ref) => {
+      for (final key in ref.watch(deletedContentProvider))
+        if (key.startsWith('${DeletableContent.testimony.name}:')) key.substring(DeletableContent.testimony.name.length + 1),
+    });
 
 /// Peut supprimer : `canDelete` de l'API, ou (cache local) l'auteur et les administrateurs.
 bool canDeleteTestimony(WidgetRef ref, Testimony t) {
@@ -33,43 +25,11 @@ bool canDeleteTestimony(WidgetRef ref, Testimony t) {
   return me != null && (me.id == t.author.uid || me.isAdmin);
 }
 
-/// Demande confirmation puis supprime. Renvoie vrai si le témoignage a été supprimé.
-Future<bool> confirmDeleteTestimony(BuildContext context, WidgetRef ref, Testimony t) async {
+/// Demande confirmation puis supprime (« Supprimé » ou message d'erreur).
+/// Renvoie vrai si le témoignage a été supprimé.
+Future<bool> confirmDeleteTestimony(BuildContext context, WidgetRef ref, Testimony t) {
   final me = ref.read(currentUserProvider);
   final mine = me != null && me.id == t.author.uid;
-  final ok = await showDialog<bool>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: Text(ctx.l10n.testimonyDeleteTitle),
-      content: Text(mine
-          ? ctx.l10n.testimonyDeleteMineBody
-          : ctx.l10n.testimonyDeleteOtherBody(t.author.displayName)),
-      actions: [
-        TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(ctx.l10n.commonCancel)),
-        FilledButton(
-          style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
-          onPressed: () => Navigator.of(ctx).pop(true),
-          child: Text(ctx.l10n.commonDelete),
-        ),
-      ],
-    ),
-  );
-  if (ok != true) return false;
-
-  try {
-    await ref.read(apiServiceProvider).delete<void>(AppConstants.testimonyById(t.id));
-  } catch (e) {
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e is LaravelApiException ? e.message : context.l10n.testimonyDeleteError)),
-      );
-    }
-    return false;
-  }
-  ref.read(deletedTestimoniesProvider.notifier).add(t.id);
-  ref.read(feedNotifierProvider.notifier).removeTestimony(t.id);
-  if (context.mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.l10n.testimonyDeleted)));
-  }
-  return true;
+  return deleteTestimonyContent(context, ref, t.id,
+      body: mine ? context.l10n.testimonyDeleteMineBody : context.l10n.testimonyDeleteOtherBody(t.author.displayName));
 }

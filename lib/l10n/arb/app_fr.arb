@@ -5242,5 +5242,50 @@
   "accountDeleteWhatNote": "La suppression est immédiate et définitive. Votre e-mail et votre compte Google pourront servir à créer un nouveau compte.",
   "accountDeleteFinalTitle": "Supprimer définitivement votre compte ?",
   "accountDeleteFinalBody": "Votre compte et toutes vos données seront effacés tout de suite. Cette action ne peut pas être annulée.",
-  "accountDeletedDone": "Votre compte a été supprimé. Vous pouvez continuer en mode invité."
+  "accountDeletedDone": "Votre compte a été supprimé. Vous pouvez continuer en mode invité.",
+  "contentDeleted": "Supprimé",
+  "contentDeleteFailed": "La suppression a échoué. Vérifiez votre connexion et réessayez.",
+  "contentDeleteFailedWith": "La suppression a échoué : {message}",
+  "@contentDeleteFailedWith": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "editRemovePhoto": "Retirer la photo",
+  "editRemovePhotoConfirmTitle": "Retirer votre photo de profil ?",
+  "editRemovePhotoConfirmBody": "Vos initiales s'afficheront à la place.",
+  "editPhotoRemoved": "Photo retirée",
+  "pushReceiveTitle": "Recevoir des notifications",
+  "pushReceiveSubtitleOn": "Cet appareil reçoit les notifications de votre compte.",
+  "pushReceiveSubtitleOff": "Désactivé : cet appareil n'est plus enregistré pour les notifications.",
+  "pushReceiveOff": "Notifications désactivées sur cet appareil.",
+  "pushReceiveOn": "Notifications activées sur cet appareil.",
+  "pushReceiveFailed": "Impossible de modifier les notifications. Vérifiez votre connexion et réessayez.",
+  "myDataTitle": "Mes données",
+  "myDataIntro": "Supprimez ce que vous avez publié, élément par élément, sans supprimer votre compte.",
+  "myDataTestimonies": "Mes témoignages",
+  "myDataPrayerRequests": "Mes sujets de prière",
+  "myDataProphecies": "Mes paroles prophétiques",
+  "myDataItemHint": "Chaque élément se supprime depuis son menu « ⋮ ».",
+  "myDataRequestOther": "Demander la suppression d'autres données",
+  "myDataRequestOtherHint": "Ouvre la page de suppression du site, où vous pouvez faire une demande.",
+  "myDataRequestFailed": "Impossible d'ouvrir la page de suppression. Écrivez-nous à {email}.",
+  "@myDataRequestFailed": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "myDataDeleteAccountHint": "Supprime définitivement votre compte et toutes vos données.",
+  "myDataRequestFailedNoEmail": "Impossible d'ouvrir la page de suppression. Ouvrez {url} dans votre navigateur.",
+  "@myDataRequestFailedNoEmail": {
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  }
 }

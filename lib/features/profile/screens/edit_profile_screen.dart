@@ -16,6 +16,7 @@ import '../../../shared/models/user_model.dart';
 import '../../../shared/widgets/profile_cover.dart';
 import '../models/profile_models.dart';
 import '../providers/profile_provider.dart';
+import '../../../services/api_service.dart' show LaravelApiException;
 
 // Pays : liste partagée avec le site (lib/core/data/countries.dart).
 
@@ -199,6 +200,44 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         source: source, maxWidth: 512, maxHeight: 512, imageQuality: 80);
     if (file != null && mounted) {
       setState(() => _avatarPath = file.path);
+    }
+  }
+
+  /// Une photo est affichée ou enregistrée sur le compte.
+  bool get _hasPhoto =>
+      _avatarPath != null || (ref.read(currentUserProvider)?.avatarUrl ?? '').isNotEmpty;
+
+  /// « Retirer la photo » : confirmation, puis retrait immédiat (serveur et appareil).
+  Future<void> _removeAvatar() async {
+    final l10n = context.l10n;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.editRemovePhotoConfirmTitle),
+        content: Text(l10n.editRemovePhotoConfirmBody),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.commonCancel)),
+          FilledButton(
+            key: const ValueKey('remove-avatar-confirm'),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.editRemovePhoto),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(profileExtrasProvider.notifier).removeAvatar();
+      if (!mounted) return;
+      setState(() => _avatarPath = null);
+      messenger.showSnackBar(SnackBar(behavior: SnackBarBehavior.floating, content: Text(l10n.editPhotoRemoved)));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(
+        behavior: SnackBarBehavior.floating,
+        content: Text(e is LaravelApiException ? l10n.contentDeleteFailedWith(e.displayMessage) : l10n.contentDeleteFailed),
+      ));
     }
   }
 
@@ -415,6 +454,16 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       fontSize: 12,
                       color: AppColors.textSecondary)),
             ),
+            if (_hasPhoto)
+              Center(
+                child: TextButton.icon(
+                  key: const ValueKey('remove-avatar'),
+                  onPressed: _removeAvatar,
+                  icon: const Icon(Icons.no_photography_outlined, size: 18),
+                  label: Text(l10n.editRemovePhoto),
+                  style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+                ),
+              ),
             const SizedBox(height: 28),
 
             // ── Organisation ────────────────────────────────────────────

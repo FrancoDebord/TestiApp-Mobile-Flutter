@@ -30,6 +30,7 @@ import 'feed_card_frame.dart' show ensureMember;
 import 'testimony_action_bar.dart';
 import '../../../core/media/video_source.dart' show mediaHttpHeaders;
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/content_deletion.dart' show watchIsDeleted, DeletableContent;
 
 /// Ouvre le lecteur plein écran (Shorts) sur [testimony], dans l'ordre des
 /// vidéos du fil principal — même comportement que la grande carte vidéo.
@@ -137,6 +138,7 @@ class _CompactTestimonyTileState extends ConsumerState<CompactTestimonyTile> {
 
   @override
   Widget build(BuildContext context) {
+    if (watchIsDeleted(ref, DeletableContent.testimony, widget.testimony.id)) return const SizedBox.shrink();
     final t = ref.latest(widget.testimony);
     // Vidéo en traitement ou en échec : pas de bouton lecture.
     final hasPlay = t is AudioTestimony || (t is VideoTestimony && t.isReady);

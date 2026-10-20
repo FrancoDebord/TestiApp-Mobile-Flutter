@@ -67,10 +67,13 @@ class ProphecyStatusChip extends StatelessWidget {
 
 /// Carte d'une parole dans la liste.
 class ProphecyCard extends StatelessWidget {
-  const ProphecyCard({required this.prophecy, required this.onTap, super.key});
+  const ProphecyCard({required this.prophecy, required this.onTap, this.onDelete, super.key});
 
   final Prophecy prophecy;
   final VoidCallback onTap;
+
+  /// « ⋮ » → Supprimer (carnet privé : toujours l'auteur).
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -100,6 +103,25 @@ class ProphecyCard extends StatelessWidget {
                   ],
                   if (p.reminder != null && !p.fulfilled)
                     const Icon(Icons.notifications_active_outlined, size: 16, color: AppColors.textSecondary),
+                  if (onDelete != null)
+                    SizedBox(
+                      height: 28,
+                      child: PopupMenuButton<String>(
+                        key: ValueKey('prophecy-menu-${p.id}'),
+                        padding: EdgeInsets.zero,
+                        icon: const Icon(Icons.more_vert_rounded, size: 20, color: AppColors.textSecondary),
+                        onSelected: (_) => onDelete!(),
+                        itemBuilder: (_) => [
+                          PopupMenuItem(
+                            value: 'delete',
+                            child: ListTile(
+                              leading: const Icon(Icons.delete_outline, color: AppColors.danger),
+                              title: Text(context.l10n.commonDelete),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
               const SizedBox(height: 8),

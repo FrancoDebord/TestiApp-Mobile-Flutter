@@ -175,6 +175,21 @@ class ProfileExtrasNotifier extends AsyncNotifier<ProfileExtras> {
     return url;
   }
 
+  /// Retire la photo de profil : PUT /users/me { avatar_url: null } (le serveur n'a pas
+  /// de route DELETE /users/me/avatar), puis oubli de la copie locale.
+  Future<void> removeAvatar() async {
+    await ref.read(apiServiceProvider).put<dynamic>(AppConstants.updateProfile, data: {'avatar_url': null});
+    try {
+      if (!_actingForOther) await _storage.delete(key: _kAvatarPath);
+    } catch (_) {}
+    final current = state.value;
+    if (current != null) state = AsyncValue.data(current.copyWith(clearAvatarPath: true));
+    final user = ref.read(currentUserProvider);
+    if (user != null) {
+      await ref.read(authStateProvider.notifier).updateCurrentUser(user.copyWith(clearAvatarUrl: true));
+    }
+  }
+
   /// Photo de couverture : POST /users/me/cover (champ `cover`), puis mise à
   /// jour de `cover_url` de l'utilisateur connecté. Lève [LaravelApiException]
   /// en cas d'échec (image trop petite, réseau…). Backend :
@@ -396,6 +411,12 @@ class MyTestimoniesNotifier extends AsyncNotifier<List<UserTestimony>> {
   Future<void> refresh() async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(_fetch);
+  }
+
+  /// Retire un témoignage supprimé ailleurs (menu « ⋮ », Mes données).
+  void removeLocal(String id) {
+    final list = state.value;
+    if (list != null) state = AsyncData(list.where((t) => t.id != id).toList());
   }
 
   Future<bool> deleteTestimony(String id) async {

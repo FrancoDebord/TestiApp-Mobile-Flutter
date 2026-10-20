@@ -16,6 +16,7 @@ import '../data/prayer_repository.dart';
 import '../models/prayer_models.dart';
 import '../providers/prayer_providers.dart';
 import '../widgets/prayer_widgets.dart';
+import '../../../shared/content_deletion.dart' show deletePrayerRequestContent;
 
 /// Détail d'une requête : « Je prie », encouragements, exaucement (auteur), signalement.
 class PrayerRequestDetailScreen extends ConsumerStatefulWidget {
@@ -95,32 +96,7 @@ class _PrayerRequestDetailScreenState extends ConsumerState<PrayerRequestDetailS
   }
 
   Future<void> _delete() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(context.l10n.prayerDeleteRequestTitle),
-        content: Text(context.l10n.prayerDeleteRequestBody),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(context.l10n.commonCancel)),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(context.l10n.commonDelete),
-          ),
-        ],
-      ),
-    );
-    if (ok != true) return;
-    try {
-      await _repo.deleteRequest(_id);
-      ref.invalidate(prayerRequestListProvider);
-      ref.invalidate(prayerRequestsPageProvider);
-      if (!mounted) return;
-      _snack(context.l10n.prayerRequestDeleted);
-      context.pop();
-    } on PrayerFailure catch (e) {
-      if (mounted) _snack(e.message);
-    }
+    if (await deletePrayerRequestContent(context, ref, _id) && mounted) context.pop();
   }
 
   Future<void> _report() async {
