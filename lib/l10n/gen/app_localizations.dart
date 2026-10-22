@@ -146,6 +146,12 @@ abstract class AppLocalizations {
   /// **'Événements'**
   String get navEvents;
 
+  /// No description provided for @navPrayer.
+  ///
+  /// In fr, this message translates to:
+  /// **'Prières'**
+  String get navPrayer;
+
   /// No description provided for @homeTitle.
   ///
   /// In fr, this message translates to:

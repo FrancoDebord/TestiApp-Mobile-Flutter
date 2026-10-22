@@ -22,12 +22,20 @@ class VerseVersion {
     required this.code,
     required this.name,
     this.language,
+    this.bookName,
+    this.reference,
     this.lines = const [],
   });
 
   final String code;
   final String name;
   final String? language;
+
+  /// Nom du livre dans la langue de la traduction (« John » en KJV) ; null : serveur ancien.
+  final String? bookName;
+
+  /// Référence dans la langue de la traduction (« John 3:16 ») ; null : serveur ancien.
+  final String? reference;
 
   /// Versets présents dans cette traduction ([] : passage absent).
   final List<VerseLine> lines;
@@ -54,6 +62,8 @@ class VerseVersion {
       code: '${j['code'] ?? ''}',
       name: '${j['name'] ?? j['code'] ?? ''}',
       language: j['language'] as String?,
+      bookName: (j['bookName'] as String?)?.trim().isNotEmpty == true ? j['bookName'] as String : null,
+      reference: (j['reference'] as String?)?.trim().isNotEmpty == true ? j['reference'] as String : null,
       lines: lines,
     );
   }

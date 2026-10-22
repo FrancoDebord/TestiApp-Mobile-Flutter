@@ -336,12 +336,12 @@ void main() {
           'Accueil',
           'Explorer',
           'Publier',
-          'Événements',
+          'Prières',
           'Profil',
         ]) {
           expect(find.text(label), findsOneWidget, reason: label);
         }
-        await tester.tap(find.text('Événements'));
+        await tester.tap(find.text('Prières'));
         await tester.pumpAndSettle();
         expect(find.text('page 4'), findsOneWidget);
         await tester.tap(find.byIcon(Icons.add_rounded));

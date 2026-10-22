@@ -48,6 +48,8 @@ Map<String, dynamic> _versionsJson() => {
         },
         {
           'code': 'KJV', 'name': 'King James Version', 'language': 'en', 'available': true,
+          // Nom du livre dans la langue de la version (LSG sans ces champs : serveur ancien).
+          'bookName': 'John', 'reference': 'John 3:16-17',
           'verses': [
             {'verse': 16, 'text': 'For God so loved the world, that he gave his only begotten Son.'},
           ],
@@ -207,6 +209,12 @@ void main() {
       expect(VerseReference.findAll('Lisez (Jn 3:16) puis Rm 8:28.').map((r) => r.book), [43, 45]);
       expect(VerseReference.parse('Un texte sans référence'), isNull);
       expect(VerseReference.parse('Il est 3:4'), isNull);
+      // Livres d'un chapitre : chapitre 1 implicite.
+      expect(VerseReference.parse('Jude 24-25'),
+          const VerseReference(book: 65, chapter: 1, verseStart: 24, verseEnd: 25));
+      expect(VerseReference.parse('3 Jean 3')!.book, 64);
+      expect(VerseReference.parse('Jean 3'), isNull);
+      expect(VerseReference.parse('Jean 3:16')!.labelWith('John'), 'John 3:16');
     });
   });
 
@@ -217,6 +225,8 @@ void main() {
       expect(data.originalText, _longText);
       expect(data.byCode('LSG')!.lines, hasLength(2));
       expect(data.byCode('KJV')!.text, startsWith('For God'));
+      expect(data.byCode('KJV')!.reference, 'John 3:16-17');
+      expect(data.byCode('LSG')!.reference, isNull);
       expect(data.byCode('BBE')!.available, isFalse);
       expect(data.byCode('XYZ'), isNull);
     });
@@ -277,6 +287,8 @@ void main() {
       await _backToVerse(tester);
       expect(find.textContaining('For God so loved the world', findRichText: true), findsOneWidget);
       expect(find.text('King James Version'), findsOneWidget);
+      // Référence dans la langue de la version.
+      expect(find.text('John 3:16-17'), findsOneWidget);
 
       // Version absente pour ce passage : non sélectionnable.
       await tester.scrollUntilVisible(find.text('BBE'), 150, scrollable: find.byType(Scrollable).first);

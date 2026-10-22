@@ -153,8 +153,10 @@ class _DailyVerseScreenState extends ConsumerState<DailyVerseScreen>
     return (text: data?.originalText ?? verse.text, label: context.l10n.verseTodayText, version: null, missing: missing);
   }
 
-  String _reference(DailyVerse verse, DailyVerseVersions? data) =>
-      data?.parsed?.label ?? verse.reference;
+  /// Référence dans la langue de la version affichée (« John 3:16 » en KJV),
+  /// sinon celle du texte du jour.
+  String _reference(DailyVerse verse, DailyVerseVersions? data, [VerseVersion? version]) =>
+      version?.reference ?? data?.parsed?.label ?? verse.reference;
 
   // ── Actions ────────────────────────────────────────────────────────────────
 
@@ -240,14 +242,17 @@ class _DailyVerseScreenState extends ConsumerState<DailyVerseScreen>
   Future<void> _testify(DailyVerse verse, DailyVerseVersions? data) async {
     if (!await requireAccount(context, ref, reason: context.l10n.verseReasonTestify)) return;
     if (!mounted) return;
-    final reference = _reference(verse, data);
+    final preferred = ref.read(preferredVerseTranslationProvider);
+    final version = data?.byCode(preferred);
+    final shownVersion = version != null && version.available ? version : null;
+    final reference = _reference(verse, data, shownVersion);
     ref.read(bibleVerseToInsertProvider.notifier).set(reference);
     final parsed = data?.parsed;
     if (parsed != null) {
       ref.read(bibleVerseRefProvider.notifier).set(BibleVerseRef(
-            translationCode: ref.read(preferredVerseTranslationProvider) ?? 'LSG',
+            translationCode: preferred ?? 'LSG',
             bookNumber: parsed.book,
-            bookName: parsed.bookName,
+            bookName: shownVersion?.bookName ?? parsed.bookName,
             chapter: parsed.chapter,
             verseNumbers: [for (var v = parsed.verseStart; v <= parsed.verseEnd; v++) v],
           ));
@@ -268,7 +273,7 @@ class _DailyVerseScreenState extends ConsumerState<DailyVerseScreen>
     final versionsAsync = ref.watch(dailyVerseVersionsProvider(dailyVerseKey(verse)));
     final data = versionsAsync.value;
     final shown = _display(verse, data);
-    final reference = _reference(verse, data);
+    final reference = _reference(verse, data, shown.version);
 
     final design = ref.watch(currentVerseDesignProvider);
     final prefs = ref.watch(verseStylePrefsProvider);
@@ -1086,7 +1091,7 @@ class _CompareList extends StatelessWidget {
           block(context.l10n.verseTodayText, Text(data.originalText, style: style)),
           for (final v in data.versions)
             block(
-              '${v.code} · ${v.name}',
+              v.reference == null ? '${v.code} · ${v.name}' : '${v.code} · ${v.name} · ${v.reference}',
               v.available
                   ? VersePassageText(text: v.text!, version: v, style: style, accent: AppColors.secondaryDark)
                   : Text(context.l10n.verseVersionUnavailable,

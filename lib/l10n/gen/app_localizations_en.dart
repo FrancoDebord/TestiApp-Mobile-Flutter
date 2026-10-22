@@ -33,6 +33,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navEvents => 'Events';
 
   @override
+  String get navPrayer => 'Prayers';
+
+  @override
   String get homeTitle => 'Testimonies';
 
   @override

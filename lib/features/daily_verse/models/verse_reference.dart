@@ -26,15 +26,32 @@ class VerseReference {
   String get bookName => kBibleBookNamesFr[book] ?? 'Livre $book';
 
   /// « Jean 3:16-17 ».
-  String get label =>
-      '$bookName $chapter:${isRange ? '$verseStart-$verseEnd' : '$verseStart'}';
+  String get label => labelWith(null);
+
+  /// Même référence avec le nom du livre d'une traduction (« John 3:16-17 ») ;
+  /// nom français si [name] est vide.
+  String labelWith(String? name) =>
+      '${name == null || name.trim().isEmpty ? bookName : name} $chapter:${isRange ? '$verseStart-$verseEnd' : '$verseStart'}';
 
   bool contains(int verse) => verse >= verseStart && verse <= verseEnd;
 
-  /// Première référence de [text], ou null.
+  /// Première référence de [text], ou null. Une référence seule d'un livre d'un
+  /// chapitre peut omettre le chapitre : « Jude 24-25 », « 3 Jean 3 » (= chapitre 1).
   static VerseReference? parse(String? text) {
     final all = findAll(text);
-    return all.isEmpty ? null : all.first;
+    return all.isEmpty ? _parseSingleChapter(text) : all.first;
+  }
+
+  static VerseReference? _parseSingleChapter(String? text) {
+    if (text == null) return null;
+    final m = RegExp(r'^\s*(.+?)\s+(\d{1,3})(?:\s*(?:[-–—]|à|to)\s*(\d{1,3}))?\s*$').firstMatch(text);
+    if (m == null) return null;
+    final book = bookNumber(m.group(1)!);
+    if (book == null || !_singleChapterBooks.contains(book)) return null;
+    final start = int.parse(m.group(2)!);
+    if (start < 1) return null;
+    final end = m.group(3) == null ? start : int.parse(m.group(3)!);
+    return VerseReference(book: book, chapter: 1, verseStart: start, verseEnd: end < start ? start : end);
   }
 
   /// Toutes les références d'un texte libre, dans l'ordre.
@@ -89,6 +106,9 @@ class VerseReference {
   @override
   String toString() => label;
 }
+
+/// Livres d'un seul chapitre : Abdias, Philémon, 2 Jean, 3 Jean, Jude.
+const _singleChapterBooks = {31, 57, 63, 64, 65};
 
 final _numbers = RegExp(
     r'(\d{1,3})\s*[:.,]\s*(\d{1,3})(?:\s*(?:[-–—]|à|to)\s*(\d{1,3}))?');

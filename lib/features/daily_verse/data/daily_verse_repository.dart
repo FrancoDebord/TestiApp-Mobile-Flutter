@@ -82,7 +82,19 @@ class DailyVerseRepository {
               .map((v) => VerseLine(v.verseNumber, v.text.trim()))
               .toList()
             ..sort((a, b) => a.verse.compareTo(b.verse));
-          versions.add(VerseVersion(code: t.code, name: t.name, language: t.language, lines: lines));
+          // Nom du livre dans la langue de la Bible téléchargée (« John » en KJV).
+          String? bookName;
+          for (final b in await dao.getBooks(t.code)) {
+            if (b.bookNumber == parsed.book) bookName = b.name;
+          }
+          versions.add(VerseVersion(
+            code: t.code,
+            name: t.name,
+            language: t.language,
+            bookName: bookName,
+            reference: parsed.labelWith(bookName),
+            lines: lines,
+          ));
         }
       } catch (_) {/* base locale indisponible */}
     }

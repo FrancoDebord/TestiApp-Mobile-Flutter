@@ -556,24 +556,49 @@ List<RouteBase> _buildRoutes() {
       ],
     ),
 
-    // Requêtes et sessions de prière (docs serveur fonctionnalites/requetes-de-priere.md,
-    // sessions-de-priere.md). La salle d'une session est un direct : /lives/{id} (et son studio).
+    // Événements chrétiens (hors barre du bas : menu latéral, accueil, publier).
+    // docs serveur fonctionnalites/evenements.md
     GoRoute(
-      path: '/prayer-requests',
-      // ?tab=mine : onglet « Mes requêtes » (Mes données).
-      builder: (context, state) => PrayerRequestsScreen(initialTab: state.uri.queryParameters['tab']),
+      path: '/events',
+      pageBuilder: (context, state) => AppTransitions.slideRight(
+        state: state,
+        child: const EventsScreen(),
+      ),
       routes: [
-        // Avant ':id' : sinon « new » serait lu comme un identifiant. ?event= : requête d'un événement.
+        // Avant ':id' : sinon « new » serait lu comme un identifiant.
         GoRoute(
           path: 'new',
-          builder: (context, state) => SubmitPrayerRequestScreen(eventId: state.uri.queryParameters['event']),
+          builder: (context, state) => const EventFormScreen(),
+        ),
+        // Événements passés : revivre les témoignages.
+        GoRoute(
+          path: 'past',
+          builder: (context, state) => const PastEventsScreen(),
         ),
         GoRoute(
           path: ':id',
-          builder: (context, state) => PrayerRequestDetailScreen(requestId: state.pathParameters['id']!),
+          builder: (context, state) =>
+              EventDetailScreen(eventId: state.pathParameters['id']!),
+          routes: [
+            GoRoute(
+              path: 'edit',
+              builder: (context, state) =>
+                  EventFormScreen(eventId: state.pathParameters['id']),
+            ),
+            // Direct YouTube de l'événement (vue « YouTube », plein écran).
+            GoRoute(
+              path: 'live',
+              builder: (context, state) =>
+                  EventLiveScreen(eventId: state.pathParameters['id']!),
+            ),
+          ],
         ),
       ],
     ),
+
+    // Sessions de prière (docs serveur sessions-de-priere.md) ; les requêtes
+    // sont l'onglet « Prières » de la barre du bas. La salle d'une session est
+    // un direct : /lives/{id} (et son studio).
     GoRoute(
       path: '/prayer-sessions',
       builder: (context, state) => const GroupPrayerSessionsScreen(),
@@ -807,45 +832,27 @@ List<RouteBase> _buildRoutes() {
           ],
         ),
 
-        // â”€â”€ Branch 3: Notifications â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        // Onglet « Événements » (a remplacé Téléchargements, désormais dans le
-        // menu latéral et le profil). docs serveur fonctionnalites/evenements.md
+        // ── Branch 4: Prières ────────────────────────────────────────────────
+        // Onglet « Prières » (a remplacé Événements, désormais dans le menu
+        // latéral). docs serveur fonctionnalites/requetes-de-priere.md
         StatefulShellBranch(
           routes: [
             GoRoute(
-              path: '/events',
+              path: '/prayer-requests',
+              // ?tab=mine : onglet « Mes requêtes » (Mes données).
               pageBuilder: (context, state) => AppTransitions.none(
                 state: state,
-                child: const EventsScreen(),
+                child: PrayerRequestsScreen(initialTab: state.uri.queryParameters['tab']),
               ),
               routes: [
-                // Avant ':id' : sinon « new » serait lu comme un identifiant.
+                // Avant ':id' : sinon « new » serait lu comme un identifiant. ?event= : requête d'un événement.
                 GoRoute(
                   path: 'new',
-                  builder: (context, state) => const EventFormScreen(),
-                ),
-                // Événements passés : revivre les témoignages.
-                GoRoute(
-                  path: 'past',
-                  builder: (context, state) => const PastEventsScreen(),
+                  builder: (context, state) => SubmitPrayerRequestScreen(eventId: state.uri.queryParameters['event']),
                 ),
                 GoRoute(
                   path: ':id',
-                  builder: (context, state) =>
-                      EventDetailScreen(eventId: state.pathParameters['id']!),
-                  routes: [
-                    GoRoute(
-                      path: 'edit',
-                      builder: (context, state) =>
-                          EventFormScreen(eventId: state.pathParameters['id']),
-                    ),
-                    // Direct YouTube de l'événement (vue « YouTube », plein écran).
-                    GoRoute(
-                      path: 'live',
-                      builder: (context, state) =>
-                          EventLiveScreen(eventId: state.pathParameters['id']!),
-                    ),
-                  ],
+                  builder: (context, state) => PrayerRequestDetailScreen(requestId: state.pathParameters['id']!),
                 ),
               ],
             ),

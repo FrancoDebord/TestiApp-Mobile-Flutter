@@ -12,7 +12,7 @@ import 'package:testi_app/shared/widgets/guest_gate.dart';
 /// Persistent shell for the 6 bottom-nav branches.
 ///
 /// Barre blanche (bordure fine en haut) : Accueil · Explorer · [+ Publier]
-/// · Événements · Profil (Téléchargements : menu latéral et profil). Publier (index 3) est un bouton rond bleu au
+/// · Prières · Profil (Téléchargements, Événements : menu latéral). Publier (index 3) est un bouton rond bleu au
 /// centre, libellé dessous. Onglet actif : icône + libellé bleus sur pastille
 /// bleu clair (radius 12) ; inactif : gris.
 /// Bible (branch 2) remains reachable via the horizontal swipe gesture
@@ -66,7 +66,7 @@ class ScaffoldWithBottomNav extends ConsumerWidget {
         child: navigationShell,
       ),
 
-      // ── Barre du bas : Accueil · Explorer · [+ Publier] · Événements · Profil
+      // ── Barre du bas : Accueil · Explorer · [+ Publier] · Prières · Profil
       // Au-dessus : « Vous agissez au nom de X » quand on agit pour un compte administré.
       bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
@@ -112,9 +112,9 @@ class ScaffoldWithBottomNav extends ConsumerWidget {
                     ),
                     Expanded(
                       child: _NavIcon(
-                        activeIcon:   Icons.event_rounded,
-                        inactiveIcon: Icons.event_outlined,
-                        label: l10n.navEvents,
+                        activeIcon:   Icons.volunteer_activism_rounded,
+                        inactiveIcon: Icons.volunteer_activism_outlined,
+                        label: l10n.navPrayer,
                         selected: cur == 4,
                         onTap: () => _onTabTap(context, 4),
                       ),
