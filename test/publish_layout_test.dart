@@ -105,8 +105,8 @@ void main() {
 
         expect(tester.takeException(), isNull);
         expect(find.text('Partager un témoignage'), findsOneWidget);
-        expect(find.text('Enregistrer une vidéo'), findsOneWidget);
-        expect(find.text('Enregistrer un audio'), findsOneWidget);
+        expect(find.text('Témoignage en vidéo'), findsOneWidget);
+        expect(find.text('Témoignage en audio'), findsOneWidget);
         expect(find.text('Écrire un texte'), findsOneWidget);
         expect(find.text('Importer une image / document'), findsOneWidget);
         await tester.scrollUntilVisible(find.text('Lien YouTube'), 200);

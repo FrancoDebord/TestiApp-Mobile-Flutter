@@ -335,7 +335,7 @@ void main() {
         for (final label in [
           'Accueil',
           'Explorer',
-          'Publier',
+          'Témoigner',
           'Prières',
           'Profil',
         ]) {

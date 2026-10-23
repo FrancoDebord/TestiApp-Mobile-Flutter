@@ -18,7 +18,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navShorts => 'Shorts';
 
   @override
-  String get navPublish => 'Publish';
+  String get navPublish => 'Testify';
 
   @override
   String get navNotifications => 'Alerts';
@@ -3108,7 +3108,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get eventsComposerHint =>
-      'E.g. during the prayer, I was healed… (@ to mention)';
+      'E.g. during the prayer, I was healed… (@ to mention someone)';
 
   @override
   String get eventsDeleteCommentTitle => 'Delete this comment?';
@@ -4053,7 +4053,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get verseCommentHintMention =>
-      'What this verse tells you today… (@ to mention)';
+      'What this verse tells you today… (@ to mention someone)';
 
   @override
   String get verseCommentsEmpty =>
@@ -5558,7 +5558,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get prayerRequestHint =>
-      'What would you like us to pray for? (@ to mention)';
+      'What would you like us to pray for? (@ to mention someone)';
 
   @override
   String get prayerRequestHelperPrivate =>
@@ -5687,7 +5687,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get prayerMessagesUnavailable => 'Messages unavailable.';
 
   @override
-  String get prayerMessageHintMention => 'Praying with you… (@ to mention)';
+  String get prayerMessageHintMention =>
+      'Praying with you… (@ to mention someone)';
 
   @override
   String get prayerMessageLabel => 'Message of encouragement';
@@ -7773,10 +7774,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get publishWhichForm => 'What form does your testimony take?';
 
   @override
-  String get publishRecordVideo => 'Record a video';
+  String get publishRecordVideo => 'Video testimony';
 
   @override
-  String get publishRecordAudio => 'Record audio';
+  String get publishRecordAudio => 'Audio testimony';
 
   @override
   String get publishWriteText => 'Write a text';
@@ -7864,7 +7865,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Also serves as a transcript for accessibility.';
 
   @override
-  String get publishBodyHint => 'Tell your testimony… (@ to mention)';
+  String get publishBodyHint => 'Tell your testimony… (@ to mention someone)';
 
   @override
   String get publishCategoryOptional => 'Category (optional)';

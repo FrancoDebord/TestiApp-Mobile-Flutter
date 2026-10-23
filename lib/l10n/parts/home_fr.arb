@@ -543,7 +543,7 @@
   "verseCommentReportTitle": "Signaler ce commentaire",
   "verseCommentReported": "Merci, le commentaire a été signalé à la modération.",
   "verseCommentHint": "Ce que ce verset vous dit aujourd'hui…",
-  "verseCommentHintMention": "Ce que ce verset vous dit aujourd'hui… (@ pour mentionner)",
+  "verseCommentHintMention": "Ce que ce verset vous dit aujourd'hui… (@ pour mentionner quelqu'un)",
   "verseCommentsEmpty": "Aucun commentaire. Partagez ce que ce verset vous inspire.",
   "verseCommentHidden": "Retiré après signalement",
   "verseTestifyIntro": "Ce verset s'est accompli dans votre vie ? Racontez-le.",

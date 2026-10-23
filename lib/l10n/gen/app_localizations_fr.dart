@@ -18,7 +18,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get navShorts => 'Shorts';
 
   @override
-  String get navPublish => 'Publier';
+  String get navPublish => 'Témoigner';
 
   @override
   String get navNotifications => 'Alertes';
@@ -132,10 +132,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get publishTestimony => 'Témoignage texte';
 
   @override
-  String get publishAudio => 'Témoignage audio';
+  String get publishAudio => 'Témoignage en audio';
 
   @override
-  String get publishVideo => 'Témoignage vidéo';
+  String get publishVideo => 'Témoignage en vidéo';
 
   @override
   String get publishLive => 'Live';
@@ -3116,7 +3116,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get eventsComposerHint =>
-      'Ex. : pendant la prière, j\'ai été guéri… (@ pour mentionner)';
+      'Ex. : pendant la prière, j\'ai été guéri… (@ pour mentionner quelqu\'un)';
 
   @override
   String get eventsDeleteCommentTitle => 'Supprimer ce commentaire ?';
@@ -4067,7 +4067,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get verseCommentHintMention =>
-      'Ce que ce verset vous dit aujourd\'hui… (@ pour mentionner)';
+      'Ce que ce verset vous dit aujourd\'hui… (@ pour mentionner quelqu\'un)';
 
   @override
   String get verseCommentsEmpty =>
@@ -5584,7 +5584,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get prayerRequestHint =>
-      'Pour quoi souhaitez-vous que l\'on prie ? (@ pour mentionner)';
+      'Pour quoi souhaitez-vous que l\'on prie ? (@ pour mentionner quelqu\'un)';
 
   @override
   String get prayerRequestHelperPrivate =>
@@ -5714,7 +5714,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get prayerMessageHintMention =>
-      'Je prie avec vous… (@ pour mentionner)';
+      'Je prie avec vous… (@ pour mentionner quelqu\'un)';
 
   @override
   String get prayerMessageLabel => 'Message d\'encouragement';
@@ -7498,10 +7498,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get publishFormatText => 'Témoignage Écrit';
 
   @override
-  String get publishFormatAudio => 'Témoignage Audio';
+  String get publishFormatAudio => 'Témoignage en audio';
 
   @override
-  String get publishFormatVideo => 'Témoignage Vidéo';
+  String get publishFormatVideo => 'Témoignage en vidéo';
 
   @override
   String get publishFormatTextHint => 'Racontez avec vos mots';
@@ -7830,10 +7830,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get publishWhichForm => 'Quelle forme prend votre témoignage ?';
 
   @override
-  String get publishRecordVideo => 'Enregistrer une vidéo';
+  String get publishRecordVideo => 'Témoignage en vidéo';
 
   @override
-  String get publishRecordAudio => 'Enregistrer un audio';
+  String get publishRecordAudio => 'Témoignage en audio';
 
   @override
   String get publishWriteText => 'Écrire un texte';
@@ -7922,7 +7922,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get publishBodyHint =>
-      'Racontez votre témoignage… (@ pour mentionner)';
+      'Racontez votre témoignage… (@ pour mentionner quelqu\'un)';
 
   @override
   String get publishCategoryOptional => 'Catégorie (optionnel)';

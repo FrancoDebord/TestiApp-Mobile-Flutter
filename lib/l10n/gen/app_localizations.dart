@@ -119,7 +119,7 @@ abstract class AppLocalizations {
   /// No description provided for @navPublish.
   ///
   /// In fr, this message translates to:
-  /// **'Publier'**
+  /// **'Témoigner'**
   String get navPublish;
 
   /// No description provided for @navNotifications.
@@ -347,13 +347,13 @@ abstract class AppLocalizations {
   /// No description provided for @publishAudio.
   ///
   /// In fr, this message translates to:
-  /// **'Témoignage audio'**
+  /// **'Témoignage en audio'**
   String get publishAudio;
 
   /// No description provided for @publishVideo.
   ///
   /// In fr, this message translates to:
-  /// **'Témoignage vidéo'**
+  /// **'Témoignage en vidéo'**
   String get publishVideo;
 
   /// No description provided for @publishLive.
@@ -5651,7 +5651,7 @@ abstract class AppLocalizations {
   /// No description provided for @eventsComposerHint.
   ///
   /// In fr, this message translates to:
-  /// **'Ex. : pendant la prière, j\'ai été guéri… (@ pour mentionner)'**
+  /// **'Ex. : pendant la prière, j\'ai été guéri… (@ pour mentionner quelqu\'un)'**
   String get eventsComposerHint;
 
   /// No description provided for @eventsDeleteCommentTitle.
@@ -7277,7 +7277,7 @@ abstract class AppLocalizations {
   /// No description provided for @verseCommentHintMention.
   ///
   /// In fr, this message translates to:
-  /// **'Ce que ce verset vous dit aujourd\'hui… (@ pour mentionner)'**
+  /// **'Ce que ce verset vous dit aujourd\'hui… (@ pour mentionner quelqu\'un)'**
   String get verseCommentHintMention;
 
   /// No description provided for @verseCommentsEmpty.
@@ -9845,7 +9845,7 @@ abstract class AppLocalizations {
   /// No description provided for @prayerRequestHint.
   ///
   /// In fr, this message translates to:
-  /// **'Pour quoi souhaitez-vous que l\'on prie ? (@ pour mentionner)'**
+  /// **'Pour quoi souhaitez-vous que l\'on prie ? (@ pour mentionner quelqu\'un)'**
   String get prayerRequestHint;
 
   /// No description provided for @prayerRequestHelperPrivate.
@@ -10055,7 +10055,7 @@ abstract class AppLocalizations {
   /// No description provided for @prayerMessageHintMention.
   ///
   /// In fr, this message translates to:
-  /// **'Je prie avec vous… (@ pour mentionner)'**
+  /// **'Je prie avec vous… (@ pour mentionner quelqu\'un)'**
   String get prayerMessageHintMention;
 
   /// No description provided for @prayerMessageLabel.
@@ -13007,13 +13007,13 @@ abstract class AppLocalizations {
   /// No description provided for @publishFormatAudio.
   ///
   /// In fr, this message translates to:
-  /// **'Témoignage Audio'**
+  /// **'Témoignage en audio'**
   String get publishFormatAudio;
 
   /// No description provided for @publishFormatVideo.
   ///
   /// In fr, this message translates to:
-  /// **'Témoignage Vidéo'**
+  /// **'Témoignage en vidéo'**
   String get publishFormatVideo;
 
   /// No description provided for @publishFormatTextHint.
@@ -13583,13 +13583,13 @@ abstract class AppLocalizations {
   /// No description provided for @publishRecordVideo.
   ///
   /// In fr, this message translates to:
-  /// **'Enregistrer une vidéo'**
+  /// **'Témoignage en vidéo'**
   String get publishRecordVideo;
 
   /// No description provided for @publishRecordAudio.
   ///
   /// In fr, this message translates to:
-  /// **'Enregistrer un audio'**
+  /// **'Témoignage en audio'**
   String get publishRecordAudio;
 
   /// No description provided for @publishWriteText.
@@ -13751,7 +13751,7 @@ abstract class AppLocalizations {
   /// No description provided for @publishBodyHint.
   ///
   /// In fr, this message translates to:
-  /// **'Racontez votre témoignage… (@ pour mentionner)'**
+  /// **'Racontez votre témoignage… (@ pour mentionner quelqu\'un)'**
   String get publishBodyHint;
 
   /// No description provided for @publishCategoryOptional.

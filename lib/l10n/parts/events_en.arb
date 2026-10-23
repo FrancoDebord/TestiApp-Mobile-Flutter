@@ -326,7 +326,7 @@
   "eventsCommentsLoadError": "Unable to load comments.",
   "eventsCommentThanks": "Thank you for your testimony!",
   "eventsComposerHelp": "Tell what you experienced during the event. The organizers can save it as an official testimony.",
-  "eventsComposerHint": "E.g. during the prayer, I was healed… (@ to mention)",
+  "eventsComposerHint": "E.g. during the prayer, I was healed… (@ to mention someone)",
   "eventsDeleteCommentTitle": "Delete this comment?",
   "eventsCommentDeleted": "Comment deleted.",
   "eventsSavedAsTestimony": "Saved as testimony",

@@ -551,7 +551,7 @@
   "eventsCommentsLoadError": "Impossible de charger les commentaires.",
   "eventsCommentThanks": "Merci pour votre témoignage !",
   "eventsComposerHelp": "Racontez ce que vous avez vécu pendant l'événement. Les organisateurs pourront l'enregistrer comme témoignage officiel.",
-  "eventsComposerHint": "Ex. : pendant la prière, j'ai été guéri… (@ pour mentionner)",
+  "eventsComposerHint": "Ex. : pendant la prière, j'ai été guéri… (@ pour mentionner quelqu'un)",
   "eventsDeleteCommentTitle": "Supprimer ce commentaire ?",
   "eventsCommentDeleted": "Commentaire supprimé.",
   "eventsSavedAsTestimony": "Enregistré comme témoignage",
