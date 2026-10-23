@@ -5573,6 +5573,22 @@ class AppLocalizationsFr extends AppLocalizations {
       'Rattachée à l\'événement : elle apparaîtra sur sa page.';
 
   @override
+  String get prayerFromTestimonyAction => 'Confier un sujet de prière';
+
+  @override
+  String get prayerFromTestimonyShort => 'Sujet de prière';
+
+  @override
+  String prayerRequestFromTestimony(String title) {
+    return 'Après le témoignage « $title »';
+  }
+
+  @override
+  String prayerRequestLinkedToTestimony(String title) {
+    return 'Inspirée du témoignage « $title » : votre requête y renverra.';
+  }
+
+  @override
   String get prayerYourRequest => 'Votre requête';
 
   @override

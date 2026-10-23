@@ -227,6 +227,22 @@ class _PrayerRequestFeedCardState extends ConsumerState<PrayerRequestFeedCard> {
                     ),
                   ]),
                 ],
+                if (r.sourceTestimony != null) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  InkWell(
+                    onTap: () => context.push('/testimony/${r.sourceTestimony!.id}'),
+                    child: Row(children: [
+                      const Icon(Icons.auto_stories_rounded, size: 15, color: AppColors.primary),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(context.l10n.prayerRequestFromTestimony(r.sourceTestimony!.title),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.bodySmall.copyWith(color: AppColors.primary, fontWeight: FontWeight.w600)),
+                      ),
+                    ]),
+                  ),
+                ],
                 const SizedBox(height: AppSpacing.md),
                 const Divider(height: 1),
                 const SizedBox(height: AppSpacing.sm),

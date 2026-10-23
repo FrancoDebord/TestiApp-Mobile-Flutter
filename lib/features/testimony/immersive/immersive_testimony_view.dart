@@ -40,6 +40,7 @@ class ImmersiveTestimonyView extends StatelessWidget {
     required this.onPray,
     required this.onComment,
     required this.onShare,
+    required this.onEntrustPrayer,
     required this.onClassic,
     required this.onBack,
     this.verse,
@@ -54,6 +55,9 @@ class ImmersiveTestimonyView extends StatelessWidget {
   final VoidCallback onPray;
   final VoidCallback onComment;
   final VoidCallback onShare;
+
+  /// Confier un sujet de prière inspiré de ce témoignage.
+  final VoidCallback onEntrustPrayer;
 
   /// Revenir à l'affichage classique (mémorisé).
   final VoidCallback onClassic;
@@ -176,6 +180,7 @@ class ImmersiveTestimonyView extends StatelessWidget {
                     onPray: onPray,
                     onComment: onComment,
                     onShare: onShare,
+                    onEntrustPrayer: onEntrustPrayer,
                   ),
                 ],
               ),
@@ -610,6 +615,7 @@ class _ActionsRow extends StatelessWidget {
     required this.onPray,
     required this.onComment,
     required this.onShare,
+    required this.onEntrustPrayer,
   });
 
   final bool isLiked;
@@ -618,6 +624,7 @@ class _ActionsRow extends StatelessWidget {
   final VoidCallback onPray;
   final VoidCallback onComment;
   final VoidCallback onShare;
+  final VoidCallback onEntrustPrayer;
 
   @override
   Widget build(BuildContext context) {
@@ -650,6 +657,7 @@ class _ActionsRow extends StatelessWidget {
           action(isLiked ? Icons.favorite_rounded : Icons.favorite_border_rounded, l10n.detailLike, onLike,
               active: isLiked),
           action(Icons.chat_bubble_outline_rounded, l10n.detailComment, onComment),
+          action(Icons.edit_note_rounded, l10n.prayerFromTestimonyShort, onEntrustPrayer),
           action(Icons.ios_share_rounded, l10n.commonShare, onShare),
         ],
       ),

@@ -13,10 +13,13 @@ import '../providers/prayer_providers.dart';
 
 /// Confier une requête de prière : publiée tout de suite (pas de relecture préalable).
 /// [eventId] : requête rattachée à un événement (elle apparaît sur sa page).
+/// [testimonyId] / [testimonyTitle] : confiée depuis le témoignage de quelqu'un (elle y renvoie).
 class SubmitPrayerRequestScreen extends ConsumerStatefulWidget {
-  const SubmitPrayerRequestScreen({this.eventId, super.key});
+  const SubmitPrayerRequestScreen({this.eventId, this.testimonyId, this.testimonyTitle, super.key});
 
   final String? eventId;
+  final String? testimonyId;
+  final String? testimonyTitle;
 
   @override
   ConsumerState<SubmitPrayerRequestScreen> createState() => _SubmitPrayerRequestScreenState();
@@ -26,7 +29,7 @@ class _SubmitPrayerRequestScreenState extends ConsumerState<SubmitPrayerRequestS
   final _form = GlobalKey<FormState>();
   /// Texte avec mentions « @ » (les personnes qui peuvent voir la requête sont prévenues).
   final _body = MentionEditingController();
-  late final _draft = PrayerRequestDraft(eventId: widget.eventId);
+  late final _draft = PrayerRequestDraft(eventId: widget.eventId, sourceTestimonyId: widget.testimonyId);
   bool _sending = false;
 
   static String _hint(PrayerVisibility v) => switch (v) {
@@ -88,6 +91,20 @@ class _SubmitPrayerRequestScreenState extends ConsumerState<SubmitPrayerRequestS
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(context.l10n.prayerRequestLinkedToEvent,
+                        style: AppTextStyles.bodySmall.copyWith(color: AppColors.primary)),
+                  ),
+                ]),
+              ),
+            if (widget.testimonyId != null)
+              Container(
+                margin: const EdgeInsets.only(bottom: AppSpacing.lg),
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(color: AppColors.primarySoft, borderRadius: BorderRadius.circular(AppRadius.md)),
+                child: Row(children: [
+                  const Icon(Icons.auto_stories_rounded, color: AppColors.primary, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(context.l10n.prayerRequestLinkedToTestimony(widget.testimonyTitle ?? ''),
                         style: AppTextStyles.bodySmall.copyWith(color: AppColors.primary)),
                   ),
                 ]),

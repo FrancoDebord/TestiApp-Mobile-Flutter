@@ -5547,6 +5547,22 @@ class AppLocalizationsEn extends AppLocalizations {
       'Linked to the event: it will appear on its page.';
 
   @override
+  String get prayerFromTestimonyAction => 'Share a prayer request';
+
+  @override
+  String get prayerFromTestimonyShort => 'Prayer request';
+
+  @override
+  String prayerRequestFromTestimony(String title) {
+    return 'After the testimony “$title”';
+  }
+
+  @override
+  String prayerRequestLinkedToTestimony(String title) {
+    return 'Inspired by the testimony “$title”: your request will link to it.';
+  }
+
+  @override
   String get prayerYourRequest => 'Your request';
 
   @override

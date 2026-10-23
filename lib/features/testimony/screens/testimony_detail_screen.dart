@@ -458,6 +458,7 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
           onPray: () => _togglePray(testimony),
           onComment: () => _showCommentsSheet(context),
           onShare: () => _onShare(testimony),
+          onEntrustPrayer: () => _entrustPrayer(testimony),
           onClassic: () => ref.read(testimonyDetailLayoutProvider.notifier).set(TestimonyDetailLayout.classic),
           onBack: () => _leaveDetail(context),
           verse: verse,
@@ -584,6 +585,20 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
                         fr: fr,
                       ),
                     ),
+                    // Confier un sujet de prière inspiré de ce témoignage (la requête y renvoie).
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      child: OutlinedButton.icon(
+                        onPressed: () => _entrustPrayer(testimony),
+                        icon: const Icon(Icons.volunteer_activism_outlined, size: 20),
+                        label: Text(context.l10n.prayerFromTestimonyAction),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.primary,
+                          side: const BorderSide(color: AppColors.primary),
+                          minimumSize: const Size.fromHeight(44),
+                        ),
+                      ),
+                    ),
                     const Divider(
                       height: 1,
                       indent: 16,
@@ -660,6 +675,15 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
     }
     if (!mounted) return;
     await prayForTestimony(context, ref, t);
+  }
+
+  /// Formulaire de requête de prière rattachée à ce témoignage (`source_testimony_id`).
+  Future<void> _entrustPrayer(Testimony t) async {
+    if (!await requireAccount(context, ref, reason: context.l10n.prayerReasonEntrust)) {
+      return;
+    }
+    if (!mounted) return;
+    context.push(Uri(path: '/prayer-requests/new', queryParameters: {'testimony': t.id, 'title': t.title}).toString());
   }
 
   Future<void> _toggleSave() async {

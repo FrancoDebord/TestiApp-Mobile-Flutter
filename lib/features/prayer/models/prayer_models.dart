@@ -123,6 +123,20 @@ class PrayerEventRef {
   }
 }
 
+/// Témoignage depuis lequel une requête est confiée ({ id, title }) ; absent si le
+/// témoignage n'est plus publié.
+class PrayerTestimonyRef {
+  const PrayerTestimonyRef({required this.id, required this.title});
+  final String id;
+  final String title;
+
+  static PrayerTestimonyRef? fromJson(Object? v) {
+    final j = _map(v);
+    if (j['id'] == null) return null;
+    return PrayerTestimonyRef(id: '${j['id']}', title: _str(j['title']) ?? '');
+  }
+}
+
 // ── Requête de prière ─────────────────────────────────────────────────────────
 
 /// Requête de prière (PrayerRequestResource). [author] est null si elle est
@@ -143,6 +157,7 @@ class PrayerRequest {
     this.messageCount = 0,
     this.hasPrayed = false,
     this.event,
+    this.sourceTestimony,
     this.isMine = false,
     this.isHidden = false,
     this.hiddenReason,
@@ -174,6 +189,9 @@ class PrayerRequest {
   final int messageCount;
   final bool hasPrayed;
   final PrayerEventRef? event;
+
+  /// Témoignage de quelqu'un depuis lequel la requête a été confiée (≠ [testimonyId], l'exaucement).
+  final PrayerTestimonyRef? sourceTestimony;
   final bool isMine;
   final bool isHidden;
   final String? hiddenReason;
@@ -210,6 +228,7 @@ class PrayerRequest {
       messageCount: _int(j['messageCount']),
       hasPrayed: j['hasPrayed'] == true,
       event: PrayerEventRef.fromJson(j['event']),
+      sourceTestimony: PrayerTestimonyRef.fromJson(j['sourceTestimony']),
       isMine: j['isMine'] == true,
       isHidden: j['isHidden'] == true,
       hiddenReason: _str(j['hiddenReason']),
@@ -243,6 +262,7 @@ class PrayerRequest {
           messageCount: messageCount,
           hasPrayed: prayed,
           event: event,
+          sourceTestimony: sourceTestimony,
           isMine: isMine,
           isHidden: isHidden,
           hiddenReason: hiddenReason,
@@ -302,6 +322,7 @@ class PrayerRequestDraft {
     this.isAnonymous = false,
     this.eventId,
     this.dailyVerseId,
+    this.sourceTestimonyId,
   });
 
   String body;
@@ -312,12 +333,16 @@ class PrayerRequestDraft {
   /// Verset du jour de rattachement (docs serveur fonctionnalites/verset-du-jour.md).
   int? dailyVerseId;
 
+  /// Témoignage publié depuis lequel la requête est confiée (création seulement).
+  String? sourceTestimonyId;
+
   Map<String, dynamic> toJson() => {
         'body': body.trim(),
         'visibility': visibility.apiValue,
         'is_anonymous': isAnonymous,
         'event_id': ?eventId,
         'daily_verse_id': ?dailyVerseId,
+        'source_testimony_id': ?sourceTestimonyId,
       };
 }
 

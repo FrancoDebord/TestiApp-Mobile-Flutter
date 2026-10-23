@@ -845,10 +845,15 @@ List<RouteBase> _buildRoutes() {
                 child: PrayerRequestsScreen(initialTab: state.uri.queryParameters['tab']),
               ),
               routes: [
-                // Avant ':id' : sinon « new » serait lu comme un identifiant. ?event= : requête d'un événement.
+                // Avant ':id' : sinon « new » serait lu comme un identifiant. ?event= : requête d'un événement ;
+                // ?testimony=&title= : confiée depuis le témoignage de quelqu'un.
                 GoRoute(
                   path: 'new',
-                  builder: (context, state) => SubmitPrayerRequestScreen(eventId: state.uri.queryParameters['event']),
+                  builder: (context, state) => SubmitPrayerRequestScreen(
+                    eventId: state.uri.queryParameters['event'],
+                    testimonyId: state.uri.queryParameters['testimony'],
+                    testimonyTitle: state.uri.queryParameters['title'],
+                  ),
                 ),
                 GoRoute(
                   path: ':id',

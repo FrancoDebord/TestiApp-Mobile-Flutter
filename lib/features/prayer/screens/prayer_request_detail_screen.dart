@@ -287,6 +287,21 @@ class _RequestBody extends StatelessWidget {
               ]),
             ),
           ],
+          // Confiée depuis le témoignage de quelqu'un (lien tant qu'il reste publié).
+          if (r.sourceTestimony != null) ...[
+            const SizedBox(height: AppSpacing.md),
+            InkWell(
+              onTap: () => context.push('/testimony/${r.sourceTestimony!.id}'),
+              child: Row(children: [
+                const Icon(Icons.auto_stories_rounded, size: 18, color: AppColors.primary),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(context.l10n.prayerRequestFromTestimony(r.sourceTestimony!.title),
+                      style: AppTextStyles.bodyMedium.copyWith(color: AppColors.primary, fontWeight: FontWeight.w600)),
+                ),
+              ]),
+            ),
+          ],
           if (r.isAnswered) ...[
             const SizedBox(height: AppSpacing.lg),
             Container(

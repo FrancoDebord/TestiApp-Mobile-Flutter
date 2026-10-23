@@ -9824,6 +9824,30 @@ abstract class AppLocalizations {
   /// **'Rattachée à l\'événement : elle apparaîtra sur sa page.'**
   String get prayerRequestLinkedToEvent;
 
+  /// No description provided for @prayerFromTestimonyAction.
+  ///
+  /// In fr, this message translates to:
+  /// **'Confier un sujet de prière'**
+  String get prayerFromTestimonyAction;
+
+  /// No description provided for @prayerFromTestimonyShort.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sujet de prière'**
+  String get prayerFromTestimonyShort;
+
+  /// No description provided for @prayerRequestFromTestimony.
+  ///
+  /// In fr, this message translates to:
+  /// **'Après le témoignage « {title} »'**
+  String prayerRequestFromTestimony(String title);
+
+  /// No description provided for @prayerRequestLinkedToTestimony.
+  ///
+  /// In fr, this message translates to:
+  /// **'Inspirée du témoignage « {title} » : votre requête y renverra.'**
+  String prayerRequestLinkedToTestimony(String title);
+
   /// No description provided for @prayerYourRequest.
   ///
   /// In fr, this message translates to:

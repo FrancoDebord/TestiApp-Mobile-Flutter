@@ -184,6 +184,18 @@ void main() {
       expect(s.containsKey('event_id'), isFalse);
     });
 
+    test('requête confiée depuis un témoignage', () {
+      final r = PrayerRequest.fromJson({..._requestJson(), 'sourceTestimony': {'id': 't1', 'title': 'Guérie du paludisme'}});
+      expect(r.sourceTestimony?.id, 't1');
+      expect(r.sourceTestimony?.title, 'Guérie du paludisme');
+      expect(r.withPrayed(!r.hasPrayed).sourceTestimony?.id, 't1');
+      expect(PrayerRequest.fromJson(_requestJson()).sourceTestimony, isNull);
+
+      final d = PrayerRequestDraft(body: 'Moi aussi, priez pour moi', sourceTestimonyId: 't1');
+      expect(d.toJson()['source_testimony_id'], 't1');
+      expect(PrayerRequestDraft(body: 'x').toJson().containsKey('source_testimony_id'), isFalse);
+    });
+
     test('date et ancienneté', () {
       expect(formatPrayerDate(DateTime(2026, 10, 7, 20, 5)), 'mer. 7 oct., 20:05');
       final now = DateTime(2026, 10, 5, 12);
