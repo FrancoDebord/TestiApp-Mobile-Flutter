@@ -10384,6 +10384,17 @@ class AppLocalizationsEn extends AppLocalizations {
       'Couldn\'t open the privacy policy. Check your connection and try again.';
 
   @override
+  String privacyUpdatedOn(String date) {
+    return 'Updated $date';
+  }
+
+  @override
+  String get privacySavedCopy => 'Offline: copy saved on this device.';
+
+  @override
+  String get privacyViewOnWeb => 'View on the website';
+
+  @override
   String get accountDeleteWhatTitle => 'What will be deleted';
 
   @override

@@ -18086,6 +18086,24 @@ abstract class AppLocalizations {
   /// **'Impossible d\'ouvrir la politique de confidentialité. Vérifiez votre connexion et réessayez.'**
   String get privacyOpenFailed;
 
+  /// No description provided for @privacyUpdatedOn.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mise à jour le {date}'**
+  String privacyUpdatedOn(String date);
+
+  /// No description provided for @privacySavedCopy.
+  ///
+  /// In fr, this message translates to:
+  /// **'Hors ligne : version enregistrée sur cet appareil.'**
+  String get privacySavedCopy;
+
+  /// No description provided for @privacyViewOnWeb.
+  ///
+  /// In fr, this message translates to:
+  /// **'Voir sur le site'**
+  String get privacyViewOnWeb;
+
   /// No description provided for @accountDeleteWhatTitle.
   ///
   /// In fr, this message translates to:

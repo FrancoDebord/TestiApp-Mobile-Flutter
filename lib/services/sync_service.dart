@@ -53,45 +53,14 @@ class SyncService {
   Future<void> deltaSync({String? userId}) async {
     if (!await _isOnline()) return;
 
+    // Le fil n'est pas copié dans SQLite : seuls les témoignages que
+    // l'utilisateur télécharge sont gardés sur l'appareil (Téléchargements).
     await Future.wait([
-      _syncFeed(),
       if (userId != null) _syncNotifications(userId),
       _syncCategories(),
     ]);
 
     await flushPendingOps();
-  }
-
-  // ── Feed delta sync ───────────────────────────────────────────────────────────
-
-  Future<void> _syncFeed() async {
-    try {
-      final since = await _syncDao.getLastSyncAt(SyncEntity.feed)
-          ?? DateTime.now()
-              .subtract(const Duration(days: 30))
-              .toIso8601String();
-
-      final response = await api.get<Map<String, dynamic>>(
-        AppConstants.feedDelta(after: since, limit: 50),
-      );
-
-      final data = response.data as Map<String, dynamic>? ?? {};
-      final items = (data['items'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-      final nextCursor = data['next_cursor'] as String?;
-
-      if (items.isNotEmpty) {
-        await _testimonyDao.upsertAll(
-          // Vidéo Bunny pas encore prête : jamais dans le cache du fil.
-          items.where(_isListable).map(_flattenTestimony).toList(),
-        );
-      }
-
-      await _syncDao.updateCursor(
-        entity: SyncEntity.feed,
-        lastSyncAt: DateTime.now().toIso8601String(),
-        nextCursor: nextCursor,
-      );
-    } catch (_) {}
   }
 
   // ── Notifications delta sync ──────────────────────────────────────────────────
@@ -290,50 +259,6 @@ class SyncService {
   }
 
   // ── Row mappers ───────────────────────────────────────────────────────────────
-
-  /// Faux pour un témoignage dont la vidéo n'est pas « ready » (envoi,
-  /// traitement ou échec) : visible seulement dans « Mes publications ».
-  static bool _isListable(Map<String, dynamic> t) {
-    final video = t['video'];
-    final status = video is Map ? video['status'] : t['video_status'];
-    return status == null || status == 'ready';
-  }
-
-  static Map<String, dynamic> _flattenTestimony(Map<String, dynamic> t) {
-    final author = t['author'] as Map<String, dynamic>? ?? {};
-    final video  = t['video'] is Map ? t['video'] as Map : const {};
-    final stats  = t['stats']  as Map<String, dynamic>? ?? {};
-    return {
-      'id':              t['id'] as String,
-      'user_id':         t['user_id'] as String? ?? author['id'] as String? ?? '',
-      'author_name':     author['display_name'] as String? ?? '',
-      'author_avatar':   author['avatar_url'] as String?,
-      'author_country':  author['country'] as String?,
-      'title':           t['title'] as String? ?? '',
-      'type':            t['type'] as String? ?? 'text',
-      'category':        t['category'] as String? ?? '',
-      'body_text':       t['body_text'] as String?,
-      'media_url':       t['media_url'] as String?,
-      'cover_url':       t['cover_url'] as String? ?? video['thumbnail_url'] as String?,
-      'duration_sec':    t['duration_sec'] as int? ?? (video['duration'] as num?)?.toInt(),
-      'bible_verse':     t['bible_verse'] as String?,
-      'bible_ref':       t['bible_ref'] as String?,
-      'visibility':      t['visibility'] as String? ?? 'public',
-      'status':          t['status'] as String? ?? 'published',
-      'views':           stats['views'] as int? ?? 0,
-      'like_count':      stats['likes'] as int? ?? 0,
-      'prayer_count':    stats['prayers'] as int? ?? 0,
-      'comment_count':   stats['comments'] as int? ?? 0,
-      'is_featured':     (t['is_featured'] as bool? ?? false) ? 1 : 0,
-      'user_liked':      (t['user_liked'] as bool? ?? false) ? 1 : 0,
-      'user_prayed':     (t['user_prayed'] as bool? ?? false) ? 1 : 0,
-      'user_saved':      (t['user_saved'] as bool? ?? false) ? 1 : 0,
-      'created_at':      t['created_at'] as String? ?? DateTime.now().toIso8601String(),
-      'updated_at':      t['updated_at'] as String? ?? DateTime.now().toIso8601String(),
-      'deleted_at':      t['deleted_at'] as String?,
-      'synced_at':       DateTime.now().toIso8601String(),
-    };
-  }
 
   static Map<String, dynamic> _flattenNotification(
       Map<String, dynamic> n, String recipientId) {

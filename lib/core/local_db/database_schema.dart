@@ -3,7 +3,7 @@ import 'package:sqflite/sqflite.dart';
 /// All CREATE TABLE statements and index definitions.
 /// Version history is managed via onUpgrade.
 abstract final class DatabaseSchema {
-  static const int version = 4;
+  static const int version = 5;
 
   // ── Table names ────────────────────────────────────────────────────────────
   static const tUsers              = 'users';
@@ -75,6 +75,20 @@ abstract final class DatabaseSchema {
     }
     if (oldV < 4) {
       await db.execute(_createBibleHighlights);
+    }
+    if (oldV < 5) {
+      // Plus de données de démonstration ni de copie du fil : les témoignages
+      // gardés sur l'appareil sont ceux que l'utilisateur télécharge
+      // (dossier downloads/, hors SQLite).
+      await db.delete(tComments);
+      await db.delete(tReactions);
+      await db.delete(tSavedTestimonies);
+      await db.delete(tTestimonies);
+      await db.delete(tUsers);
+      await db.delete(tCategories);
+      await db.delete(tSyncCursors,
+          where: 'entity IN (?, ?, ?, ?)',
+          whereArgs: ['seed_v1', 'verse_of_day', 'feed', 'categories']);
     }
   }
 

@@ -228,6 +228,8 @@ abstract final class AppConstants {
   // DELETE /me { password } ou { confirm: true } : compte et données supprimés
   // (docs serveur fonctionnalites/confidentialite-et-suppression.md).
   static const String deleteAccount    = '/me';
+  // GET ?lang=fr|en, sans connexion → { title, updated_at, html, url } : politique affichée dans l'app.
+  static const String legalPrivacy     = '/legal/privacy';
   // Vérification d'un compte personnel (docs/fonctionnalites/verification-des-comptes.md) :
   // GET → {status: none|pending|verified|rejected|revoked, canRequest, blockReason, retryAt, reason, request, roles, limits}
   // POST multipart { full_name, role, role_other?, church, links[]?, message?, documents[] (1 à 3 : jpg/png/webp/pdf, 8 Mo) } → 201 même forme

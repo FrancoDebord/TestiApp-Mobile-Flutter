@@ -28,6 +28,7 @@ import '../../features/notifications/screens/notifications_screen.dart';
 import '../../features/downloads/screens/downloads_screen.dart';
 import '../../features/location/location_settings_screen.dart';
 import '../../features/location/nearby_widgets.dart' show locationSettingsPath;
+import '../../features/profile/screens/privacy_policy_screen.dart';
 import '../../features/profile/screens/about_screen.dart';
 import '../../features/profile/screens/account_verification_screen.dart';
 import '../../features/profile/screens/change_password_screen.dart';
@@ -222,6 +223,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         '/phone-auth',
       };
       final isPublicRoute = publicRoutes.contains(location);
+
+      // Politique de confidentialité : lisible avant comme après la connexion.
+      if (location == AppPaths.privacyPolicyPath) return null;
 
       if (!isAuthed && !isPublicRoute) {
         // Garder le témoignage demandé pour l'ouvrir après la connexion.
@@ -620,6 +624,26 @@ List<RouteBase> _buildRoutes() {
       ],
     ),
 
+    // Confier une requête, HORS du shell : la pousser depuis une page racine
+    // (témoignage, événement) mettait deux fois le shell dans la pile → page
+    // blanche. Déclarée avant le shell, elle passe avant '/prayer-requests/:id'.
+    // ?event= : requête d'un événement ; ?testimony=&title= : confiée depuis le
+    // témoignage de quelqu'un.
+    GoRoute(
+      path: '/prayer-requests/new',
+      builder: (context, state) => SubmitPrayerRequestScreen(
+        eventId: state.uri.queryParameters['event'],
+        testimonyId: state.uri.queryParameters['testimony'],
+        testimonyTitle: state.uri.queryParameters['title'],
+      ),
+    ),
+
+    // Politique de confidentialité dans l'app (sans compte : connexion, inscription, invité).
+    GoRoute(
+      path: AppPaths.privacyPolicyPath,
+      builder: (context, state) => const PrivacyPolicyScreen(),
+    ),
+
     // Mon fil : comptes suivis + suggestions.
     GoRoute(
       path: '/my-feed',
@@ -845,16 +869,7 @@ List<RouteBase> _buildRoutes() {
                 child: PrayerRequestsScreen(initialTab: state.uri.queryParameters['tab']),
               ),
               routes: [
-                // Avant ':id' : sinon « new » serait lu comme un identifiant. ?event= : requête d'un événement ;
-                // ?testimony=&title= : confiée depuis le témoignage de quelqu'un.
-                GoRoute(
-                  path: 'new',
-                  builder: (context, state) => SubmitPrayerRequestScreen(
-                    eventId: state.uri.queryParameters['event'],
-                    testimonyId: state.uri.queryParameters['testimony'],
-                    testimonyTitle: state.uri.queryParameters['title'],
-                  ),
-                ),
+                // /prayer-requests/new est déclarée hors du shell (plus haut), avant celle-ci.
                 GoRoute(
                   path: ':id',
                   builder: (context, state) => PrayerRequestDetailScreen(requestId: state.pathParameters['id']!),

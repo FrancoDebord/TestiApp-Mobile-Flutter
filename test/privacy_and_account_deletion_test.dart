@@ -1,5 +1,5 @@
-// Politique de confidentialité (liens sans compte, case obligatoire à
-// l'inscription, mention Google) et suppression du compte (double
+// Politique de confidentialité (affichée dans l'app, liens sans compte, copie
+// hors ligne, case obligatoire à l'inscription, mention Google) et suppression du compte (double
 // confirmation, DELETE /me, retour au mode invité).
 // Serveur : docs/fonctionnalites/confidentialite-et-suppression.md
 
@@ -10,13 +10,16 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:testi_app/core/app_constants.dart';
+import 'package:testi_app/core/router/app_routes.dart';
 import 'package:testi_app/features/auth/providers/auth_notifier.dart';
 import 'package:testi_app/features/auth/screens/login_screen.dart';
 import 'package:testi_app/features/auth/screens/register_screen.dart';
 import 'package:testi_app/features/auth/services/local_account_data.dart';
 import 'package:testi_app/features/profile/screens/about_screen.dart';
 import 'package:testi_app/features/profile/screens/delete_account_screen.dart';
+import 'package:testi_app/features/profile/screens/privacy_policy_screen.dart';
 import 'package:testi_app/features/profile/screens/profile_screen.dart';
 import 'package:testi_app/l10n/app_localizations.dart';
 import 'package:testi_app/services/api_service.dart';
@@ -24,21 +27,50 @@ import 'package:testi_app/shared/models/models.dart';
 import 'package:testi_app/shared/widgets/guest_gate.dart' show isGuestProvider;
 import 'package:testi_app/shared/widgets/privacy_policy.dart';
 
-/// Navigateur intégré et réseau simulés.
-class _Browser {
-  _Browser({this.locale = L10n.fr});
+/// Politique servie par un chargeur simulé (langue demandée enregistrée).
+class _Policy {
+  _Policy({this.locale = L10n.fr});
   final Locale locale;
-  final opened = <Uri>[];
-  bool online = true;
+  final langs = <String>[];
+  bool fail = false;
 
   List<Override> get overrides => [
-        inAppBrowserLauncherProvider.overrideWithValue((uri) async {
-          opened.add(uri);
-          return true;
+        privacyPolicyLoaderProvider.overrideWithValue((lang) async {
+          langs.add(lang);
+          if (fail) throw Exception('hors ligne');
+          return PrivacyPolicyDoc(
+            title: lang == 'en' ? 'My Testimony Privacy Policy' : 'Politique de confidentialité de My Testimony',
+            html: _policyHtml,
+            updatedAt: DateTime(2026, 10, 20),
+          );
         }),
-        networkAvailableProvider.overrideWithValue(() async => online),
         localeProvider.overrideWithValue(locale),
       ];
+}
+
+const _policyHtml = '''
+<h2>1. Qui sommes-nous ?</h2>
+<p>Contact : <strong>arise.shinekrea@gmail.com</strong> et <a href="https://temoignage.as-krea.com">le site</a>.</p>
+<ul><li>Vous pouvez consulter l'application <strong>sans compte</strong>.</li><li>Nous ne vendons pas vos données.</li></ul>
+<table><thead><tr><th>Finalité</th><th>Base</th></tr></thead><tbody><tr><td>Créer votre compte</td><td>Exécution du service</td></tr></tbody></table>
+''';
+
+/// [home] dans un routeur qui connaît l'écran de la politique.
+Widget _routed(Widget home, {Locale locale = const Locale('fr')}) => MaterialApp.router(
+      locale: locale,
+      routerConfig: GoRouter(routes: [
+        GoRoute(path: '/', builder: (_, _) => home),
+        GoRoute(path: AppPaths.privacyPolicyPath, builder: (_, _) => const PrivacyPolicyScreen()),
+      ]),
+    );
+
+/// L'écran de la politique est affiché, avec son contenu mis en forme.
+void _expectPolicyShown(WidgetTester tester) {
+  expect(find.byType(PrivacyPolicyScreen), findsOneWidget);
+  expect(find.byKey(const ValueKey('privacy-policy-content')), findsOneWidget);
+  expect(find.text('1. Qui sommes-nous ?'), findsOneWidget);
+  expect(find.text('Finalité'), findsOneWidget);
+  expect(find.text('Exécution du service'), findsOneWidget);
 }
 
 Future<void> _phone(WidgetTester tester, {double width = 390, double height = 844}) async {
@@ -104,6 +136,27 @@ class _Api implements ApiService {
   dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError('$invocation');
 }
 
+class _PolicyApi implements ApiService {
+  final queries = <Map<String, dynamic>?>[];
+  bool offline = false;
+
+  @override
+  Future<LaravelResponse<T>> get<T>(String path, {Map<String, dynamic>? query}) async {
+    expect(path, AppConstants.legalPrivacy);
+    queries.add(query);
+    if (offline) throw Exception('hors ligne');
+    return LaravelResponse<T>(success: true, data: {
+      'title': 'Politique de confidentialité de My Testimony',
+      'updated_at': '2026-10-20',
+      'html': _policyHtml,
+      'url': '${AppConstants.webBaseUrl}/confidentialite',
+    } as T);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError('$invocation');
+}
+
 class _Wiper implements LocalAccountData {
   final wiped = <String?>[];
 
@@ -124,60 +177,80 @@ void main() {
     expect(AppConstants.deleteAccount, '/me');
   });
 
-  group('Liens accessibles sans compte', () {
-    testWidgets('connexion : lien et mention sous Google ; ouverture dans l\'app', (tester) async {
+  group('Politique affichée dans l\'application', () {
+    testWidgets('connexion : lien et mention sous Google ; écran de l\'app, pas de navigateur', (tester) async {
       await _phone(tester);
-      final browser = _Browser();
-      await tester.pumpWidget(ProviderScope(
-        overrides: browser.overrides,
-        child: const MaterialApp(locale: Locale('fr'), home: LoginScreen()),
-      ));
+      final policy = _Policy();
+      await tester.pumpWidget(ProviderScope(overrides: policy.overrides, child: _routed(const LoginScreen())));
       await tester.pump();
       expect(find.byKey(const ValueKey('google-privacy-notice')), findsOneWidget);
       expect(find.textContaining('En continuant, vous acceptez la'), findsOneWidget);
       await _tapVisible(tester, find.byKey(const ValueKey('privacy-policy-link')));
-      expect(browser.opened.single.toString(), '${AppConstants.webBaseUrl}/confidentialite');
+      _expectPolicyShown(tester);
+      expect(find.text('Politique de confidentialité de My Testimony'), findsOneWidget);
+      expect(find.text('Mise à jour le 20 octobre 2026'), findsOneWidget);
+      expect(policy.langs, ['fr']);
     });
 
-    testWidgets('sans réseau : message clair, rien n\'est ouvert', (tester) async {
+    testWidgets('échec sans copie enregistrée : message clair, puis Réessayer', (tester) async {
       await _phone(tester);
-      final browser = _Browser()..online = false;
-      await tester.pumpWidget(ProviderScope(
-        overrides: browser.overrides,
-        child: const MaterialApp(locale: Locale('fr'), home: LoginScreen()),
-      ));
+      final policy = _Policy()..fail = true;
+      await tester.pumpWidget(ProviderScope(overrides: policy.overrides, child: _routed(const LoginScreen())));
       await tester.pump();
       await _tapVisible(tester, find.byKey(const ValueKey('privacy-policy-link')));
-      expect(browser.opened, isEmpty);
-      expect(find.textContaining('Pas de connexion Internet'), findsOneWidget);
+      expect(find.textContaining('Impossible d\'ouvrir la politique de confidentialité'), findsOneWidget);
+      policy.fail = false;
+      await _tapVisible(tester, find.byKey(const ValueKey('privacy-retry')));
+      _expectPolicyShown(tester);
     });
 
     testWidgets('mode invité : lien dans le profil invité', (tester) async {
       await _phone(tester);
-      final browser = _Browser();
+      final policy = _Policy();
       await tester.pumpWidget(ProviderScope(
-        overrides: [...browser.overrides, isGuestProvider.overrideWithValue(true)],
-        child: const MaterialApp(locale: Locale('fr'), home: ProfileScreen()),
+        overrides: [...policy.overrides, isGuestProvider.overrideWithValue(true)],
+        child: _routed(const ProfileScreen()),
       ));
       await tester.pump();
       await _tapVisible(tester, find.byKey(const ValueKey('guest-privacy-policy')));
-      expect(browser.opened.single.path, '/confidentialite');
+      _expectPolicyShown(tester);
     });
 
-    testWidgets('Paramètres › À propos : lien (anglais → /privacy)', (tester) async {
+    testWidgets('Paramètres › À propos : politique en anglais', (tester) async {
       await _phone(tester);
       // Langue de l'application : anglais.
       L10n.locale = L10n.en;
       addTearDown(() => L10n.locale = L10n.fr);
-      final browser = _Browser(locale: L10n.en);
+      final policy = _Policy(locale: L10n.en);
       await tester.pumpWidget(ProviderScope(
-        overrides: browser.overrides,
-        child: const MaterialApp(locale: Locale('en'), home: AboutScreen()),
+        overrides: policy.overrides,
+        child: _routed(const AboutScreen(), locale: const Locale('en')),
       ));
       await tester.pump();
       expect(find.text('Privacy policy'), findsOneWidget);
       await _tapVisible(tester, find.byKey(const ValueKey('about-privacy-policy')));
-      expect(browser.opened.single.path, '/privacy');
+      expect(find.text('My Testimony Privacy Policy'), findsOneWidget);
+      expect(policy.langs, ['en']);
+    });
+
+    test('hors ligne : la dernière version lue est relue depuis l\'appareil', () async {
+      SharedPreferences.setMockInitialValues({});
+      final api = _PolicyApi();
+      final container = ProviderContainer(overrides: [apiServiceProvider.overrideWithValue(api)]);
+      addTearDown(container.dispose);
+      final load = container.read(privacyPolicyLoaderProvider);
+
+      final online = await load('fr');
+      expect(online.savedCopy, isFalse);
+      expect(api.queries.single, {'lang': 'fr'});
+
+      api.offline = true;
+      final offline = await load('fr');
+      expect(offline.savedCopy, isTrue);
+      expect(offline.title, 'Politique de confidentialité de My Testimony');
+      expect(offline.updatedAt, DateTime(2026, 10, 20));
+      // Aucune copie en anglais : l'erreur remonte.
+      await expectLater(load('en'), throwsA(anything));
     });
   });
 
@@ -186,7 +259,7 @@ void main() {
       await _phone(tester, height: 900);
       final auth = _RecordingAuth();
       await tester.pumpWidget(ProviderScope(
-        overrides: [..._Browser().overrides, authStateProvider.overrideWith(() => auth)],
+        overrides: [..._Policy().overrides, authStateProvider.overrideWith(() => auth)],
         child: const MaterialApp(locale: Locale('fr'), home: RegisterScreen()),
       ));
       await tester.pump();
@@ -224,14 +297,11 @@ void main() {
 
     testWidgets('le lien de la case ouvre la politique', (tester) async {
       await _phone(tester, height: 900);
-      final browser = _Browser();
-      await tester.pumpWidget(ProviderScope(
-        overrides: browser.overrides,
-        child: const MaterialApp(locale: Locale('fr'), home: RegisterScreen()),
-      ));
+      final policy = _Policy();
+      await tester.pumpWidget(ProviderScope(overrides: policy.overrides, child: _routed(const RegisterScreen())));
       await tester.pump();
       await _tapVisible(tester, find.byKey(const ValueKey('privacy-consent-link')));
-      expect(browser.opened.single.path, '/confidentialite');
+      _expectPolicyShown(tester);
     });
   });
 

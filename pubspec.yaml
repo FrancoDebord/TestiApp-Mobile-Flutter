@@ -2,7 +2,7 @@ name: testi_app
 description: "My Testimony — plateforme de partage de témoignages chrétiens."
 publish_to: 'none'
 
-version: 1.0.0+7
+version: 1.0.0+9
 
 environment:
   sdk: ^3.11.1
@@ -78,6 +78,8 @@ dependencies:
   timeago: ^3.7.0
   share_plus: ^13.1.0
   url_launcher: ^6.3.1
+  # Lecture du HTML de la politique de confidentialité (affichage natif).
+  html: ^0.15.6
   connectivity_plus: ^7.1.1
   permission_handler: ^12.0.3
   sqflite_common_ffi_web: ^1.1.1

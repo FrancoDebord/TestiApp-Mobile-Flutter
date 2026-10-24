@@ -573,6 +573,12 @@ class _MainMenu extends StatelessWidget {
           title: l10n.profileAbout,
           onTap: () => context.pushNamed(AppRoutes.about),
         ),
+        ProfileMenuTile(
+          key: const ValueKey('profile-privacy-policy'),
+          icon: Icons.privacy_tip_outlined,
+          title: l10n.privacyPolicyLink,
+          onTap: () => openPrivacyPolicy(context),
+        ),
       ],
     );
   }

@@ -1,19 +1,21 @@
 // Politique de confidentialité : lien visible sans compte (connexion, inscription,
-// mode invité, À propos), ouvert dans le navigateur intégré.
+// mode invité, profil, À propos), ouvert dans un écran de l'application.
 // Serveur : /confidentialite (français), /privacy (anglais) —
 // docs serveur fonctionnalites/confidentialite-et-suppression.md
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/app_constants.dart';
+import '../../core/router/app_routes.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../l10n/app_localizations.dart';
 
-/// Adresse de la politique dans la langue de l'application.
+/// Adresse de la politique sur le site, dans la langue de l'application.
 String privacyPolicyUrl(String languageCode) =>
     '${AppConstants.webBaseUrl}/${languageCode == 'en' ? 'privacy' : 'confidentialite'}';
 
@@ -34,27 +36,10 @@ final networkAvailableProvider = Provider<Future<bool> Function()>(
   },
 );
 
-/// Ouvre la politique ; sans réseau ou en cas d'échec : message clair.
-Future<void> openPrivacyPolicy(BuildContext context) async {
-  final container = ProviderScope.containerOf(context, listen: false);
-  final l10n = context.l10n;
-  final messenger = ScaffoldMessenger.maybeOf(context);
-  // Langue affichée par l'application (fr / en), pas celle du système.
-  final url = Uri.parse(privacyPolicyUrl(l10n.localeName.split('_').first));
-  void show(String text) => messenger
-    ?..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(behavior: SnackBarBehavior.floating, content: Text(text)));
-
-  if (!await container.read(networkAvailableProvider)()) {
-    show(l10n.privacyOffline);
-    return;
-  }
-  try {
-    if (!await container.read(inAppBrowserLauncherProvider)(url)) show(l10n.privacyOpenFailed);
-  } catch (_) {
-    show(l10n.privacyOpenFailed);
-  }
-}
+/// Ouvre la politique dans l'application (écran natif, sans navigateur ;
+/// lib/features/profile/screens/privacy_policy_screen.dart).
+Future<void> openPrivacyPolicy(BuildContext context) =>
+    context.push(AppPaths.privacyPolicyPath);
 
 /// Lien « Politique de confidentialité » (connexion, inscription).
 class PrivacyPolicyLink extends StatelessWidget {

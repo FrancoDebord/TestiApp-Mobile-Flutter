@@ -7,7 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/app_constants.dart';
 import '../../../core/local_db/daos/pending_ops_dao.dart';
 import '../../../core/providers/categories_provider.dart';
-import '../../../core/local_db/daos/testimony_dao.dart';
 import '../../../core/local_db/database_service.dart';
 import '../../../core/media/youtube.dart';
 import '../../../features/auth/providers/auth_notifier.dart'
@@ -542,7 +541,6 @@ class PublishNotifier extends Notifier<PublishDraft> {
 
     // ── Construire l'objet Testimony pour le feed en mémoire ──────────────
     final Testimony testimony;
-    final Map<String, dynamic> dbRow;
 
     switch (format) {
       case TestimonyFormat.text:
@@ -553,12 +551,6 @@ class PublishNotifier extends Notifier<PublishDraft> {
           category: category, createdAt: now, stats: TestimonyStats.zero,
           preview: body,
           coverImageUrl: coverUrl,
-        );
-        dbRow = _buildRow(
-          id: id, userId: userId, authorName: userName,
-          title: title, type: 'text', category: category,
-          bodyText: body, mediaUrl: null, coverUrl: coverUrl,
-          durationSec: 0, bibleVerse: state.bibleVerse, now: now,
         );
 
       case TestimonyFormat.audio:
@@ -574,13 +566,6 @@ class PublishNotifier extends Notifier<PublishDraft> {
           mediaPath: mediaUrl,
           coverImageUrl: coverUrl,
         );
-        dbRow = _buildRow(
-          id: id, userId: userId, authorName: userName,
-          title: title, type: 'audio', category: category,
-          bodyText: transcript, mediaUrl: mediaUrl,
-          coverUrl: coverUrl, durationSec: durationSec,
-          bibleVerse: state.bibleVerse, now: now,
-        );
 
       case TestimonyFormat.video:
         final coverUrl = state.coverImageRemoteUrl;
@@ -595,15 +580,9 @@ class PublishNotifier extends Notifier<PublishDraft> {
           mediaPath: youtubeId != null ? null : mediaUrl ?? state.videoPath,
           youtubeId: youtubeId,
         );
-        dbRow = _buildRow(
-          id: id, userId: userId, authorName: userName,
-          title: title, type: 'video', category: category,
-          bodyText: bodyText, mediaUrl: mediaUrl, coverUrl: coverUrl,
-          durationSec: durationSec, bibleVerse: null, now: now,
-        );
     }
 
-    // Carnet privé : ne jamais l'ajouter au fil ni au cache du fil.
+    // Carnet privé : ne jamais l'ajouter au fil.
     if (state.visibility == TestimonyVisibility.private) {
       ref.read(journalRefreshProvider.notifier).bump();
       state = state.copyWith(
@@ -613,12 +592,6 @@ class PublishNotifier extends Notifier<PublishDraft> {
       );
       return;
     }
-
-    // ── Sauvegarder en SQLite (cache local) ───────────────────────────────
-    try {
-      final dao = TestimonyDao(DatabaseService());
-      await dao.upsert(dbRow);
-    } catch (_) {}
 
     ref.read(feedNotifierProvider.notifier).addTestimony(testimony);
     state = state.copyWith(
@@ -632,49 +605,6 @@ class PublishNotifier extends Notifier<PublishDraft> {
     ref.read(publishConversionProvider.notifier).clear();
     ref.invalidate(myConversionProvider);
     ref.invalidate(latestConversionsProvider);
-  }
-
-  static Map<String, dynamic> _buildRow({
-    required String id,
-    required String userId,
-    required String authorName,
-    required String title,
-    required String type,
-    required TestimonyCategory category,
-    required String? bodyText,
-    required String? mediaUrl,
-    required String? coverUrl,
-    required int durationSec,
-    required String? bibleVerse,
-    required DateTime now,
-  }) {
-    final iso = now.toIso8601String();
-    return {
-      'id':           id,
-      'user_id':      userId,
-      'author_name':  authorName,
-      'title':        title,
-      'type':         type,
-      'category':     category.name,
-      'body_text':   bodyText,
-      'media_url':   mediaUrl,
-      'cover_url':   coverUrl,
-      'duration_sec': durationSec,
-      if (bibleVerse != null && bibleVerse.isNotEmpty)
-        'bible_verse': bibleVerse,
-      'visibility':   'public',
-      'status':       'published',
-      'views':        0,
-      'like_count':   0,
-      'prayer_count': 0,
-      'comment_count': 0,
-      'is_featured':  0,
-      'user_liked':   0,
-      'user_prayed':  0,
-      'user_saved':   0,
-      'created_at':   iso,
-      'updated_at':   iso,
-    };
   }
 
   void reset() => state = PublishDraft();

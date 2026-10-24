@@ -27,6 +27,8 @@ bool guestCanAccess(String location) {
     '/phone-auth',
     '/forgot-password',
     '/verify-email',
+    // Politique de confidentialité (écran de l'application).
+    '/privacy-policy',
   };
   if (authPaths.contains(path)) return true;
 

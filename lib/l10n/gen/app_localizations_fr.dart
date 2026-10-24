@@ -10477,6 +10477,18 @@ class AppLocalizationsFr extends AppLocalizations {
       'Impossible d\'ouvrir la politique de confidentialité. Vérifiez votre connexion et réessayez.';
 
   @override
+  String privacyUpdatedOn(String date) {
+    return 'Mise à jour le $date';
+  }
+
+  @override
+  String get privacySavedCopy =>
+      'Hors ligne : version enregistrée sur cet appareil.';
+
+  @override
+  String get privacyViewOnWeb => 'Voir sur le site';
+
+  @override
   String get accountDeleteWhatTitle => 'Ce qui sera supprimé';
 
   @override

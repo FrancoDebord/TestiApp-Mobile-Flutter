@@ -111,6 +111,8 @@ abstract final class AppPaths {
   static const String notificationsPath = '/notifications';
   static const String videoUploadPath = '/video-upload';
   static const String downloadsPath = '/downloads';
+  /// Politique de confidentialité, affichée dans l'app (accessible sans compte).
+  static const String privacyPolicyPath = '/privacy-policy';
   static const String profilePath = '/profile';
 
   // Nested under home

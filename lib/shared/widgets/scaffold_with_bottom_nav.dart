@@ -12,8 +12,8 @@ import 'package:testi_app/shared/widgets/guest_gate.dart';
 /// Persistent shell for the 6 bottom-nav branches.
 ///
 /// Barre blanche (bordure fine en haut) : Accueil · Explorer · [+ Publier]
-/// · Prières · Profil (Téléchargements, Événements : menu latéral). Publier (index 3) est un bouton rond bleu au
-/// centre, libellé dessous. Onglet actif : icône + libellé bleus sur pastille
+/// · Prières · Profil (Téléchargements, Événements : menu latéral). Publier (index 3) est un gros bouton rond orange
+/// au centre, qui dépasse de la barre, libellé dessous. Onglet actif : icône + libellé bleus sur pastille
 /// bleu clair (radius 12) ; inactif : gris.
 /// Bible (branch 2) remains reachable via the horizontal swipe gesture
 /// and via the [AppPaths.biblePath] route.
@@ -159,24 +159,42 @@ class _PublishButton extends StatelessWidget {
       selected: selected,
       label: label,
       excludeSemantics: true,
-      child: InkWell(
+      child: GestureDetector(
         onTap: onTap,
-        customBorder: const CircleBorder(),
+        behavior: HitTestBehavior.opaque,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                color: selected ? AppColors.primaryDark : AppColors.primary,
-                shape: BoxShape.circle,
-                boxShadow: AppShadows.card,
+            // Charte : orange = appel à l'action très important. Plus grand que
+            // les onglets, il dépasse au-dessus de la barre (anneau blanc + ombre
+            // orangée) sans trop l'agrandir : 40 px réservés, 58 px dessinés.
+            SizedBox(
+              height: 40,
+              child: OverflowBox(
+                alignment: Alignment.bottomCenter,
+                maxWidth: 58,
+                maxHeight: 58,
+                child: Container(
+                width: 58,
+                height: 58,
+                decoration: BoxDecoration(
+                  color: selected ? AppColors.secondaryDark : AppColors.secondary,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.surface, width: 3),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.secondary.withValues(alpha: 0.4),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                  child: const Icon(Icons.add_rounded, color: Colors.white, size: 34),
+                ),
               ),
-              child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
             ),
-            const SizedBox(height: 2),
-            _NavLabel(label: label, color: AppColors.primary, bold: true),
+            const SizedBox(height: 4),
+            _NavLabel(label: label, color: AppColors.secondaryDark, bold: true),
           ],
         ),
       ),

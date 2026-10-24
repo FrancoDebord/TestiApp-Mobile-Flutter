@@ -9,7 +9,6 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import 'core/local_db/database_service.dart';
 import 'core/router/app_router.dart';
 import 'core/router/app_routes.dart';
 import 'features/accounts/account_session.dart' show rootScaffoldMessengerKey;
@@ -27,7 +26,6 @@ import 'features/daily_verse/design/verse_style_prefs.dart'
     show currentVerseDesignProvider, verseStylePrefsProvider;
 import 'features/publish/upload/video_upload_controller.dart' show videoUploadProvider;
 import 'l10n/app_localizations.dart';
-import 'services/database_seed_service.dart';
 import 'shared/widgets/push_consent_sheet.dart';
 import 'services/api_service.dart' show secureStorageProvider;
 import 'services/push_service.dart';
@@ -69,12 +67,6 @@ Future<void> main() async {
 
   // Register background FCM handler before any other Firebase call.
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
-  final db = DatabaseService();
-  // Seed runs in background — does not block the first frame.
-  unawaited(DatabaseSeedService(db).seedIfEmpty().catchError(
-    (Object e) => debugPrint('DB seed skipped: $e'),
-  ));
 
   runApp(const ProviderScope(child: TemoignagesApp()));
 }

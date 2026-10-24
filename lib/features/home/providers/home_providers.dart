@@ -8,9 +8,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../../core/media/media_http.dart' show fixMediaUrl;
 import '../../../core/app_constants.dart';
-import '../../../core/local_db/daos/testimony_dao.dart';
 import '../../../core/media/youtube.dart';
-import '../../../core/local_db/database_service.dart';
 import '../../../services/api_service.dart';
 import '../../location/location_providers.dart' show homeFeedPlaceProvider, nearbyLabelsProvider;
 import '../../location/user_location.dart' show FeedPlace, parseNearbyLabels;
@@ -528,8 +526,8 @@ class FeedNotifier extends Notifier<List<Testimony>> {
       // Synchronise l'état liked/prayed depuis le serveur.
       ref.read(interactionProvider.notifier).seedFromFeed(items);
     } catch (_) {
-      // Hors-ligne ou non authentifié → fallback SQLite (seulement au premier chargement)
-      if (!silent) await _loadFromDb();
+      // Hors-ligne : le fil n'est pas copié sur l'appareil (seuls les
+      // Téléchargements le sont).
     } finally {
       if (!silent) ref.read(feedIsLoadingProvider.notifier).done();
     }
@@ -582,83 +580,6 @@ class FeedNotifier extends Notifier<List<Testimony>> {
       for (final t in state)
         t.id == id ? _applyStatsDelta(t, likes, prayers, comments) : t,
     ];
-  }
-
-  // ── Fallback SQLite ───────────────────────────────────────────────────────
-
-  Future<void> _loadFromDb() async {
-    try {
-      final dao  = TestimonyDao(DatabaseService());
-      final rows = await dao.getFeed();
-      if (rows.isEmpty) return;
-
-      final fromDb = rows
-          .map(_rowToTestimony)
-          .whereType<Testimony>()
-          .toList();
-      if (fromDb.isNotEmpty) state = fromDb;
-    } catch (_) {}
-  }
-
-  // ── SQLite row → Testimony ────────────────────────────────────────────────
-
-  static Testimony? _rowToTestimony(Map<String, dynamic> row) {
-    try {
-      final type   = row['type']   as String? ?? 'text';
-      final id     = row['id']?.toString() ?? '';
-      final author = TestimonyAuthor(
-        uid:         row['user_id']?.toString() ?? '',
-        displayName: row['author_name']   as String? ?? L10n.current.commonAnonymous,
-        avatarUrl:   row['author_avatar'] as String?,
-      );
-      final title    = row['title']    as String? ?? '';
-      final catName  = row['category'] as String? ?? '';
-      final category = TestimonyCategory.values
-          .firstWhere((c) => c.name == catName,
-              orElse: () => TestimonyCategory.guerison);
-      final createdAt =
-          DateTime.tryParse(row['created_at'] as String? ?? '') ?? DateTime.now();
-      final stats = TestimonyStats(
-        views:    row['views']         as int? ?? 0,
-        likes:    row['like_count']    as int? ?? 0,
-        prayers:  row['prayer_count']  as int? ?? 0,
-        comments: row['comment_count'] as int? ?? 0,
-      );
-
-      final bibleVerse    = row['bible_verse'] as String?;
-      final bibleVerseRef = row['bible_ref']   as String?;
-
-      switch (type) {
-        case 'audio':
-          return AudioTestimony(
-            id: id, author: author, title: title,
-            category: category, createdAt: createdAt, stats: stats,
-            durationSeconds:   row['duration_sec'] as int? ?? 0,
-            transcriptPreview: row['body_text']    as String? ?? '',
-            mediaPath:         _absUrl(row['media_url'] as String?),
-            bibleVerse: bibleVerse, bibleVerseRef: bibleVerseRef,
-          );
-        case 'video':
-          return VideoTestimony(
-            id: id, author: author, title: title,
-            category: category, createdAt: createdAt, stats: stats,
-            durationSeconds: row['duration_sec'] as int? ?? 0,
-            thumbnailUrl:    row['cover_url']    as String? ?? '',
-            mediaPath:       _absUrl(row['media_url'] as String?),
-            bibleVerse: bibleVerse, bibleVerseRef: bibleVerseRef,
-          );
-        default:
-          final body = row['body_text'] as String? ?? '';
-          return TextTestimony(
-            id: id, author: author, title: title,
-            category: category, createdAt: createdAt, stats: stats,
-            preview: body, // texte complet : l'affichage gère la troncature
-            bibleVerse: bibleVerse, bibleVerseRef: bibleVerseRef,
-          );
-      }
-    } catch (_) {
-      return null;
-    }
   }
 
   // ── Mutations mémoire ─────────────────────────────────────────────────────
