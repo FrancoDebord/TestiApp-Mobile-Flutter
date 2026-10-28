@@ -174,6 +174,9 @@ class VerseComment {
   final bool canDelete;
   final bool canReport;
 
+  /// Écrit hors connexion, pas encore envoyé (file d'envoi, identifiant « local_… »).
+  bool get isPending => id.startsWith('local_');
+
   String get initials {
     final parts = authorName.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
     if (parts.isEmpty) return '?';

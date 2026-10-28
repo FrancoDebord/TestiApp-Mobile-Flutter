@@ -156,6 +156,7 @@ class PrayerRequest {
     this.prayerCount = 0,
     this.messageCount = 0,
     this.hasPrayed = false,
+    this.myPrayerTimes = 0,
     this.event,
     this.sourceTestimony,
     this.isMine = false,
@@ -188,6 +189,9 @@ class PrayerRequest {
   final int prayerCount;
   final int messageCount;
   final bool hasPrayed;
+
+  /// Nombre de fois que la personne a prié (docs serveur fonctionnalites/prier-plusieurs-fois.md).
+  final int myPrayerTimes;
   final PrayerEventRef? event;
 
   /// Témoignage de quelqu'un depuis lequel la requête a été confiée (≠ [testimonyId], l'exaucement).
@@ -227,6 +231,7 @@ class PrayerRequest {
       prayerCount: _int(j['prayerCount']),
       messageCount: _int(j['messageCount']),
       hasPrayed: j['hasPrayed'] == true,
+      myPrayerTimes: _int(j['myPrayerTimes']),
       event: PrayerEventRef.fromJson(j['event']),
       sourceTestimony: PrayerTestimonyRef.fromJson(j['sourceTestimony']),
       isMine: j['isMine'] == true,
@@ -245,9 +250,16 @@ class PrayerRequest {
   }
 
   /// État local après « Je prie » (mise à jour immédiate, avant la réponse du serveur).
-  PrayerRequest withPrayed(bool prayed) => prayed == hasPrayed
-      ? this
-      : PrayerRequest(
+  PrayerRequest withPrayed(bool prayed) => prayed == hasPrayed ? this : withPrayerTimes(prayed ? 1 : 0);
+
+  /// Nombre de fois que la personne a prié (au moins 1 si elle prie).
+  int get prayerTimes => hasPrayed ? (myPrayerTimes < 1 ? 1 : myPrayerTimes) : 0;
+
+  /// État local après une prière de plus ou de moins : [prayerCount] (personnes) ne change
+  /// que si la personne commence ou cesse de prier.
+  PrayerRequest withPrayerTimes(int times) {
+    final prayed = times > 0;
+    return PrayerRequest(
           id: id,
           body: body,
           createdAt: createdAt,
@@ -258,9 +270,10 @@ class PrayerRequest {
           answeredAt: answeredAt,
           answerNote: answerNote,
           testimonyId: testimonyId,
-          prayerCount: (prayerCount + (prayed ? 1 : -1)).clamp(0, 1 << 31),
+          prayerCount: (prayerCount + (prayed == hasPrayed ? 0 : (prayed ? 1 : -1))).clamp(0, 1 << 31),
           messageCount: messageCount,
           hasPrayed: prayed,
+          myPrayerTimes: prayed ? times : 0,
           event: event,
           sourceTestimony: sourceTestimony,
           isMine: isMine,
@@ -276,6 +289,7 @@ class PrayerRequest {
           reactions: reactions,
           repost: repost,
         );
+  }
 }
 
 /// Message d'encouragement sous une requête.
@@ -301,6 +315,9 @@ class PrayerMessage {
   final DateTime? createdAt;
   final bool isMine;
   final bool canDelete;
+
+  /// Écrit hors connexion, pas encore envoyé (file d'envoi, identifiant « local_… »).
+  bool get isPending => id.startsWith('local_');
 
   factory PrayerMessage.fromJson(Map<String, dynamic> j) => PrayerMessage(
         id: '${j['id']}',

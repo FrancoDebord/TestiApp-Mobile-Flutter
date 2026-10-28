@@ -3,6 +3,7 @@
 // =============================================================================
 
 import '../../../shared/models/mention.dart';
+import '../../../shared/utils/rich_text_utils.dart' show stripFormatting;
 import '../../../l10n/app_localizations.dart';
 
 /// The three testimony formats a user can publish.
@@ -174,7 +175,15 @@ class PublishDraft {
     this.isUploadingMedia = false,
     this.uploadError,
     this.mentions = const [],
+    this.draftId,
+    this.publicationWeb = true,
+    this.isAnonymous = false,
+    this.resume = '',
+    this.transcription = '',
   });
+
+  /// Brouillon enregistré sur le téléphone (table `drafts`) dont ce formulaire est la suite.
+  String? draftId;
 
   TestimonyFormat? format;
   String title;
@@ -209,6 +218,20 @@ class PublishDraft {
   String youtubeCreditAuthor;
   String youtubeCreditChannel;
   String youtubeCreditUrl;
+
+  // Référencement (docs serveur fonctionnalites/referencement.md)
+  /// Accord pour publier aussi sur le site et dans Google (`publicationWeb`) ;
+  /// coché par défaut, comme sur le site.
+  bool publicationWeb;
+
+  /// « Témoignage anonyme » sur le site (`isAnonymous`) ; l'application
+  /// montre toujours l'auteur.
+  bool isAnonymous;
+
+  /// Audio / vidéo : résumé écrit (recommandé) et transcription (vidéo),
+  /// lus par Google sur la page du témoignage.
+  String resume;
+  String transcription;
 
   // preuves : emplacement (1 ou 2) → fichier local
   Map<int, ProofAttachment> proofs;
@@ -246,7 +269,8 @@ class PublishDraft {
   String get effectiveTitle {
     final t = title.trim();
     if (t.isNotEmpty) return t;
-    final desc = (format == TestimonyFormat.audio ? audioTranscript : bodyText)
+    // Sans image ni adresse de lien.
+    final desc = stripFormatting(format == TestimonyFormat.audio ? audioTranscript : bodyText)
         .replaceAll(RegExp(r'^[#>\-\s]+|[*_~]'), '')
         .trim();
     if (desc.isNotEmpty) {
@@ -256,6 +280,114 @@ class PublishDraft {
       }
     }
     return L10n.current.publishDefaultTitle;
+  }
+
+  /// Quelque chose a été saisi ou choisi : à garder en brouillon si on quitte.
+  bool get hasContent =>
+      title.trim().isNotEmpty ||
+      bodyText.trim().isNotEmpty ||
+      audioTranscript.trim().isNotEmpty ||
+      bibleVerse.trim().isNotEmpty ||
+      (coverImagePath ?? '').isNotEmpty ||
+      (audioPath ?? '').isNotEmpty ||
+      (videoPath ?? '').isNotEmpty ||
+      youtubeUrl.trim().isNotEmpty ||
+      resume.trim().isNotEmpty ||
+      transcription.trim().isNotEmpty ||
+      proofs.isNotEmpty;
+
+  /// Champs gardés dans un brouillon (fichiers : chemins sur le téléphone).
+  Map<String, dynamic> toDraftJson() => {
+        'format': format?.name,
+        'title': title,
+        'category': category,
+        'categoryId': categoryId,
+        'coverImagePath': coverImagePath,
+        'coverImageRemoteUrl': coverImageRemoteUrl,
+        'bodyText': bodyText,
+        'bibleVerse': bibleVerse,
+        'audioPath': audioPath,
+        'audioDurationSeconds': audioDurationSeconds,
+        'audioTranscript': audioTranscript,
+        'audioRemoteUrl': audioRemoteUrl,
+        'videoPath': videoPath,
+        'videoDurationSeconds': videoDurationSeconds,
+        'videoTrimStartMs': videoTrimStart.inMilliseconds,
+        'videoTrimEndMs': videoTrimEnd.inMilliseconds,
+        'videoThumbnailIndex': videoThumbnailIndex,
+        'useYouTube': useYouTube,
+        'youtubeUrl': youtubeUrl,
+        'youtubeCreditAuthor': youtubeCreditAuthor,
+        'youtubeCreditChannel': youtubeCreditChannel,
+        'youtubeCreditUrl': youtubeCreditUrl,
+        'proofs': {
+          for (final e in proofs.entries)
+            '${e.key}': {'path': e.value.path, 'name': e.value.name, 'size': e.value.size},
+        },
+        'proofsPublic': proofsPublic,
+        'visibility': visibility.name,
+        'consentGiven': consentGiven,
+        'mentions': [for (final m in mentions) m.toJson()],
+        'publicationWeb': publicationWeb,
+        'isAnonymous': isAnonymous,
+        'resume': resume,
+        'transcription': transcription,
+      };
+
+  factory PublishDraft.fromDraftJson(Map<String, dynamic> j, {String? draftId}) {
+    T? pick<T>(String k) => j[k] is T ? j[k] as T : null;
+    int n(String k) => (j[k] as num?)?.toInt() ?? 0;
+    final proofs = <int, ProofAttachment>{};
+    final rawProofs = j['proofs'];
+    if (rawProofs is Map) {
+      for (final e in rawProofs.entries) {
+        final pos = int.tryParse('${e.key}');
+        final v = e.value;
+        if (pos != null && v is Map && v['path'] is String) {
+          proofs[pos] = ProofAttachment(
+            path: v['path'] as String,
+            name: v['name'] as String? ?? '',
+            size: (v['size'] as num?)?.toInt() ?? 0,
+          );
+        }
+      }
+    }
+    return PublishDraft(
+      draftId: draftId,
+      format: TestimonyFormat.values.where((f) => f.name == j['format']).firstOrNull,
+      title: pick<String>('title') ?? '',
+      category: pick<String>('category'),
+      categoryId: pick<String>('categoryId'),
+      coverImagePath: pick<String>('coverImagePath'),
+      coverImageRemoteUrl: pick<String>('coverImageRemoteUrl'),
+      bodyText: pick<String>('bodyText') ?? '',
+      bibleVerse: pick<String>('bibleVerse') ?? '',
+      audioPath: pick<String>('audioPath'),
+      audioDurationSeconds: n('audioDurationSeconds'),
+      audioTranscript: pick<String>('audioTranscript') ?? '',
+      audioRemoteUrl: pick<String>('audioRemoteUrl'),
+      videoPath: pick<String>('videoPath'),
+      videoDurationSeconds: n('videoDurationSeconds'),
+      videoTrimStart: Duration(milliseconds: n('videoTrimStartMs')),
+      videoTrimEnd: Duration(milliseconds: n('videoTrimEndMs')),
+      videoThumbnailIndex: n('videoThumbnailIndex'),
+      useYouTube: j['useYouTube'] == true,
+      youtubeUrl: pick<String>('youtubeUrl') ?? '',
+      youtubeCreditAuthor: pick<String>('youtubeCreditAuthor') ?? '',
+      youtubeCreditChannel: pick<String>('youtubeCreditChannel') ?? '',
+      youtubeCreditUrl: pick<String>('youtubeCreditUrl') ?? '',
+      proofs: proofs,
+      proofsPublic: j['proofsPublic'] == true,
+      visibility: TestimonyVisibility.values.where((v) => v.name == j['visibility']).firstOrNull ??
+          TestimonyVisibility.public,
+      consentGiven: j['consentGiven'] == true,
+      mentions: MentionRef.listFrom(j['mentions']),
+      // Brouillon antérieur au 2026-10-28 : accord pour le web donné par défaut.
+      publicationWeb: j['publicationWeb'] != false,
+      isAnonymous: j['isAnonymous'] == true,
+      resume: pick<String>('resume') ?? '',
+      transcription: pick<String>('transcription') ?? '',
+    );
   }
 
   PublishDraft copyWith({
@@ -293,6 +425,11 @@ class PublishDraft {
     Object? videoRemoteUrl = _sentinel,
     Object? uploadError = _sentinel,
     List<MentionRef>? mentions,
+    Object? draftId = _sentinel,
+    bool? publicationWeb,
+    bool? isAnonymous,
+    String? resume,
+    String? transcription,
   }) {
     return PublishDraft(
       format: format ?? this.format,
@@ -337,6 +474,11 @@ class PublishDraft {
       uploadError:
           uploadError == _sentinel ? this.uploadError : uploadError as String?,
       mentions: mentions ?? this.mentions,
+      draftId: draftId == _sentinel ? this.draftId : draftId as String?,
+      publicationWeb: publicationWeb ?? this.publicationWeb,
+      isAnonymous: isAnonymous ?? this.isAnonymous,
+      resume: resume ?? this.resume,
+      transcription: transcription ?? this.transcription,
     );
   }
 }

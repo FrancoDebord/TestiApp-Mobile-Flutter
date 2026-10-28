@@ -27,6 +27,7 @@ import '../../../shared/widgets/guest_gate.dart' show isGuestProvider;
 import '../../../shared/widgets/privacy_policy.dart' show openPrivacyPolicy;
 import '../../../shared/widgets/organization_badge.dart';
 import '../../../shared/widgets/profile_cover.dart';
+import '../../offline/outbox_controller.dart' show outboxProvider;
 import '../models/profile_models.dart';
 import '../providers/account_verification_provider.dart' show accountVerificationProvider;
 import '../providers/profile_provider.dart';
@@ -551,6 +552,18 @@ class _MainMenu extends StatelessWidget {
           icon: Icons.download_rounded,
           title: l10n.profileDownloads,
           onTap: () => context.push(AppPaths.downloadsPath),
+        ),
+        // Fait hors connexion, en attente d'envoi (file d'envoi).
+        Consumer(
+          builder: (context, ref, _) {
+            final count = ref.watch(outboxProvider.select((s) => s.items.length));
+            return ProfileMenuTile(
+              icon: Icons.cloud_upload_outlined,
+              title: l10n.outboxTitle,
+              value: count > 0 ? '$count' : null,
+              onTap: () => context.push('/outbox'),
+            );
+          },
         ),
         ProfileMenuTile(
           icon: Icons.notifications_none_rounded,

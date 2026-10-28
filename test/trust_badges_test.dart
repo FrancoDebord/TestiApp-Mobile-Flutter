@@ -9,6 +9,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dio/dio.dart' show Options;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:testi_app/core/app_constants.dart';
@@ -79,14 +80,14 @@ class _Api implements ApiService {
   }
 
   @override
-  Future<LaravelResponse<T>> post<T>(String path, {dynamic data, Map<String, dynamic>? query}) async {
+  Future<LaravelResponse<T>> post<T>(String path, {dynamic data, Map<String, dynamic>? query, Options? options}) async {
     posts.add((path, data));
     if (postError != null) throw postError!;
     return LaravelResponse<T>(success: true, data: <String, dynamic>{'counted': true} as T);
   }
 
   @override
-  Future<LaravelResponse<T>> put<T>(String path, {dynamic data}) async {
+  Future<LaravelResponse<T>> put<T>(String path, {dynamic data, Options? options}) async {
     puts.add((path, data));
     return LaravelResponse<T>(success: true, data: putResponse as T);
   }

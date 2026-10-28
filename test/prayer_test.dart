@@ -304,7 +304,9 @@ void main() {
           ),
         ),
       ));
-      expect(find.text('Je prie · 12'), findsOneWidget);
+      // « Je prie » et, à côté, « N personnes prient » (ouvre qui a prié).
+      expect(find.text('Je prie'), findsOneWidget);
+      expect(find.text('12 personnes prient'), findsOneWidget);
       expect(find.text('3'), findsOneWidget); // encouragements
       expect(find.byType(OutlinedButton), findsOneWidget); // pas encore prié
 

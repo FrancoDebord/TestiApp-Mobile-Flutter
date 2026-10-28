@@ -24,6 +24,11 @@ const kActingAsHeader = 'X-Act-As';
 const kActingAsForbiddenCode = 'acting_as_forbidden';
 const kOwnerOnlyCode = 'owner_only';
 
+/// Clé de `RequestOptions.extra` : compte à utiliser pour cette requête (chaîne,
+/// ou null pour son propre compte) au lieu du compte actif. Sert à la file hors
+/// ligne, qui rejoue chaque écriture avec le compte choisi au moment de l'action.
+const kActingAsOverride = 'actAs';
+
 /// Compte actif partagé entre l'intercepteur (sans Riverpod) et le provider
 /// du compte actif (lib/features/accounts/providers/acting_account_provider.dart).
 class ActingAsStore {
@@ -88,7 +93,9 @@ class ActingAsInterceptor extends Interceptor {
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
-    final id = _store.accountId;
+    final id = options.extra.containsKey(kActingAsOverride)
+        ? options.extra[kActingAsOverride] as String?
+        : _store.accountId;
     if (id != null && id.isNotEmpty && !isOwnerOnlyRequest(options.method, options.path)) {
       options.headers[kActingAsHeader] = id;
     } else {

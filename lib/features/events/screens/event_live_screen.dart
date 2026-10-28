@@ -264,7 +264,7 @@ class _EventLiveScreenState extends ConsumerState<EventLiveScreen> {
                                 if (!await requireAccount(context, ref, reason: l10n.eventsReasonComment)) {
                                   return l10n.liveChatLoginRequired;
                                 }
-                                return ref.read(eventCommentsProvider(e.id).notifier).add(text);
+                                return (await ref.read(eventCommentsProvider(e.id).notifier).add(text)).error;
                               },
                             ),
                           ),

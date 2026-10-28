@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/mention_text_field.dart';
+import '../../offline/outbox_controller.dart';
 import '../data/prayer_repository.dart';
 import '../models/prayer_models.dart';
 import '../providers/prayer_providers.dart';
@@ -49,10 +51,24 @@ class _SubmitPrayerRequestScreenState extends ConsumerState<SubmitPrayerRequestS
     setState(() => _sending = true);
     _draft.body = _body.encodedText;
     try {
-      final created = await ref.read(prayerRepositoryProvider).create(_draft);
+      // Sans réseau : gardée sur le téléphone, publiée au retour de la connexion.
+      final created = await ref.read(outboxProvider.notifier).sendOrQueue(
+            () => ref.read(prayerRepositoryProvider).create(_draft),
+            () => OutboxDraft(
+              kind: OutboxKind.prayerRequest,
+              label: _body.text,
+              localId: newLocalId(),
+              request: OutboxRequest('POST', AppConstants.prayerRequests, body: _draft.toJson()),
+            ),
+          );
+      if (!mounted) return;
+      if (created == null) {
+        showQueuedSnack(context);
+        context.pop();
+        return;
+      }
       ref.invalidate(prayerRequestListProvider);
       ref.invalidate(prayerRequestsPageProvider);
-      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.l10n.prayerRequestPublished)),
       );

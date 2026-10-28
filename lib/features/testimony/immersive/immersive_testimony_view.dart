@@ -14,6 +14,7 @@ import 'dart:ui' show ImageFilter;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import '../../reactions/reaction_people.dart' show ReactionSubject, showReactionPeople;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -174,6 +175,7 @@ class ImmersiveTestimonyView extends StatelessWidget {
                     },
                   ),
                   _ActionsRow(
+                    testimonyId: t.id,
                     isLiked: isLiked,
                     isPraying: isPraying,
                     onLike: onLike,
@@ -609,6 +611,7 @@ class _PlayerBar extends StatelessWidget {
 
 class _ActionsRow extends StatelessWidget {
   const _ActionsRow({
+    required this.testimonyId,
     required this.isLiked,
     required this.isPraying,
     required this.onLike,
@@ -618,6 +621,7 @@ class _ActionsRow extends StatelessWidget {
     required this.onEntrustPrayer,
   });
 
+  final String testimonyId;
   final bool isLiked;
   final bool isPraying;
   final VoidCallback onLike;
@@ -657,6 +661,9 @@ class _ActionsRow extends StatelessWidget {
           action(isLiked ? Icons.favorite_rounded : Icons.favorite_border_rounded, l10n.detailLike, onLike,
               active: isLiked),
           action(Icons.chat_bubble_outline_rounded, l10n.detailComment, onComment),
+          // Qui a réagi ? (réactions, personnes, commentaires)
+          action(Icons.groups_outlined, l10n.reactionPeopleShort,
+              () => showReactionPeople(context, subject: ReactionSubject.testimony, id: testimonyId)),
           action(Icons.edit_note_rounded, l10n.prayerFromTestimonyShort, onEntrustPrayer),
           action(Icons.ios_share_rounded, l10n.commonShare, onShare),
         ],

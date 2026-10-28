@@ -5,9 +5,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
+import '../../offline/outbox_controller.dart';
+import '../../auth/providers/auth_notifier.dart' show currentUserProvider;
 import '../data/events_repository.dart';
 import '../models/event_models.dart';
 import '../providers/events_providers.dart';
@@ -38,8 +41,32 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
   /// Événement en cours de modification (images déjà en ligne).
   ChristianEvent? _event;
 
-  /// Création : images choisies, envoyées après la création.
+  /// Images choisies, envoyées après l'enregistrement (création ; modification
+  /// faite hors connexion).
   final List<XFile> _pending = [];
+
+  /// Modification hors connexion : images retirées / mise en premier, en attente d'envoi.
+  final Set<String> _removedImageIds = {};
+  String? _firstImageId;
+
+  /// Images en ligne telles qu'elles seront après l'envoi des actions en attente.
+  List<EventImage> get _existingImages {
+    final list = [for (final i in _event?.images ?? const <EventImage>[]) if (!_removedImageIds.contains(i.id)) i];
+    final first = list.where((i) => i.id == _firstImageId).firstOrNull;
+    return first == null ? list : [first, ...list.where((i) => i != first)];
+  }
+
+  /// Une clé stable par ligne d'invité (alignée sur `_draft.guests`).
+  final List<Key> _guestKeys = [];
+
+  /// Aligne `_guestKeys` sur le nombre d'invités (brouillon rechargé) et renvoie ce nombre.
+  int _syncGuestKeys(int count) {
+    while (_guestKeys.length < count) {
+      _guestKeys.add(UniqueKey());
+    }
+    if (_guestKeys.length > count) _guestKeys.removeRange(count, _guestKeys.length);
+    return count;
+  }
 
   bool _loading = false;
   bool _saving = false;
@@ -64,11 +91,24 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
       _loadError = null;
     });
     try {
-      final e = await ref.read(eventsRepositoryProvider).show(widget.eventId!);
+      final id = widget.eventId!;
+      // Hors connexion : copie gardée sur le téléphone (événement que je gère).
+      final e = await ref
+          .read(eventsRepositoryProvider)
+          .show(id, offlineKey: eventOfflineKey(ref.read(currentUserProvider)?.id, id));
       if (!mounted) return;
+      // Modification déjà faite hors connexion, pas encore envoyée : on la reprend.
+      final queued = ref
+          .read(outboxProvider)
+          .items
+          .where((i) => i.dedupeKey == eventEditKey(id) && !i.isFailed)
+          .lastOrNull
+          ?.payload
+          .request
+          ?.body;
       setState(() {
         _event = e;
-        _draft = EventDraft.fromEvent(e);
+        _draft = queued != null ? EventDraft.fromJson(queued) : EventDraft.fromEvent(e);
         _loading = false;
       });
     } on EventFailure catch (e) {
@@ -110,7 +150,7 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
 
   // ── Images ─────────────────────────────────────────────────────────────────
 
-  int get _imageCount => (_event?.images.length ?? 0) + _pending.length;
+  int get _imageCount => _existingImages.length + _pending.length;
 
   Future<void> _addImages() async {
     final left = _maxImages - _imageCount;
@@ -132,12 +172,17 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
     // Modification : envoi immédiat.
     setState(() => _imageBusy = true);
     final repo = ref.read(eventsRepositoryProvider);
-    for (final f in files) {
+    for (var i = 0; i < files.length; i++) {
       try {
-        final e = await repo.addImage(_event!.id, f);
+        final e = await repo.addImage(_event!.id, files[i]);
         if (mounted) setState(() => _event = e);
       } on EventFailure catch (err) {
-        _snack(err.message);
+        // Hors connexion : les images partiront avec l'enregistrement (file d'envoi).
+        if (err.offline && !kIsWeb) {
+          if (mounted) setState(() => _pending.addAll(files.skip(i)));
+        } else {
+          _snack(err.message);
+        }
         break;
       }
     }
@@ -147,11 +192,32 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
   Future<void> _imageAction(EventImage img, String action) async {
     setState(() => _imageBusy = true);
     final repo = ref.read(eventsRepositoryProvider);
+    final id = _event!.id;
+    final cover = action == 'cover';
     try {
-      final e = action == 'cover'
-          ? await repo.makeCover(_event!.id, img.id)
-          : await repo.removeImage(_event!.id, img.id);
-      if (mounted) setState(() => _event = e);
+      // Hors connexion : l'action attend le réseau, l'aperçu change tout de suite.
+      final e = await ref.read(outboxProvider.notifier).sendOrQueue(
+            () => cover ? repo.makeCover(id, img.id) : repo.removeImage(id, img.id),
+            () => OutboxDraft(
+              kind: OutboxKind.event,
+              label: _draft.title,
+              targetId: id,
+              request: cover
+                  ? OutboxRequest('POST', AppConstants.eventImageCover(id, img.id))
+                  : OutboxRequest('DELETE', AppConstants.eventImage(id, img.id)),
+            ),
+          );
+      if (mounted) {
+        setState(() {
+          if (e != null) {
+            _event = e;
+          } else if (cover) {
+            _firstImageId = img.id;
+          } else {
+            _removedImageIds.add(img.id);
+          }
+        });
+      }
     } on EventFailure catch (err) {
       _snack(err.message);
     }
@@ -159,6 +225,19 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
   }
 
   // ── Enregistrement ─────────────────────────────────────────────────────────
+
+  /// Images à rattacher à un événement existant, gardées dans la file d'envoi.
+  Future<void> _queueImages(String eventId, List<XFile> files) async {
+    await ref.read(outboxProvider.notifier).enqueue(OutboxDraft(
+      kind: OutboxKind.event,
+      label: _draft.title,
+      targetId: eventId,
+      after: [
+        for (final f in files)
+          OutboxFile(path: AppConstants.eventImages(eventId), file: f.path, field: 'image'),
+      ],
+    ));
+  }
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
@@ -177,20 +256,63 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
     final repo = ref.read(eventsRepositoryProvider);
     if (!_isEdit) _draft.organizationId = ref.read(_organizerChoice);
     try {
-      var event = _isEdit
-          ? await repo.update(_event!.id, _draft)
-          : await repo.create(_draft);
+      // Nouvel événement sans réseau : gardé sur le téléphone avec ses images,
+      // créé au retour de la connexion.
+      final outbox = ref.read(outboxProvider.notifier);
+      final saved = _isEdit
+          // Modification sans réseau : la dernière version part au retour de la connexion.
+          ? await outbox.sendOrQueue(
+              () => repo.update(_event!.id, _draft),
+              () => OutboxDraft(
+                kind: OutboxKind.event,
+                label: _draft.title,
+                targetId: _event!.id,
+                dedupeKey: eventEditKey(_event!.id),
+                request: OutboxRequest('PUT', AppConstants.eventById(_event!.id), body: _draft.toJson()),
+              ),
+            )
+          : await outbox.sendOrQueue(
+                () => repo.create(_draft),
+                () => OutboxDraft(
+                  kind: OutboxKind.event,
+                  label: _draft.title,
+                  localId: newLocalId(),
+                  request: OutboxRequest('POST', AppConstants.events, body: _draft.toJson()),
+                  after: [
+                    for (final f in _pending)
+                      OutboxFile(path: AppConstants.eventImages('{id}'), file: f.path, field: 'image'),
+                  ],
+                ),
+              );
+      if (saved == null) {
+        // Modification : les images ajoutées partent dans une action à part
+        // (une nouvelle modification ne les remplace pas).
+        if (_isEdit && _pending.isNotEmpty) await _queueImages(_event!.id, _pending);
+        if (!mounted) return;
+        showQueuedSnack(context);
+        context.pop();
+        return;
+      }
+      var event = saved;
 
       // Création : images envoyées une par une (un échec n'annule pas l'événement).
       var failed = 0;
+      var queued = false;
       for (var i = 0; i < _pending.length; i++) {
         if (mounted) setState(() => _progress = L10n.current.eventsFormUploadingImages(i + 1, _pending.length));
         try {
           event = await repo.addImage(event.id, _pending[i]);
-        } on EventFailure {
+        } on EventFailure catch (err) {
+          // Coupure pendant l'envoi : les images restantes attendent le réseau.
+          if (err.offline && !kIsWeb) {
+            await _queueImages(event.id, _pending.sublist(i));
+            queued = true;
+            break;
+          }
           failed++;
         }
       }
+      if (queued && mounted) showQueuedSnack(context);
 
       ref.invalidate(eventListProvider);
       ref.invalidate(upcomingEventsProvider);
@@ -286,7 +408,7 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
             title: l10n.eventsFormCoverImages,
             subtitle: l10n.eventsFormCoverImagesHelp,
             child: _ImagesEditor(
-              existing: _event?.images ?? const [],
+              existing: _existingImages,
               pending: _pending,
               busy: _imageBusy,
               canAdd: _imageCount < _maxImages,
@@ -485,18 +607,24 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
             subtitle: l10n.eventsFormGuestsHelp,
             child: Column(
               children: [
-                for (var i = 0; i < d.guests.length; i++)
+                for (var i = 0; i < _syncGuestKeys(d.guests.length); i++)
                   _GuestRow(
-                    key: ObjectKey(d.guests[i]),
+                    key: _guestKeys[i],
                     guest: d.guests[i],
                     onChanged: (g) => d.guests[i] = g,
-                    onRemove: () => setState(() => d.guests.removeAt(i)),
+                    onRemove: () => setState(() {
+                      d.guests.removeAt(i);
+                      _guestKeys.removeAt(i);
+                    }),
                   ),
                 if (d.guests.length < _maxGuests)
                   Align(
                     alignment: Alignment.centerLeft,
                     child: TextButton.icon(
-                      onPressed: () => setState(() => d.guests.add(const EventGuest(name: ''))),
+                      onPressed: () => setState(() {
+                        d.guests.add(const EventGuest(name: ''));
+                        _guestKeys.add(UniqueKey());
+                      }),
                       icon: const Icon(Icons.person_add_alt_1_rounded),
                       label: Text(l10n.eventsFormAddGuest),
                     ),

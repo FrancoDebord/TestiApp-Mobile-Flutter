@@ -728,6 +728,9 @@ class EventComment {
     this.isLikedByMe = false,
   });
 
+  /// Écrit hors connexion, pas encore envoyé (file d'envoi, identifiant « local_… »).
+  bool get isPending => id.startsWith('local_');
+
   factory EventComment.fromJson(Map<String, dynamic> m) => EventComment(
         id: '${m['id']}',
         body: '${m['body'] ?? ''}',
@@ -849,6 +852,29 @@ class EventDraft {
         commentsEnabled: e.commentsEnabled,
         youtubeLiveUrl: e.youtubeLiveUrl ?? '',
         guests: [...e.guests],
+      );
+
+  /// Brouillon relu depuis le corps envoyé ([toJson]) : modification faite hors
+  /// connexion, pas encore envoyée, reprise dans le formulaire.
+  factory EventDraft.fromJson(Map<String, dynamic> j) => EventDraft(
+        title: _str(j['title']) ?? '',
+        description: _str(j['description']) ?? '',
+        type: EventType.parse(j['type']),
+        status: EventStatus.parse(j['status']),
+        startsAt: _date(j['starts_at'])?.toLocal(),
+        endsAt: _date(j['ends_at'])?.toLocal(),
+        location: _str(j['location']) ?? '',
+        city: _str(j['city']) ?? '',
+        country: _str(j['country']) ?? '',
+        address: _str(j['address']) ?? '',
+        latitude: (j['latitude'] as num?)?.toDouble(),
+        longitude: (j['longitude'] as num?)?.toDouble(),
+        commentsEnabled: j['comments_enabled'] != false,
+        youtubeLiveUrl: _str(j['youtube_live_url']) ?? '',
+        guests: [
+          for (final g in (j['guests'] is List ? j['guests'] as List : const []))
+            if (g is Map) EventGuest.fromJson(Map<String, dynamic>.from(g)),
+        ],
       );
 
   String title;

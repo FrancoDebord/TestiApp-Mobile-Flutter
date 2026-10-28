@@ -96,7 +96,7 @@ class _FakeRepo implements EventsRepository {
   final ChristianEvent event;
 
   @override
-  Future<ChristianEvent> show(String id) async => event;
+  Future<ChristianEvent> show(String id, {String? offlineKey}) async => event;
 
   @override
   Future<EventPage<ChristianEvent>> list({
@@ -104,6 +104,7 @@ class _FakeRepo implements EventsRepository {
     EventType? type,
     String? query,
     int page = 1,
+    String? offlineKey,
     String? organizerId,
     int? limit,
   }) async =>

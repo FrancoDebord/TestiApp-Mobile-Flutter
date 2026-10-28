@@ -40,6 +40,9 @@ class CommentModel {
 
   bool get isReply => parentId != null;
 
+  /// Écrit hors connexion, pas encore envoyé (file d'envoi, identifiant « local_… »).
+  bool get isPending => id.startsWith('local_');
+
   factory CommentModel.fromJson(Map<String, dynamic> j) => CommentModel(
     id:           j['id'] as String,
     testimonyId:  (j['testimonyId']   ?? j['testimony_id'])  as String? ?? '',

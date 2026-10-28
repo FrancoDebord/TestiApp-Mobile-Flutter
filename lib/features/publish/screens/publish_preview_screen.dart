@@ -1,4 +1,4 @@
-import 'dart:async' show Timer;
+import 'dart:async' show Timer, unawaited;
 import 'dart:io' show File;
 
 import 'package:video_player/video_player.dart'
@@ -9,13 +9,21 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../../core/app_constants.dart';
 import '../../../../core/media/youtube.dart';
+import '../../../../core/network/network_failure.dart';
+import '../../../../services/api_service.dart';
+import '../../../../shared/utils/rich_text_utils.dart';
+import '../../../../shared/widgets/rich_mention_editing_controller.dart';
+import '../../offline/outbox_controller.dart' show absoluteMediaUrl;
+import 'testimony_draft_preview_screen.dart';
 import '../../../../core/providers/categories_provider.dart';
 import '../../../../core/router/app_routes.dart' show AppPaths;
 import '../../../../core/theme/app_colors.dart';
@@ -23,13 +31,11 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../auth/providers/auth_notifier.dart' show currentUserProvider;
 import '../../bible/providers/bible_providers.dart'
     show
-        bibleVerseToInsertProvider,
         bibleVerseRefProvider,
         bibleVerseTextProvider;
 import '../models/publish_models.dart';
 import '../../../../core/theme/app_tokens.dart';
 import '../../../../shared/widgets/app_button.dart';
-import '../../../../shared/widgets/mention_text.dart' show MentionText;
 import '../../../../shared/widgets/mention_text_field.dart';
 import '../providers/publish_provider.dart';
 import 'video_camera_screen.dart';
@@ -62,13 +68,21 @@ class PublishPreviewScreen extends ConsumerWidget {
     final draft = ref.watch(publishProvider);
     final step = ref.watch(publishStepProvider);
     final format = draft.format ?? TestimonyFormat.text;
+    // Retour (système ou flèche) avec une saisie en cours : confirmation avec
+    // « Enregistrer le brouillon ». Une fois publié, l'écran se ferme normalement.
+    final inProgress = draft.status == PublishStatus.draft && draft.hasContent;
 
-    return Scaffold(
+    return PopScope(
+      canPop: !inProgress,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) unawaited(leavePublishForm(context, ref));
+      },
+      child: Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
           children: [
-            _StepperHeader(step: step, format: format),
+            _StepperHeader(step: step, format: format, canPreview: draft.hasContent),
             Expanded(
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 280),
@@ -91,6 +105,7 @@ class PublishPreviewScreen extends ConsumerWidget {
             _BottomNavButtons(step: step),
           ],
         ),
+      ),
       ),
     );
   }
@@ -117,14 +132,79 @@ class PublishPreviewScreen extends ConsumerWidget {
 }
 
 // =============================================================================
+// Quitter le formulaire : brouillon gardé ou supprimé
+// =============================================================================
+
+enum _LeaveChoice { keep, discard }
+
+/// Retour depuis le formulaire (quelle que soit l'étape) : si quelque chose a été
+/// saisi, confirmation « Enregistrer le brouillon » / « Supprimer » / « Continuer
+/// à écrire » (l'étape précédente reste au bouton « Précédent »). Le brouillon est
+/// de toute façon enregistré pendant la saisie : fermer l'application ne perd rien.
+Future<void> leavePublishForm(BuildContext context, WidgetRef ref) async {
+  final draft = ref.read(publishProvider);
+  final notifier = ref.read(publishProvider.notifier);
+  void close() {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go(AppPaths.publishPath);
+    }
+  }
+
+  if (!draft.hasContent || draft.status != PublishStatus.draft) {
+    close();
+    return;
+  }
+  final l10n = context.l10n;
+  final choice = await showDialog<_LeaveChoice>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(l10n.publishLeaveTitle),
+      content: Text(l10n.publishLeaveBody),
+      actionsOverflowDirection: VerticalDirection.up,
+      actionsOverflowButtonSpacing: 4,
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, _LeaveChoice.discard),
+          style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+          child: Text(l10n.publishLeaveDiscard),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: Text(l10n.publishLeaveStay),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(ctx, _LeaveChoice.keep),
+          child: Text(l10n.publishLeaveKeep),
+        ),
+      ],
+    ),
+  );
+  if (choice == null || !context.mounted) return;
+  final messenger = ScaffoldMessenger.maybeOf(context);
+  if (choice == _LeaveChoice.keep) {
+    await notifier.saveDraftNow();
+    messenger?.showSnackBar(SnackBar(behavior: SnackBarBehavior.floating, content: Text(l10n.publishDraftSaved)));
+  } else {
+    await notifier.discardDraft();
+  }
+  ref.read(publishStepProvider.notifier).goTo(1);
+  if (context.mounted) close();
+}
+
+// =============================================================================
 // Stepper header
 // =============================================================================
 
 class _StepperHeader extends StatelessWidget {
-  const _StepperHeader({required this.step, required this.format});
+  const _StepperHeader({required this.step, required this.format, required this.canPreview});
 
   final int step;
   final TestimonyFormat format;
+
+  /// Quelque chose est saisi : bouton « Aperçu » (œil) disponible à chaque étape.
+  final bool canPreview;
 
   @override
   Widget build(BuildContext context) {
@@ -140,7 +220,7 @@ class _StepperHeader extends StatelessWidget {
             tooltip: context.l10n.commonBack,
             icon: const Icon(Icons.arrow_back_rounded,
                 color: AppColors.textPrimary),
-            onPressed: () => context.pop(),
+            onPressed: () => Navigator.of(context).maybePop(),
           ),
           const SizedBox(width: 4),
           Expanded(
@@ -173,6 +253,13 @@ class _StepperHeader extends StatelessWidget {
               ],
             ),
           ),
+          if (canPreview)
+            IconButton(
+              key: const ValueKey('publish-preview-open'),
+              tooltip: context.l10n.publishPreviewAction,
+              icon: const Icon(Icons.visibility_outlined, color: AppColors.primary),
+              onPressed: () => openTestimonyDraftPreview(context),
+            ),
           const SizedBox(width: 8),
           // Progress dots
           Row(
@@ -223,11 +310,12 @@ class _Step1DetailsState extends ConsumerState<_Step1Details> {
     super.initState();
     final draft = ref.read(publishProvider);
     _titleCtrl = TextEditingController(text: draft.title);
-    _descCtrl = MentionEditingController(
-      text: draft.format == TestimonyFormat.audio
-          ? draft.audioTranscript
-          : draft.bodyText,
-    );
+    // Témoignage écrit : mise en forme visible pendant la saisie.
+    _descCtrl = switch (draft.format) {
+      TestimonyFormat.audio => MentionEditingController(text: draft.audioTranscript),
+      TestimonyFormat.video => MentionEditingController(text: draft.bodyText),
+      _ => RichMentionEditingController(text: draft.bodyText),
+    };
     draft.mentions.forEach(_descCtrl.remember);
     // Saisie, mention choisie ou barre de mise en forme : le brouillon suit le champ.
     _descCtrl.addListener(_syncDescription);
@@ -330,6 +418,7 @@ class _Step1DetailsState extends ConsumerState<_Step1Details> {
                 ),
                 style: _inputTextStyle,
               ),
+              if (isText) _BodyImagesStrip(controller: _descCtrl),
               const SizedBox(height: 12),
 
               // ── Category ──────────────────────────────────────────────────
@@ -510,18 +599,9 @@ class _Step2TextState extends ConsumerState<_Step2Text> {
   void initState() {
     super.initState();
     final draft   = ref.read(publishProvider);
+    // Verset choisi dans la Bible ou le verset du jour : déjà repris par
+    // selectFormat (écran de choix du type de témoignage).
     _verseCtrl    = TextEditingController(text: draft.bibleVerse);
-
-    // Pre-fill verse from Bible reader (bibleVerseToInsertProvider)
-    final pending = ref.read(bibleVerseToInsertProvider);
-    if (pending != null && pending.isNotEmpty) {
-      _verseCtrl.text = pending;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        ref.read(publishProvider.notifier).updateBibleVerse(pending);
-        ref.read(bibleVerseToInsertProvider.notifier).clear();
-      });
-    }
   }
 
   @override
@@ -567,17 +647,21 @@ class _Step2TextState extends ConsumerState<_Step2Text> {
                 ],
               ),
               const SizedBox(height: 4),
-              MentionText(
-                body.isEmpty ? context.l10n.publishNoDescription : body,
-                mentions: draft.mentions,
-                maxLines: 6,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.bodyMedium.copyWith(
-                  color: body.isEmpty
-                      ? AppColors.textSecondary
-                      : AppColors.textPrimary,
+              // Rendu final (mise en forme, liens, images), comme à la lecture.
+              if (body.isEmpty)
+                Text(
+                  context.l10n.publishNoDescription,
+                  style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+                )
+              else
+                ProgressiveRichText(
+                  text: body,
+                  mentions: draft.mentions,
+                  selectable: false,
+                  initialChars: 400,
+                  stepChars: 1200,
+                  style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textPrimary),
                 ),
-              ),
             ],
           ),
           const SizedBox(height: AppSpacing.lg),
@@ -777,6 +861,8 @@ class _Step2AudioState extends ConsumerState<_Step2Audio> {
             ),
           ],
           // La transcription se saisit à l'étape 1 (champ « Description »).
+          const SizedBox(height: 24),
+          const _WebTextFields(withTranscription: false),
         ],
       ),
     );
@@ -895,8 +981,96 @@ class _Step2VideoState extends ConsumerState<_Step2Video> {
             ),
           ],
           ],
+          const SizedBox(height: 24),
+          const _WebTextFields(withTranscription: true),
         ],
       ),
+    );
+  }
+}
+
+// ── Texte écrit d'un audio / d'une vidéo (site et Google) ─────────────────────
+
+/// Résumé écrit (recommandé) et, pour une vidéo, transcription (facultative) :
+/// affichés sur la page du témoignage du site et lus par Google
+/// (docs serveur fonctionnalites/referencement.md).
+class _WebTextFields extends ConsumerStatefulWidget {
+  const _WebTextFields({required this.withTranscription});
+
+  /// Audio : la description saisie à l'étape 1 sert déjà de transcription.
+  final bool withTranscription;
+
+  @override
+  ConsumerState<_WebTextFields> createState() => _WebTextFieldsState();
+}
+
+class _WebTextFieldsState extends ConsumerState<_WebTextFields> {
+  late final TextEditingController _resume;
+  late final TextEditingController _transcription;
+
+  @override
+  void initState() {
+    super.initState();
+    final draft = ref.read(publishProvider);
+    _resume = TextEditingController(text: draft.resume);
+    _transcription = TextEditingController(text: draft.transcription);
+  }
+
+  @override
+  void dispose() {
+    _resume.dispose();
+    _transcription.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final notifier = ref.read(publishProvider.notifier);
+    final l10n = context.l10n;
+    return _SectionCard(
+      children: [
+        _FieldLabel(label: l10n.publishResumeLabel, required: false),
+        const SizedBox(height: 2),
+        Text(l10n.publishResumeHint, style: AppTextStyles.bodySmall),
+        const SizedBox(height: 8),
+        TextField(
+          key: const ValueKey('publish-resume'),
+          controller: _resume,
+          maxLength: 5000,
+          minLines: 3,
+          maxLines: 8,
+          keyboardType: TextInputType.multiline,
+          textCapitalization: TextCapitalization.sentences,
+          onChanged: notifier.updateResume,
+          decoration: _inputDecoration(
+            hint: l10n.publishResumePlaceholder,
+            contentPadding: const EdgeInsets.all(14),
+          ),
+          style: _inputTextStyle,
+        ),
+        if (widget.withTranscription) ...[
+          const SizedBox(height: 12),
+          _FieldLabel(label: l10n.publishTranscriptionLabel, required: false),
+          const SizedBox(height: 8),
+          TextField(
+            key: const ValueKey('publish-transcription'),
+            controller: _transcription,
+            maxLength: 100000,
+            minLines: 3,
+            maxLines: 10,
+            keyboardType: TextInputType.multiline,
+            textCapitalization: TextCapitalization.sentences,
+            onChanged: notifier.updateTranscription,
+            decoration: _inputDecoration(
+              hint: l10n.publishTranscriptionPlaceholder,
+              // Compteur inutile pour 100 000 caractères.
+              counterText: '',
+              contentPadding: const EdgeInsets.all(14),
+            ),
+            style: _inputTextStyle,
+          ),
+        ],
+      ],
     );
   }
 }
@@ -1463,6 +1637,7 @@ class _BottomNavButtonsState extends ConsumerState<_BottomNavButtons> {
         // Hors ligne — enregistré localement, sera synchronisé plus tard
         ref.read(publishProvider.notifier).reset();
         ref.read(publishStepProvider.notifier).goTo(1);
+        final router = GoRouter.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -1475,6 +1650,12 @@ class _BottomNavButtonsState extends ConsumerState<_BottomNavButtons> {
                 borderRadius: BorderRadius.circular(10)),
             margin: const EdgeInsets.all(16),
             duration: const Duration(seconds: 5),
+            // File d'envoi hors connexion (écran « À envoyer »).
+            action: SnackBarAction(
+              label: context.l10n.outboxView,
+              textColor: Colors.white,
+              onPressed: () => router.push('/outbox'),
+            ),
           ),
         );
         if (context.canPop()) context.pop();
@@ -1605,6 +1786,35 @@ class _Step3Visibility extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // ── Aperçu avant publication ───────────────────────────────────────
+          _SectionCard(children: [
+            Row(
+              children: [
+                const Icon(Icons.visibility_outlined, color: AppColors.primary),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(context.l10n.publishPreviewCardTitle,
+                          style: AppTextStyles.labelMedium.copyWith(
+                              color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 2),
+                      Text(context.l10n.publishPreviewCardBody, style: AppTextStyles.bodySmall),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton(
+                  key: const ValueKey('publish-preview-card'),
+                  onPressed: () => openTestimonyDraftPreview(context),
+                  child: Text(context.l10n.publishPreviewAction),
+                ),
+              ],
+            ),
+          ]),
+          const SizedBox(height: AppSpacing.lg),
+
           // ── Visibility ─────────────────────────────────────────────────────
           _SectionCard(children: [
           _FieldLabel(label: context.l10n.publishVisibility, required: true),
@@ -1647,6 +1857,12 @@ class _Step3Visibility extends ConsumerWidget {
           ]),
 
           const SizedBox(height: AppSpacing.lg),
+
+          // Public : aussi sur le site et dans Google (accord par défaut).
+          if (draft.visibility == TestimonyVisibility.public) ...[
+            const _WebPublicationCard(),
+            const SizedBox(height: AppSpacing.lg),
+          ],
 
           // Carnet privé : pas de consentement de publication.
           if (draft.visibility == TestimonyVisibility.private)
@@ -1810,6 +2026,48 @@ class _JournalInfoCard extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+// ── Publication sur le web (étape 3) ──────────────────────────────────────────
+
+/// « Publier aussi sur le web » (cochée par défaut, comme sur le site) et
+/// « Témoignage anonyme sur le site ». Docs serveur fonctionnalites/referencement.md
+class _WebPublicationCard extends ConsumerWidget {
+  const _WebPublicationCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final draft = ref.watch(publishProvider);
+    final notifier = ref.read(publishProvider.notifier);
+    final l10n = context.l10n;
+    final titleStyle = AppTextStyles.labelMedium.copyWith(
+      color: AppColors.textPrimary,
+      fontWeight: FontWeight.w600,
+    );
+    return _SectionCard(children: [
+      SwitchListTile.adaptive(
+        key: const ValueKey('publish-web-switch'),
+        contentPadding: EdgeInsets.zero,
+        value: draft.publicationWeb,
+        onChanged: notifier.setPublicationWeb,
+        activeThumbColor: AppColors.primary,
+        secondary: const Icon(Icons.travel_explore_rounded, color: AppColors.primary),
+        title: Text(l10n.publishWebTitle, style: titleStyle),
+        subtitle: Text(l10n.publishWebHint, style: AppTextStyles.bodySmall),
+      ),
+      if (draft.publicationWeb)
+        CheckboxListTile(
+          key: const ValueKey('publish-web-anonymous'),
+          contentPadding: EdgeInsets.zero,
+          controlAffinity: ListTileControlAffinity.leading,
+          value: draft.isAnonymous,
+          onChanged: (v) => notifier.setAnonymous(v ?? false),
+          activeColor: AppColors.primary,
+          title: Text(l10n.publishWebAnonymous, style: titleStyle),
+          subtitle: Text(l10n.publishWebAnonymousHint, style: AppTextStyles.bodySmall),
+        ),
+    ]);
   }
 }
 
@@ -2249,10 +2507,22 @@ class _CoverImagePicker extends StatelessWidget {
 
 // ── Text format toolbar ───────────────────────────────────────────────────────
 
-class _TextFormatToolbar extends StatelessWidget {
+class _TextFormatToolbar extends ConsumerStatefulWidget {
   const _TextFormatToolbar({required this.controller});
 
   final TextEditingController controller;
+
+  @override
+  ConsumerState<_TextFormatToolbar> createState() => _TextFormatToolbarState();
+}
+
+class _TextFormatToolbarState extends ConsumerState<_TextFormatToolbar> {
+  /// Images au plus dans un témoignage.
+  static const _maxImages = 10;
+
+  bool _uploadingImage = false;
+
+  TextEditingController get controller => widget.controller;
 
   void _wrap(String prefix, String suffix) {
     final sel  = controller.selection;
@@ -2302,6 +2572,83 @@ class _TextFormatToolbar extends StatelessWidget {
     );
   }
 
+  /// Lien `[texte](https://…)` : le texte sélectionné devient le texte du lien.
+  Future<void> _link() async {
+    final sel = controller.selection;
+    final text = controller.text;
+    final start = sel.isValid ? sel.start : text.length;
+    final end = sel.isValid ? sel.end : text.length;
+    final link = await showDialog<({String label, String url})>(
+      context: context,
+      builder: (_) => _LinkDialog(initialLabel: text.substring(start, end).trim()),
+    );
+    if (link == null || !mounted) return;
+    // Les crochets fermeraient le lien trop tôt.
+    final label = link.label.replaceAll(RegExp(r'[\[\]\n]'), ' ').trim();
+    final inserted = '[${label.isEmpty ? link.url : label}](${link.url})';
+    final current = controller.text;
+    final a = start.clamp(0, current.length);
+    final b = end.clamp(a, current.length);
+    controller.value = TextEditingValue(
+      text: current.replaceRange(a, b, inserted),
+      selection: TextSelection.collapsed(offset: a + inserted.length),
+    );
+  }
+
+  /// Image choisie dans la galerie, envoyée tout de suite (POST /media/upload)
+  /// puis insérée sur sa propre ligne : `![](https://…)`.
+  Future<void> _image() async {
+    final l10n = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    if (richBodyImageUrls(controller.text).length >= _maxImages) {
+      messenger.showSnackBar(SnackBar(content: Text(l10n.publishImageLimit(_maxImages))));
+      return;
+    }
+    // Position notée avant la galerie : le champ perd le focus pendant le choix.
+    final sel = controller.selection;
+    final at = sel.isValid ? sel.end : controller.text.length;
+    final file = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1600,
+      maxHeight: 1600,
+      imageQuality: 85,
+    );
+    if (file == null || !mounted) return;
+    setState(() => _uploadingImage = true);
+    try {
+      final result = await ref.read(apiServiceProvider).upload<Map<String, dynamic>>(
+        AppConstants.uploadMedia,
+        filePath: file.path,
+        fieldName: 'file',
+        extraFields: {'type': 'image'},
+      );
+      final url = absoluteMediaUrl(result.data['url'] as String?);
+      if (url == null || !url.startsWith('http')) throw StateError('url');
+      _insertBlock('![]($url)', at);
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(
+        content: Text(isNetworkFailure(e) ? l10n.publishImageNeedsConnection : l10n.publishImageUploadFailed),
+      ));
+    } finally {
+      if (mounted) setState(() => _uploadingImage = false);
+    }
+  }
+
+  /// Insère [token] seul sur sa ligne à la position [at].
+  void _insertBlock(String token, int at) {
+    final text = controller.text;
+    final pos = at.clamp(0, text.length);
+    final before = text.substring(0, pos);
+    final after = text.substring(pos);
+    final lead = before.isEmpty || before.endsWith('\n') ? '' : '\n';
+    final trail = after.startsWith('\n') ? '' : '\n';
+    final inserted = '$lead$token$trail';
+    controller.value = TextEditingValue(
+      text: '$before$inserted$after',
+      selection: TextSelection.collapsed(offset: pos + inserted.length),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -2343,8 +2690,184 @@ class _TextFormatToolbar extends StatelessWidget {
               icon: Icons.format_list_numbered_rounded,
               tooltip: context.l10n.publishFormatNumbered,
               onTap: _numbered),
+          _ToolbarButton(
+              icon: Icons.link_rounded,
+              tooltip: context.l10n.publishFormatLink,
+              onTap: _link),
+          _uploadingImage
+              ? const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 14),
+                  child: Center(
+                    child: SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                )
+              : _ToolbarButton(
+                  icon: Icons.add_photo_alternate_outlined,
+                  tooltip: context.l10n.publishFormatImage,
+                  onTap: _image),
         ],
       ),
+    );
+  }
+}
+
+/// Texte et adresse d'un lien ; « https:// » ajouté si absent.
+class _LinkDialog extends StatefulWidget {
+  const _LinkDialog({required this.initialLabel});
+  final String initialLabel;
+
+  @override
+  State<_LinkDialog> createState() => _LinkDialogState();
+}
+
+class _LinkDialogState extends State<_LinkDialog> {
+  late final _label = TextEditingController(text: widget.initialLabel);
+  final _url = TextEditingController();
+  bool _invalid = false;
+
+  @override
+  void dispose() {
+    _label.dispose();
+    _url.dispose();
+    super.dispose();
+  }
+
+  String? _normalized() {
+    var raw = _url.text.trim();
+    if (raw.isEmpty || raw.contains(RegExp(r'\s'))) return null;
+    if (!RegExp(r'^https?://', caseSensitive: false).hasMatch(raw)) raw = 'https://$raw';
+    final uri = Uri.tryParse(raw);
+    if (uri == null || !uri.host.contains('.')) return null;
+    // Une parenthèse fermante terminerait le lien trop tôt.
+    return raw.replaceAll(')', '%29');
+  }
+
+  void _submit() {
+    final url = _normalized();
+    if (url == null) {
+      setState(() => _invalid = true);
+      return;
+    }
+    Navigator.pop(context, (label: _label.text, url: url));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return AlertDialog(
+      title: Text(l10n.publishLinkTitle),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _label,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: InputDecoration(labelText: l10n.publishLinkText),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _url,
+            autofocus: widget.initialLabel.isNotEmpty,
+            keyboardType: TextInputType.url,
+            autocorrect: false,
+            onChanged: (_) {
+              if (_invalid) setState(() => _invalid = false);
+            },
+            onSubmitted: (_) => _submit(),
+            decoration: InputDecoration(
+              labelText: l10n.publishLinkUrl,
+              hintText: 'https://…', // i18n-ignore
+              errorText: _invalid ? l10n.publishLinkInvalid : null,
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.commonCancel)),
+        FilledButton(onPressed: _submit, child: Text(l10n.publishLinkInsert)),
+      ],
+    );
+  }
+}
+
+/// Images insérées dans le texte (miniatures) ; × retire l'image du texte.
+class _BodyImagesStrip extends StatelessWidget {
+  const _BodyImagesStrip({required this.controller});
+  final TextEditingController controller;
+
+  void _remove(String url) {
+    final lines = controller.text.split('\n');
+    final i = lines.indexWhere(
+        (l) => kRichImageLinePattern.firstMatch(l.trim())?.group(2) == url);
+    if (i < 0) return;
+    lines.removeAt(i);
+    final text = lines.join('\n');
+    controller.value = TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) {
+        final urls = richBodyImageUrls(controller.text);
+        if (urls.isEmpty) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: SizedBox(
+            height: 64,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: urls.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 8),
+              itemBuilder: (context, i) => Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: CachedNetworkImage(
+                      imageUrl: urls[i],
+                      width: 64,
+                      height: 64,
+                      fit: BoxFit.cover,
+                      errorWidget: (_, _, _) => Container(
+                        width: 64,
+                        height: 64,
+                        color: AppColors.primarySoft,
+                        child: const Icon(Icons.image_outlined, color: AppColors.primary),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 2,
+                    right: 2,
+                    child: Tooltip(
+                      message: context.l10n.publishImageRemove,
+                      child: GestureDetector(
+                        onTap: () => _remove(urls[i]),
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withAlpha(150),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.close_rounded, size: 14, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

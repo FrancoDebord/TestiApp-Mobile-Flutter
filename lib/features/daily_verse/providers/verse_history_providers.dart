@@ -8,8 +8,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/app_constants.dart';
+import '../../../l10n/app_localizations.dart' show watchAppLanguage;
 import '../../../services/api_service.dart';
-import '../../home/models/testimony_model.dart' show DailyVerse;
+import '../../home/models/testimony_model.dart' show DailyVerse, verseWithPrayer, versePrayBody;
 import '../../home/providers/home_providers.dart' show parsePageMeta;
 
 /// Un jour de l'historique.
@@ -74,7 +75,11 @@ class VerseHistoryState {
 
 class VerseHistoryNotifier extends AsyncNotifier<VerseHistoryState> {
   @override
-  Future<VerseHistoryState> build() => _fetch(1, const VerseHistoryState());
+  Future<VerseHistoryState> build() {
+    // Versets dans la langue de l'application (Accept-Language) : relus au changement de langue.
+    watchAppLanguage(ref);
+    return _fetch(1, const VerseHistoryState());
+  }
 
   Future<VerseHistoryState> _fetch(int page, VerseHistoryState current) async {
     final res = await ref
@@ -115,6 +120,7 @@ class VerseByIdNotifier extends AsyncNotifier<DailyVerse> {
 
   @override
   Future<DailyVerse> build() async {
+    watchAppLanguage(ref);
     final res = await ref.read(apiServiceProvider).get<Map<String, dynamic>>(AppConstants.verseById(id));
     return DailyVerse.fromJson(res.data);
   }
@@ -128,7 +134,22 @@ class VerseByIdNotifier extends AsyncNotifier<DailyVerse> {
   }
 
   Future<void> toggleLike() => _react('like');
-  Future<void> togglePray() => _react('pray');
+
+  /// Une prière de plus ou, [again] faux, retirer la dernière (docs serveur prier-plusieurs-fois.md).
+  Future<void> pray({bool again = true}) async {
+    final v = state.value;
+    if (v == null) return;
+    state = AsyncData(verseWithPrayer(v, again: again));
+    try {
+      final res = await ref
+          .read(apiServiceProvider)
+          .post<Map<String, dynamic>>(AppConstants.verseReactTo(id), data: versePrayBody(again: again));
+      final fresh = DailyVerse.fromJson(res.data);
+      if (fresh.text.isNotEmpty && ref.mounted) state = AsyncData(fresh);
+    } catch (_) {
+      if (ref.mounted) state = AsyncData(v);
+    }
+  }
 
   Future<void> _react(String type) async {
     final v = state.value;

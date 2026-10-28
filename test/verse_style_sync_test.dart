@@ -2,6 +2,7 @@
 // local) et synchronisation des préférences avec GET · PUT /me/verse-style.
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dio/dio.dart' show Options;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:testi_app/core/app_constants.dart';
@@ -67,7 +68,7 @@ class _Api implements ApiService {
   }
 
   @override
-  Future<LaravelResponse<T>> put<T>(String path, {dynamic data}) async {
+  Future<LaravelResponse<T>> put<T>(String path, {dynamic data, Options? options}) async {
     if (putError != null) throw putError!;
     puts.add(Map<String, dynamic>.from(data as Map));
     serverStyle = {...serverStyle, ...puts.last};

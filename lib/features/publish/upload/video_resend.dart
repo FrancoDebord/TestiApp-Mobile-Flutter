@@ -60,6 +60,11 @@ Map<String, dynamic> resendBodyFromTestimonyJson(Map<String, dynamic> m) {
     if (eventId != null && '$eventId'.isNotEmpty) 'event_id': '$eventId',
     if (proofsPublic is bool) 'proofs_public': proofsPublic,
     'visibility': str(['visibility']) ?? 'public',
+    // Référencement (docs serveur referencement.md) : accord, anonymat, textes.
+    if (m['publicationWeb'] is bool) 'publicationWeb': m['publicationWeb'],
+    if (m['isAnonymous'] is bool) 'isAnonymous': m['isAnonymous'],
+    'resume': ?str(['resume']),
+    'transcription': ?str(['transcription']),
   };
 }
 

@@ -34,6 +34,21 @@ class _FakeVerse extends DailyVerseNotifier {
       );
 }
 
+/// Réponse de GET /daily-verse avec Accept-Language: en.
+class _FakeEnglishVerse extends DailyVerseNotifier {
+  @override
+  Future<DailyVerse> build() async => DailyVerse.fromJson({
+        'id': 7,
+        'verseText': 'For God so loved the world, that he gave his only begotten Son.',
+        'reference': 'John 3:16-17',
+        'language': 'en',
+        'textTranslation': 'KJV',
+        'textTranslationName': 'King James Version',
+        'originalText': _longText,
+        'originalReference': 'Jean 3 : 16-17',
+      });
+}
+
 Map<String, dynamic> _versionsJson() => {
       'reference': 'Jean 3 : 16-17',
       'parsed': {'book': 43, 'chapter': 3, 'verseStart': 16, 'verseEnd': 17, 'bookName': 'Jean', 'label': 'Jean 3:16-17'},
@@ -125,10 +140,10 @@ class _FakeRepo implements DailyVerseRepository {
       Future<Never>.error(UnimplementedError(invocation.memberName.toString()));
 }
 
-Widget _app({double textScale = 1.0, bool offline = false, int verseId = 7, List<Override> extra = const []}) =>
+Widget _app({double textScale = 1.0, bool offline = false, int verseId = 7, List<Override> extra = const [], DailyVerseNotifier Function()? verse}) =>
     ProviderScope(
       overrides: [
-        dailyVerseProvider.overrideWith(() => _FakeVerse(verseId)),
+        dailyVerseProvider.overrideWith(verse ?? () => _FakeVerse(verseId)),
         dailyVerseRepositoryProvider.overrideWithValue(_FakeRepo(offline: offline)),
         ...extra,
       ],
@@ -179,6 +194,9 @@ Future<void> _backToVerse(WidgetTester tester) async {
 Future<void> _scrollAll(WidgetTester tester) async {
   final scrollable = find.byType(Scrollable).first;
   for (var i = 0; i < 6; i++) {
+    // En bas de page, un glissement ne défile plus et devient un appui (carte → page).
+    final position = tester.state<ScrollableState>(scrollable).position;
+    if (position.pixels >= position.maxScrollExtent) break;
     await tester.drag(scrollable, const Offset(0, -300));
     await tester.pump();
     expect(tester.takeException(), isNull);
@@ -301,6 +319,20 @@ void main() {
       await _see(tester, find.text('LSG · Louis Segond 1910'));
       await _see(tester, find.text("Ce passage n'est pas disponible dans cette version."));
       expect(tester.takeException(), isNull);
+    });
+
+    // Langue de l'application en anglais : le serveur renvoie le verset en KJV
+    // (docs serveur verset-du-jour.md, « Langue du verset »). Sans version
+    // choisie, l'écran l'affiche tel quel, pas le texte du jour en français.
+    testWidgets('verset dans la langue de l’application (serveur)', (tester) async {
+      await _setPhone(tester, 390);
+      await tester.pumpWidget(_app(verse: _FakeEnglishVerse.new));
+      await _settle(tester);
+
+      expect(find.textContaining('For God so loved the world', findRichText: true), findsOneWidget);
+      expect(find.textContaining('tant aimé le monde', findRichText: true), findsNothing);
+      expect(find.text('John 3:16-17'), findsOneWidget);
+      expect(find.text('King James Version'), findsWidgets);
     });
 
     testWidgets('onglets : prière, commentaires, témoignages', (tester) async {

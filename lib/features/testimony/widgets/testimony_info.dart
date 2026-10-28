@@ -15,6 +15,8 @@ import '../../../shared/widgets/app_badge.dart';
 import '../../../shared/widgets/organization_badge.dart';
 import '../../downloads/widgets/download_button.dart';
 import '../../home/models/testimony_model.dart';
+import '../../prayer/widgets/pray_again_sheet.dart' show MyPrayerTimesLine;
+import '../../reactions/reaction_people.dart' show ReactionPeopleButton, ReactionSubject;
 
 /// 12400 → « 12,4k » (fr) / « 12.4k » (en) ; 1 500 000 → « 1,5M ».
 String formatCompactCount(int n, {bool fr = true}) {
@@ -230,6 +232,7 @@ class TestimonyStatsRow extends StatelessWidget {
     this.prayers,
     this.isPraying = false,
     this.onPray,
+    this.myPrayerTimes = 0,
     this.fr = true,
   });
 
@@ -243,11 +246,14 @@ class TestimonyStatsRow extends StatelessWidget {
   final VoidCallback? onShare;
   final VoidCallback? onComment;
   final VoidCallback? onPray;
+
+  /// Nombre de fois que la personne a prié (« Vous avez prié 3 fois » sous la rangée).
+  final int myPrayerTimes;
   final bool fr;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    final row = Row(
       children: [
         Expanded(
           flex: 2,
@@ -285,10 +291,21 @@ class TestimonyStatsRow extends StatelessWidget {
                 onTap: onComment,
                 semanticLabel: _l10n(fr).testimonyCommentsSemantic,
               ),
+              // Qui a réagi ? (effectif de chaque réaction, personnes et commentaires), toujours
+              // visible comme sur le site.
+              ReactionPeopleButton(subject: ReactionSubject.testimony, id: testimony.id),
             ],
           ),
         ),
         DownloadButton(testimony: testimony),
+      ],
+    );
+    if (myPrayerTimes < 1) return row;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        row,
+        MyPrayerTimesLine(times: myPrayerTimes, padding: const EdgeInsets.only(left: 8, top: 2)),
       ],
     );
   }

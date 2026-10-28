@@ -9,6 +9,7 @@ import '../../../core/theme/app_tokens.dart';
 import '../../../shared/search/search_suggestions.dart' show SearchScope;
 import '../../../shared/widgets/search_autocomplete_field.dart';
 import '../../auth/providers/auth_notifier.dart' show currentUserProvider;
+import '../../offline/outbox_controller.dart' show OutboxKind, outboxProvider;
 import '../data/events_repository.dart';
 import '../models/event_models.dart';
 import '../providers/events_providers.dart';
@@ -57,7 +58,14 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
       if (canCreate) (l10n.eventsTabMine, EventScope.mine),
     ];
 
-    return DefaultTabController(
+    // Ouvert sans rien derrière (lien, notification) : « Retour » ramène à
+    // l'accueil au lieu de fermer l'application.
+    return PopScope(
+      canPop: GoRouter.maybeOf(context)?.canPop() ?? true,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) GoRouter.maybeOf(context)?.go('/home');
+      },
+      child: DefaultTabController(
       length: tabs.length,
       child: Scaffold(
         backgroundColor: AppColors.background,
@@ -112,11 +120,57 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
                 label: Text(l10n.eventsCreate),
               )
             : null,
-        body: TabBarView(
+        body: Column(
           children: [
-            for (final (_, scope) in tabs)
-              _EventList(listKey: (scope: scope, type: _type, query: _query)),
+            const _PendingEventsBanner(),
+            Expanded(
+              child: TabBarView(
+                children: [
+                  for (final (_, scope) in tabs)
+                    _EventList(listKey: (scope: scope, type: _type, query: _query)),
+                ],
+              ),
+            ),
           ],
+        ),
+      ),
+      ),
+    );
+  }
+}
+
+/// Événements créés hors connexion, pas encore envoyés (file d'envoi) : bandeau vers « À envoyer ».
+class _PendingEventsBanner extends ConsumerWidget {
+  const _PendingEventsBanner();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final items = ref.watch(outboxProvider.select(
+        (s) => [for (final i in s.items) if (i.kind == OutboxKind.event) i]));
+    if (items.isEmpty) return const SizedBox.shrink();
+    final failed = items.where((i) => i.isFailed).length;
+    return Material(
+      color: failed > 0 ? AppColors.dangerSoft : AppColors.sunSoft,
+      child: InkWell(
+        onTap: () => context.push('/outbox'),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screen, vertical: 10),
+          child: Row(
+            children: [
+              Icon(failed > 0 ? Icons.error_outline_rounded : Icons.cloud_upload_outlined,
+                  size: 20, color: failed > 0 ? AppColors.danger : AppColors.sunText),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  failed > 0
+                      ? context.l10n.eventsOfflineFailed(failed)
+                      : context.l10n.eventsOfflinePending(items.length),
+                  style: AppTextStyles.bodySmall.copyWith(color: AppColors.textPrimary),
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary),
+            ],
+          ),
         ),
       ),
     );

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/app_constants.dart';
 import '../../../core/local_db/daos/bible_dao.dart';
+import '../../../core/network/network_failure.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../services/api_service.dart';
 import '../../bible/providers/bible_providers.dart' show bibleDaoProvider;
@@ -16,10 +17,11 @@ import '../models/daily_verse_models.dart';
 import '../models/verse_reference.dart';
 
 /// Erreur lisible ([offline] : pas de connexion).
-class DailyVerseFailure implements Exception {
+class DailyVerseFailure implements Exception, OfflineAwareFailure {
   const DailyVerseFailure(this.message, {this.statusCode = 0, this.offline = false});
   final String message;
   final int statusCode;
+  @override
   final bool offline;
 
   @override

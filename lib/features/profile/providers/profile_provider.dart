@@ -1,8 +1,12 @@
-import 'package:flutter/foundation.dart' show debugPrint;
+import 'dart:async' show unawaited;
+
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../../core/app_constants.dart';
+import '../../../core/network/network_failure.dart';
+import '../../downloads/data/offline_testimonies_store.dart';
 import '../../../features/accounts/providers/acting_account_provider.dart'
     show actingAccountProvider;
 import '../../../features/auth/providers/auth_notifier.dart'
@@ -387,24 +391,44 @@ class MyTestimoniesNotifier extends AsyncNotifier<List<UserTestimony>> {
 
   /// GET /testimonies/my : tous les témoignages de l'auteur, quel que soit leur
   /// statut (le carnet privé a sa propre liste). Pages de 50, 10 au plus.
+  /// Copiés dans la base SQLite du téléphone (offline_testimonies) ; hors
+  /// connexion, la copie est affichée.
   Future<List<UserTestimony>> _fetch() async {
     final userId = ref.read(currentUserProvider)?.id;
     if (userId == null || userId.isEmpty) return [];
+    final store = ref.read(offlineTestimoniesStoreProvider);
     try {
       final api = ref.read(apiServiceProvider);
-      final all = <UserTestimony>[];
+      final raws = <Map<String, dynamic>>[];
       for (var page = 1, last = 1; page <= last && page <= 10; page++) {
         final res = await api.get<dynamic>(AppConstants.myTestimonies, query: {'limit': 50, 'page': page});
         final data = res.data;
-        if (data is List) {
-          all.addAll(data.whereType<Map<String, dynamic>>().map(UserTestimony.fromJson));
-        }
+        if (data is List) raws.addAll(data.whereType<Map<String, dynamic>>());
         last = parsePageMeta(res.meta).lastPage;
       }
-      return all;
+      ref.read(myTestimoniesOfflineSinceProvider.notifier).set(null);
+      if (!kIsWeb) {
+        unawaited(store.saveMine(userId, raws).then((_) {
+          if (ref.mounted) ref.invalidate(offlineMyTestimoniesProvider);
+        }).catchError((Object e) {
+          debugPrint('myTestimonies copie ✗ $e');
+        }));
+      }
+      return raws.map(UserTestimony.fromJson).toList();
     } catch (e) {
       debugPrint('myTestimonies ✗ $e');
-      return [];
+      if (kIsWeb || !isNetworkFailure(e)) return [];
+      // Hors connexion : la copie gardée sur le téléphone.
+      try {
+        final stored = await store.mine(userId);
+        if (stored.isNotEmpty) {
+          ref.read(myTestimoniesOfflineSinceProvider.notifier).set(
+              stored.map((s) => s.savedAt).reduce((a, b) => a.isAfter(b) ? a : b));
+        }
+        return [for (final s in stored) UserTestimony.fromJson(s.json)];
+      } catch (_) {
+        return [];
+      }
     }
   }
 
@@ -456,6 +480,59 @@ class MyTestimoniesNotifier extends AsyncNotifier<List<UserTestimony>> {
 final myTestimoniesNotifierProvider =
     AsyncNotifierProvider<MyTestimoniesNotifier, List<UserTestimony>>(
   MyTestimoniesNotifier.new,
+);
+
+// ── Mes témoignages gardés sur le téléphone (SQLite) ─────────────────────────
+
+final offlineTestimoniesStoreProvider =
+    Provider<OfflineTestimoniesStore>((_) => const OfflineTestimoniesStore());
+
+/// « Mes témoignages » affiché depuis la copie du téléphone : date de la copie
+/// (null : liste à jour, reçue du serveur).
+class MyTestimoniesOfflineSince extends Notifier<DateTime?> {
+  @override
+  DateTime? build() => null;
+
+  void set(DateTime? value) => state = value;
+}
+
+final myTestimoniesOfflineSinceProvider =
+    NotifierProvider<MyTestimoniesOfflineSince, DateTime?>(MyTestimoniesOfflineSince.new);
+
+/// Témoignages de la personne gardés sur le téléphone (écran Téléchargements) :
+/// les relire hors connexion, les retirer du téléphone.
+class OfflineMyTestimoniesNotifier extends AsyncNotifier<List<StoredTestimony>> {
+  @override
+  Future<List<StoredTestimony>> build() async {
+    final uid = ref.watch(currentUserProvider.select((u) => u?.id));
+    if (uid == null || kIsWeb) return const [];
+    try {
+      return await ref.read(offlineTestimoniesStoreProvider).mine(uid);
+    } catch (e) {
+      debugPrint('offlineMyTestimonies ✗ $e');
+      return const [];
+    }
+  }
+
+  /// Retire de la base du téléphone (le témoignage reste publié en ligne).
+  Future<void> remove(String id) async {
+    final uid = ref.read(currentUserProvider)?.id;
+    if (uid == null) return;
+    await ref.read(offlineTestimoniesStoreProvider).removeMine(uid, id);
+    state = AsyncData([for (final s in state.value ?? const <StoredTestimony>[]) if (s.id != id) s]);
+  }
+
+  Future<void> removeAll() async {
+    final uid = ref.read(currentUserProvider)?.id;
+    if (uid == null) return;
+    await ref.read(offlineTestimoniesStoreProvider).removeAllMine(uid);
+    state = const AsyncData([]);
+  }
+}
+
+final offlineMyTestimoniesProvider =
+    AsyncNotifierProvider<OfflineMyTestimoniesNotifier, List<StoredTestimony>>(
+  OfflineMyTestimoniesNotifier.new,
 );
 
 // ── Témoignages sauvegardés (GET /testimonies/saved/list) ────────────────────

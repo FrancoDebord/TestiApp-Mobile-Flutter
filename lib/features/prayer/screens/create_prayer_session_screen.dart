@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../offline/outbox_controller.dart';
 import '../data/prayer_repository.dart';
 import '../models/prayer_models.dart';
 import '../providers/prayer_providers.dart';
@@ -112,7 +114,25 @@ class _CreatePrayerSessionScreenState extends ConsumerState<CreatePrayerSessionS
       ..description = _description.text;
     setState(() => _saving = true);
     try {
-      final saved = await ref.read(prayerRepositoryProvider).saveSession(d, id: widget.sessionId);
+      final repo = ref.read(prayerRepositoryProvider);
+      // Nouvelle session sans réseau : gardée sur le téléphone, programmée au retour de la connexion.
+      final saved = _editing
+          ? await repo.saveSession(d, id: widget.sessionId)
+          : await ref.read(outboxProvider.notifier).sendOrQueue(
+                () => repo.saveSession(d),
+                () => OutboxDraft(
+                  kind: OutboxKind.prayerSession,
+                  label: d.title,
+                  localId: newLocalId(),
+                  request: OutboxRequest('POST', AppConstants.prayerSessions, body: d.toJson()),
+                ),
+              );
+      if (saved == null) {
+        if (!mounted) return;
+        showQueuedSnack(context);
+        context.pop();
+        return;
+      }
       ref.invalidate(prayerSessionListProvider);
       if (_editing) ref.read(prayerSessionProvider(saved.id).notifier).replace(saved);
       if (!mounted) return;

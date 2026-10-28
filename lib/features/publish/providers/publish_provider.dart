@@ -1,3 +1,5 @@
+import 'dart:async' show Timer, unawaited;
+import 'dart:convert' show jsonEncode;
 import 'dart:math' as math;
 
 import 'package:dio/dio.dart';
@@ -5,18 +7,19 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/app_constants.dart';
-import '../../../core/local_db/daos/pending_ops_dao.dart';
+import '../../../core/network/network_failure.dart';
 import '../../../core/providers/categories_provider.dart';
-import '../../../core/local_db/database_service.dart';
 import '../../../core/media/youtube.dart';
+import '../../offline/outbox_controller.dart';
 import '../../../features/auth/providers/auth_notifier.dart'
-    show currentUserProvider;
+    show currentUserProvider, realUserProvider;
 import '../../../features/bible/providers/bible_providers.dart'
-    show bibleVerseRefProvider;
+    show bibleVerseRefProvider, bibleVerseToInsertProvider;
 import '../../../features/home/models/testimony_model.dart';
 import '../../../features/home/providers/home_providers.dart';
 import '../../../services/api_service.dart';
 import '../../journal/data/journal_repository.dart' show journalRefreshProvider;
+import '../drafts/publish_drafts.dart';
 import '../models/publish_models.dart';
 import '../upload/video_upload_controller.dart' show videoUploadProvider;
 import '../../../shared/models/mention.dart' show MentionRef;
@@ -26,12 +29,7 @@ import '../../conversion/providers/conversion_providers.dart'
 import '../../../l10n/app_localizations.dart';
 
 // Converts a relative server URL (e.g. "/storage/videos/x.mp4") to absolute.
-String? _absoluteUrl(String? raw) {
-  if (raw == null || raw.isEmpty) return raw;
-  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
-  final root = AppConstants.baseUrl.replaceFirst(RegExp(r'/api/v1.*$'), '');
-  return raw.startsWith('/') ? '$root$raw' : '$root/$raw';
-}
+String? _absoluteUrl(String? raw) => absoluteMediaUrl(raw);
 
 /// Message d'échec d'upload : raison renvoyée par Laravel si disponible
 /// (ex. « The file failed to upload. » quand PHP refuse la taille du fichier).
@@ -138,8 +136,125 @@ final publishConversionProvider =
 // =============================================================================
 
 class PublishNotifier extends Notifier<PublishDraft> {
+  // ── Brouillon gardé sur le téléphone (lib/features/publish/drafts/) ────────
+  //
+  // Enregistré 2 s après chaque modification et quand le formulaire est quitté :
+  // un retour par mégarde ou la fermeture de l'application ne perd rien.
+  // Supprimé une fois le témoignage publié (ou gardé dans la file d'envoi).
+
+  Timer? _autosave;
+  String? _lastSaved;
+
+  /// « Supprimer le brouillon » : plus rien n'est enregistré pour ce formulaire.
+  bool _discarded = false;
+
+  static const _sentStatuses = {
+    PublishStatus.inReview,
+    PublishStatus.published,
+    PublishStatus.pendingSync,
+    PublishStatus.savedToJournal,
+    PublishStatus.videoUploading,
+  };
+
+  /// Dernier état et personne connectée, pour l'enregistrement à la fermeture
+  /// (le Ref n'est plus utilisable dans onDispose).
+  PublishDraft? _latest;
+  String? _uid;
+
   @override
-  PublishDraft build() => PublishDraft();
+  PublishDraft build() {
+    final store = ref.read(publishDraftsStoreProvider);
+    final container = ref.container;
+    listenSelf((prev, next) {
+      _latest = next;
+      _uid = ref.read(realUserProvider)?.id;
+      // Publié : le brouillon n'a plus lieu d'être.
+      if (_sentStatuses.contains(next.status)) {
+        _autosave?.cancel();
+        final id = next.draftId ?? prev?.draftId;
+        if (id != null) unawaited(_deleteStored(id));
+        return;
+      }
+      _autosave?.cancel();
+      _autosave = Timer(const Duration(seconds: 2), () => unawaited(saveDraftNow()));
+    });
+    ref.onDispose(() {
+      // Quitté avant les 2 s : enregistré quand même (l'état est figé ici).
+      if (_autosave?.isActive ?? false) {
+        _autosave!.cancel();
+        final uid = _uid;
+        final draft = _latest;
+        if (uid != null && draft != null && _shouldSave(draft)) {
+          unawaited(store.save(uid, draft).then((_) => container.invalidate(publishDraftsProvider)).catchError((_) {}));
+        }
+      }
+    });
+    return PublishDraft();
+  }
+
+  bool _shouldSave(PublishDraft d) =>
+      !_discarded && d.hasContent && !_sentStatuses.contains(d.status) && d.status != PublishStatus.submitted;
+
+  /// Enregistre le brouillon tout de suite (rien à faire s'il est vide ou inchangé).
+  Future<void> saveDraftNow() async {
+    _autosave?.cancel();
+    final uid = ref.read(realUserProvider)?.id;
+    final draft = state;
+    if (uid == null || !_shouldSave(draft)) return;
+    final json = jsonEncode(draft.toDraftJson());
+    if (json == _lastSaved && draft.draftId != null) return;
+    try {
+      final saved = await ref.read(publishDraftsStoreProvider).save(uid, draft);
+      if (!ref.mounted) return;
+      _lastSaved = jsonEncode(saved.toDraftJson());
+      // Identifiant et chemins des copies, sans relancer d'enregistrement.
+      if (state.draftId != saved.draftId ||
+          state.coverImagePath != saved.coverImagePath ||
+          state.audioPath != saved.audioPath ||
+          state.videoPath != saved.videoPath ||
+          state.proofs.length != saved.proofs.length ||
+          state.proofs.entries.any((e) => saved.proofs[e.key]?.path != e.value.path)) {
+        state = state.copyWith(
+          draftId: saved.draftId,
+          coverImagePath: saved.coverImagePath,
+          audioPath: saved.audioPath,
+          videoPath: saved.videoPath,
+          proofs: saved.proofs,
+        );
+        _autosave?.cancel();
+      }
+      ref.invalidate(publishDraftsProvider);
+    } catch (e) {
+      debugPrint('Brouillon ✗ enregistrement : $e');
+    }
+  }
+
+  /// Reprend un brouillon enregistré.
+  void loadDraft(PublishDraft draft) {
+    _discarded = false;
+    _lastSaved = jsonEncode(draft.toDraftJson());
+    state = draft.copyWith(status: PublishStatus.draft, errorMessage: null, uploadError: null);
+    _autosave?.cancel();
+  }
+
+  /// « Supprimer le brouillon » : formulaire vidé, brouillon effacé du téléphone.
+  Future<void> discardDraft() async {
+    _discarded = true;
+    _autosave?.cancel();
+    final id = state.draftId;
+    state = PublishDraft();
+    _autosave?.cancel();
+    if (id != null) await _deleteStored(id);
+  }
+
+  Future<void> _deleteStored(String id) async {
+    try {
+      await ref.read(publishDraftsStoreProvider).delete(id);
+      if (ref.mounted) ref.invalidate(publishDraftsProvider);
+    } catch (e) {
+      debugPrint('Brouillon ✗ suppression : $e');
+    }
+  }
 
   // ── Format selector ─────────────────────────────────────────────────────────
 
@@ -150,12 +265,16 @@ class PublishNotifier extends Notifier<PublishDraft> {
     final conversionCat = conversion
         ? ref.read(categoriesListProvider).where((c) => c.slug == 'conversion').firstOrNull
         : null;
+    _discarded = false;
+    _lastSaved = null;
     state = PublishDraft(
       format: format,
       visibility:
           journal ? TestimonyVisibility.private : TestimonyVisibility.public,
       category: conversion ? 'conversion' : null, // i18n-ignore
       categoryId: conversionCat != null && conversionCat.id.isNotEmpty ? conversionCat.id : null,
+      // Verset choisi (Bible, verset du jour) : repris quel que soit le type de témoignage.
+      bibleVerse: journal ? '' : ref.read(bibleVerseToInsertProvider) ?? '',
     );
   }
 
@@ -235,6 +354,18 @@ class PublishNotifier extends Notifier<PublishDraft> {
   /// Publier aussi les preuves (docs serveur fonctionnalites/preuves.md).
   void setProofsPublic(bool value) => state = state.copyWith(proofsPublic: value);
 
+  // ── Référencement (docs serveur fonctionnalites/referencement.md) ───────────
+
+  /// Publier aussi sur le site (et dans Google).
+  void setPublicationWeb(bool value) => state = state.copyWith(publicationWeb: value);
+
+  /// « Témoignage anonyme » sur le site.
+  void setAnonymous(bool value) => state = state.copyWith(isAnonymous: value);
+
+  void updateResume(String value) => state = state.copyWith(resume: value);
+
+  void updateTranscription(String value) => state = state.copyWith(transcription: value);
+
   // ── Step 3: Publication ─────────────────────────────────────────────────────
 
   void setVisibility(TestimonyVisibility v) =>
@@ -243,12 +374,16 @@ class PublishNotifier extends Notifier<PublishDraft> {
   void toggleConsent() =>
       state = state.copyWith(consentGiven: !state.consentGiven);
 
-  void saveDraft() => state = state.copyWith(status: PublishStatus.draft);
+  void saveDraft() => unawaited(saveDraftNow());
 
   Future<void> publish() async {
     state = state.copyWith(status: PublishStatus.submitted, uploadError: null);
 
     final format = state.format ?? TestimonyFormat.text;
+
+    // Serveur injoignable : le témoignage et ses fichiers sont gardés sur le
+    // téléphone (file d'envoi), puis envoyés au retour du réseau.
+    var offline = false;
 
     // ── Upload image de couverture si chemin local présent et pas encore envoyé ─
     if ((state.coverImagePath ?? '').isNotEmpty &&
@@ -267,17 +402,23 @@ class PublishNotifier extends Notifier<PublishDraft> {
         state = state.copyWith(coverImageRemoteUrl: url, isUploadingMedia: false);
       } catch (e) {
         debugPrint('═══ UPLOAD cover ✗ $e');
-        state = state.copyWith(
-          isUploadingMedia: false,
-          status: PublishStatus.draft,
-          uploadError: _uploadErrorMessage(e, L10n.current.publishCoverUploadFailed),
-        );
-        return;
+        state = state.copyWith(isUploadingMedia: false);
+        // Hors connexion : la couverture partira avec le témoignage (file d'envoi).
+        if (isNetworkFailure(e) && !kIsWeb) {
+          offline = true;
+        } else {
+          state = state.copyWith(
+            status: PublishStatus.draft,
+            uploadError: _uploadErrorMessage(e, L10n.current.publishCoverUploadFailed),
+          );
+          return;
+        }
       }
     }
 
     // ── Upload média si chemin local présent et pas encore envoyé ─────────────
-    if (format == TestimonyFormat.audio &&
+    if (!offline &&
+        format == TestimonyFormat.audio &&
         (state.audioPath ?? '').isNotEmpty &&
         state.audioRemoteUrl == null) {
       state = state.copyWith(isUploadingMedia: true);
@@ -294,12 +435,16 @@ class PublishNotifier extends Notifier<PublishDraft> {
         state = state.copyWith(audioRemoteUrl: url, isUploadingMedia: false);
       } catch (e) {
         debugPrint('═══ UPLOAD audio ✗ $e');
-        state = state.copyWith(
-          isUploadingMedia: false,
-          status: PublishStatus.draft,
-          uploadError: _uploadErrorMessage(e, L10n.current.publishAudioUploadFailed),
-        );
-        return;
+        state = state.copyWith(isUploadingMedia: false);
+        if (isNetworkFailure(e) && !kIsWeb) {
+          offline = true;
+        } else {
+          state = state.copyWith(
+            status: PublishStatus.draft,
+            uploadError: _uploadErrorMessage(e, L10n.current.publishAudioUploadFailed),
+          );
+          return;
+        }
       }
     }
 
@@ -362,7 +507,7 @@ class PublishNotifier extends Notifier<PublishDraft> {
     }
 
     // ── POST vers l'API ───────────────────────────────────────────────────
-    String id = 'local_${DateTime.now().millisecondsSinceEpoch}';
+    String id = newLocalId();
     var savedOffline = false;
     var created = false;
 
@@ -411,6 +556,10 @@ class PublishNotifier extends Notifier<PublishDraft> {
       },
       // Témoignage de conversion : sorte et champs propres (année, lieu, verset).
       if (ref.read(publishConversionProvider) case final c?) ...c.toJson(),
+      // Site et Google (docs serveur fonctionnalites/referencement.md) : accord,
+      // anonymat sur le site ; audio et vidéo : résumé et transcription
+      // (pour un audio, la transcription est la description saisie).
+      ...webPublicationFields(state, format),
       'visibility'  : switch (state.visibility) {
         TestimonyVisibility.private => 'private',
         TestimonyVisibility.friends => 'followers', // valeur attendue par l'API
@@ -425,6 +574,26 @@ class PublishNotifier extends Notifier<PublishDraft> {
     if (bunnyVideo) {
       final body = {...postBody}..remove('media_url');
       final positions = state.proofs.keys.toList()..sort();
+      // Une autre vidéo part déjà : celle-ci attend son tour dans la file d'envoi.
+      final outbox = ref.read(outboxProvider.notifier);
+      final videoDraft = OutboxDraft(
+        kind: OutboxKind.videoTestimony,
+        label: title,
+        video: {
+          'sourcePath': state.videoPath!,
+          'title': title,
+          'body': body,
+          'proofs': [
+            for (final p in positions) {'position': p, 'path': state.proofs[p]!.path},
+          ],
+        },
+      );
+      if (ref.read(videoUploadProvider.notifier).hasPendingJob && outbox.canQueue(videoDraft)) {
+        await outbox.enqueue(videoDraft);
+        _attachmentsPublished();
+        state = state.copyWith(status: PublishStatus.pendingSync);
+        return;
+      }
       try {
         await ref.read(videoUploadProvider.notifier).start(
               sourcePath: state.videoPath!,
@@ -442,14 +611,7 @@ class PublishNotifier extends Notifier<PublishDraft> {
         );
         return;
       }
-      ref.read(publishEventProvider.notifier).clear();
-      ref.read(publishLiveProvider.notifier).clear();
-      ref.read(bibleVerseRefProvider.notifier).clear();
-      _conversionPublished();
-      if (ref.read(publishProphecyProvider) != null) {
-        ref.read(publishProphecyProvider.notifier).clear();
-        ref.invalidate(propheciesListProvider);
-      }
+      _attachmentsPublished();
       state = state.copyWith(status: PublishStatus.videoUploading);
       return;
     }
@@ -458,43 +620,66 @@ class PublishNotifier extends Notifier<PublishDraft> {
     debugPrint('═══ category slug=$catSlug id=$catId (state.categoryId=${state.categoryId}, catMatch=${catMatch?.id})');
     debugPrint('═══ BODY: $postBody');
 
-    try {
-      final api    = ref.read(apiServiceProvider);
-      final result = await api.post<Map<String, dynamic>>(
-        AppConstants.testimonies,
-        data: postBody,
+    // Hors ligne : le témoignage, sa couverture, son audio et ses preuves sont
+    // gardés sur le téléphone ; l'identifiant provisoire [id] est remplacé par
+    // celui du serveur à l'envoi.
+    Future<bool> queue() async {
+      final positions = state.proofs.keys.toList()..sort();
+      final draft = OutboxDraft(
+        kind: OutboxKind.testimony,
+        label: title,
+        localId: id,
+        request: OutboxRequest('POST', AppConstants.testimonies, body: postBody),
+        before: [
+          if ((state.coverImagePath ?? '').isNotEmpty && state.coverImageRemoteUrl == null)
+            OutboxFile(path: AppConstants.uploadMedia, file: state.coverImagePath!, fields: const {'type': 'image'}, into: 'cover_url'),
+          if (format == TestimonyFormat.audio && (state.audioPath ?? '').isNotEmpty && state.audioRemoteUrl == null)
+            OutboxFile(path: AppConstants.uploadMedia, file: state.audioPath!, fields: const {'type': 'audio'}, into: 'media_url'),
+        ],
+        after: [
+          for (final p in positions)
+            OutboxFile(path: AppConstants.testimonyProofs('{id}'), file: state.proofs[p]!.path, fields: {'position': p}),
+        ],
       );
-      debugPrint('═══ PUBLISH ✓ id=${result.data['id']}');
-      id = result.data['id']?.toString() ?? id;
-      created = true;
-      ref.read(publishEventProvider.notifier).clear();
-      ref.read(publishLiveProvider.notifier).clear();
-      // La référence ne doit pas suivre le témoignage suivant.
-      ref.read(bibleVerseRefProvider.notifier).clear();
-      _conversionPublished();
-      if (ref.read(publishProphecyProvider) != null) {
-        ref.read(publishProphecyProvider.notifier).clear();
-        ref.invalidate(propheciesListProvider);
+      final outbox = ref.read(outboxProvider.notifier);
+      if (!outbox.canQueue(draft)) return false;
+      try {
+        return await outbox.enqueue(draft) != null;
+      } catch (e) {
+        debugPrint('═══ PUBLISH file d\'envoi ✗ $e');
+        return false;
+      }
+    }
+
+    try {
+      if (offline) {
+        if (!await queue()) {
+          state = state.copyWith(status: PublishStatus.draft, errorMessage: L10n.current.commonErrorNetwork);
+          return;
+        }
+        savedOffline = true;
+        _attachmentsPublished();
+      } else {
+        final api    = ref.read(apiServiceProvider);
+        final result = await api.post<Map<String, dynamic>>(
+          AppConstants.testimonies,
+          data: postBody,
+        );
+        debugPrint('═══ PUBLISH ✓ id=${result.data['id']}');
+        id = result.data['id']?.toString() ?? id;
+        created = true;
+        _attachmentsPublished();
       }
     } on DioException catch (e) {
       debugPrint('═══ PUBLISH DioException type=${e.type} status=${e.response?.statusCode} body=${e.response?.data}');
-      final isOffline = e.type == DioExceptionType.connectionError ||
-          e.type == DioExceptionType.connectionTimeout ||
-          e.type == DioExceptionType.receiveTimeout ||
-          e.type == DioExceptionType.sendTimeout;
-
-      if (isOffline) {
-        // Hors ligne → file d'attente locale, sync au prochain retour en ligne
-        try {
-          final dao = PendingOpsDao(DatabaseService());
-          await dao.enqueue(
-            type:     PendingOpType.publishDraft,
-            method:   'POST',
-            endpoint: AppConstants.testimonies,
-            body:     postBody,
-          );
-        } catch (_) {}
+      if (isNetworkFailure(e)) {
+        // Hors ligne → file d'envoi, envoi automatique au retour du réseau.
+        if (!await queue()) {
+          state = state.copyWith(status: PublishStatus.draft, errorMessage: L10n.current.commonErrorNetwork);
+          return;
+        }
         savedOffline = true;
+        _attachmentsPublished();
       } else {
         // Erreur serveur (4xx/5xx) — informer l'utilisateur
         final serverMsg = (e.response?.data as Map?)?['message'] as String?;
@@ -515,9 +700,7 @@ class PublishNotifier extends Notifier<PublishDraft> {
     }
 
     // ── Preuves : envoyées après la création du témoignage ────────────────
-    // Chemin en ligne uniquement : la file hors ligne (PendingOpsDao) ne
-    // rejoue que le POST /testimonies, sans fichiers joints ; les preuves
-    // choisies alors que le serveur est injoignable ne sont pas envoyées.
+    // Hors ligne, elles partent avec le témoignage depuis la file d'envoi.
     // Un échec n'annule pas la publication (message affiché par l'écran).
     final failedProofs = <int>[];
     if (created && !savedOffline) {
@@ -599,6 +782,20 @@ class PublishNotifier extends Notifier<PublishDraft> {
     );
   }
 
+  /// Rattachements (événement, direct, verset, parole, conversion) consommés :
+  /// ils ne doivent pas suivre le témoignage suivant.
+  void _attachmentsPublished() {
+    ref.read(publishEventProvider.notifier).clear();
+    ref.read(publishLiveProvider.notifier).clear();
+    ref.read(bibleVerseRefProvider.notifier).clear();
+    ref.read(bibleVerseToInsertProvider.notifier).clear();
+    _conversionPublished();
+    if (ref.read(publishProphecyProvider) != null) {
+      ref.read(publishProphecyProvider.notifier).clear();
+      ref.invalidate(propheciesListProvider);
+    }
+  }
+
   /// Témoignage de conversion envoyé : mode quitté, profil et section rechargés.
   void _conversionPublished() {
     if (ref.read(publishConversionProvider) == null) return;
@@ -611,6 +808,25 @@ class PublishNotifier extends Notifier<PublishDraft> {
 }
 
 // Mappe les libellés français → enum TestimonyCategory
+/// Champs de publication sur le web envoyés avec le témoignage (création et
+/// upload-init) : `publicationWeb`, `isAnonymous`, `resume`, `transcription`.
+Map<String, dynamic> webPublicationFields(PublishDraft d, TestimonyFormat format) {
+  // Carnet privé et abonnés : jamais sur le site.
+  final public = d.visibility == TestimonyVisibility.public;
+  String? text(String v) => v.trim().isEmpty ? null : v.trim();
+  final transcription = switch (format) {
+    TestimonyFormat.text => null,
+    TestimonyFormat.audio => text(d.audioTranscript),
+    TestimonyFormat.video => text(d.transcription),
+  };
+  return {
+    'publicationWeb': public && d.publicationWeb,
+    'isAnonymous': public && d.publicationWeb && d.isAnonymous,
+    if (format != TestimonyFormat.text && text(d.resume) != null) 'resume': text(d.resume),
+    'transcription': ?transcription,
+  };
+}
+
 TestimonyCategory _categoryFromString(String? s) => switch (s) {
       'Délivrance' => TestimonyCategory.delivrance, // i18n-ignore
       'Conversion' => TestimonyCategory.conversion, // i18n-ignore

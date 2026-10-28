@@ -167,6 +167,9 @@ abstract final class AppConstants {
       => '/testimonies/$testimonyId/reactions/$reactionId';
   static String testimonyComments(String id)      => '/testimonies/$id/comments';
   static String testimonySave(String id)   => '/testimonies/$id/save';    // PUT
+  /// PUT { publicationWeb?, isAnonymous? } : accord pour le web, auteur seulement,
+  /// sans nouvelle modération (docs serveur fonctionnalites/referencement.md).
+  static String testimonyWeb(String id)    => '/testimonies/$id/web';
   static String testimonyUnsave(String id) => '/testimonies/$id/unsave'; // DELETE
   static String testimonyShare(String id)  => '/testimonies/$id/share';  // POST
   static String testimonyReport(String id) => '/testimonies/$id/report'; // POST

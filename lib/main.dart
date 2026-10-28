@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
 
 import 'core/router/app_router.dart';
@@ -32,6 +33,7 @@ import 'services/push_service.dart';
 import 'features/testimony/providers/testimony_refresh.dart'
     show kVideoPushTypes, rememberVideoPush, testimonyReloaderProvider;
 import 'services/sync_service.dart';
+import 'features/offline/outbox_controller.dart' show outboxProvider;
 
 // ── FCM background handler ────────────────────────────────────────────────────
 //
@@ -57,6 +59,9 @@ Future<void> main() async {
   MediaHttpOverrides.install();
   // Noms de mois / jours FR et EN (dates formatées selon la langue).
   await initLocaleFormatting();
+  // Langue choisie, sinon (première installation) celle du système, fixée
+  // avant le premier écran et la première requête.
+  await AppLanguageNotifier.preload(const FlutterSecureStorage());
 
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
@@ -156,6 +161,8 @@ class _TemoignagesAppState extends ConsumerState<TemoignagesApp>
     unawaited(() async {
       try {
         final userId = ref.read(currentUserProvider)?.id;
+        // Ce qui a été fait hors connexion part d'abord (file d'envoi).
+        await ref.read(outboxProvider.notifier).flush();
         await ref.read(syncServiceProvider).deltaSync(userId: userId);
         // Refresh feed UI after sync completes.
         await ref.read(feedNotifierProvider.notifier).refresh();

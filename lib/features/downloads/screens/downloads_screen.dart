@@ -12,6 +12,10 @@ import '../../../core/theme/app_tokens.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../l10n/app_localizations.dart' hide formatBytes;
 import '../../home/models/testimony_model.dart';
+import '../../profile/models/user_testimony_model.dart';
+import '../../profile/providers/profile_provider.dart' show offlineMyTestimoniesProvider;
+import '../data/offline_testimonies_store.dart' show StoredTestimony;
+import '../offline_open.dart' show openMyTestimonyOffline;
 import '../providers/downloads_provider.dart';
 import '../widgets/download_tile.dart';
 
@@ -78,6 +82,8 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen> {
               slivers: [
                 if (!online)
                   const SliverToBoxAdapter(child: _OfflineBanner()),
+                // Mes témoignages gardés dans la base du téléphone.
+                const SliverToBoxAdapter(child: _MyOfflineSection()),
                 SliverToBoxAdapter(
                   child: _FilterPills(
                     value: _filter,
@@ -221,6 +227,105 @@ class _OfflineBanner extends StatelessWidget {
                   .copyWith(color: AppColors.primaryDark),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Mes témoignages sur ce téléphone ────────────────────────────────────────
+
+class _MyOfflineSection extends ConsumerWidget {
+  const _MyOfflineSection();
+
+  static IconData _icon(String type) => switch (type) {
+        'video' => Icons.videocam_rounded,
+        'audio' => Icons.mic_rounded,
+        _ => Icons.article_rounded,
+      };
+
+  Future<void> _removeAll(BuildContext context, WidgetRef ref) async {
+    final l10n = context.l10n;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.offlineMineRemoveAllTitle),
+        content: Text(l10n.offlineMineRemoveBody),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.commonCancel)),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+            child: Text(l10n.offlineMineRemoveAll),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) await ref.read(offlineMyTestimoniesProvider.notifier).removeAll();
+  }
+
+  Future<void> _remove(BuildContext context, WidgetRef ref, StoredTestimony s) async {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    final done = context.l10n.offlineMineRemoved;
+    await ref.read(offlineMyTestimoniesProvider.notifier).remove(s.id);
+    messenger?.showSnackBar(SnackBar(behavior: SnackBarBehavior.floating, content: Text(done)));
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final items = ref.watch(offlineMyTestimoniesProvider).value ?? const <StoredTestimony>[];
+    if (items.isEmpty) return const SizedBox.shrink();
+    final l10n = context.l10n;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(AppSpacing.screen, AppSpacing.md, AppSpacing.screen, 0),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.xs, AppSpacing.xs),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text('${l10n.offlineMineTitle} (${items.length})',
+                    style: AppTextStyles.labelMedium.copyWith(fontWeight: FontWeight.w700, color: AppColors.primary)),
+              ),
+              TextButton(
+                onPressed: () => _removeAll(context, ref),
+                style: TextButton.styleFrom(foregroundColor: AppColors.textSecondary),
+                child: Text(l10n.offlineMineRemoveAll),
+              ),
+            ],
+          ),
+          Text(l10n.offlineMineHint, style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
+          const SizedBox(height: AppSpacing.xs),
+          for (final s in items)
+            Builder(builder: (context) {
+              final t = UserTestimony.fromJson(s.json);
+              return ListTile(
+                key: ValueKey('offline-mine-${s.id}'),
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                leading: CircleAvatar(
+                  radius: 18,
+                  backgroundColor: AppColors.primarySoft,
+                  child: Icon(_icon(t.type), size: 18, color: AppColors.primary),
+                ),
+                title: Text(t.title.isNotEmpty ? t.title : l10n.commonUntitled,
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w600)),
+                subtitle: Text(t.statusLabel, style: AppTextStyles.bodySmall),
+                onTap: () => openMyTestimonyOffline(context, ref, s.id),
+                trailing: IconButton(
+                  tooltip: l10n.offlineMineRemove,
+                  icon: const Icon(Icons.delete_outline_rounded, color: AppColors.textSecondary),
+                  onPressed: () => _remove(context, ref, s),
+                ),
+              );
+            }),
         ],
       ),
     );

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import 'prayer_focus_screen.dart' show openPrayerFocus;
+import '../../reactions/reaction_people.dart' show ReactionSubject, showReactionPeople;
+import '../widgets/pray_again_sheet.dart' show MyPrayerTimesLine;
 import '../../repost/content_interactions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
@@ -12,6 +14,8 @@ import '../../../shared/widgets/guest_gate.dart' show requireAccount;
 import '../../../shared/widgets/mention_text.dart';
 import '../../../shared/widgets/mention_text_field.dart';
 import '../../../shared/widgets/organization_badge.dart';
+import '../../auth/providers/auth_notifier.dart' show currentUserProvider;
+import '../../offline/outbox_controller.dart';
 import '../data/prayer_repository.dart';
 import '../models/prayer_models.dart';
 import '../providers/prayer_providers.dart';
@@ -63,11 +67,12 @@ class _PrayerRequestDetailScreenState extends ConsumerState<PrayerRequestDetailS
 
   Future<void> _togglePray(PrayerRequest r) async {
     if (!await requireAccount(context, ref, reason: context.l10n.prayerReasonPray)) return;
-    // Prier : temps de prière immersif de 5 minutes, puis validation.
-    if (!r.hasPrayed && (!mounted || !await openPrayerFocus(context, r, onStart: () => _repo.startPrayer(_id)))) return;
     if (!mounted) return;
-    ref.read(prayerRequestProvider(_id).notifier).replace(r.withPrayed(!r.hasPrayed));
-    await _run(() => _repo.pray(_id, prayed: !r.hasPrayed));
+    // Prier encore, retirer sa dernière prière ; temps de prière de 5 minutes avant chaque prière.
+    final action = await choosePrayerRequestAction(context, ref, r);
+    if (action == null || !mounted) return;
+    ref.read(prayerRequestProvider(_id).notifier).replace(action.optimistic);
+    await _run(action.send);
   }
 
   Future<void> _markAnswered() async {
@@ -122,13 +127,39 @@ class _PrayerRequestDetailScreenState extends ConsumerState<PrayerRequestDetailS
     if (!await requireAccount(context, ref, reason: context.l10n.prayerReasonEncourage)) return;
     if (!mounted) return;
     final thanks = context.l10n.prayerEncouragementThanks;
+    final verse = _verse.text.trim();
+    var queued = false;
     await _run(() async {
-      await _repo.addMessage(_id, text, bibleReference: _verse.text);
+      // Sans réseau : gardé sur le téléphone, affiché « en attente d'envoi ».
+      final sent = await ref.read(outboxProvider.notifier).sendOrQueue(
+            () => _repo.addMessage(_id, text, bibleReference: verse),
+            () => OutboxDraft(
+              kind: OutboxKind.prayerMessage,
+              label: text,
+              targetId: _id,
+              localId: newLocalId(),
+              request: OutboxRequest('POST', AppConstants.prayerRequestMessages(_id), body: {
+                'message': text.trim(),
+                if (verse.isNotEmpty) 'bible_reference': verse,
+              }),
+              preview: {if (verse.isNotEmpty) 'bibleReference': verse},
+            ),
+          );
       _message.clear();
       _verse.clear();
+      if (sent == null) {
+        queued = true;
+        return null;
+      }
       ref.invalidate(prayerMessagesProvider(_id));
       return _repo.request(_id); // compteur à jour
-    }, thanks);
+    });
+    if (!mounted) return;
+    if (queued) {
+      showQueuedSnack(context);
+    } else {
+      _snack(thanks);
+    }
   }
 
   @override
@@ -330,12 +361,26 @@ class _RequestBody extends StatelessWidget {
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               PrayButton(prayed: r.hasPrayed, count: r.prayerCount, onPressed: r.isHidden ? null : onPray, large: true),
-              Text(
-                context.l10n.prayerPeoplePraying(r.prayerCount < 0 ? 0 : r.prayerCount),
-                style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+              // « N personnes prient » : qui prie, et combien de fois (docs serveur qui-a-reagi.md).
+              InkWell(
+                borderRadius: BorderRadius.circular(6),
+                onTap: r.prayerCount > 0
+                    ? () => showReactionPeople(context, subject: ReactionSubject.prayerRequest, id: r.id, initialType: 'pray')
+                    : null,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
+                  child: Text(
+                    context.l10n.prayerPeoplePraying(r.prayerCount < 0 ? 0 : r.prayerCount),
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: r.prayerCount > 0 ? AppColors.primary : AppColors.textSecondary,
+                      decoration: r.prayerCount > 0 ? TextDecoration.underline : null,
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
+          MyPrayerTimesLine(times: r.prayerTimes, padding: const EdgeInsets.only(top: AppSpacing.sm)),
           // J'aime et partager (« Je prie » : bouton ci-dessus) — docs serveur fonctionnalites/reactions.md.
           if (!r.isHidden) ...[
             const SizedBox(height: AppSpacing.sm),
@@ -346,6 +391,8 @@ class _RequestBody extends StatelessWidget {
               title: context.l10n.prayerShareTitle(r.authorName),
               webUrl: r.webUrl,
               showPray: false,
+              otherPrayers: r.prayerCount,
+              comments: r.messageCount,
             ),
           ],
         ],
@@ -406,7 +453,21 @@ class _Messages extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(prayerMessagesProvider(requestId));
+    // Écrits hors connexion, pas encore envoyés : à la suite, « en attente d'envoi ».
+    final me = ref.watch(currentUserProvider);
+    final pending = [
+      for (final i in ref.watch(outboxProvider).pendingFor(OutboxKind.prayerMessage, requestId))
+        if (!i.isFailed)
+          PrayerMessage(
+            id: i.localId ?? 'local_${i.id}',
+            body: i.label,
+            author: PrayerPerson(id: me?.id ?? '', displayName: me?.displayName ?? '', avatarUrl: me?.avatarUrl),
+            bibleReference: i.payload.preview['bibleReference'] as String?,
+            createdAt: i.createdAt,
+            isMine: true,
+          ),
+    ];
+    final async = ref.watch(prayerMessagesProvider(requestId)).whenData((list) => [...list, ...pending]);
     return switch (async) {
       AsyncValue(:final value?) when value.isEmpty => Text(
           context.l10n.prayerNoMessages,
@@ -430,7 +491,7 @@ class _Messages extends ConsumerWidget {
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Row(children: [
                         Expanded(
-                          child: Text('${m.author.displayName} · ${prayerTimeAgo(m.createdAt)}',
+                          child: Text('${m.author.displayName} · ${m.isPending ? context.l10n.outboxPendingBadge : prayerTimeAgo(m.createdAt)}',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.w600)),

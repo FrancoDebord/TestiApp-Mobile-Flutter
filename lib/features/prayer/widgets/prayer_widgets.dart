@@ -14,6 +14,37 @@ import '../data/prayer_repository.dart';
 import '../models/prayer_models.dart';
 import '../providers/prayer_providers.dart';
 import '../../../shared/content_deletion.dart';
+import 'pray_again_sheet.dart';
+import '../../reactions/reaction_people.dart' show ReactionSubject, showReactionPeople;
+
+/// « Je prie » d'une requête (docs serveur fonctionnalites/prier-plusieurs-fois.md) : si la
+/// personne prie déjà, prier encore ou retirer sa dernière prière ; chaque prière suit un temps
+/// de prière de 5 minutes. Renvoie l'état à afficher tout de suite et l'appel à faire, ou null.
+/// [ask] faux (cartes : « Retirer ma dernière prière » y est visible) : « Prier encore » directement.
+Future<PrayerRequestAction?> choosePrayerRequestAction(
+  BuildContext context,
+  WidgetRef ref,
+  PrayerRequest r, {
+  bool ask = true,
+}) async {
+  final repo = ref.read(prayerRepositoryProvider);
+  if (r.hasPrayed && ask) {
+    final choice = await askPrayAgain(context, times: r.prayerTimes);
+    if (choice == PrayAgainChoice.removeLast) return removeLastPrayerAction(ref, r);
+    if (choice != PrayAgainChoice.again || !context.mounted) return null;
+  }
+  if (!await openPrayerFocus(context, r, onStart: () => repo.startPrayer(r.id))) return null;
+  return (optimistic: r.withPrayerTimes(r.prayerTimes + 1), send: () => repo.prayAgain(r.id));
+}
+
+/// État à afficher tout de suite et appel au serveur.
+typedef PrayerRequestAction = ({PrayerRequest optimistic, Future<PrayerRequest> Function() send});
+
+/// « Retirer ma dernière prière » (immédiat, sans temps de prière).
+PrayerRequestAction removeLastPrayerAction(WidgetRef ref, PrayerRequest r) {
+  final repo = ref.read(prayerRepositoryProvider);
+  return (optimistic: r.withPrayerTimes(r.prayerTimes - 1), send: () => repo.removeLastPrayer(r.id));
+}
 
 const _days = ['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.']; // i18n-ignore
 const _months = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']; // i18n-ignore
@@ -111,20 +142,23 @@ class _PrayerRequestFeedCardState extends ConsumerState<PrayerRequestFeedCard> {
     if (old.request != widget.request) _r = widget.request;
   }
 
+  /// « Je prie » / « Prier encore » : temps de prière, puis une prière de plus.
   Future<void> _togglePray() async {
     if (_busy) return;
     if (!await requireAccount(context, ref, reason: context.l10n.prayerReasonPray)) return;
-    // Prier : temps de prière immersif de 5 minutes, puis validation.
-    if (!_r.hasPrayed && (!mounted || !await openPrayerFocus(context, _r, onStart: () => ref.read(prayerRepositoryProvider).startPrayer(_r.id)))) return;
     if (!mounted) return;
+    await _apply(await choosePrayerRequestAction(context, ref, _r, ask: false));
+  }
+
+  Future<void> _apply(PrayerRequestAction? action) async {
+    if (action == null || !mounted || _busy) return;
     final previous = _r;
-    final target = !_r.hasPrayed;
     setState(() {
       _busy = true;
-      _r = _r.withPrayed(target);
+      _r = action.optimistic;
     });
     try {
-      final updated = await ref.read(prayerRepositoryProvider).pray(_r.id, prayed: target);
+      final updated = await action.send();
       if (!mounted) return;
       setState(() => _r = updated);
       widget.onChanged?.call(updated);
@@ -251,7 +285,23 @@ class _PrayerRequestFeedCardState extends ConsumerState<PrayerRequestFeedCard> {
                   runSpacing: AppSpacing.xs,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    PrayButton(prayed: r.hasPrayed, count: r.prayerCount, onPressed: r.isHidden ? null : _togglePray),
+                    // « Je prie », puis « Prier encore » (docs serveur prier-plusieurs-fois.md).
+                    PrayButton(
+                      prayed: r.hasPrayed,
+                      count: r.prayerCount,
+                      label: r.hasPrayed ? context.l10n.prayAgain : context.l10n.detailPray,
+                      onPressed: r.isHidden ? null : _togglePray,
+                    ),
+                    // « N prient » : qui a prié, et combien de fois (docs serveur qui-a-reagi.md).
+                    if (r.prayerCount > 0)
+                      TextButton.icon(
+                        key: ValueKey('pr-people-${r.id}'),
+                        onPressed: () => showReactionPeople(context,
+                            subject: ReactionSubject.prayerRequest, id: r.id, initialType: 'pray'),
+                        icon: const Icon(Icons.groups_outlined, size: 18),
+                        label: Text(context.l10n.prayerPeoplePraying(r.prayerCount)),
+                        style: TextButton.styleFrom(foregroundColor: AppColors.textSecondary),
+                      ),
                     TextButton.icon(
                       onPressed: () => context.push('/prayer-requests/${r.id}'),
                       icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
@@ -260,6 +310,23 @@ class _PrayerRequestFeedCardState extends ConsumerState<PrayerRequestFeedCard> {
                     ),
                   ],
                 ),
+                // « Vous avez prié N fois » · « Retirer ma dernière prière ».
+                if (r.hasPrayed)
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      MyPrayerTimesLine(times: r.prayerTimes),
+                      TextButton(
+                        onPressed: _busy || r.isHidden ? null : () => _apply(removeLastPrayerAction(ref, r)),
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.textSecondary,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        child: Text(context.l10n.prayRemoveLast),
+                      ),
+                    ],
+                  ),
               ],
             ),
           ),
@@ -271,16 +338,19 @@ class _PrayerRequestFeedCardState extends ConsumerState<PrayerRequestFeedCard> {
 
 /// Bouton « Je prie » (rempli quand la personne prie déjà) avec le compteur.
 class PrayButton extends StatelessWidget {
-  const PrayButton({required this.prayed, required this.count, this.onPressed, this.large = false, super.key});
+  const PrayButton({required this.prayed, required this.count, this.onPressed, this.large = false, this.label, super.key});
 
   final bool prayed;
   final int count;
+
+  /// Libellé imposé (cartes : « Je prie » / « Prier encore », le nombre étant à côté).
+  final String? label;
   final VoidCallback? onPressed;
   final bool large;
 
   @override
   Widget build(BuildContext context) {
-    final label = Text(count > 0 ? context.l10n.prayerPrayCount(count) : context.l10n.detailPray);
+    final label = Text(this.label ?? (count > 0 ? context.l10n.prayerPrayCount(count) : context.l10n.detailPray));
     const icon = Icon(Icons.volunteer_activism_rounded, size: 18);
     final padding = EdgeInsets.symmetric(horizontal: large ? 18 : 12, vertical: large ? 12 : 6);
     return prayed

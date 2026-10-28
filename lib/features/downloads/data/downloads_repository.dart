@@ -2,9 +2,12 @@
 //
 //   <documents>/downloads/<id>.<ext>          fichier média (audio / vidéo)
 //   <documents>/downloads/<id>_thumb.<ext>    vignette
-//   <documents>/downloads/index.json          métadonnées (DownloadEntry)
+//   métadonnées (DownloadEntry) : base SQLite, table offline_testimonies
+//   (source « download »), avec les témoignages de la personne ; l'ancien
+//   <documents>/downloads/index.json y est repris au premier chargement.
 //
-// Le dossier de base est injectable (tests : dossier temporaire).
+// Le dossier de base est injectable (tests : dossier temporaire ; l'index reste
+// alors dans index.json, sans base SQLite).
 
 import 'dart:convert';
 import 'dart:io';
@@ -15,6 +18,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../home/models/testimony_model.dart';
 import '../models/download_models.dart';
+import 'offline_testimonies_store.dart';
 import '../../../core/media/video_source.dart' show mediaHttpHeaders;
 
 typedef BaseDirResolver = Future<Directory> Function();
@@ -22,8 +26,9 @@ typedef BaseDirResolver = Future<Directory> Function();
 Future<Directory> _defaultBaseDir() => getApplicationDocumentsDirectory();
 
 class DownloadsRepository {
-  DownloadsRepository({BaseDirResolver? baseDir, Dio? dio})
-      : _baseDirResolver = baseDir ?? _defaultBaseDir,
+  DownloadsRepository({BaseDirResolver? baseDir, Dio? dio, OfflineTestimoniesStore? store})
+      : _store = store ?? (baseDir == null ? const OfflineTestimoniesStore() : null),
+        _baseDirResolver = baseDir ?? _defaultBaseDir,
         _dio = dio ??
             Dio(BaseOptions(
               connectTimeout: const Duration(seconds: 20),
@@ -31,6 +36,9 @@ class DownloadsRepository {
             ));
 
   final BaseDirResolver _baseDirResolver;
+
+  /// Index en base SQLite (null : index.json, tests).
+  final OfflineTestimoniesStore? _store;
   final Dio _dio;
   Directory? _dir;
 
@@ -50,6 +58,11 @@ class DownloadsRepository {
 
   /// Entrées dont le fichier média existe encore (les autres sont ignorées).
   Future<List<DownloadEntry>> loadIndex() async {
+    final store = _store;
+    if (store != null) {
+      await _migrateJsonIndex(store);
+      return _existing(await store.downloads());
+    }
     final dir = await downloadsDir();
     final file = File(p.join(dir.path, indexFileName));
     if (!await file.exists()) return const [];
@@ -57,6 +70,35 @@ class DownloadsRepository {
       final raw = jsonDecode(await file.readAsString());
       final list = raw is Map ? raw['items'] : raw;
       if (list is! List) return const [];
+      return _existing(list);
+    } catch (_) {
+      return const []; // index corrompu : on repart d'une liste vide
+    }
+  }
+
+  /// Ancien index.json repris dans la base SQLite (une fois), puis renommé.
+  Future<void> _migrateJsonIndex(OfflineTestimoniesStore store) async {
+    try {
+      final dir = await downloadsDir();
+      final file = File(p.join(dir.path, indexFileName));
+      if (!await file.exists()) return;
+      if (!await store.hasDownloadRows()) {
+        final raw = jsonDecode(await file.readAsString());
+        final list = raw is Map ? raw['items'] : raw;
+        if (list is List) {
+          await store.saveDownloads([
+            for (final item in list)
+              if (DownloadEntry.fromJson(item) case final e?) e.toJson(),
+          ]);
+        }
+      }
+      await file.rename('${file.path}.migrated');
+    } catch (_) {}
+  }
+
+  /// Entrées dont le fichier média existe encore.
+  List<DownloadEntry> _existing(List<dynamic> list) {
+    try {
       final out = <DownloadEntry>[];
       for (final item in list) {
         final e = DownloadEntry.fromJson(item);
@@ -75,6 +117,10 @@ class DownloadsRepository {
 
   /// Écriture atomique (fichier temporaire puis renommage).
   Future<void> saveIndex(Iterable<DownloadEntry> entries) async {
+    if (_store case final store?) {
+      await store.saveDownloads([for (final e in entries) e.toJson()]);
+      return;
+    }
     final dir = await downloadsDir();
     final file = File(p.join(dir.path, indexFileName));
     final tmp = File('${file.path}.tmp');

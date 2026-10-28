@@ -10,6 +10,7 @@ import '../../../core/media/media_http.dart' show fixMediaUrl;
 import '../../../core/app_constants.dart';
 import '../../../core/media/youtube.dart';
 import '../../../services/api_service.dart';
+import '../../offline/outbox_controller.dart';
 import '../../location/location_providers.dart' show homeFeedPlaceProvider, nearbyLabelsProvider;
 import '../../location/user_location.dart' show FeedPlace, parseNearbyLabels;
 import '../models/testimony_model.dart';
@@ -121,9 +122,9 @@ Testimony _applyStatsDelta(
       isFeatured: t.isFeatured, isLiked: t.isLiked,
       isPrayed: t.isPrayed, isSaved: t.isSaved,
       shareUrl: t.shareUrl, proofs: t.proofs,
-      mentions: t.mentions, repost: t.repost, myReaction: t.myReaction,
+      mentions: t.mentions, repost: t.repost, myReaction: t.myReaction, myPrayerTimes: t.myPrayerTimes,
       canDelete: t.canDelete, badges: t.badges, featuredSource: t.featuredSource,
-      conversion: t.conversion,
+      conversion: t.conversion, web: t.web,
     );
   }
   if (t is AudioTestimony) {
@@ -138,9 +139,9 @@ Testimony _applyStatsDelta(
       isFeatured: t.isFeatured, isLiked: t.isLiked,
       isPrayed: t.isPrayed, isSaved: t.isSaved,
       shareUrl: t.shareUrl, proofs: t.proofs,
-      mentions: t.mentions, repost: t.repost, myReaction: t.myReaction,
+      mentions: t.mentions, repost: t.repost, myReaction: t.myReaction, myPrayerTimes: t.myPrayerTimes,
       canDelete: t.canDelete, badges: t.badges, featuredSource: t.featuredSource,
-      conversion: t.conversion,
+      conversion: t.conversion, web: t.web,
     );
   }
   if (t is VideoTestimony) {
@@ -155,9 +156,9 @@ Testimony _applyStatsDelta(
       isFeatured: t.isFeatured, isLiked: t.isLiked,
       isPrayed: t.isPrayed, isSaved: t.isSaved,
       shareUrl: t.shareUrl, proofs: t.proofs,
-      mentions: t.mentions, repost: t.repost, myReaction: t.myReaction,
+      mentions: t.mentions, repost: t.repost, myReaction: t.myReaction, myPrayerTimes: t.myPrayerTimes,
       canDelete: t.canDelete, badges: t.badges, featuredSource: t.featuredSource,
-      conversion: t.conversion,
+      conversion: t.conversion, web: t.web,
     );
   }
   return t;
@@ -308,9 +309,12 @@ Testimony? testimonyFromApiJson(dynamic raw) {
     // « X a partagé » (compte suivi d'abord), réaction choisie et droit de suppression.
     final repost        = RepostInfo.fromFeedItem(m);
     final myReaction    = m['myReaction'] as String?;
+    final myPrayerTimes = _parseInt(m['myPrayerTimes']);
     final canDelete     = m['canDelete'] as bool? ?? false;
     // Témoignage de conversion (docs serveur fonctionnalites/temoignage-de-conversion.md).
     final conversion    = ConversionDetails.fromTestimonyJson(m);
+    // Accord pour le web (docs serveur fonctionnalites/referencement.md).
+    final web           = TestimonyWebPublication.fromJson(m);
 
     switch (youtubeId != null ? 'video' : type) {
       case 'audio':
@@ -330,8 +334,8 @@ Testimony? testimonyFromApiJson(dynamic raw) {
           bibleVerse: bibleVerse, bibleVerseRef: bibleVerseRef,
           isFeatured: isFeatured, isLiked: isLiked, isPrayed: isPrayed, isSaved: isSaved,
           shareUrl: shareUrl, proofs: proofs, mentions: mentions,
-          repost: repost, myReaction: myReaction, canDelete: canDelete,
-          badges: badges, featuredSource: featuredSource, conversion: conversion,
+          repost: repost, myReaction: myReaction, myPrayerTimes: myPrayerTimes, canDelete: canDelete,
+          badges: badges, featuredSource: featuredSource, conversion: conversion, web: web,
         );
       case 'video':
         final bunny = youtubeId == null ? parseBunnyVideo(m) : null;
@@ -358,8 +362,8 @@ Testimony? testimonyFromApiJson(dynamic raw) {
           videoStatus: bunny?.status,
           isFeatured: isFeatured, isLiked: isLiked, isPrayed: isPrayed, isSaved: isSaved,
           shareUrl: shareUrl, proofs: proofs, mentions: mentions,
-          repost: repost, myReaction: myReaction, canDelete: canDelete,
-          badges: badges, featuredSource: featuredSource, conversion: conversion,
+          repost: repost, myReaction: myReaction, myPrayerTimes: myPrayerTimes, canDelete: canDelete,
+          badges: badges, featuredSource: featuredSource, conversion: conversion, web: web,
         );
       default:
         final body = (m['bodyText'] ?? m['body_text']) as String? ?? '';
@@ -371,8 +375,8 @@ Testimony? testimonyFromApiJson(dynamic raw) {
           bibleVerse: bibleVerse, bibleVerseRef: bibleVerseRef,
           isFeatured: isFeatured, isLiked: isLiked, isPrayed: isPrayed, isSaved: isSaved,
           shareUrl: shareUrl, proofs: proofs, mentions: mentions,
-          repost: repost, myReaction: myReaction, canDelete: canDelete,
-          badges: badges, featuredSource: featuredSource, conversion: conversion,
+          repost: repost, myReaction: myReaction, myPrayerTimes: myPrayerTimes, canDelete: canDelete,
+          badges: badges, featuredSource: featuredSource, conversion: conversion, web: web,
         );
     }
   } catch (_) {
@@ -745,6 +749,7 @@ class TestimonyInteractions {
     this.reactions = const {},
     this.counts    = const {},
     this.known     = const {},
+    this.prayerTimes = const {},
   });
 
   final Set<String> liked;
@@ -752,6 +757,9 @@ class TestimonyInteractions {
   final Set<String> saved;
   final Map<String, ReactionType> reactions;
   final Map<String, TestimonyCounts> counts;
+
+  /// Nombre de fois que la personne a prié (docs serveur fonctionnalites/prier-plusieurs-fois.md).
+  final Map<String, int> prayerTimes;
 
   /// Témoignages dont l'état local fait foi (réaction posée ici ou réponse du serveur reçue).
   final Set<String> known;
@@ -764,6 +772,13 @@ class TestimonyInteractions {
     return reactionTypeFromApi(t.myReaction) ?? (t.isLiked ? ReactionType.like : null);
   }
 
+  /// Nombre de fois que la personne a prié (au moins 1 si elle prie).
+  int prayerTimesOf(Testimony t) {
+    if (!prayedOf(t)) return 0;
+    final n = known.contains(t.id) ? prayerTimes[t.id] : t.myPrayerTimes;
+    return n == null || n < 1 ? 1 : n;
+  }
+
   int likesOf(Testimony t) => counts[t.id]?.likes ?? t.stats.likes;
   int prayersOf(Testimony t) => counts[t.id]?.prayers ?? t.stats.prayers;
 
@@ -774,6 +789,7 @@ class TestimonyInteractions {
     Map<String, ReactionType>? reactions,
     Map<String, TestimonyCounts>? counts,
     Set<String>? known,
+    Map<String, int>? prayerTimes,
   }) =>
       TestimonyInteractions(
         liked:     liked     ?? this.liked,
@@ -782,6 +798,7 @@ class TestimonyInteractions {
         reactions: reactions ?? this.reactions,
         counts:    counts    ?? this.counts,
         known:     known     ?? this.known,
+        prayerTimes: prayerTimes ?? this.prayerTimes,
       );
 
   /// Nouvel état d'un témoignage (les autres sont conservés).
@@ -791,6 +808,7 @@ class TestimonyInteractions {
     required bool prayed,
     required ReactionType? reaction,
     required TestimonyCounts counts,
+    int? prayerTimes,
   }) {
     final r = Map<String, ReactionType>.from(reactions);
     if (reaction == null) {
@@ -804,6 +822,7 @@ class TestimonyInteractions {
       reactions: r,
       counts: {...this.counts, id: counts},
       known: {...known, id},
+      prayerTimes: {...this.prayerTimes, id: prayed ? (prayerTimes ?? this.prayerTimes[id] ?? 1) : 0},
     );
   }
 }
@@ -831,6 +850,7 @@ class InteractionNotifier extends Notifier<TestimonyInteractions> {
         prayed: t.isPrayed,
         reaction: reactionTypeFromApi(t.myReaction) ?? (t.isLiked ? ReactionType.like : null),
         counts: (likes: t.stats.likes, prayers: t.stats.prayers),
+        prayerTimes: t.myPrayerTimes,
       );
     }
     state = next.copyWith(saved: saved);
@@ -845,35 +865,61 @@ class InteractionNotifier extends Notifier<TestimonyInteractions> {
     final isLiked = type != null;
     final likes = state.likesOf(t) + (isLiked == wasLiked ? 0 : (isLiked ? 1 : -1));
     _optimistic(t, liked: isLiked, reaction: type, likes: likes < 0 ? 0 : likes);
-    _send(t, () {
-      final api = ref.read(apiServiceProvider);
-      return type != null
-          ? api.post<Map<String, dynamic>>(AppConstants.testimonyReactions(t.id), data: {'type': type.apiValue})
-          : api.delete<Map<String, dynamic>>(AppConstants.testimonyReactions(t.id), query: const {'group': 'appreciation'});
-    });
+    _send(
+      t,
+      () {
+        final api = ref.read(apiServiceProvider);
+        return type != null
+            ? api.post<Map<String, dynamic>>(AppConstants.testimonyReactions(t.id), data: {'type': type.apiValue})
+            : api.delete<Map<String, dynamic>>(AppConstants.testimonyReactions(t.id), query: const {'group': 'appreciation'});
+      },
+      // Hors connexion : la dernière réaction posée part au retour du réseau.
+      offline: OutboxDraft(
+        kind: OutboxKind.reaction,
+        label: t.title,
+        targetId: t.id,
+        dedupeKey: 'reaction:testimony:${t.id}:appreciation',
+        request: type != null
+            ? OutboxRequest('POST', AppConstants.testimonyReactions(t.id), body: {'type': type.apiValue})
+            : OutboxRequest('DELETE', AppConstants.testimonyReactions(t.id), query: const {'group': 'appreciation'}),
+        preview: {'reaction': type?.apiValue},
+      ),
+    );
   }
 
   /// Appui simple sur le cœur : retire la réaction posée, sinon « J'aime ».
   void toggleLike(Testimony t) => react(t, state.likedOf(t) ? null : ReactionType.like);
 
-  // ── Prière (une seule « je prie ») ────────────────────────────────────────
+  // ── Prière : une réaction « je prie », plusieurs prières ──────────────────
+  // docs serveur fonctionnalites/prier-plusieurs-fois.md : le compteur reste le nombre
+  // de personnes ; le nombre de fois est propre à chacun (myPrayerTimes).
 
-  void togglePray(Testimony t) {
-    final prayed = !state.prayedOf(t);
-    final prayers = state.prayersOf(t) + (prayed ? 1 : -1);
-    _optimistic(t, prayed: prayed, prayers: prayers < 0 ? 0 : prayers);
-    _send(t, () {
-      final api = ref.read(apiServiceProvider);
-      return prayed
-          ? api.post<Map<String, dynamic>>(AppConstants.testimonyReactions(t.id), data: const {'type': 'pray'})
-          : api.delete<Map<String, dynamic>>(AppConstants.testimonyReactions(t.id), query: const {'group': 'prayer'});
-    });
+  /// Une prière de plus (la première si la personne ne prie pas encore), après le temps de prière.
+  Future<void> pray(Testimony t) {
+    final was = state.prayedOf(t);
+    final prayers = state.prayersOf(t) + (was ? 0 : 1);
+    _optimistic(t, prayed: true, prayers: prayers, prayerTimes: state.prayerTimesOf(t) + 1);
+    return _send(t, () => ref.read(apiServiceProvider).post<Map<String, dynamic>>(
+          AppConstants.testimonyReactions(t.id),
+          data: const {'type': 'pray', 'again': true},
+        ));
+  }
+
+  /// Retire la dernière prière ; à la dernière, la personne ne prie plus.
+  Future<void> removeLastPrayer(Testimony t) {
+    final times = state.prayerTimesOf(t) - 1;
+    final prayers = state.prayersOf(t) - (times > 0 ? 0 : 1);
+    _optimistic(t, prayed: times > 0, prayers: prayers < 0 ? 0 : prayers, prayerTimes: times);
+    return _send(t, () => ref.read(apiServiceProvider).delete<Map<String, dynamic>>(
+          AppConstants.testimonyReactions(t.id),
+          query: const {'group': 'prayer', 'last': 1},
+        ));
   }
 
   bool isLiked(Testimony t) => state.likedOf(t);
   bool isPrayed(Testimony t) => state.prayedOf(t);
 
-  void _optimistic(Testimony t, {bool? liked, bool? prayed, ReactionType? reaction, int? likes, int? prayers}) {
+  void _optimistic(Testimony t, {bool? liked, bool? prayed, ReactionType? reaction, int? likes, int? prayers, int? prayerTimes}) {
     final s = state;
     state = s.withEntry(
       t.id,
@@ -881,12 +927,13 @@ class InteractionNotifier extends Notifier<TestimonyInteractions> {
       prayed: prayed ?? s.prayedOf(t),
       reaction: liked == null ? s.reactionOf(t) : reaction,
       counts: (likes: likes ?? s.likesOf(t), prayers: prayers ?? s.prayersOf(t)),
+      prayerTimes: prayerTimes ?? s.prayerTimesOf(t),
     );
   }
 
   /// Envoie la requête ; la réponse (état et compteurs du serveur) remplace l'état optimiste.
   /// En cas d'échec, l'état d'avant est rétabli.
-  Future<void> _send(Testimony t, Future<LaravelResponse<Map<String, dynamic>>> Function() call) async {
+  Future<void> _send(Testimony t, Future<LaravelResponse<Map<String, dynamic>>> Function() call, {OutboxDraft? offline}) async {
     final before = state;
     final request = (_requests[t.id] ?? 0) + 1;
     _requests[t.id] = request;
@@ -904,9 +951,12 @@ class InteractionNotifier extends Notifier<TestimonyInteractions> {
           likes: (d['likesCount'] as num?)?.toInt() ?? s.likesOf(t),
           prayers: (d['prayersCount'] as num?)?.toInt() ?? s.prayersOf(t),
         ),
+        prayerTimes: (d['myPrayerTimes'] as num?)?.toInt() ?? s.prayerTimesOf(t),
       );
     } catch (e) {
       debugPrint('réaction ✗ $e');
+      // Coupure : gardée dans la file d'envoi, l'état affiché reste celui choisi.
+      if (offline != null && await ref.read(outboxProvider.notifier).queueIfOffline(e, offline)) return;
       if (_requests[t.id] == request) {
         // Rétablit seulement ce témoignage.
         state = state.withEntry(
@@ -915,6 +965,7 @@ class InteractionNotifier extends Notifier<TestimonyInteractions> {
           prayed: before.prayedOf(t),
           reaction: before.reactionOf(t),
           counts: (likes: before.likesOf(t), prayers: before.prayersOf(t)),
+          prayerTimes: before.prayerTimesOf(t),
         );
       }
     } finally {
@@ -932,14 +983,26 @@ class InteractionNotifier extends Notifier<TestimonyInteractions> {
       _callApi(() async {
         final api = ref.read(apiServiceProvider);
         await api.delete<void>(AppConstants.testimonyUnsave(id));
-      });
+      }, offline: OutboxDraft(
+        kind: OutboxKind.save,
+        label: id,
+        targetId: id,
+        dedupeKey: 'save:$id',
+        request: OutboxRequest('DELETE', AppConstants.testimonyUnsave(id)),
+      ));
     } else {
       saved.add(id);
       state = state.copyWith(saved: saved);
       _callApi(() async {
         final api = ref.read(apiServiceProvider);
         await api.put<void>(AppConstants.testimonySave(id));
-      });
+      }, offline: OutboxDraft(
+        kind: OutboxKind.save,
+        label: id,
+        targetId: id,
+        dedupeKey: 'save:$id',
+        request: OutboxRequest('PUT', AppConstants.testimonySave(id)),
+      ));
     }
   }
 
@@ -954,10 +1017,13 @@ class InteractionNotifier extends Notifier<TestimonyInteractions> {
 
   bool isSaved(String id)  => state.saved.contains(id);
 
-  Future<void> _callApi(Future<void> Function() fn) async {
+  /// [offline] : gardée dans la file d'envoi en cas de coupure.
+  Future<void> _callApi(Future<void> Function() fn, {OutboxDraft? offline}) async {
     try {
       await fn();
-    } catch (_) {}
+    } catch (e) {
+      if (offline != null) await ref.read(outboxProvider.notifier).queueIfOffline(e, offline);
+    }
   }
 }
 
@@ -987,15 +1053,13 @@ final selectedCategoryProvider =
 // Verset du jour
 // ============================================================================
 
-const _kFallbackVerse = DailyVerse(
-  text: '« Car je connais les projets que j\'ai formés sur vous, dit l\'Éternel, ' // i18n-ignore
-      'projets de paix et non de malheur, afin de vous donner un avenir et de l\'espérance. »', // i18n-ignore
-  reference: 'Jérémie 29 : 11', // i18n-ignore
-);
-
 class DailyVerseNotifier extends AsyncNotifier<DailyVerse> {
   @override
   Future<DailyVerse> build() async {
+    // Le serveur renvoie le verset dans la langue de l'application
+    // (Accept-Language) : rechargé quand la langue change.
+    watchAppLanguage(ref);
+
     // 1. Try network first
     try {
       final api    = ref.read(apiServiceProvider);
@@ -1016,23 +1080,35 @@ class DailyVerseNotifier extends AsyncNotifier<DailyVerse> {
     }
 
     // 3. Hard-coded fallback
-    return _kFallbackVerse;
+    return fallbackDailyVerse();
   }
 
-  // ── Cache helpers (one file per calendar date) ────────────────────────────
+  // ── Cache helpers (one file per calendar date and language) ────────────────
 
   static String _todayKey() {
     final now = DateTime.now();
     return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
   }
 
-  Future<File> _cacheFile() async {
+  Future<File> _cacheFile([String? language]) async {
     final dir = await getApplicationSupportDirectory();
-    return File('${dir.path}/daily_verse_${_todayKey()}.json');
+    final lang = language ?? L10n.languageCode;
+    return File('${dir.path}/daily_verse_${_todayKey()}_$lang.json');
   }
 
+  /// Hors connexion : le verset du jour gardé dans la langue affichée, sinon
+  /// celui d'une autre langue (même jour) plutôt que le verset de secours.
   Future<DailyVerse?> _loadFromCache() async {
-    final file = await _cacheFile();
+    var file = await _cacheFile();
+    if (!file.existsSync()) {
+      for (final other in L10n.supported.map((l) => l.languageCode)) {
+        final f = await _cacheFile(other);
+        if (f.existsSync()) {
+          file = f;
+          break;
+        }
+      }
+    }
     if (!file.existsSync()) return null;
     final json = jsonDecode(await file.readAsString()) as Map<String, dynamic>;
     final verse = DailyVerse.fromJson(json);
@@ -1041,15 +1117,21 @@ class DailyVerseNotifier extends AsyncNotifier<DailyVerse> {
 
   Future<void> _saveToCache(DailyVerse verse) async {
     try {
-      final file = await _cacheFile();
+      final file = await _cacheFile(verse.language);
       await file.writeAsString(jsonEncode({
         'id':            verse.id,
         'text':          verse.text,
         'reference':     verse.reference,
+        'language':            verse.language,
+        'textTranslation':     verse.textTranslation,
+        'textTranslationName': verse.textTranslationName,
+        'originalText':        verse.originalText,
+        'originalReference':   verse.originalReference,
         'like_count':    verse.likeCount,
         'prayer_count':  verse.prayerCount,
         'is_liked':      verse.isLiked,
         'is_prayed':     verse.isPrayed,
+        'my_prayer_times': verse.myPrayerTimes,
         'comment_count': verse.commentCount,
         // Hors connexion le même jour : design du jour du serveur (pas les
         // préférences du membre, gardées dans shared_preferences).
@@ -1075,9 +1157,32 @@ class DailyVerseNotifier extends AsyncNotifier<DailyVerse> {
 
   Future<void> toggleLike() => _react('like');
 
-  /// « Je prie » : l'écran appelant ouvre d'abord le temps de prière
-  /// (`prayForDailyVerse`), comme partout ailleurs.
-  Future<void> togglePray() => _react('pray');
+  /// Une prière de plus (la première si la personne ne prie pas encore) ou, [again] faux,
+  /// retirer la dernière. L'écran appelant ouvre d'abord le temps de prière
+  /// (`prayForDailyVerse`), comme partout ailleurs (docs serveur prier-plusieurs-fois.md).
+  Future<void> pray({bool again = true}) async {
+    final verse = state.value;
+    if (verse == null) return;
+    state = AsyncValue.data(verseWithPrayer(verse, again: again));
+    try {
+      final api = ref.read(apiServiceProvider);
+      if (verse.id > 0) {
+        final res = await api.post<Map<String, dynamic>>(AppConstants.verseReactTo(verse.id), data: versePrayBody(again: again));
+        final fresh = DailyVerse.fromJson(res.data);
+        if (fresh.text.isNotEmpty && ref.mounted) {
+          state = AsyncValue.data(fresh);
+          await _saveToCache(fresh);
+        }
+      } else if (again) {
+        await api.post<void>(AppConstants.verseReact, data: {'type': 'pray'});
+      } else {
+        await api.delete<void>(AppConstants.verseReact, data: {'type': 'pray'});
+      }
+    } catch (e) {
+      debugPrint('verset prière ✗ $e');
+      if (ref.mounted) state = AsyncValue.data(verse);
+    }
+  }
 
   /// Réaction posée ou retirée ; la réponse du serveur (compteurs et réactions à jour,
   /// y compris celles faites ailleurs) remplace l'état optimiste.
@@ -1107,7 +1212,21 @@ class DailyVerseNotifier extends AsyncNotifier<DailyVerse> {
       } else {
         await api.post<void>(AppConstants.verseReact, data: {'type': type});
       }
-    } catch (_) {
+    } catch (e) {
+      // « J'aime » hors connexion : gardé dans la file d'envoi, l'état affiché reste.
+      if (like && verse.id > 0) {
+        final queued = await ref.read(outboxProvider.notifier).queueIfOffline(
+              e,
+              OutboxDraft(
+                kind: OutboxKind.reaction,
+                label: verse.reference,
+                targetId: 'verse:${verse.id}',
+                dedupeKey: 'reaction:verse:${verse.id}:like',
+                request: OutboxRequest('POST', AppConstants.verseReactTo(verse.id), body: {'type': type, 'active': !was}),
+              ),
+            );
+        if (queued) return;
+      }
       if (ref.mounted) state = AsyncValue.data(verse);
     }
   }

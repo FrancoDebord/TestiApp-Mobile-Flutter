@@ -3,6 +3,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dio/dio.dart' show Options;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:testi_app/core/app_constants.dart';
 import 'package:testi_app/features/admin/screens/admin_categories_screen.dart';
@@ -36,14 +37,14 @@ class _Api implements ApiService {
   }
 
   @override
-  Future<LaravelResponse<T>> post<T>(String path, {dynamic data, Map<String, dynamic>? query}) async {
+  Future<LaravelResponse<T>> post<T>(String path, {dynamic data, Map<String, dynamic>? query, Options? options}) async {
     calls.add(('POST', path, data));
     final d = data as Map;
     return LaravelResponse<T>(success: true, data: _cat('new', d['name'] as String, d['name_en'] as String?) as T);
   }
 
   @override
-  Future<LaravelResponse<T>> put<T>(String path, {dynamic data}) async {
+  Future<LaravelResponse<T>> put<T>(String path, {dynamic data, Options? options}) async {
     calls.add(('PUT', path, data));
     return LaravelResponse<T>(success: true, data: null as T);
   }

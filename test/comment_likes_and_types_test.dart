@@ -1,6 +1,7 @@
 // « J'aime » des commentaires, types de témoignages autorisés, réglages administrateur.
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dio/dio.dart' show Options;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:testi_app/core/app_constants.dart';
 import 'package:testi_app/features/admin/providers/admin_provider.dart';
@@ -15,14 +16,14 @@ class _Api implements ApiService {
   final puts = <(String, Object?)>[];
 
   @override
-  Future<LaravelResponse<T>> post<T>(String path, {dynamic data, Map<String, dynamic>? query}) async {
+  Future<LaravelResponse<T>> post<T>(String path, {dynamic data, Map<String, dynamic>? query, Options? options}) async {
     calls.add('POST $path');
     if (fail) throw const LaravelApiException(message: 'Refusé', statusCode: 403);
     return LaravelResponse<T>(success: true, data: <String, dynamic>{'likesCount': 8, 'isLikedByMe': true} as T);
   }
 
   @override
-  Future<LaravelResponse<T>> delete<T>(String path, {dynamic data, Map<String, dynamic>? query}) async {
+  Future<LaravelResponse<T>> delete<T>(String path, {dynamic data, Map<String, dynamic>? query, Options? options}) async {
     calls.add('DELETE $path');
     return LaravelResponse<T>(success: true, data: <String, dynamic>{'likesCount': 7, 'isLikedByMe': false} as T);
   }
@@ -37,7 +38,7 @@ class _Api implements ApiService {
   }
 
   @override
-  Future<LaravelResponse<T>> put<T>(String path, {dynamic data}) async {
+  Future<LaravelResponse<T>> put<T>(String path, {dynamic data, Options? options}) async {
     puts.add((path, data));
     if (fail) throw const LaravelApiException(message: 'Refusé', statusCode: 403);
     return LaravelResponse<T>(success: true, data: <String, dynamic>{} as T);

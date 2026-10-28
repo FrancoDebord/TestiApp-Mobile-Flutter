@@ -1,8 +1,10 @@
 // « Je prie » sur un témoignage : temps de prière de 5 minutes avant la prière,
-// début signalé au serveur (POST /testimonies/{id}/pray/start).
+// début signalé au serveur (POST /testimonies/{id}/pray/start) ; ensuite prier encore
+// ou retirer sa dernière prière (docs serveur prier-plusieurs-fois.md).
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dio/dio.dart' show Options;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:testi_app/core/app_constants.dart';
 import 'package:testi_app/features/home/models/testimony_model.dart';
@@ -15,7 +17,7 @@ class _Api implements ApiService {
   final deletes = <String>[];
 
   @override
-  Future<LaravelResponse<T>> post<T>(String path, {dynamic data, Map<String, dynamic>? query}) async {
+  Future<LaravelResponse<T>> post<T>(String path, {dynamic data, Map<String, dynamic>? query, Options? options}) async {
     posts.add(path);
     return LaravelResponse<T>(
       success: true,
@@ -24,7 +26,7 @@ class _Api implements ApiService {
   }
 
   @override
-  Future<LaravelResponse<T>> delete<T>(String path, {dynamic data, Map<String, dynamic>? query}) async {
+  Future<LaravelResponse<T>> delete<T>(String path, {dynamic data, Map<String, dynamic>? query, Options? options}) async {
     deletes.add(path);
     return LaravelResponse<T>(
       success: true,
@@ -89,8 +91,12 @@ void main() {
     expect(api.posts.last, AppConstants.testimonyReactions('t1'));
     expect(widgetRef.read(interactionProvider.notifier).isPrayed(_t), isTrue);
 
-    // Retirer sa prière : immédiat, sans temps de prière.
+    // Déjà en prière : « Prier encore » ou « Retirer ma dernière prière » (immédiat).
     await tester.tap(find.text('Je prie'));
+    await tester.pumpAndSettle();
+    expect(find.text('Vous avez prié 1 fois'), findsOneWidget);
+    expect(find.text('Prier encore'), findsOneWidget);
+    await tester.tap(find.text('Retirer ma dernière prière'));
     await tester.pumpAndSettle();
     expect(find.text('Temps de prière'), findsNothing);
     expect(api.deletes, [AppConstants.testimonyReactions('t1')]);

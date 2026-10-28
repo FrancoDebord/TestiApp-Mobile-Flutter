@@ -1,3 +1,5 @@
+import 'dart:async' show unawaited;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -16,6 +18,7 @@ import '../../publish/screens/video_upload_screen.dart' show VideoUploadPanel;
 import '../../publish/upload/video_upload_controller.dart' show videoUploadProvider;
 import '../../publish/upload/video_upload_models.dart' show VideoUploadPhase;
 import '../../../services/api_service.dart' show LaravelApiException;
+import '../../downloads/offline_open.dart' show openMyTestimonyOffline;
 import '../models/user_testimony_model.dart';
 import '../providers/profile_provider.dart';
 import '../../../shared/content_deletion.dart' show deleteTestimonyContent;
@@ -116,6 +119,23 @@ class _MyTestimoniesScreenState extends ConsumerState<MyTestimoniesScreen>
       ),
       body: Column(
         children: [
+          // Hors connexion : copie gardée dans la base du téléphone.
+          if (ref.watch(myTestimoniesOfflineSinceProvider) case final since?)
+            Container(
+              width: double.infinity,
+              color: AppColors.sunSoft,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Row(
+                children: [
+                  const Icon(Icons.cloud_off_rounded, size: 18, color: AppColors.sunText),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(l10n.offlineMineBanner(formatDateTime(since)),
+                        style: AppTextStyles.bodySmall.copyWith(color: AppColors.textPrimary)),
+                  ),
+                ],
+              ),
+            ),
           // Envoi de vidéo en cours ou interrompu : progression, Annuler, Réessayer.
           if (upload != null && upload.phase != VideoUploadPhase.done)
             Padding(
@@ -248,7 +268,14 @@ class _MyTestimonyCard extends ConsumerWidget {
                 _CardMenu(
                   testimony: testimony,
                   // Vidéo en traitement : le détail re-vérifie son état.
-                  onView: () => context.push('/testimony/${testimony.id}'),
+                  // Hors connexion : copie du téléphone (ou fichier téléchargé).
+                  onView: () async {
+                    if (ref.read(myTestimoniesOfflineSinceProvider) != null &&
+                        await openMyTestimonyOffline(context, ref, testimony.id)) {
+                      return;
+                    }
+                    if (context.mounted) unawaited(context.push('/testimony/${testimony.id}'));
+                  },
                   // Témoignage de conversion : écran dédié (année, lieu, verset).
                   onEdit: () => testimony.isConversion
                       ? context.push('/conversions/mine/edit')

@@ -196,7 +196,7 @@ class _CommentTile extends StatelessWidget {
                 Row(
                   children: [
                     Text(
-                      _formatDate(comment.createdAt),
+                      comment.isPending ? context.l10n.outboxPendingBadge : _formatDate(comment.createdAt),
                       style: const TextStyle(
                         fontFamily: AppFonts.family,
                         fontSize: 11,

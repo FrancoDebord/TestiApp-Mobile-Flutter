@@ -3,6 +3,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dio/dio.dart' show Options;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:testi_app/core/app_constants.dart';
 import 'package:testi_app/features/auth/providers/auth_notifier.dart';
@@ -49,7 +50,7 @@ class _Api implements ApiService {
   }
 
   @override
-  Future<LaravelResponse<T>> post<T>(String path, {dynamic data, Map<String, dynamic>? query}) async {
+  Future<LaravelResponse<T>> post<T>(String path, {dynamic data, Map<String, dynamic>? query, Options? options}) async {
     calls.add('POST $path');
     if (path == AppConstants.liveHeartbeat('l1')) {
       expect((data as Map)['viewer_id'], isA<String>());

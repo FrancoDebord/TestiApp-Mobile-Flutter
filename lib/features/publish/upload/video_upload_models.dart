@@ -57,7 +57,9 @@ class VideoUploadJob {
     this.tusEndpoint,
     this.uploadDone = false,
     this.replacesTestimonyId,
-  });
+    this.ownedDir,
+    String? clientKey,
+  }) : clientKey = clientKey ?? 'video-${DateTime.now().microsecondsSinceEpoch}';
 
   /// Fichier choisi ou filmé par l'utilisateur.
   final String sourcePath;
@@ -90,6 +92,13 @@ class VideoUploadJob {
   /// « Renvoyer la vidéo » : témoignage en échec, supprimé une fois ce nouvel
   /// envoi terminé (upload-init crée toujours un nouveau témoignage).
   final String? replacesTestimonyId;
+
+  /// Dossier de la file hors connexion qui contient la vidéo et les preuves :
+  /// effacé une fois l'envoi fini ou annulé.
+  final String? ownedDir;
+
+  /// Clé `Idempotency-Key` de upload-init : une reprise ne crée pas un second témoignage.
+  final String clientKey;
 
   bool get isInitialized => videoId != null && tusEndpoint != null;
 
@@ -167,6 +176,8 @@ class VideoUploadJob {
         'tus_endpoint': tusEndpoint,
         'upload_done': uploadDone,
         'replaces_testimony_id': replacesTestimonyId,
+        'owned_dir': ownedDir,
+        'client_key': clientKey,
       };
 
   factory VideoUploadJob.fromJson(Map<String, dynamic> j) => VideoUploadJob(
@@ -188,6 +199,8 @@ class VideoUploadJob {
         tusEndpoint: j['tus_endpoint'] as String?,
         uploadDone: j['upload_done'] as bool? ?? false,
         replacesTestimonyId: j['replaces_testimony_id'] as String?,
+        ownedDir: j['owned_dir'] as String?,
+        clientKey: j['client_key'] as String?,
       );
 }
 

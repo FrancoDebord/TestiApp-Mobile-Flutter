@@ -2,6 +2,7 @@
 // direct terminé, paramètres globaux décrits par le serveur, catégories push.
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dio/dio.dart' show Options;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:testi_app/core/app_constants.dart';
 import 'package:testi_app/features/admin/providers/admin_settings_schema.dart';
@@ -54,14 +55,14 @@ class _Api implements ApiService {
   }
 
   @override
-  Future<LaravelResponse<T>> post<T>(String path, {dynamic data, Map<String, dynamic>? query}) async {
+  Future<LaravelResponse<T>> post<T>(String path, {dynamic data, Map<String, dynamic>? query, Options? options}) async {
     posts.add((path, data));
     // Le serveur renvoie le verset à jour, avec les réactions faites ailleurs.
     return LaravelResponse<T>(success: true, data: _verse(liked: true, likes: 10) as T);
   }
 
   @override
-  Future<LaravelResponse<T>> put<T>(String path, {dynamic data}) async {
+  Future<LaravelResponse<T>> put<T>(String path, {dynamic data, Options? options}) async {
     puts.add((path, data));
     return LaravelResponse<T>(success: true, data: <String, dynamic>{} as T);
   }

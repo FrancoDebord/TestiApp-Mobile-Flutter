@@ -17,6 +17,7 @@ import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show ProviderListenable;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart' show FlutterSecureStorage;
 
 import '../core/app_constants.dart';
 import '../services/api_service.dart'
@@ -105,8 +106,31 @@ enum AppLanguage {
 const _kLocaleKey = 'app_locale';
 
 class AppLanguageNotifier extends Notifier<AppLanguage> {
+  /// Choix relu par [preload] avant le premier écran (null : non relu, ex. tests).
+  static AppLanguage? _preloaded;
+
+  /// Au démarrage (main), avant `runApp` : relit le choix enregistré et fixe
+  /// [L10n.locale]. À la première installation, rien n'est enregistré : langue
+  /// du système. Le premier écran et les premières requêtes (Accept-Language,
+  /// dont l'inscription, qui fixe la langue du compte côté serveur) sont donc
+  /// dans la bonne langue, sans passage par le français.
+  static Future<void> preload(FlutterSecureStorage storage) async {
+    var choice = AppLanguage.system;
+    try {
+      choice = AppLanguage.parse(await storage.read(key: _kLocaleKey));
+    } catch (_) {}
+    _preloaded = choice;
+    final system = PlatformDispatcher.instance.locales;
+    L10n.locale = resolveLanguage(choice, system);
+    L10n.deviceCountry = system.isEmpty ? null : system.first.countryCode;
+  }
+
   @override
   AppLanguage build() {
+    // Utilisé une fois : une reconstruction ultérieure relit le stockage.
+    final preloaded = _preloaded;
+    _preloaded = null;
+    if (preloaded != null) return preloaded;
     Future.microtask(_restore);
     return AppLanguage.system;
   }
@@ -146,15 +170,26 @@ final systemLocalesProvider = Provider<List<Locale>>(
   (ref) => PlatformDispatcher.instance.locales,
 );
 
+/// Recalcule l'appelant quand la langue affichée peut changer (contenu
+/// localisé par le serveur via Accept-Language : verset du jour…). Ne lit pas
+/// [localeProvider], qui fixe [L10n.locale] au passage.
+void watchAppLanguage(Ref ref) {
+  ref.watch(appLanguageProvider);
+  ref.watch(systemLocalesProvider);
+}
+
+/// Langue correspondant au choix [choice] (langue du système : [system]).
+Locale resolveLanguage(AppLanguage choice, List<Locale> system) => switch (choice) {
+      AppLanguage.fr => L10n.fr,
+      AppLanguage.en => L10n.en,
+      AppLanguage.system => L10n.resolveSystem(system),
+    };
+
 /// Langue affichée : choix de l'utilisateur, sinon langue du système.
 final localeProvider = Provider<Locale>((ref) {
   final choice = ref.watch(appLanguageProvider);
   final system = ref.watch(systemLocalesProvider);
-  final locale = switch (choice) {
-    AppLanguage.fr => L10n.fr,
-    AppLanguage.en => L10n.en,
-    AppLanguage.system => L10n.resolveSystem(system),
-  };
+  final locale = resolveLanguage(choice, system);
   L10n.locale = locale;
   L10n.deviceCountry = system.isEmpty ? null : system.first.countryCode;
   return locale;

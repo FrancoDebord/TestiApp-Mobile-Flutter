@@ -42,11 +42,7 @@ class DailyVerseBanner extends ConsumerWidget {
     final verseAsync = ref.watch(dailyVerseProvider);
 
     // Pendant le chargement ou en erreur, utiliser le fallback silencieusement
-    final verse = verseAsync.value ?? const DailyVerse(
-      text: '« Car je connais les projets que j\'ai formés sur vous, dit l\'Éternel, ' // i18n-ignore
-          'projets de paix et non de malheur, afin de vous donner un avenir et de l\'espérance. »', // i18n-ignore
-      reference: 'Jérémie 29 : 11', // i18n-ignore
-    );
+    final verse = verseAsync.value ?? fallbackDailyVerse();
 
     return AnimatedCrossFade(
       duration: const Duration(milliseconds: 300),

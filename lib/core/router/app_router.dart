@@ -26,6 +26,7 @@ import '../../features/moderation/screens/moderation_detail_screen.dart';
 import '../../features/moderation/screens/moderation_screen.dart';
 import '../../features/notifications/screens/notifications_screen.dart';
 import '../../features/downloads/screens/downloads_screen.dart';
+import '../../features/offline/outbox_screen.dart';
 import '../../features/location/location_settings_screen.dart';
 import '../../features/location/nearby_widgets.dart' show locationSettingsPath;
 import '../../features/profile/screens/privacy_policy_screen.dart';
@@ -91,6 +92,20 @@ import '../../features/profile/screens/my_data_screen.dart';
 // Router provider
 // ============================================================================
 
+/// Lecteur ouvert sur un passage (`/bible/{traduction}/{livre}/{chapitre}/{versets?}`).
+Page<void> _biblePassagePage(GoRouterState state) {
+  final p = state.pathParameters;
+  return AppTransitions.slideRight(
+    state: state,
+    child: BibleReaderScreen(
+      translationCode: p['id']!.toUpperCase(),
+      book: p['book'],
+      chapter: int.tryParse(p['chapter'] ?? ''),
+      verses: p['verses'],
+    ),
+  );
+}
+
 /// The single GoRouter instance, exposed as a Riverpod provider so the
 /// redirect logic can read auth state reactively.
 /// Lien entrant (share_url, testi://…) reçu avant que la session soit prête :
@@ -104,7 +119,9 @@ bool _isContentDeepLink(String location) =>
     (location.startsWith('/lives/') && location != '/lives/new') ||
     (location.startsWith('/events/') &&
         location != '/events/new' &&
-        !location.endsWith('/edit'));
+        !location.endsWith('/edit')) ||
+    // Passage de la Bible partagé : /bible/{traduction}/{livre}/{chapitre}(/{versets}).
+    (location.startsWith('/bible/') && location.split('/').where((s) => s.isNotEmpty).length >= 4);
 
 /// Devient vrai dès que la session a été résolue une première fois : un
 /// rechargement ultérieur de l'état (ex. envoi d'un code SMS) ne renvoie
@@ -674,6 +691,15 @@ List<RouteBase> _buildRoutes() {
       ),
     ),
 
+    // ── À envoyer : ce qui a été fait hors connexion (file d'envoi) ─────────
+    GoRoute(
+      path: '/outbox',
+      pageBuilder: (context, state) => AppTransitions.slideRight(
+        state: state,
+        child: const OutboxScreen(),
+      ),
+    ),
+
     // â”€â”€ Admin dashboard (Administrateur only â€” guarded by redirect above) â”€â”€â”€
     GoRoute(
       path: '/admin',
@@ -826,6 +852,21 @@ List<RouteBase> _buildRoutes() {
                       child: BibleReaderScreen(translationCode: code),
                     );
                   },
+                  routes: [
+                    // Lien partagé vers un passage (site et application) :
+                    // /bible/LSG/jean/3 et /bible/LSG/jean/3/16-18
+                    // docs serveur fonctionnalites/liens-bible.md
+                    GoRoute(
+                      path: ':book/:chapter',
+                      pageBuilder: (context, state) => _biblePassagePage(state),
+                      routes: [
+                        GoRoute(
+                          path: ':verses',
+                          pageBuilder: (context, state) => _biblePassagePage(state),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ],
             ),

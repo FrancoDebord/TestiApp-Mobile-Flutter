@@ -13,6 +13,7 @@ import '../../../shared/models/mention.dart' show MentionCodec;
 import '../../../shared/models/comment_model.dart';
 import '../../../shared/comments/comment_likes.dart';
 import '../prayer/pray_for_testimony.dart' show prayForTestimony;
+import '../../reactions/reaction_people.dart' show ReactionSubject, showReactionPeople;
 import '../../../core/media/media_quality.dart';
 import '../../../core/media/video_source.dart' show networkVideoController, videoPlaybackChain;
 import '../../../core/media/playback_preferences.dart';
@@ -874,6 +875,15 @@ class _ShortActions extends ConsumerWidget {
         ),
         const SizedBox(height: 20),
 
+        // ── Qui a réagi ? (réactions, personnes, commentaires) ──────────
+        _ActionButton(
+          icon: Icons.groups_outlined,
+          color: Colors.white,
+          label: context.l10n.reactionPeopleShort,
+          onTap: () => showReactionPeople(context, subject: ReactionSubject.testimony, id: testimony.id),
+        ),
+        const SizedBox(height: 20),
+
         // ── Bookmark / Save ─────────────────────────────────────────────
         _ActionButton(
           icon: saved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
@@ -1188,7 +1198,9 @@ class _CommentTile extends StatelessWidget {
     final initials = author.isNotEmpty ? author[0].toUpperCase() : '?';
     final createdAt = DateTime.tryParse(comment.createdAt ?? '')?.toLocal() ?? DateTime.now();
     final diff = DateTime.now().difference(createdAt);
-    final timeAgo = diff.inMinutes < 1
+    final timeAgo = comment.isPending
+        ? context.l10n.outboxPendingBadge
+        : diff.inMinutes < 1
         ? context.l10n.timeJustNow
         : diff.inMinutes < 60
             ? context.l10n.shortsAgoMinutes(diff.inMinutes)

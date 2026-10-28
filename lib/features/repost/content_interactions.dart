@@ -10,9 +10,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
 
 import '../prayer/screens/prayer_focus_screen.dart' show PrayerFocusSubject, openPrayerFocusFor;
+import '../prayer/widgets/pray_again_sheet.dart';
+import '../reactions/reaction_people.dart' show ReactionPeopleButton, ReactionSubject;
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../services/api_service.dart';
+import '../offline/outbox_controller.dart';
 import '../../shared/widgets/guest_gate.dart';
 import '../home/providers/home_providers.dart' show ReactionType, ReactionTypeInfo, reactionTypeFromApi;
 import '../home/widgets/testimony_action_bar.dart' show formatCount;
@@ -42,6 +45,12 @@ enum ContentKind {
       };
 
   String path(String id, String action) => '$prefix/$id/$action';
+
+  ReactionSubject get reactionSubject => switch (this) {
+        ContentKind.event => ReactionSubject.event,
+        ContentKind.prayerRequest => ReactionSubject.prayerRequest,
+        ContentKind.prayerSession => ReactionSubject.prayerSession,
+      };
 }
 
 /// Compteurs et état de la personne connectée (champ `reactions` de l'API).
@@ -52,6 +61,7 @@ class ContentReactions {
     this.repostsCount = 0,
     this.myReaction,
     this.myPrayerReaction,
+    this.myPrayerTimes = 0,
     this.isRepostedByMe = false,
     this.canRepost = false,
   });
@@ -61,6 +71,9 @@ class ContentReactions {
   final int repostsCount;
   final String? myReaction;
   final String? myPrayerReaction;
+
+  /// Nombre de fois que la personne a prié (docs serveur fonctionnalites/prier-plusieurs-fois.md).
+  final int myPrayerTimes;
   final bool isRepostedByMe;
   final bool canRepost;
 
@@ -76,6 +89,7 @@ class ContentReactions {
       repostsCount: n(raw['repostsCount']),
       myReaction: raw['myReaction'] as String?,
       myPrayerReaction: raw['myPrayerReaction'] as String?,
+      myPrayerTimes: n(raw['myPrayerTimes']),
       isRepostedByMe: raw['isRepostedByMe'] == true,
       canRepost: raw['canRepost'] == true,
     );
@@ -86,6 +100,7 @@ class ContentReactions {
     int? prayersCount,
     String? Function()? myReaction,
     String? Function()? myPrayerReaction,
+    int? myPrayerTimes,
   }) =>
       ContentReactions(
         likesCount: likesCount ?? this.likesCount,
@@ -93,6 +108,7 @@ class ContentReactions {
         repostsCount: repostsCount,
         myReaction: myReaction != null ? myReaction() : this.myReaction,
         myPrayerReaction: myPrayerReaction != null ? myPrayerReaction() : this.myPrayerReaction,
+        myPrayerTimes: myPrayerTimes ?? this.myPrayerTimes,
         isRepostedByMe: isRepostedByMe,
         canRepost: canRepost,
       );
@@ -122,20 +138,48 @@ class ContentInteractionsNotifier extends Notifier<Map<String, ContentReactions>
       (api) => type != null
           ? api.post<Map<String, dynamic>>(kind.path(id, 'reactions'), data: {'type': type.apiValue})
           : api.delete<Map<String, dynamic>>(kind.path(id, 'reactions'), query: const {'group': 'appreciation'}),
+      // Hors connexion : la dernière réaction posée part au retour du réseau.
+      offline: OutboxDraft(
+        kind: OutboxKind.reaction,
+        label: kind.theLabel,
+        targetId: key(kind, id),
+        dedupeKey: 'reaction:${key(kind, id)}:appreciation',
+        request: type != null
+            ? OutboxRequest('POST', kind.path(id, 'reactions'), body: {'type': type.apiValue})
+            : OutboxRequest('DELETE', kind.path(id, 'reactions'), query: const {'group': 'appreciation'}),
+      ),
     );
   }
 
-  /// « Je prie » (événements et sessions ; les requêtes ont leur propre bouton).
-  Future<String?> togglePray(ContentKind kind, String id, ContentReactions current) {
-    final prayed = !current.isPrayed;
-    final prayers = current.prayersCount + (prayed ? 1 : -1);
+  /// « Je prie » (événements et sessions ; les requêtes ont leur propre bouton) : une prière
+  /// de plus, la première si la personne ne prie pas encore. Le compteur reste le nombre de personnes.
+  Future<String?> pray(ContentKind kind, String id, ContentReactions current) {
+    final times = current.isPrayed ? (current.myPrayerTimes < 1 ? 1 : current.myPrayerTimes) : 0;
     return _send(
       kind,
       id,
-      current.copyWith(prayersCount: prayers < 0 ? 0 : prayers, myPrayerReaction: () => prayed ? 'pray' : null),
-      (api) => prayed
-          ? api.post<Map<String, dynamic>>(kind.path(id, 'reactions'), data: const {'type': 'pray'})
-          : api.delete<Map<String, dynamic>>(kind.path(id, 'reactions'), query: const {'group': 'prayer'}),
+      current.copyWith(
+        prayersCount: current.prayersCount + (current.isPrayed ? 0 : 1),
+        myPrayerReaction: () => current.myPrayerReaction ?? 'pray',
+        myPrayerTimes: times + 1,
+      ),
+      (api) => api.post<Map<String, dynamic>>(kind.path(id, 'reactions'), data: const {'type': 'pray', 'again': true}),
+    );
+  }
+
+  /// Retire la dernière prière ; à la dernière, la personne ne prie plus.
+  Future<String?> removeLastPrayer(ContentKind kind, String id, ContentReactions current) {
+    final times = (current.myPrayerTimes < 1 ? 1 : current.myPrayerTimes) - 1;
+    final prayers = current.prayersCount - (times > 0 ? 0 : 1);
+    return _send(
+      kind,
+      id,
+      current.copyWith(
+        prayersCount: prayers < 0 ? 0 : prayers,
+        myPrayerReaction: () => times > 0 ? current.myPrayerReaction : null,
+        myPrayerTimes: times,
+      ),
+      (api) => api.delete<Map<String, dynamic>>(kind.path(id, 'reactions'), query: const {'group': 'prayer', 'last': 1}),
     );
   }
 
@@ -166,8 +210,9 @@ class ContentInteractionsNotifier extends Notifier<Map<String, ContentReactions>
     ContentKind kind,
     String id,
     ContentReactions optimistic,
-    Future<LaravelResponse<Map<String, dynamic>>> Function(ApiService api) call,
-  ) async {
+    Future<LaravelResponse<Map<String, dynamic>>> Function(ApiService api) call, {
+    OutboxDraft? offline,
+  }) async {
     final k = key(kind, id);
     final before = state[k];
     state = {...state, k: optimistic};
@@ -179,6 +224,8 @@ class ContentInteractionsNotifier extends Notifier<Map<String, ContentReactions>
       return null;
     } catch (e) {
       debugPrint('réaction ✗ $e');
+      // Coupure : gardée dans la file d'envoi, l'état affiché reste celui choisi.
+      if (offline != null && await ref.read(outboxProvider.notifier).queueIfOffline(e, offline)) return null;
       if (_requests[k] == request) {
         final next = {...state};
         if (before == null) {
@@ -210,6 +257,8 @@ class ContentReactionBar extends ConsumerWidget {
     required this.title,
     this.webUrl,
     this.showPray = true,
+    this.otherPrayers = 0,
+    this.comments = 0,
     this.dense = false,
     super.key,
   });
@@ -226,6 +275,12 @@ class ContentReactionBar extends ConsumerWidget {
 
   /// Faux pour les requêtes de prière : leur « Je prie » est un bouton dédié.
   final bool showPray;
+
+  /// Requêtes de prière : personnes qui prient avec le bouton dédié (pour « Qui a réagi ? »).
+  final int otherPrayers;
+
+  /// Commentaires (ou encouragements) : « Qui a réagi ? » a aussi leur onglet.
+  final int comments;
 
   /// Rangée plus compacte (cartes des fils).
   final bool dense;
@@ -282,8 +337,18 @@ class ContentReactionBar extends ConsumerWidget {
     Future<void> pray() async {
       if (!await member()) return;
       final current = ref.read(contentInteractionsProvider)[ContentInteractionsNotifier.key(kind, id)] ?? initial;
-      // Prier : temps de prière immersif de 5 minutes d'abord (retirer reste immédiat).
-      if (!current.isPrayed) {
+      // Déjà en prière : prier encore ou retirer sa dernière prière (immédiat).
+      if (current.isPrayed) {
+        if (!context.mounted) return;
+        final choice = await askPrayAgain(context, times: current.myPrayerTimes);
+        if (choice == PrayAgainChoice.removeLast) {
+          final latest = ref.read(contentInteractionsProvider)[ContentInteractionsNotifier.key(kind, id)] ?? initial;
+          report(await notifier.removeLastPrayer(kind, id, latest));
+        }
+        if (choice != PrayAgainChoice.again) return;
+      }
+      // Chaque prière : temps de prière immersif de 5 minutes d'abord.
+      {
         if (!context.mounted) return;
         final l10n = context.l10n;
         final api = ref.read(apiServiceProvider);
@@ -306,8 +371,7 @@ class ContentReactionBar extends ConsumerWidget {
         if (!ok) return;
       }
       final latest = ref.read(contentInteractionsProvider)[ContentInteractionsNotifier.key(kind, id)] ?? initial;
-      if (latest.isPrayed != current.isPrayed) return;
-      report(await notifier.togglePray(kind, id, latest));
+      report(await notifier.pray(kind, id, latest));
     }
 
     final likeIcon = (mine == null || mine == ReactionType.like)
@@ -315,7 +379,7 @@ class ContentReactionBar extends ConsumerWidget {
         : Text(mine.emoji, style: const TextStyle(fontSize: 16));
 
     // Wrap : les boutons passent à la ligne sur un petit écran (320 px, grand texte).
-    return Wrap(
+    final bar = Wrap(
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         _BarButton(
@@ -347,7 +411,16 @@ class ContentReactionBar extends ConsumerWidget {
           onTap: () => showContentShareSheet(context, ref,
               kind: kind, id: id, title: title, webUrl: webUrl, reactions: r),
         ),
+        // Qui a réagi ? (effectif de chaque réaction et personnes). Requêtes : leur « Je prie » compte.
+        if (!dense && r.likesCount + (showPray ? r.prayersCount : otherPrayers) + comments > 0)
+          ReactionPeopleButton(subject: kind.reactionSubject, id: id, size: 19),
       ],
+    );
+    if (dense || !showPray || !r.isPrayed) return bar;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [bar, MyPrayerTimesLine(times: r.myPrayerTimes < 1 ? 1 : r.myPrayerTimes, padding: const EdgeInsets.only(left: 8, bottom: 4))],
     );
   }
 }

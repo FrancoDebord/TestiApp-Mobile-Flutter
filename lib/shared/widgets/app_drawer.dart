@@ -9,6 +9,7 @@ import '../../features/accounts/providers/acting_account_provider.dart'
     show actingAccountProvider, myAccountsProvider;
 import '../../features/accounts/widgets/account_widgets.dart' show showAccountSwitcher;
 import '../../features/auth/providers/auth_notifier.dart' show currentUserProvider;
+import '../../features/offline/outbox_controller.dart' show outboxProvider;
 import '../../l10n/app_localizations.dart';
 import 'organization_badge.dart';
 
@@ -122,8 +123,9 @@ class AppDrawer extends ConsumerWidget {
             item(Icons.auto_stories_rounded, l10n.sharedDrawerBible, '/bible/$kDefaultBibleTranslation',
                 subtitle: l10n.sharedDrawerBibleSubtitle, tab: true),
             item(Icons.sensors_rounded, l10n.sharedDrawerLives, '/lives'),
+            // Écran empilé (hors onglets) : « Retour » revient où l'on était.
             item(Icons.event_rounded, l10n.navEvents, '/events',
-                subtitle: l10n.sharedDrawerEventsSubtitle, tab: true),
+                subtitle: l10n.sharedDrawerEventsSubtitle),
             // Prière (docs serveur fonctionnalites/requetes-de-priere.md, sessions-de-priere.md)
             item(Icons.volunteer_activism_outlined, l10n.prayerTitle, '/prayer-requests',
                 subtitle: l10n.sharedDrawerPrayerRequestsSubtitle),
@@ -133,6 +135,10 @@ class AppDrawer extends ConsumerWidget {
               item(Icons.dynamic_feed_rounded, l10n.feedTitle, '/my-feed',
                   subtitle: l10n.sharedDrawerFeedSubtitle),
             item(Icons.download_for_offline_outlined, l10n.navDownloads, '/downloads'),
+            // Fait hors connexion, en attente d'envoi (visible seulement s'il y a quelque chose).
+            if (user != null && ref.watch(outboxProvider.select((s) => s.items.length)) > 0)
+              item(Icons.cloud_upload_outlined, l10n.outboxTitle, '/outbox',
+                  subtitle: l10n.outboxCount(ref.watch(outboxProvider.select((s) => s.items.length)))),
             if (user != null) ...[
               item(Icons.how_to_reg_outlined, l10n.sharedDrawerFollowing, '/following'),
               item(Icons.people_alt_outlined, l10n.sharedDrawerFollowers, '/followers'),

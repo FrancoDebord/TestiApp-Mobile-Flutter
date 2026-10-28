@@ -104,7 +104,8 @@ class VideoUploadController extends Notifier<VideoUploadState?> {
   VideoUploadState? build() {
     if (!kIsWeb) {
       _connectivity = Connectivity().onConnectivityChanged.listen((r) {
-        if (!r.contains(ConnectivityResult.none)) _resumeIfWaiting();
+        _online = r.any((c) => c != ConnectivityResult.none);
+        if (_online) _resumeIfWaiting();
       });
       // Retour au premier plan : l'envoi coupé en arrière-plan reprend aussitôt.
       _lifecycle = AppLifecycleListener(onResume: _resumeIfWaiting);
@@ -131,6 +132,7 @@ class VideoUploadController extends Notifier<VideoUploadState?> {
     required Map<String, dynamic> body,
     List<PendingProof> proofs = const [],
     String? replacesTestimonyId,
+    String? ownedDir,
   }) async {
     if (_job != null) {
       throw StateError(L10n.current.uploadAlreadyRunning);
@@ -141,6 +143,7 @@ class VideoUploadController extends Notifier<VideoUploadState?> {
       body: body,
       proofs: proofs,
       replacesTestimonyId: replacesTestimonyId,
+      ownedDir: ownedDir,
     );
     _cancelled = false;
     _autoRetries = 0;
@@ -211,15 +214,13 @@ class VideoUploadController extends Notifier<VideoUploadState?> {
       state = VideoUploadState(
         phase: job.isInitialized
             ? VideoUploadPhase.uploading
-            : VideoUploadPhase.failed,
+            : VideoUploadPhase.preparing,
         title: job.title,
         testimonyId: job.testimonyId,
-        error: job.isInitialized
-            ? null
-            : L10n.current.uploadInterrupted,
       );
-      // Témoignage déjà créé : on reprend tout seul ; sinon « Réessayer ».
-      if (job.isInitialized) unawaited(_run());
+      // Reprise automatique, témoignage déjà créé ou non : upload-init porte
+      // une clé Idempotency-Key, une reprise ne crée pas de doublon.
+      unawaited(_run());
     } catch (e) {
       debugPrint('VideoUpload ✗ restauration : $e');
     }
@@ -266,7 +267,8 @@ class VideoUploadController extends Notifier<VideoUploadState?> {
   }
 
   void _waitForNetwork() {
-    if (_autoRetries >= _maxAutoRetries) {
+    // Hors connexion, on attend le réseau sans limite (vidéo préparée hors ligne).
+    if (_autoRetries >= _maxAutoRetries && _online) {
       _fail(L10n.current.uploadConnectionUnstable);
       return;
     }
@@ -277,8 +279,29 @@ class VideoUploadController extends Notifier<VideoUploadState?> {
 
   void _resumeIfWaiting() {
     if (state?.phase != VideoUploadPhase.waitingNetwork || _running) return;
-    _autoRetries++;
-    unawaited(_run());
+    unawaited(() async {
+      _online = await _checkOnline();
+      if (!_online) {
+        // Pas de réseau : on patiente sans compter de tentative.
+        _retryTimer?.cancel();
+        _retryTimer = Timer(_retryDelay, _resumeIfWaiting);
+        return;
+      }
+      _autoRetries++;
+      await _run();
+    }());
+  }
+
+  /// Dernier état connu du réseau (connectivity_plus).
+  bool _online = true;
+
+  Future<bool> _checkOnline() async {
+    try {
+      final r = await Connectivity().checkConnectivity();
+      return r.any((c) => c != ConnectivityResult.none);
+    } catch (_) {
+      return true;
+    }
   }
 
   // 1. Compression ───────────────────────────────────────────────────────────
@@ -338,6 +361,7 @@ class VideoUploadController extends Notifier<VideoUploadState?> {
       final res = await api.post<Map<String, dynamic>>(
         AppConstants.videoUploadInit,
         data: job.body,
+        options: Options(headers: {'Idempotency-Key': job.clientKey}), // i18n-ignore
       );
       data = res.data;
     } on DioException catch (e) {
@@ -583,6 +607,10 @@ class VideoUploadController extends Notifier<VideoUploadState?> {
       final c = job.compressedPath;
       if (c != null && c != job.sourcePath && await File(c).exists()) {
         await File(c).delete();
+      }
+      final owned = job.ownedDir;
+      if (owned != null && await Directory(owned).exists()) {
+        await Directory(owned).delete(recursive: true);
       }
       if (job.bunnyVideoId != null) {
         await _tusCache?.remove('bunny-${job.bunnyVideoId}');

@@ -16,7 +16,10 @@ Duration? _noRetry(int retryCount, Object error) => null;
 /// Clé stable d'un verset (les réactions changent l'objet DailyVerse).
 typedef DailyVerseKey = ({int id, String reference, String text});
 
-DailyVerseKey dailyVerseKey(DailyVerse v) => (id: v.id, reference: v.reference, text: v.text);
+/// Texte et référence du jour (français) : les versions et leur repli hors
+/// connexion partent du passage tel que saisi, quelle que soit la langue affichée.
+DailyVerseKey dailyVerseKey(DailyVerse v) =>
+    (id: v.id, reference: v.originalReference ?? v.reference, text: v.originalText ?? v.text);
 
 /// Versions du passage.
 final dailyVerseVersionsProvider =

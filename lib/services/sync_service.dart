@@ -5,8 +5,8 @@
 // Strategy:
 //   1. On app foreground → deltaSync() fetches only records newer than last cursor.
 //   2. All reads go through SQLite (instant, 0ms perceived latency).
-//   3. Writes are optimistic: local SQLite first, then queued for remote sync.
-//   4. On reconnect → flushPendingOps() replays the offline write queue.
+//   3. Writes made offline go through the outbox (lib/features/offline/outbox_controller.dart),
+//      flushed on reconnect, on foreground and every 30 s (main.dart).
 
 import 'dart:convert';
 
@@ -16,9 +16,7 @@ import 'package:sqflite/sqflite.dart';
 
 import '../core/app_constants.dart';
 import '../core/local_db/daos/notification_dao.dart';
-import '../core/local_db/daos/pending_ops_dao.dart';
 import '../core/local_db/daos/sync_dao.dart';
-import '../core/local_db/daos/testimony_dao.dart';
 import '../core/local_db/database_service.dart';
 import 'api_service.dart';
 
@@ -26,18 +24,14 @@ class SyncService {
   SyncService({
     required this.api,
     required this.db,
-  })  : _testimonyDao = TestimonyDao(db),
-        _notifDao     = NotificationDao(db),
-        _syncDao      = SyncDao(db),
-        _pendingDao   = PendingOpsDao(db);
+  })  : _notifDao     = NotificationDao(db),
+        _syncDao      = SyncDao(db);
 
   final ApiService api;
   final DatabaseService db;
 
-  final TestimonyDao    _testimonyDao;
   final NotificationDao _notifDao;
   final SyncDao         _syncDao;
-  final PendingOpsDao   _pendingDao;
 
   // ── Online check ─────────────────────────────────────────────────────────────
 
@@ -59,8 +53,6 @@ class SyncService {
       if (userId != null) _syncNotifications(userId),
       _syncCategories(),
     ]);
-
-    await flushPendingOps();
   }
 
   // ── Notifications delta sync ──────────────────────────────────────────────────
@@ -139,123 +131,6 @@ class SyncService {
         lastSyncAt: DateTime.now().toIso8601String(),
       );
     } catch (_) {}
-  }
-
-  // ── Offline write queue flush ─────────────────────────────────────────────────
-
-  /// Replays all pending offline operations against the remote API.
-  Future<void> flushPendingOps() async {
-    if (!await _isOnline()) return;
-
-    final ops = await _pendingDao.getPending();
-    for (final op in ops) {
-      final id      = op['id'] as String;
-      final method  = op['method'] as String;
-      final endpoint = op['endpoint'] as String;
-      final bodyRaw = op['body'] as String?;
-      final retries = op['retry_count'] as int? ?? 0;
-
-      final body = bodyRaw != null
-          ? PendingOpsDao.decodeBody(bodyRaw)
-          : null;
-
-      try {
-        switch (method) {
-          case 'POST':   await api.post<void>(endpoint, data: body);
-          case 'PUT':    await api.put<void>(endpoint, data: body);
-          case 'DELETE': await api.delete<void>(endpoint, data: body);
-        }
-        await _pendingDao.markSuccess(id);
-      } catch (_) {
-        await _pendingDao.markRetry(id, retries);
-      }
-    }
-  }
-
-  // ── Optimistic local writes ───────────────────────────────────────────────────
-
-  /// Like / unlike a testimony optimistically — updates SQLite immediately,
-  /// queues the remote call for background sync.
-  Future<void> toggleLike({
-    required String testimonyId,
-    required bool newLikedState,
-  }) async {
-    await _testimonyDao.updateUserInteraction(
-      testimonyId: testimonyId,
-      liked: newLikedState,
-    );
-
-    if (await _isOnline()) {
-      try {
-        await api.post<void>(
-          AppConstants.testimonyReactions(testimonyId),
-          data: {'type': 'like'},
-        );
-        return;
-      } catch (_) {}
-    }
-
-    await _pendingDao.enqueue(
-      type: PendingOpType.react,
-      method: 'POST',
-      endpoint: AppConstants.testimonyReactions(testimonyId),
-      body: {'type': 'like'},
-    );
-  }
-
-  /// Pray / unpray optimistically.
-  Future<void> togglePray({
-    required String testimonyId,
-    required bool newPrayedState,
-  }) async {
-    await _testimonyDao.updateUserInteraction(
-      testimonyId: testimonyId,
-      prayed: newPrayedState,
-    );
-
-    if (await _isOnline()) {
-      try {
-        await api.post<void>(
-          AppConstants.testimonyReactions(testimonyId),
-          data: {'type': 'pray'},
-        );
-        return;
-      } catch (_) {}
-    }
-
-    await _pendingDao.enqueue(
-      type: PendingOpType.react,
-      method: 'POST',
-      endpoint: AppConstants.testimonyReactions(testimonyId),
-      body: {'type': 'pray'},
-    );
-  }
-
-  /// Save / unsave a testimony.
-  Future<void> toggleSave({
-    required String testimonyId,
-    required String userId,
-    required bool newSavedState,
-  }) async {
-    await _testimonyDao.updateUserInteraction(
-        testimonyId: testimonyId, saved: newSavedState);
-
-    final endpoint = newSavedState
-        ? AppConstants.testimonySave(testimonyId)
-        : AppConstants.testimonyUnsave(testimonyId);
-
-    if (await _isOnline()) {
-      try {
-        await api.post<void>(endpoint);
-        return;
-      } catch (_) {}
-    }
-
-    await _pendingDao.enqueue(
-      type: newSavedState ? PendingOpType.save : PendingOpType.unsave,
-      method: 'POST',
-      endpoint: endpoint,
-    );
   }
 
   // ── Row mappers ───────────────────────────────────────────────────────────────

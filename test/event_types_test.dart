@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dio/dio.dart' show Options;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:testi_app/core/app_constants.dart';
 import 'package:testi_app/features/admin/screens/admin_event_types_screen.dart';
@@ -41,7 +42,7 @@ class _Api implements ApiService {
   }
 
   @override
-  Future<LaravelResponse<T>> post<T>(String path, {dynamic data, Map<String, dynamic>? query}) async {
+  Future<LaravelResponse<T>> post<T>(String path, {dynamic data, Map<String, dynamic>? query, Options? options}) async {
     calls.add('POST $path');
     bodies.add(data);
     types = [...types, _t(9, 'louange-nuit', data['name_fr'] as String, icon: data['icon'] as String, pos: 9)];
@@ -49,14 +50,14 @@ class _Api implements ApiService {
   }
 
   @override
-  Future<LaravelResponse<T>> put<T>(String path, {dynamic data}) async {
+  Future<LaravelResponse<T>> put<T>(String path, {dynamic data, Options? options}) async {
     calls.add('PUT $path');
     bodies.add(data);
     return LaravelResponse<T>(success: true, data: null as T);
   }
 
   @override
-  Future<LaravelResponse<T>> delete<T>(String path, {dynamic data, Map<String, dynamic>? query}) async {
+  Future<LaravelResponse<T>> delete<T>(String path, {dynamic data, Map<String, dynamic>? query, Options? options}) async {
     calls.add('DELETE $path ${query?['replace_with'] ?? ''}'.trim());
     if (path.endsWith('/1') && query?['replace_with'] == null) {
       throw const LaravelApiException(message: 'Type utilisé', statusCode: 409);

@@ -18313,6 +18313,690 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Impossible d\'ouvrir la page de suppression. Ouvrez {url} dans votre navigateur.'**
   String myDataRequestFailedNoEmail(String url);
+
+  /// No description provided for @outboxTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'À envoyer'**
+  String get outboxTitle;
+
+  /// No description provided for @outboxIntro.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ce que vous faites sans connexion est gardé sur ce téléphone, puis envoyé automatiquement dès que le réseau revient.'**
+  String get outboxIntro;
+
+  /// No description provided for @outboxQueuedSnack.
+  ///
+  /// In fr, this message translates to:
+  /// **'Pas de connexion : enregistré sur ce téléphone. L\'envoi se fera tout seul au retour du réseau.'**
+  String get outboxQueuedSnack;
+
+  /// No description provided for @outboxView.
+  ///
+  /// In fr, this message translates to:
+  /// **'Voir'**
+  String get outboxView;
+
+  /// No description provided for @outboxSyncedSnack.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count, plural, =1{1 élément enregistré hors connexion a été envoyé.} other{{count} éléments enregistrés hors connexion ont été envoyés.}}'**
+  String outboxSyncedSnack(int count);
+
+  /// No description provided for @outboxFailedSnack.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count, plural, =1{1 élément n\'a pas pu être envoyé.} other{{count} éléments n\'ont pas pu être envoyés.}}'**
+  String outboxFailedSnack(int count);
+
+  /// No description provided for @outboxParentMissing.
+  ///
+  /// In fr, this message translates to:
+  /// **'Le contenu visé n\'a pas pu être envoyé : cette action est annulée.'**
+  String get outboxParentMissing;
+
+  /// No description provided for @outboxFileMissing.
+  ///
+  /// In fr, this message translates to:
+  /// **'Un fichier joint n\'est plus sur le téléphone.'**
+  String get outboxFileMissing;
+
+  /// No description provided for @outboxGaveUp.
+  ///
+  /// In fr, this message translates to:
+  /// **'Le serveur ne répond pas. Réessayez plus tard.'**
+  String get outboxGaveUp;
+
+  /// No description provided for @outboxPendingBadge.
+  ///
+  /// In fr, this message translates to:
+  /// **'En attente d\'envoi'**
+  String get outboxPendingBadge;
+
+  /// No description provided for @outboxEmpty.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rien à envoyer : tout est à jour.'**
+  String get outboxEmpty;
+
+  /// No description provided for @outboxOffline.
+  ///
+  /// In fr, this message translates to:
+  /// **'Hors connexion : les éléments partiront au retour du réseau.'**
+  String get outboxOffline;
+
+  /// No description provided for @outboxOnline.
+  ///
+  /// In fr, this message translates to:
+  /// **'Connecté : les éléments en attente partent automatiquement.'**
+  String get outboxOnline;
+
+  /// No description provided for @outboxSendNow.
+  ///
+  /// In fr, this message translates to:
+  /// **'Envoyer maintenant'**
+  String get outboxSendNow;
+
+  /// No description provided for @outboxSending.
+  ///
+  /// In fr, this message translates to:
+  /// **'Envoi en cours…'**
+  String get outboxSending;
+
+  /// No description provided for @outboxRetry.
+  ///
+  /// In fr, this message translates to:
+  /// **'Réessayer'**
+  String get outboxRetry;
+
+  /// No description provided for @outboxDelete.
+  ///
+  /// In fr, this message translates to:
+  /// **'Supprimer'**
+  String get outboxDelete;
+
+  /// No description provided for @outboxDeleteTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Supprimer cet élément ?'**
+  String get outboxDeleteTitle;
+
+  /// No description provided for @outboxDeleteBody.
+  ///
+  /// In fr, this message translates to:
+  /// **'Il n\'a pas encore été envoyé : il sera perdu.'**
+  String get outboxDeleteBody;
+
+  /// No description provided for @outboxSectionPending.
+  ///
+  /// In fr, this message translates to:
+  /// **'En attente'**
+  String get outboxSectionPending;
+
+  /// No description provided for @outboxSectionFailed.
+  ///
+  /// In fr, this message translates to:
+  /// **'Non envoyés'**
+  String get outboxSectionFailed;
+
+  /// No description provided for @outboxWaiting.
+  ///
+  /// In fr, this message translates to:
+  /// **'En attente du réseau'**
+  String get outboxWaiting;
+
+  /// No description provided for @outboxRetryLater.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nouvelle tentative à {time}'**
+  String outboxRetryLater(String time);
+
+  /// No description provided for @outboxSavedAt.
+  ///
+  /// In fr, this message translates to:
+  /// **'Enregistré le {date}'**
+  String outboxSavedAt(String date);
+
+  /// No description provided for @outboxCount.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count, plural, =0{Rien en attente} =1{1 en attente} other{{count} en attente}}'**
+  String outboxCount(int count);
+
+  /// No description provided for @outboxKindTestimony.
+  ///
+  /// In fr, this message translates to:
+  /// **'Témoignage'**
+  String get outboxKindTestimony;
+
+  /// No description provided for @outboxKindVideo.
+  ///
+  /// In fr, this message translates to:
+  /// **'Témoignage vidéo'**
+  String get outboxKindVideo;
+
+  /// No description provided for @outboxKindPrayerRequest.
+  ///
+  /// In fr, this message translates to:
+  /// **'Requête de prière'**
+  String get outboxKindPrayerRequest;
+
+  /// No description provided for @outboxKindPrayerSession.
+  ///
+  /// In fr, this message translates to:
+  /// **'Session de prière'**
+  String get outboxKindPrayerSession;
+
+  /// No description provided for @outboxKindEvent.
+  ///
+  /// In fr, this message translates to:
+  /// **'Événement'**
+  String get outboxKindEvent;
+
+  /// No description provided for @outboxKindComment.
+  ///
+  /// In fr, this message translates to:
+  /// **'Commentaire'**
+  String get outboxKindComment;
+
+  /// No description provided for @outboxKindEncouragement.
+  ///
+  /// In fr, this message translates to:
+  /// **'Encouragement'**
+  String get outboxKindEncouragement;
+
+  /// No description provided for @outboxKindReaction.
+  ///
+  /// In fr, this message translates to:
+  /// **'Réaction'**
+  String get outboxKindReaction;
+
+  /// No description provided for @outboxKindSave.
+  ///
+  /// In fr, this message translates to:
+  /// **'Enregistrement'**
+  String get outboxKindSave;
+
+  /// No description provided for @outboxKindOther.
+  ///
+  /// In fr, this message translates to:
+  /// **'Action'**
+  String get outboxKindOther;
+
+  /// No description provided for @outboxVideoQueued.
+  ///
+  /// In fr, this message translates to:
+  /// **'Une autre vidéo est en cours d\'envoi : celle-ci partira juste après.'**
+  String get outboxVideoQueued;
+
+  /// No description provided for @eventsOfflinePending.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count, plural, =1{1 événement enregistré hors connexion attend le réseau pour être envoyé.} other{{count} événements enregistrés hors connexion attendent le réseau pour être envoyés.}}'**
+  String eventsOfflinePending(int count);
+
+  /// No description provided for @eventsOfflineFailed.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count, plural, =1{1 événement enregistré hors connexion n\'a pas pu être envoyé. Touchez pour voir.} other{{count} événements enregistrés hors connexion n\'ont pas pu être envoyés. Touchez pour voir.}}'**
+  String eventsOfflineFailed(int count);
+
+  /// No description provided for @publishDraftsTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Brouillons'**
+  String get publishDraftsTitle;
+
+  /// No description provided for @publishDraftsHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Témoignages commencés, gardés sur ce téléphone : touchez pour continuer.'**
+  String get publishDraftsHint;
+
+  /// No description provided for @publishDraftUpdated.
+  ///
+  /// In fr, this message translates to:
+  /// **'Modifié le {date}'**
+  String publishDraftUpdated(String date);
+
+  /// No description provided for @publishDraftDeleteTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Supprimer ce brouillon ?'**
+  String get publishDraftDeleteTitle;
+
+  /// No description provided for @publishDraftDeleteBody.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ce témoignage n\'a pas été publié : il sera perdu.'**
+  String get publishDraftDeleteBody;
+
+  /// No description provided for @publishDraftSaved.
+  ///
+  /// In fr, this message translates to:
+  /// **'Brouillon enregistré. Retrouvez-le dans « Publier ».'**
+  String get publishDraftSaved;
+
+  /// No description provided for @publishLeaveTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Quitter ce témoignage ?'**
+  String get publishLeaveTitle;
+
+  /// No description provided for @publishLeaveBody.
+  ///
+  /// In fr, this message translates to:
+  /// **'Votre témoignage n\'est pas encore publié. Enregistrez-le en brouillon pour le reprendre plus tard depuis « Publier ».'**
+  String get publishLeaveBody;
+
+  /// No description provided for @publishLeaveKeep.
+  ///
+  /// In fr, this message translates to:
+  /// **'Enregistrer le brouillon'**
+  String get publishLeaveKeep;
+
+  /// No description provided for @publishLeaveDiscard.
+  ///
+  /// In fr, this message translates to:
+  /// **'Supprimer'**
+  String get publishLeaveDiscard;
+
+  /// No description provided for @publishLeaveStay.
+  ///
+  /// In fr, this message translates to:
+  /// **'Continuer à écrire'**
+  String get publishLeaveStay;
+
+  /// No description provided for @publishVerseAttached.
+  ///
+  /// In fr, this message translates to:
+  /// **'Témoignage sur ce verset'**
+  String get publishVerseAttached;
+
+  /// No description provided for @bibleCopyLink.
+  ///
+  /// In fr, this message translates to:
+  /// **'Copier le lien du verset'**
+  String get bibleCopyLink;
+
+  /// No description provided for @bibleLinkCopied.
+  ///
+  /// In fr, this message translates to:
+  /// **'Lien copié'**
+  String get bibleLinkCopied;
+
+  /// No description provided for @bibleShareChapter.
+  ///
+  /// In fr, this message translates to:
+  /// **'Partager le lien'**
+  String get bibleShareChapter;
+
+  /// No description provided for @offlineMineTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mes témoignages sur ce téléphone'**
+  String get offlineMineTitle;
+
+  /// No description provided for @offlineMineHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Gardés automatiquement pour les relire sans connexion. Les retirer ne les supprime pas en ligne.'**
+  String get offlineMineHint;
+
+  /// No description provided for @offlineMineRemove.
+  ///
+  /// In fr, this message translates to:
+  /// **'Retirer de ce téléphone'**
+  String get offlineMineRemove;
+
+  /// No description provided for @offlineMineRemoveAll.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tout retirer'**
+  String get offlineMineRemoveAll;
+
+  /// No description provided for @offlineMineRemoveAllTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Retirer vos témoignages de ce téléphone ?'**
+  String get offlineMineRemoveAllTitle;
+
+  /// No description provided for @offlineMineRemoveBody.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ils restent publiés et visibles en ligne : seule la copie gardée sur ce téléphone est effacée.'**
+  String get offlineMineRemoveBody;
+
+  /// No description provided for @offlineMineRemoved.
+  ///
+  /// In fr, this message translates to:
+  /// **'Retiré de ce téléphone'**
+  String get offlineMineRemoved;
+
+  /// No description provided for @offlineMineBanner.
+  ///
+  /// In fr, this message translates to:
+  /// **'Hors connexion : copie enregistrée sur ce téléphone le {date}.'**
+  String offlineMineBanner(String date);
+
+  /// No description provided for @offlineMineMediaHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sans connexion, seul le texte est disponible. Téléchargez ce témoignage pour lire le média hors ligne.'**
+  String get offlineMineMediaHint;
+
+  /// No description provided for @reactionPeopleTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Qui a réagi ?'**
+  String get reactionPeopleTitle;
+
+  /// No description provided for @reactionPeopleAll.
+  ///
+  /// In fr, this message translates to:
+  /// **'Toutes'**
+  String get reactionPeopleAll;
+
+  /// No description provided for @reactionPeopleEmpty.
+  ///
+  /// In fr, this message translates to:
+  /// **'Personne n\'a encore réagi.'**
+  String get reactionPeopleEmpty;
+
+  /// No description provided for @reactionPeopleError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Impossible de charger les réactions.'**
+  String get reactionPeopleError;
+
+  /// No description provided for @reactionPeopleMore.
+  ///
+  /// In fr, this message translates to:
+  /// **'Afficher plus'**
+  String get reactionPeopleMore;
+
+  /// No description provided for @reactionPeoplePrayedTimes.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count, plural, =1{A prié 1 fois} other{A prié {count} fois}}'**
+  String reactionPeoplePrayedTimes(int count);
+
+  /// No description provided for @prayTimesYou.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count, plural, =1{Vous avez prié 1 fois} other{Vous avez prié {count} fois}}'**
+  String prayTimesYou(int count);
+
+  /// No description provided for @prayAgainHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vous pouvez prier encore : un nouveau temps de prière de 5 minutes s\'ouvre.'**
+  String get prayAgainHint;
+
+  /// No description provided for @prayAgain.
+  ///
+  /// In fr, this message translates to:
+  /// **'Prier encore'**
+  String get prayAgain;
+
+  /// No description provided for @prayRemoveLast.
+  ///
+  /// In fr, this message translates to:
+  /// **'Retirer ma dernière prière'**
+  String get prayRemoveLast;
+
+  /// No description provided for @reactionPeopleEncouragements.
+  ///
+  /// In fr, this message translates to:
+  /// **'Encouragements'**
+  String get reactionPeopleEncouragements;
+
+  /// No description provided for @reactionPeopleEmptyComments.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun commentaire pour le moment.'**
+  String get reactionPeopleEmptyComments;
+
+  /// No description provided for @reactionPeopleShort.
+  ///
+  /// In fr, this message translates to:
+  /// **'Réactions'**
+  String get reactionPeopleShort;
+
+  /// No description provided for @sharedLinkOpenTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ouvrir ce lien ?'**
+  String get sharedLinkOpenTitle;
+
+  /// No description provided for @sharedLinkOpenBody.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ce lien s\'ouvrira hors de l\'application :\n{url}'**
+  String sharedLinkOpenBody(String url);
+
+  /// No description provided for @sharedLinkOpen.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ouvrir'**
+  String get sharedLinkOpen;
+
+  /// No description provided for @sharedLinkOpenFailed.
+  ///
+  /// In fr, this message translates to:
+  /// **'Impossible d\'ouvrir ce lien.'**
+  String get sharedLinkOpenFailed;
+
+  /// No description provided for @publishFormatLink.
+  ///
+  /// In fr, this message translates to:
+  /// **'Lien'**
+  String get publishFormatLink;
+
+  /// No description provided for @publishFormatImage.
+  ///
+  /// In fr, this message translates to:
+  /// **'Image'**
+  String get publishFormatImage;
+
+  /// No description provided for @publishLinkTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Insérer un lien'**
+  String get publishLinkTitle;
+
+  /// No description provided for @publishLinkText.
+  ///
+  /// In fr, this message translates to:
+  /// **'Texte affiché'**
+  String get publishLinkText;
+
+  /// No description provided for @publishLinkUrl.
+  ///
+  /// In fr, this message translates to:
+  /// **'Adresse (URL)'**
+  String get publishLinkUrl;
+
+  /// No description provided for @publishLinkInvalid.
+  ///
+  /// In fr, this message translates to:
+  /// **'Adresse invalide (ex. : https://exemple.com)'**
+  String get publishLinkInvalid;
+
+  /// No description provided for @publishLinkInsert.
+  ///
+  /// In fr, this message translates to:
+  /// **'Insérer'**
+  String get publishLinkInsert;
+
+  /// No description provided for @publishImageLimit.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count} images au plus par témoignage.'**
+  String publishImageLimit(int count);
+
+  /// No description provided for @publishImageNeedsConnection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Une connexion Internet est nécessaire pour ajouter une image.'**
+  String get publishImageNeedsConnection;
+
+  /// No description provided for @publishImageUploadFailed.
+  ///
+  /// In fr, this message translates to:
+  /// **'L\'image n\'a pas pu être envoyée. Réessayez.'**
+  String get publishImageUploadFailed;
+
+  /// No description provided for @publishImageRemove.
+  ///
+  /// In fr, this message translates to:
+  /// **'Retirer l\'image'**
+  String get publishImageRemove;
+
+  /// No description provided for @publishPreviewAction.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aperçu'**
+  String get publishPreviewAction;
+
+  /// No description provided for @publishPreviewTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aperçu du témoignage'**
+  String get publishPreviewTitle;
+
+  /// No description provided for @publishPreviewCardTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Voir avant de publier'**
+  String get publishPreviewCardTitle;
+
+  /// No description provided for @publishPreviewCardBody.
+  ///
+  /// In fr, this message translates to:
+  /// **'Votre témoignage tel que les lecteurs le verront.'**
+  String get publishPreviewCardBody;
+
+  /// No description provided for @publishPreviewNotice.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aperçu : rien n\'est encore publié.'**
+  String get publishPreviewNotice;
+
+  /// No description provided for @publishPreviewBack.
+  ///
+  /// In fr, this message translates to:
+  /// **'Continuer la modification'**
+  String get publishPreviewBack;
+
+  /// No description provided for @publishPreviewMediaError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Lecture impossible sur cet appareil.'**
+  String get publishPreviewMediaError;
+
+  /// No description provided for @publishPreviewPlay.
+  ///
+  /// In fr, this message translates to:
+  /// **'Écouter'**
+  String get publishPreviewPlay;
+
+  /// No description provided for @publishPreviewPause.
+  ///
+  /// In fr, this message translates to:
+  /// **'Pause'**
+  String get publishPreviewPause;
+
+  /// No description provided for @publishWebTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Publier aussi sur le web'**
+  String get publishWebTitle;
+
+  /// No description provided for @publishWebHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Votre témoignage pourra apparaître sur le site My Testimony et dans Google. Vous pourrez retirer cet accord depuis la page de votre témoignage sur le site.'**
+  String get publishWebHint;
+
+  /// No description provided for @publishWebAnonymous.
+  ///
+  /// In fr, this message translates to:
+  /// **'Témoigner de façon anonyme sur le site'**
+  String get publishWebAnonymous;
+
+  /// No description provided for @publishWebAnonymousHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sur le site, ni votre nom ni votre photo. L\'application montre toujours l\'auteur.'**
+  String get publishWebAnonymousHint;
+
+  /// No description provided for @publishResumeLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Résumé écrit (recommandé)'**
+  String get publishResumeLabel;
+
+  /// No description provided for @publishResumeHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Affiché sur la page de votre témoignage sur le site et lu par Google.'**
+  String get publishResumeHint;
+
+  /// No description provided for @publishResumePlaceholder.
+  ///
+  /// In fr, this message translates to:
+  /// **'En quelques phrases : ce que Dieu a fait pour vous'**
+  String get publishResumePlaceholder;
+
+  /// No description provided for @publishTranscriptionLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Transcription (facultatif)'**
+  String get publishTranscriptionLabel;
+
+  /// No description provided for @publishTranscriptionPlaceholder.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ce qui est dit dans la vidéo, mot pour mot'**
+  String get publishTranscriptionPlaceholder;
+
+  /// No description provided for @testimonyWebTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sur le web'**
+  String get testimonyWebTitle;
+
+  /// No description provided for @testimonyWebOnHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Visible sur le site My Testimony et dans Google. Décoché : la page n\'est plus publique et Google la retire de ses résultats.'**
+  String get testimonyWebOnHint;
+
+  /// No description provided for @testimonyWebOffHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ni sur le site ni dans Google. Toujours visible dans l\'application.'**
+  String get testimonyWebOffHint;
+
+  /// No description provided for @testimonyWebSavedOn.
+  ///
+  /// In fr, this message translates to:
+  /// **'Votre témoignage est publié sur le web.'**
+  String get testimonyWebSavedOn;
+
+  /// No description provided for @testimonyWebSavedOff.
+  ///
+  /// In fr, this message translates to:
+  /// **'Votre témoignage est retiré du web.'**
+  String get testimonyWebSavedOff;
+
+  /// No description provided for @testimonyWebSaveFailed.
+  ///
+  /// In fr, this message translates to:
+  /// **'Le choix n\'a pas pu être enregistré. Réessayez.'**
+  String get testimonyWebSaveFailed;
 }
 
 class _AppLocalizationsDelegate

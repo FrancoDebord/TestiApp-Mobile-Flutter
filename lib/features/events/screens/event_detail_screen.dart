@@ -19,6 +19,7 @@ import '../../../shared/widgets/mention_text_field.dart';
 import '../../auth/providers/auth_notifier.dart' show currentUserProvider;
 import '../../home/widgets/compact_testimony_tile.dart';
 import '../../publish/providers/publish_provider.dart' show publishEventProvider;
+import '../../offline/outbox_controller.dart' show showQueuedSnack;
 import '../data/events_repository.dart';
 import '../models/event_models.dart';
 import '../providers/events_providers.dart';
@@ -233,6 +234,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                       initial: e.reactions,
                       title: e.title,
                       webUrl: e.webUrl,
+                      comments: e.commentCount,
                     ),
                   ],
                   // Sondage d'après l'événement : « Votre avis ».
@@ -1210,14 +1212,17 @@ class _ComposerState extends ConsumerState<_Composer> {
     if (_text.text.trim().length < 2 || _sending) return;
     setState(() => _sending = true);
     final messenger = ScaffoldMessenger.of(context);
-    final err = await ref.read(eventCommentsProvider(widget.eventId).notifier).add(_text.encodedText);
+    final (:error, :queued) = await ref.read(eventCommentsProvider(widget.eventId).notifier).add(_text.encodedText);
     if (!mounted) return;
     setState(() => _sending = false);
-    if (err != null) {
-      messenger.showSnackBar(SnackBar(behavior: SnackBarBehavior.floating, content: Text(err)));
+    if (error != null) {
+      messenger.showSnackBar(SnackBar(behavior: SnackBarBehavior.floating, content: Text(error)));
       return;
     }
+    // Hors connexion : gardé sur le téléphone, envoyé au retour du réseau.
+    if (queued) showQueuedSnack(context);
     Navigator.pop(context);
+    if (queued) return;
     messenger.showSnackBar(SnackBar(
         behavior: SnackBarBehavior.floating, content: Text(context.l10n.eventsCommentThanks)));
   }
@@ -1343,7 +1348,7 @@ class _CommentCard extends ConsumerWidget {
                     if (c.createdAt != null) ...[
                       const SizedBox(width: 6),
                       Flexible(
-                        child: Text('· ${_ago(c.createdAt!)}',
+                        child: Text('· ${c.isPending ? context.l10n.outboxPendingBadge : _ago(c.createdAt!)}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),

@@ -360,6 +360,7 @@ class _AudioPlayerScreenState extends ConsumerState<AudioPlayerScreen>
                           isLiked: rx.likedOf(current),
                           prayers: rx.prayersOf(current),
                           isPraying: rx.prayedOf(current),
+                          myPrayerTimes: rx.prayerTimesOf(current),
                           comments: current.stats.comments,
                           onLike: () => _toggleLike(current),
                           onPray: () => _togglePray(current),

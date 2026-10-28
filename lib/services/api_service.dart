@@ -390,14 +390,17 @@ class ApiService {
     return LaravelResponse.fromDio(res);
   }
 
+  /// [options] : en-têtes ou `extra` propres à la requête (file hors ligne :
+  /// `Idempotency-Key`, compte administré figé).
   Future<LaravelResponse<T>> post<T>(
     String path, {
     dynamic data,
     Map<String, dynamic>? query,
+    Options? options,
   }) async {
     final res = await _call(
       () => _dio.post<Map<String, dynamic>>(path,
-          data: data, queryParameters: query),
+          data: data, queryParameters: query, options: options),
     );
     return LaravelResponse.fromDio(res);
   }
@@ -405,9 +408,10 @@ class ApiService {
   Future<LaravelResponse<T>> put<T>(
     String path, {
     dynamic data,
+    Options? options,
   }) async {
     final res = await _call(
-      () => _dio.put<Map<String, dynamic>>(path, data: data),
+      () => _dio.put<Map<String, dynamic>>(path, data: data, options: options),
     );
     return LaravelResponse.fromDio(res);
   }
@@ -416,9 +420,10 @@ class ApiService {
     String path, {
     dynamic data,
     Map<String, dynamic>? query,
+    Options? options,
   }) async {
     final res = await _call(
-      () => _dio.delete<Map<String, dynamic>>(path, data: data, queryParameters: query),
+      () => _dio.delete<Map<String, dynamic>>(path, data: data, queryParameters: query, options: options),
     );
     return LaravelResponse.fromDio(res);
   }
@@ -430,6 +435,7 @@ class ApiService {
     String fieldName = 'file',
     Map<String, dynamic> extraFields = const {},
     ProgressCallback? onProgress,
+    Options? options,
   }) async {
     final fileName = filePath.split(Platform.pathSeparator).last;
     final formData = FormData.fromMap({
@@ -440,7 +446,7 @@ class ApiService {
       () => _dio.post<Map<String, dynamic>>(
         path,
         data: formData,
-        options: Options(
+        options: (options ?? Options()).copyWith(
           contentType: 'multipart/form-data',
           // Une vidéo peut prendre du temps à être écrite côté serveur :
           // le receiveTimeout global (20 s) est trop court pour un upload.

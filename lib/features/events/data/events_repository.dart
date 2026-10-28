@@ -1,8 +1,12 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/app_constants.dart';
+import '../../../core/network/network_failure.dart';
 import '../../../services/api_service.dart';
 import '../../home/models/testimony_model.dart';
 import '../../home/providers/home_providers.dart' show testimonyFromApiJson;
@@ -11,11 +15,15 @@ import '../../../l10n/app_localizations.dart';
 
 /// Erreur lisible d'une action sur un événement.
 /// Codes : 403 droits · 404 introuvable · 409 déjà fait · 422 validation · 429 trop rapide.
-class EventFailure implements Exception {
-  const EventFailure(this.message, {this.statusCode = 0});
+class EventFailure implements Exception, OfflineAwareFailure {
+  const EventFailure(this.message, {this.statusCode = 0, this.offline = false});
 
   final String message;
   final int statusCode;
+
+  /// Serveur injoignable : l'action peut être gardée hors connexion.
+  @override
+  final bool offline;
 
   @override
   String toString() => message;
@@ -65,7 +73,7 @@ class EventsRepository {
       if (status >= 500) {
         throw EventFailure(L10n.current.eventsServerError(status), statusCode: status);
       }
-      throw EventFailure(L10n.current.eventsConnectionError);
+      throw EventFailure(L10n.current.eventsConnectionError, offline: true);
     }
   }
 
@@ -92,6 +100,41 @@ class EventsRepository {
   ChristianEvent _event(LaravelResponse<dynamic> res) =>
       ChristianEvent.fromJson(_asMap(res.data));
 
+  // ── Copie hors connexion (mes événements, pour les consulter et les modifier sans réseau) ──
+
+  static Future<void> _saveCopy(String key, Object? value) async {
+    try {
+      await (await SharedPreferences.getInstance()).setString(key, jsonEncode(value));
+    } catch (_) {}
+  }
+
+  static Future<Object?> _readCopy(String key) async {
+    try {
+      final raw = (await SharedPreferences.getInstance()).getString(key);
+      return raw == null ? null : jsonDecode(raw);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// GET ; hors connexion, dernière réponse gardée sous [offlineKey] (si fournie).
+  Future<LaravelResponse<dynamic>> _getWithCopy(String path, String? offlineKey, Map<String, dynamic>? query,
+      {bool Function(LaravelResponse<dynamic> res)? keep}) async {
+    try {
+      final res = await _api.get<dynamic>(path, query: query);
+      if (offlineKey != null && (keep?.call(res) ?? true)) {
+        await _saveCopy(offlineKey, {'data': res.data, 'meta': res.meta});
+      }
+      return res;
+    } catch (e) {
+      if (offlineKey != null && isNetworkFailure(e)) {
+        final copy = await _readCopy(offlineKey);
+        if (copy is Map) return LaravelResponse<dynamic>(success: true, data: copy['data'], meta: copy['meta']);
+      }
+      rethrow;
+    }
+  }
+
   // ── Lecture ──────────────────────────────────────────────────────────────
 
   Future<EventPage<ChristianEvent>> list({
@@ -101,9 +144,11 @@ class EventsRepository {
     int page = 1,
     String? organizerId,
     int? limit,
+    // Première page gardée sur le téléphone sous cette clé (« Mes événements » hors connexion).
+    String? offlineKey,
   }) =>
       _guard(() async {
-        final res = await _api.get<dynamic>(AppConstants.events, query: {
+        final res = await _getWithCopy(AppConstants.events, page == 1 ? offlineKey : null, {
           'scope': scope.apiValue,
           if (type != null) 'type': type.apiValue,
           if (query != null && query.trim().isNotEmpty) 'q': query.trim(),
@@ -115,8 +160,11 @@ class EventsRepository {
         return _page(res, _asList(res.data).map(ChristianEvent.fromJson).toList());
       });
 
-  Future<ChristianEvent> show(String id) => _guard(() async {
-        return _event(await _api.get<dynamic>(AppConstants.eventById(id)));
+  /// [offlineKey] : un événement que je gère est gardé sur le téléphone sous cette
+  /// clé, pour l'ouvrir et le modifier hors connexion.
+  Future<ChristianEvent> show(String id, {String? offlineKey}) => _guard(() async {
+        return _event(await _getWithCopy(AppConstants.eventById(id), offlineKey, null,
+            keep: (res) => _asMap(res.data)['canManage'] == true));
       });
 
   Future<EventPage<EventComment>> comments(String id, {int page = 1}) =>

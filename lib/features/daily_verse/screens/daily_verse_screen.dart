@@ -10,6 +10,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../../prayer/widgets/pray_again_sheet.dart' show MyPrayerTimesLine;
+import '../../reactions/reaction_people.dart' show ReactionSubject, showReactionPeople;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -18,6 +20,7 @@ import '../pray_for_verse.dart';
 import '../providers/verse_history_providers.dart' show verseByIdProvider;
 import 'verse_history_screen.dart';
 import '../../../shared/comments/comment_likes.dart';
+import '../../../core/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
@@ -26,11 +29,14 @@ import '../../../services/tts_service.dart';
 import '../../../shared/widgets/guest_gate.dart';
 import '../../../shared/widgets/mention_text.dart';
 import '../../../shared/widgets/mention_text_field.dart';
+import '../../../shared/models/user_model.dart';
+import '../../auth/providers/auth_notifier.dart' show currentUserProvider;
 import '../../bible/providers/bible_providers.dart'
     show BibleVerseRef, bibleVerseRefProvider, bibleVerseToInsertProvider;
 import '../../home/models/testimony_model.dart';
 import '../../home/providers/home_providers.dart' show dailyVerseProvider;
 import '../../home/widgets/testimony_card_header.dart' show timeAgoFr;
+import '../../offline/outbox_controller.dart';
 import '../../prayer/data/prayer_repository.dart';
 import '../../prayer/models/prayer_models.dart';
 import '../../prayer/widgets/prayer_widgets.dart';
@@ -64,12 +70,6 @@ Future<void> openDailyVerse(BuildContext context, {int initialTab = 0}) {
     },
   ));
 }
-
-const _kFallbackVerse = DailyVerse(
-  text: '« Car je connais les projets que j\'ai formés sur vous, dit l\'Éternel, ' // i18n-ignore
-      'projets de paix et non de malheur, afin de vous donner un avenir et de l\'espérance. »', // i18n-ignore
-  reference: 'Jérémie 29 : 11', // i18n-ignore
-);
 
 class DailyVerseScreen extends ConsumerStatefulWidget {
   const DailyVerseScreen({this.initialTab = 0, this.verseId, this.date, super.key});
@@ -141,7 +141,9 @@ class _DailyVerseScreenState extends ConsumerState<DailyVerseScreen>
     super.dispose();
   }
 
-  /// Version affichée : la préférée si elle contient le passage, sinon le texte du jour.
+  /// Version affichée : la préférée si elle contient le passage, sinon le
+  /// verset dans la langue de l'application (traduction choisie par le serveur,
+  /// KJV en anglais), sinon le texte du jour.
   ({String text, String label, VerseVersion? version, String? missing}) _display(
       DailyVerse verse, DailyVerseVersions? data) {
     final preferred = ref.watch(preferredVerseTranslationProvider);
@@ -150,13 +152,24 @@ class _DailyVerseScreenState extends ConsumerState<DailyVerseScreen>
       return (text: v.text!, label: v.name, version: v, missing: null);
     }
     final missing = preferred != null && data != null ? (v?.name ?? preferred) : null;
+    if (verse.isLocalized) {
+      return (
+        text: verse.text,
+        label: verse.textTranslationName ?? context.l10n.verseTodayText,
+        version: null,
+        missing: missing,
+      );
+    }
     return (text: data?.originalText ?? verse.text, label: context.l10n.verseTodayText, version: null, missing: missing);
   }
 
   /// Référence dans la langue de la version affichée (« John 3:16 » en KJV),
-  /// sinon celle du texte du jour.
+  /// sinon celle donnée par le serveur dans la langue de l'application.
   String _reference(DailyVerse verse, DailyVerseVersions? data, [VerseVersion? version]) =>
-      version?.reference ?? data?.parsed?.label ?? verse.reference;
+      version?.reference ??
+      (verse.isLocalized ? verse.reference : null) ??
+      data?.parsed?.label ??
+      verse.reference;
 
   // ── Actions ────────────────────────────────────────────────────────────────
 
@@ -228,7 +241,7 @@ class _DailyVerseScreenState extends ConsumerState<DailyVerseScreen>
       final n = ref.read(verseByIdProvider(pastId).notifier);
       if (pray) {
         final v = ref.read(verseByIdProvider(pastId)).value;
-        if (v != null) await prayForVerse(context, ref, verse: v, toggle: n.togglePray);
+        if (v != null) await prayForVerse(context, ref, verse: v, pray: n.pray);
       } else {
         await n.toggleLike();
       }
@@ -250,7 +263,8 @@ class _DailyVerseScreenState extends ConsumerState<DailyVerseScreen>
     final parsed = data?.parsed;
     if (parsed != null) {
       ref.read(bibleVerseRefProvider.notifier).set(BibleVerseRef(
-            translationCode: preferred ?? 'LSG',
+            // Version du texte affiché : préférée, sinon celle de la langue (KJV…).
+            translationCode: (shownVersion != null ? preferred : null) ?? verse.textTranslation ?? 'LSG',
             bookNumber: parsed.book,
             bookName: shownVersion?.bookName ?? parsed.bookName,
             chapter: parsed.chapter,
@@ -259,7 +273,8 @@ class _DailyVerseScreenState extends ConsumerState<DailyVerseScreen>
     }
     final router = GoRouter.of(context);
     Navigator.of(context).pop();
-    router.push('/publish/preview');
+    // D'abord le choix du type de témoignage (texte, audio, vidéo).
+    router.go('/publish');
   }
 
   // ── Construction ─────────────────────────────────────────────────────────
@@ -269,7 +284,7 @@ class _DailyVerseScreenState extends ConsumerState<DailyVerseScreen>
     final verse = (widget.verseId != null
             ? ref.watch(verseByIdProvider(widget.verseId!)).value
             : ref.watch(dailyVerseProvider).value) ??
-        _kFallbackVerse;
+        fallbackDailyVerse();
     final versionsAsync = ref.watch(dailyVerseVersionsProvider(dailyVerseKey(verse)));
     final data = versionsAsync.value;
     final shown = _display(verse, data);
@@ -377,6 +392,25 @@ class _DailyVerseScreenState extends ConsumerState<DailyVerseScreen>
                         style: AppTextStyles.labelMedium.copyWith(fontWeight: FontWeight.w700),
                       ),
                     ),
+                  ],
+                ),
+              ),
+            // Qui a réagi ? et « Vous avez prié N fois » (docs serveur qui-a-reagi.md).
+            if (verse.id > 0 && (verse.likeCount + verse.prayerCount + verse.commentCount > 0 || verse.isPrayed))
+              Padding(
+                padding: const EdgeInsets.fromLTRB(AppSpacing.screen, AppSpacing.sm, AppSpacing.screen, 0),
+                child: Wrap(
+                  spacing: AppSpacing.md,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    if (verse.likeCount + verse.prayerCount + verse.commentCount > 0)
+                      TextButton.icon(
+                        key: const ValueKey('verse-reaction-people'),
+                        onPressed: () => showReactionPeople(context, subject: ReactionSubject.dailyVerse, id: '${verse.id}'),
+                        icon: const Icon(Icons.groups_outlined, size: 18),
+                        label: Text(context.l10n.reactionPeopleTitle),
+                      ),
+                    MyPrayerTimesLine(times: verse.prayerTimes),
                   ],
                 ),
               ),
@@ -1295,8 +1329,21 @@ class _VersePrayerSheetState extends ConsumerState<VersePrayerSheet> {
     setState(() => _sending = true);
     _draft.body = _body.text;
     try {
-      await ref.read(prayerRepositoryProvider).create(_draft);
+      final created = await ref.read(outboxProvider.notifier).sendOrQueue(
+            () => ref.read(prayerRepositoryProvider).create(_draft),
+            () => OutboxDraft(
+              kind: OutboxKind.prayerRequest,
+              label: _body.text,
+              localId: newLocalId(),
+              request: OutboxRequest('POST', AppConstants.prayerRequests, body: _draft.toJson()),
+            ),
+          );
       if (!mounted) return;
+      if (created == null) {
+        showQueuedSnack(context);
+        Navigator.of(context).pop(false);
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.l10n.prayerRequestPublished)),
       );
@@ -1397,6 +1444,20 @@ class _CommentsTabState extends ConsumerState<_CommentsTab> {
 
   void _refresh() => ref.invalidate(dailyVerseCommentsProvider(widget.verseId));
 
+  List<VerseComment> _pendingComments(OutboxState outbox, UserModel? me) => [
+        for (final i in outbox.pendingFor(OutboxKind.verseComment, '${widget.verseId}').reversed)
+          if (!i.isFailed)
+            VerseComment(
+              id: i.localId ?? 'local_${i.id}',
+              body: i.label,
+              authorName: me?.displayName ?? '',
+              authorId: me?.id,
+              avatarUrl: me?.avatarUrl,
+              createdAt: i.createdAt,
+              isMine: true,
+            ),
+      ];
+
   void _snack(String m) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
 
   Future<void> _send() async {
@@ -1405,10 +1466,24 @@ class _CommentsTabState extends ConsumerState<_CommentsTab> {
     final body = _ctrl.encodedText;
     setState(() => _sending = true);
     try {
-      await ref.read(dailyVerseRepositoryProvider).addComment(widget.verseId, body);
+      // Sans réseau : gardé sur le téléphone, affiché « en attente d'envoi ».
+      final sent = await ref.read(outboxProvider.notifier).sendOrQueue(
+            () => ref.read(dailyVerseRepositoryProvider).addComment(widget.verseId, body),
+            () => OutboxDraft(
+              kind: OutboxKind.verseComment,
+              label: body,
+              targetId: '${widget.verseId}',
+              localId: newLocalId(),
+              request: OutboxRequest('POST', AppConstants.verseComments(widget.verseId), body: {'body': body.trim()}),
+            ),
+          );
       _ctrl.clear();
       if (!mounted) return;
       FocusScope.of(context).unfocus();
+      if (sent == null) {
+        showQueuedSnack(context);
+        return;
+      }
       _refresh();
     } on DailyVerseFailure catch (e) {
       if (mounted) _snack(e.message);
@@ -1500,7 +1575,11 @@ class _CommentsTabState extends ConsumerState<_CommentsTab> {
         ),
         const SizedBox(height: 16),
         _AsyncList<VerseComment>(
-          async: ref.watch(dailyVerseCommentsProvider(widget.verseId)),
+          // Écrits hors connexion, pas encore envoyés : en tête, « en attente d'envoi ».
+          async: ref.watch(dailyVerseCommentsProvider(widget.verseId)).whenData((list) => [
+                ..._pendingComments(ref.watch(outboxProvider), ref.watch(currentUserProvider)),
+                ...list,
+              ]),
           empty: context.l10n.verseCommentsEmpty,
           itemBuilder: (c) => _CommentTile(
             verseId: widget.verseId,
@@ -1548,7 +1627,9 @@ class _CommentTile extends StatelessWidget {
                   TextSpan(children: [
                     TextSpan(text: c.authorName, style: AppTextStyles.labelMedium.copyWith(fontWeight: FontWeight.w700)),
                     if (c.createdAt != null)
-                      TextSpan(text: ' · ${timeAgoFr(c.createdAt!)}', style: AppTextStyles.bodySmall),
+                      TextSpan(
+                          text: ' · ${c.isPending ? context.l10n.outboxPendingBadge : timeAgoFr(c.createdAt!)}',
+                          style: AppTextStyles.bodySmall),
                   ]),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,

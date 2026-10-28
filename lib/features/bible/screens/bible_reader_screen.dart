@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:go_router/go_router.dart';
@@ -9,13 +10,42 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/search/search_suggestions.dart';
 import '../../../shared/widgets/search_autocomplete_field.dart';
 import '../../../l10n/app_localizations.dart';
+import '../bible_links.dart';
 import '../models/bible_models.dart';
 import '../providers/bible_providers.dart';
 
+/// Langue d'une traduction (nom du livre dans les liens), si connue sur le téléphone.
+String? _languageOf(WidgetRef ref, String code) =>
+    ref.read(bibleTranslationsProvider).value?.where((t) => t.code == code).firstOrNull?.language;
+
+/// Lecteur d'une traduction. Ouvert par un lien de passage
+/// (`/bible/LSG/jean/3/16-18`, docs serveur fonctionnalites/liens-bible.md) :
+/// [book] (numéro, nom ou abréviation), [chapter] et [verses] (« 16-18 »,
+/// « 16,18-20 ») placent la lecture sur le passage, versets mis en avant.
 class BibleReaderScreen extends ConsumerWidget {
-  const BibleReaderScreen({required this.translationCode, super.key});
+  const BibleReaderScreen({
+    required this.translationCode,
+    this.book,
+    this.chapter,
+    this.verses,
+    super.key,
+  });
 
   final String translationCode;
+  final String? book;
+  final int? chapter;
+  final String? verses;
+
+  bool get _isPassage => book != null;
+
+  /// Livre du lien parmi ceux de la traduction : numéro, nom (FR / EN) ou
+  /// abréviation, sinon nom de la traduction sans accents ni tirets.
+  static int? resolveBook(String segment, List<BibleBook> books) {
+    final n = BibleLinks.bookFromSegment(segment);
+    if (n != null) return books.any((b) => b.bookNumber == n) ? n : null;
+    final key = BibleLinks.normalize(Uri.decodeComponent(segment));
+    return books.where((b) => BibleLinks.normalize(b.name) == key).firstOrNull?.bookNumber;
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -53,14 +83,27 @@ class BibleReaderScreen extends ConsumerWidget {
               backgroundColor: AppColors.surface,
               elevation: 0,
             ),
-            // Traduction pas encore sur l'appareil (ouverte depuis le menu) :
+            // Traduction pas encore sur l'appareil (menu, lien partagé) :
             // téléchargement lancé d'office, puis lecture.
-            body: _AutoDownload(translationCode: translationCode),
+            body: _AutoDownload(
+              translationCode: translationCode,
+              passagePath: _isPassage
+                  ? '/${[book, chapter ?? 1, ?verses].join('/')}'
+                  : null,
+            ),
           );
         }
+        final bookNumber = _isPassage ? resolveBook(book!, books) : null;
         return _ReaderBody(
+          // Nouveau lien ouvert alors que le lecteur est affiché : repartir du passage.
+          key: ValueKey('$translationCode/$book/$chapter/$verses'),
           translationCode: translationCode,
           books: books,
+          initialBook: bookNumber,
+          initialChapter: bookNumber == null ? null : chapter ?? 1,
+          focusVerses: bookNumber == null || verses == null
+              ? const {}
+              : BibleLinks.versesIn(BibleLinks.parseVerses(verses!) ?? const []),
         );
       },
     );
@@ -70,8 +113,12 @@ class BibleReaderScreen extends ConsumerWidget {
 // ── Téléchargement automatique ──────────────────────────────────────────────
 
 class _AutoDownload extends ConsumerStatefulWidget {
-  const _AutoDownload({required this.translationCode});
+  const _AutoDownload({required this.translationCode, this.passagePath});
   final String translationCode;
+
+  /// Lien de passage (« /jean/3/16 ») : traduction inconnue → même passage dans
+  /// la traduction par défaut.
+  final String? passagePath;
 
   @override
   ConsumerState<_AutoDownload> createState() => _AutoDownloadState();
@@ -101,6 +148,14 @@ class _AutoDownloadState extends ConsumerState<_AutoDownload> {
     final list = async.value;
     if (list != null) _start(list);
     final t = list?.where((t) => t.code == widget.translationCode).firstOrNull;
+
+    // Lien vers une traduction absente du catalogue : la traduction par défaut.
+    if (list != null && t == null && widget.passagePath != null &&
+        widget.translationCode != kDefaultBibleTranslation) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) context.go('/bible/$kDefaultBibleTranslation${widget.passagePath}');
+      });
+    }
 
     if (list != null && (t == null || t.downloadStatus == DownloadStatus.error)) {
       return Center(
@@ -155,9 +210,18 @@ class _ReaderBody extends ConsumerStatefulWidget {
   const _ReaderBody({
     required this.translationCode,
     required this.books,
+    this.initialBook,
+    this.initialChapter,
+    this.focusVerses = const {},
+    super.key,
   });
   final String         translationCode;
   final List<BibleBook> books;
+
+  /// Passage d'un lien (sinon : dernière position lue).
+  final int? initialBook;
+  final int? initialChapter;
+  final Set<int> focusVerses;
 
   @override
   ConsumerState<_ReaderBody> createState() => _ReaderBodyState();
@@ -170,16 +234,30 @@ class _ReaderBodyState extends ConsumerState<_ReaderBody> {
   final FlutterTts _tts = FlutterTts();
   bool _isSpeaking = false;
 
+  /// Versets du lien mis en avant (jusqu'au changement de chapitre).
+  Set<int> _focus = const {};
+
   @override
   void initState() {
     super.initState();
-    final pos = ref
-        .read(bibleReaderPositionProvider.notifier)
-        .positionFor(widget.translationCode);
+    final pos = widget.initialBook != null
+        ? (widget.initialBook!, widget.initialChapter ?? 1)
+        : ref.read(bibleReaderPositionProvider.notifier).positionFor(widget.translationCode);
     _bookIndex = widget.books
         .indexWhere((b) => b.bookNumber == pos.$1)
         .clamp(0, widget.books.length - 1);
-    _chapter = pos.$2;
+    final max = widget.books[_bookIndex].chaptersCount;
+    _chapter = max > 0 ? pos.$2.clamp(1, max) : pos.$2;
+    if (widget.initialBook != null) {
+      _focus = widget.focusVerses;
+      // La lecture reprendra ici.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ref.read(bibleReaderPositionProvider.notifier).setPosition(
+              widget.translationCode, widget.books[_bookIndex].bookNumber, _chapter);
+        }
+      });
+    }
     _initTts();
   }
 
@@ -213,6 +291,7 @@ class _ReaderBodyState extends ConsumerState<_ReaderBody> {
     setState(() {
       _bookIndex = bookIndex;
       _chapter   = chapter;
+      _focus     = const {};
     });
     ref.read(bibleReaderPositionProvider.notifier).setPosition(
           widget.translationCode,
@@ -415,6 +494,20 @@ class _ReaderBodyState extends ConsumerState<_ReaderBody> {
             onPressed: _openBookSearch,
             tooltip: context.l10n.bibleGoToBook,
           ),
+          // Lien du chapitre affiché (ou des versets du lien ouvert).
+          IconButton(
+            icon: const Icon(Icons.share_rounded, color: AppColors.textSecondary),
+            tooltip: context.l10n.bibleShareChapter,
+            onPressed: () {
+              final ranges = BibleLinks.rangesOf(_focus);
+              final url = BibleLinks.passageUrl(widget.translationCode, _currentBook.bookNumber, _chapter,
+                  ranges: ranges, language: _languageOf(ref, widget.translationCode));
+              SharePlus.instance.share(ShareParams(
+                text: '${BibleLinks.passageLabel(_currentBook.name, _chapter, ranges)} '
+                    '(${widget.translationCode.toUpperCase()})\n$url',
+              ));
+            },
+          ),
         ],
       ),
       body: GestureDetector(
@@ -445,6 +538,7 @@ class _ReaderBodyState extends ConsumerState<_ReaderBody> {
               bookNumber:      _currentBook.bookNumber,
               bookName:        _currentBook.name,
               chapter:         _chapter,
+              focusVerses:     _focus,
             ),
           ),
 
@@ -643,11 +737,15 @@ class _VerseList extends ConsumerStatefulWidget {
     required this.bookNumber,
     required this.bookName,
     required this.chapter,
+    this.focusVerses = const {},
   });
   final String translationCode;
   final int    bookNumber;
   final String bookName;
   final int    chapter;
+
+  /// Versets d'un lien : mis en avant, la page s'ouvre sur le premier.
+  final Set<int> focusVerses;
 
   @override
   ConsumerState<_VerseList> createState() => _VerseListState();
@@ -689,6 +787,21 @@ class _VerseListState extends ConsumerState<_VerseList> {
 
   void _clearSelection() => setState(() => _selected.clear());
 
+  /// Premier verset du lien, pour y placer la page une fois la liste construite.
+  final _firstFocusKey = GlobalKey();
+  bool _scrolledToFocus = false;
+
+  void _scrollToFocus() {
+    if (_scrolledToFocus || widget.focusVerses.isEmpty) return;
+    _scrolledToFocus = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _firstFocusKey.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(ctx, alignment: 0.1, duration: const Duration(milliseconds: 350));
+      }
+    });
+  }
+
   @override
   void didUpdateWidget(_VerseList old) {
     super.didUpdateWidget(old);
@@ -728,15 +841,21 @@ class _VerseListState extends ConsumerState<_VerseList> {
                   child: Text(context.l10n.bibleChapterEmpty),
                 );
               }
-              return ListView.builder(
-                padding: EdgeInsets.fromLTRB(
-                    20, 16, 20, _isSelectionMode ? 4 : 24),
-                itemCount: verses.length,
-                itemBuilder: (_, i) {
-                  final v = verses[i];
-                  return _VerseRow(
+              final focus = widget.focusVerses;
+              final firstFocus = focus.isEmpty ? null : focus.reduce((a, b) => a < b ? a : b);
+              if (firstFocus != null) _scrollToFocus();
+              // Lien vers des versets : toute la liste est construite pour pouvoir
+              // placer la page sur le premier (au plus 176 versets, Psaume 119).
+              final itemCount = verses.length;
+              final padding = EdgeInsets.fromLTRB(20, 16, 20, _isSelectionMode ? 4 : 24);
+              Widget row(int i) {
+                final v = verses[i];
+                return KeyedSubtree(
+                  key: v.verseNumber == firstFocus ? _firstFocusKey : null,
+                  child: _VerseRow(
                     verse:            v,
                     highlight:        highlights[v.verseNumber],
+                    isFocused:        focus.contains(v.verseNumber),
                     isSelected:       _selected.contains(v.verseNumber),
                     isSelectionMode:  _isSelectionMode,
                     onTap: _isSelectionMode
@@ -749,9 +868,19 @@ class _VerseListState extends ConsumerState<_VerseList> {
                         setState(() => _selected.add(v.verseNumber));
                       }
                     },
-                  );
-                },
-              );
+                  ),
+                );
+              }
+
+              return firstFocus != null
+                  ? SingleChildScrollView(
+                      padding: padding,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [for (var i = 0; i < itemCount; i++) row(i)],
+                      ),
+                    )
+                  : ListView.builder(padding: padding, itemCount: itemCount, itemBuilder: (_, i) => row(i));
             },
           ),
         ),
@@ -812,6 +941,10 @@ class _VerseListState extends ConsumerState<_VerseList> {
         .map((v) => '${v.verseNumber}. ${v.text}')
         .join('\n');
     final ref2 = '${widget.bookName} ${widget.chapter}';
+    // Lien construit sur le téléphone (fonctionne hors connexion).
+    final link = BibleLinks.passageUrl(widget.translationCode, widget.bookNumber, widget.chapter,
+        ranges: BibleLinks.rangesOf(sorted.map((v) => v.verseNumber)),
+        language: _languageOf(ref, widget.translationCode));
     _clearSelection();
     // Réutilise le SharePlus ou passe via la feuille d'actions
     showModalBottomSheet<void>(
@@ -824,6 +957,7 @@ class _VerseListState extends ConsumerState<_VerseList> {
         verseText: text,
         reference: ref2,
         versNumbers: sorted.map((v) => v.verseNumber).toList(),
+        link: link,
       ),
     );
   }
@@ -850,7 +984,8 @@ class _VerseListState extends ConsumerState<_VerseList> {
     ref.read(bibleVerseRefProvider.notifier).set(verseRef);
 
     _clearSelection();
-    context.go('/publish/preview');
+    // D'abord le choix du type de témoignage (texte, audio, vidéo).
+    context.go('/publish');
   }
 }
 
@@ -862,6 +997,7 @@ class _VerseRow extends StatelessWidget {
     required this.isSelected,
     required this.isSelectionMode,
     this.highlight,
+    this.isFocused = false,
   });
   final BibleVerse   verse;
   final VoidCallback onTap;
@@ -869,6 +1005,9 @@ class _VerseRow extends StatelessWidget {
   final bool         isSelected;
   final bool         isSelectionMode;
   final String?      highlight;
+
+  /// Verset demandé par un lien de partage (mis en avant, comme sur le site).
+  final bool         isFocused;
 
   @override
   Widget build(BuildContext context) {
@@ -880,6 +1019,8 @@ class _VerseRow extends StatelessWidget {
         ).withAlpha(70);
       } catch (_) {}
     }
+
+    if (isFocused && bg == null) bg = AppColors.sunSoft;
 
     // In selection mode, selected verses get a primary-tinted background
     if (isSelected) {
@@ -1103,10 +1244,14 @@ class _MultiVerseShareSheet extends StatelessWidget {
     required this.verseText,
     required this.reference,
     required this.versNumbers,
+    required this.link,
   });
   final String    verseText;
   final String    reference;
   final List<int> versNumbers;
+
+  /// Lien du passage (site ou application).
+  final String    link;
 
   String get _versLabel {
     if (versNumbers.isEmpty) return '';
@@ -1164,7 +1309,7 @@ class _MultiVerseShareSheet extends StatelessWidget {
                     onPressed: () {
                       Navigator.pop(context);
                       SharePlus.instance.share(
-                        ShareParams(text: '$_versLabel\n$verseText'),
+                        ShareParams(text: '$_versLabel\n$verseText\n\n$link'),
                       );
                     },
                     icon: const Icon(Icons.share_rounded, size: 16),
@@ -1214,6 +1359,10 @@ class _VerseActionSheet extends ConsumerWidget {
   String get _verseRef  => '$bookName $chapter:${verse.verseNumber}';
   String get _fullVerse => '$_verseRef — «${verse.text}»';
 
+  /// Lien de ce verset (site ou application).
+  String _link(WidgetRef ref) => BibleLinks.passageUrl(translationCode, bookNumber, chapter,
+      ranges: [(start: verse.verseNumber, end: verse.verseNumber)], language: _languageOf(ref, translationCode));
+
   Future<void> _setHighlight(
     BuildContext context,
     WidgetRef ref,
@@ -1240,9 +1389,18 @@ class _VerseActionSheet extends ConsumerWidget {
     onHighlightChanged();
   }
 
-  Future<void> _share(BuildContext context) async {
+  Future<void> _share(BuildContext context, WidgetRef ref) async {
+    final link = _link(ref);
     Navigator.pop(context);
-    await SharePlus.instance.share(ShareParams(text: _fullVerse));
+    await SharePlus.instance.share(ShareParams(text: '$_fullVerse\n\n$link'));
+  }
+
+  Future<void> _copyLink(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    final copied = context.l10n.bibleLinkCopied;
+    await Clipboard.setData(ClipboardData(text: _link(ref)));
+    if (context.mounted) Navigator.pop(context);
+    messenger?.showSnackBar(SnackBar(behavior: SnackBarBehavior.floating, content: Text(copied)));
   }
 
   Future<void> _compare(BuildContext context, WidgetRef ref) async {
@@ -1267,7 +1425,8 @@ class _VerseActionSheet extends ConsumerWidget {
   void _insert(BuildContext context, WidgetRef ref) {
     Navigator.pop(context);
     ref.read(bibleVerseToInsertProvider.notifier).set(_fullVerse);
-    context.go('/publish/preview');
+    // D'abord le choix du type de témoignage (texte, audio, vidéo).
+    context.go('/publish');
   }
 
   @override
@@ -1377,7 +1536,12 @@ class _VerseActionSheet extends ConsumerWidget {
             _ActionRow(
               icon:  Icons.share_rounded,
               label: context.l10n.bibleShareVerse,
-              onTap: () => _share(context),
+              onTap: () => _share(context, ref),
+            ),
+            _ActionRow(
+              icon:  Icons.link_rounded,
+              label: context.l10n.bibleCopyLink,
+              onTap: () => _copyLink(context, ref),
             ),
             _ActionRow(
               icon:  Icons.compare_arrows_rounded,

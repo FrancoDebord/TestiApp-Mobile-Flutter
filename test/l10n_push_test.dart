@@ -2,7 +2,7 @@
 // formats de dates et nombres, et notifications (contenu affiché au premier
 // plan, résultat de « Tester les notifications »).
 
-import 'package:dio/dio.dart' show RequestInterceptorHandler, RequestOptions;
+import 'package:dio/dio.dart' show Options, RequestInterceptorHandler, RequestOptions;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -20,7 +20,7 @@ class _Api implements ApiService {
   final puts = <(String, Object?)>[];
 
   @override
-  Future<LaravelResponse<T>> put<T>(String path, {dynamic data}) async {
+  Future<LaravelResponse<T>> put<T>(String path, {dynamic data, Options? options}) async {
     puts.add((path, data));
     if (missingMe && path == AppConstants.meLocale) {
       throw const LaravelApiException(message: 'not found', statusCode: 404);

@@ -21,9 +21,10 @@ import '../../../core/app_constants.dart';
 import '../../../core/local_db/daos/comment_dao.dart';
 import '../../../core/local_db/database_service.dart';
 import '../../../core/media/media_quality.dart' show OfflineMedia;
+import '../../../core/network/network_failure.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_tokens.dart';
-import '../../../services/api_service.dart' show apiServiceProvider;
+import '../../../services/api_service.dart' show LaravelApiException, apiServiceProvider;
 import '../../../shared/models/comment_model.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../features/auth/providers/auth_notifier.dart'
@@ -42,10 +43,13 @@ import '../../../shared/widgets/youtube_video_player.dart';
 import '../../../services/audio_player_service.dart' show audioPlayerProvider;
 import '../../../shared/widgets/video_status_views.dart';
 import '../../publish/upload/video_resend.dart' show resendVideoAction;
+import '../../offline/outbox_controller.dart';
+import '../providers/comments_provider.dart' show pendingTestimonyComments, testimonyCommentDraft;
 import '../providers/recommendations_provider.dart';
 import '../providers/testimony_refresh.dart';
 import '../providers/view_tracker.dart';
 import '../providers/tts_provider.dart';
+import '../widgets/testimony_web_publication_card.dart';
 import '../widgets/testimony_info.dart';
 import '../widgets/tts_listen_card.dart';
 import 'audio_player_screen.dart';
@@ -84,9 +88,13 @@ class _LocalComment {
     return authorName.isNotEmpty ? authorName[0].toUpperCase() : '?';
   }
 
+  /// Écrit hors connexion, pas encore envoyé (file d'envoi).
+  bool get isPending => id.startsWith('local_');
+
   String get timeAgo {
     final diff = DateTime.now().difference(createdAt);
     final l = L10n.current;
+    if (isPending) return l.outboxPendingBadge;
     if (diff.inMinutes < 1) return l.timeJustNow;
     if (diff.inMinutes < 60) return l.timeMinutesAgo(diff.inMinutes);
     if (diff.inHours < 24) return l.commentsAgoHoursShort(diff.inHours);
@@ -277,8 +285,14 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
           .toList();
 
       if (mounted) {
+        // Écrits hors connexion, pas encore envoyés : à la suite, « en attente d'envoi ».
+        final pending = pendingTestimonyComments(
+            ref.read(outboxProvider), widget.testimonyId, ref.read(currentUserProvider));
         setState(() {
-          _comments = apiList.map(_LocalComment.fromModel).toList();
+          _comments = [
+            ...apiList.map(_LocalComment.fromModel),
+            ...pending.reversed.map(_LocalComment.fromModel),
+          ];
           _loadingComments = false;
         });
       }
@@ -304,12 +318,13 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
     }
   }
 
-  Future<void> _addComment(String text) async {
+  /// Envoie le commentaire ; renvoie sa version affichée (serveur, ou « en attente
+  /// d'envoi » hors connexion), null s'il a été refusé.
+  Future<_LocalComment?> _addComment(String text) async {
     final user = ref.read(currentUserProvider);
     final authorName = user?.displayName ?? context.l10n.commonYou;
     final now = DateTime.now();
     final tempId = 'tmp_${now.millisecondsSinceEpoch}';
-    final dao = CommentDao(DatabaseService());
 
     // Optimistic UI
     setState(
@@ -325,30 +340,56 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
       ],
     );
 
-    // Envoi au serveur
+    final CommentModel saved;
     try {
       final api = ref.read(apiServiceProvider);
       final response = await api.post<Map<String, dynamic>>(
         AppConstants.testimonyComments(widget.testimonyId),
         data: {'text': text},
       );
-      final saved = CommentModel.fromJson(response.data);
-
-      // Remplacer le commentaire temporaire par la version serveur
-      if (mounted) {
-        setState(() {
-          _comments = [
-            ..._comments.where((c) => c.id != tempId),
-            _LocalComment.fromModel(saved),
-          ];
-        });
-        // Répercuter le nouveau commentaire sur les compteurs du feed
-        ref
-            .read(feedNotifierProvider.notifier)
-            .applyOptimisticDelta(widget.testimonyId, comments: 1);
+      saved = CommentModel.fromJson(response.data);
+    } catch (e) {
+      // Hors connexion : gardé dans la file d'envoi (envoyé au retour du réseau),
+      // affiché « en attente d'envoi ». Refus du serveur : retiré, message affiché.
+      final outbox = ref.read(outboxProvider.notifier);
+      final draft = testimonyCommentDraft(widget.testimonyId, text);
+      final queued = isNetworkFailure(e) && outbox.canQueue(draft) && await outbox.enqueue(draft) != null;
+      if (!mounted) return null;
+      final pending = queued
+          ? _LocalComment(id: draft.localId!, authorName: authorName, authorId: user?.id ?? '', body: text, createdAt: now)
+          : null;
+      setState(() {
+        _comments = [
+          for (final c in _comments)
+            if (c.id != tempId) c else ?pending,
+        ];
+      });
+      if (!queued) {
+        ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(
+          behavior: SnackBarBehavior.floating,
+          content: Text(e is LaravelApiException ? e.displayMessage : context.l10n.commonErrorGeneric),
+        ));
       }
+      return pending;
+    }
 
-      await dao.insert({
+    // Remplacer le commentaire temporaire par la version serveur
+    final local = _LocalComment.fromModel(saved);
+    if (mounted) {
+      setState(() {
+        _comments = [
+          ..._comments.where((c) => c.id != tempId),
+          local,
+        ];
+      });
+      // Répercuter le nouveau commentaire sur les compteurs du feed
+      ref
+          .read(feedNotifierProvider.notifier)
+          .applyOptimisticDelta(widget.testimonyId, comments: 1);
+    }
+
+    try {
+      await CommentDao(DatabaseService()).insert({
         'id': saved.id,
         'testimony_id': widget.testimonyId,
         'user_id': saved.userId,
@@ -361,22 +402,8 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
         'updated_at': saved.updatedAt ?? now.toIso8601String(),
         'synced_at': now.toIso8601String(),
       });
-    } catch (_) {
-      // Conserver l'optimistic, sauver avec l'ID temporaire
-      try {
-        await dao.insert({
-          'id': tempId,
-          'testimony_id': widget.testimonyId,
-          'user_id': user?.id ?? 'anon',
-          'author_name': authorName,
-          'body': text,
-          'likes': 0,
-          'reply_count': 0,
-          'created_at': now.toIso8601String(),
-          'updated_at': now.toIso8601String(),
-        });
-      } catch (_) {}
-    }
+    } catch (_) {}
+    return local;
   }
 
   /// Auteur ou équipe de modération : les preuves affichées peuvent être privées.
@@ -400,6 +427,13 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Commentaire écrit hors connexion envoyé : la liste est rechargée.
+    ref.listen(
+      outboxProvider.select((s) => s.pendingFor(OutboxKind.testimonyComment, widget.testimonyId).length),
+      (prev, next) {
+        if (prev != null && next < prev) _loadComments();
+      },
+    );
     final feed = ref.watch(feedNotifierProvider);
     // Version rechargée (push vidéo, re-vérification) d'abord.
     final testimony =
@@ -578,6 +612,7 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
                         comments: _comments.length,
                         prayers: rx.prayersOf(testimony),
                         isPraying: isPraying,
+                        myPrayerTimes: rx.prayerTimesOf(testimony),
                         onLike: () => _toggleLike(testimony),
                         onPray: () => _togglePray(testimony),
                         onShare: () => _onShare(testimony),
@@ -618,6 +653,14 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
                       proofs: _proofs ?? testimony.proofs,
                       forStaffOrAuthor: _canSeePrivateProofs(testimony),
                     ),
+
+                    // Sur le web (site et Google) : l'auteur d'un témoignage public seulement.
+                    if (testimony.web case final web? when isOwnProfile && web.canBeOnWeb)
+                      TestimonyWebPublicationCard(
+                        key: ValueKey('web-${testimony.id}'),
+                        testimonyId: testimony.id,
+                        initial: web,
+                      ),
 
                     // Pourquoi témoigner ? (replié), avant les commentaires
                     const Padding(
@@ -1736,7 +1779,7 @@ class _CommentsBottomSheet extends StatefulWidget {
   final String testimonyId;
   final List<_LocalComment> comments;
   final String currentUser;
-  final Future<void> Function(String text) onAdd;
+  final Future<_LocalComment?> Function(String text) onAdd;
   final bool Function(_LocalComment comment) canDelete;
   final Future<bool> Function(String commentId) onDelete;
 
@@ -1828,20 +1871,12 @@ class _CommentsBottomSheetState extends State<_CommentsBottomSheet> {
     _ctrl.clear();
     _focusNode.unfocus();
 
-    await widget.onAdd(text);
+    // Version du serveur, ou « en attente d'envoi » hors connexion ; null si refusé.
+    final added = await widget.onAdd(text);
 
-    // Ajouter en local pour mise à jour instantanée
     if (mounted) {
       setState(() {
-        _local = [
-          ..._local,
-          _LocalComment(
-            id: 'tmp_${DateTime.now().millisecondsSinceEpoch}',
-            authorName: widget.currentUser,
-            body: text,
-            createdAt: DateTime.now(),
-          ),
-        ];
+        _local = [..._local, ?added];
         _sending = false;
         _replyingToName = null;
       });

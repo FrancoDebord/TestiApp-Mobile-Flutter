@@ -28,7 +28,14 @@ import '../../../features/auth/providers/auth_notifier.dart'
     show currentUserProvider;
 import '../../../features/home/models/testimony_model.dart';
 import '../../../features/home/providers/home_providers.dart';
-import '../../../services/api_service.dart' show apiServiceProvider;
+import '../../../services/api_service.dart'
+    show LaravelApiException, apiServiceProvider;
+import '../../../shared/comments/comment_likes.dart';
+import '../../../shared/models/comment_model.dart';
+import '../../../core/network/network_failure.dart';
+import '../../offline/outbox_controller.dart';
+import '../providers/comments_provider.dart' show pendingTestimonyComments, testimonyCommentDraft;
+import '../../../shared/widgets/mention_text.dart';
 import '../../../shared/widgets/guest_gate.dart';
 import '../../../shared/widgets/quality_picker_sheet.dart';
 import '../../../shared/widgets/video_poster.dart';
@@ -1597,6 +1604,7 @@ class _VideoInfo extends ConsumerWidget {
             isLiked: isLiked,
             prayers: prayers < 0 ? 0 : prayers,
             isPraying: isPraying,
+            myPrayerTimes: rx.prayerTimesOf(t),
             onPray: onPray,
             comments: t.stats.comments,
             onLike: onLike,
@@ -1921,19 +1929,31 @@ class _GradientThumb extends StatelessWidget {
 // Comments Bottom Sheet (video variant)
 // ============================================================================
 
-class _VideoCommentsBottomSheet extends StatefulWidget {
+class _VideoCommentsBottomSheet extends ConsumerStatefulWidget {
   const _VideoCommentsBottomSheet({required this.testimonyId});
 
   final String testimonyId;
 
   @override
-  State<_VideoCommentsBottomSheet> createState() =>
+  ConsumerState<_VideoCommentsBottomSheet> createState() =>
       _VideoCommentsBottomSheetState();
 }
 
-class _VideoCommentsBottomSheetState extends State<_VideoCommentsBottomSheet> {
+class _VideoCommentsBottomSheetState
+    extends ConsumerState<_VideoCommentsBottomSheet> {
   final _controller = TextEditingController();
   final _focusNode = FocusNode();
+
+  List<CommentModel> _comments = [];
+  bool _loading = true;
+  bool _loadFailed = false;
+  bool _sending = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
 
   @override
   void dispose() {
@@ -1942,8 +1962,106 @@ class _VideoCommentsBottomSheetState extends State<_VideoCommentsBottomSheet> {
     super.dispose();
   }
 
+  Future<void> _load() async {
+    try {
+      final response = await ref
+          .read(apiServiceProvider)
+          .get<dynamic>(AppConstants.testimonyComments(widget.testimonyId));
+      final raw = response.data;
+      final items = raw is List
+          ? raw
+          : raw is Map
+          ? (raw['data'] as List? ?? [])
+          : <dynamic>[];
+      if (!mounted) return;
+      // Écrits hors connexion, pas encore envoyés : à la suite, « en attente d'envoi ».
+      final pending = pendingTestimonyComments(
+          ref.read(outboxProvider), widget.testimonyId, ref.read(currentUserProvider));
+      setState(() {
+        _comments = [
+          ...items
+              .whereType<Map>()
+              .map((e) => CommentModel.fromJson(Map<String, dynamic>.from(e)))
+              .where((c) => !c.isReply),
+          ...pending.reversed.where((c) => !c.isReply),
+        ];
+        _loading = false;
+        _loadFailed = false;
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _loadFailed = true;
+        });
+      }
+    }
+  }
+
+  Future<void> _send() async {
+    final text = _controller.text.trim();
+    if (text.isEmpty || _sending) return;
+    setState(() => _sending = true);
+    try {
+      final response = await ref
+          .read(apiServiceProvider)
+          .post<Map<String, dynamic>>(
+            AppConstants.testimonyComments(widget.testimonyId),
+            data: {'text': text},
+          );
+      final saved = CommentModel.fromJson(response.data);
+      if (!mounted) return;
+      _controller.clear();
+      setState(() => _comments = [..._comments, saved]);
+      ref
+          .read(feedNotifierProvider.notifier)
+          .applyOptimisticDelta(widget.testimonyId, comments: 1);
+    } on LaravelApiException catch (e) {
+      _showError(e.displayMessage);
+    } catch (e) {
+      // Hors connexion : gardé dans la file d'envoi, affiché « en attente d'envoi ».
+      final outbox = ref.read(outboxProvider.notifier);
+      final draft = testimonyCommentDraft(widget.testimonyId, text);
+      if (isNetworkFailure(e) && outbox.canQueue(draft) && await outbox.enqueue(draft) != null) {
+        if (!mounted) return;
+        _controller.clear();
+        final me = ref.read(currentUserProvider);
+        setState(() => _comments = [
+              ..._comments,
+              CommentModel(
+                id: draft.localId!,
+                testimonyId: widget.testimonyId,
+                userId: me?.id ?? '',
+                user: me,
+                text: text,
+                createdAt: DateTime.now().toIso8601String(),
+              ),
+            ]);
+      } else {
+        _showError(L10n.current.commonErrorGeneric);
+      }
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  void _showError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      SnackBar(behavior: SnackBarBehavior.floating, content: Text(message)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final me = ref.watch(currentUserProvider);
+    // Commentaire écrit hors connexion envoyé : la liste est rechargée.
+    ref.listen(
+      outboxProvider.select((s) => s.pendingFor(OutboxKind.testimonyComment, widget.testimonyId).length),
+      (prev, next) {
+        if (prev != null && next < prev) _load();
+      },
+    );
     return DraggableScrollableSheet(
       initialChildSize: 0.72,
       minChildSize: 0.4,
@@ -1958,48 +2076,44 @@ class _VideoCommentsBottomSheetState extends State<_VideoCommentsBottomSheet> {
             children: [
               const _DragHandle(),
               _SheetHeader(
-                title: context.l10n.commentsTitleCount(34),
+                title: context.l10n.commentsTitleCount(_comments.length),
                 onClose: () => Navigator.of(context).pop(),
               ),
               const Divider(height: 1, color: AppColors.border),
               Expanded(
-                child: ListView(
-                  controller: scrollController,
-                  padding: const EdgeInsets.only(top: 8, bottom: 8),
-                  children: [
-                    _VideoCommentItem(
-                      name: 'Jean Dupont', // i18n-ignore
-                      initials: 'JD',
-                      text:
-                          'Gloire à Dieu ! Ce témoignage m\'a touché au plus profond.', // i18n-ignore
-                      time: context.l10n.commentsAgoHoursShort(2),
-                      likeCount: 12,
-                    ),
-                    _VideoCommentItem(
-                      name: 'Amina Kone', // i18n-ignore
-                      initials: 'AK',
-                      text: 'Merci de partager. Dieu est bon tout le temps !', // i18n-ignore
-                      time: context.l10n.commentsAgoHoursShort(5),
-                      likeCount: 8,
-                    ),
-                    _VideoCommentItem(
-                      name: 'Samuel Obi', // i18n-ignore
-                      initials: 'SO',
-                      text:
-                          'Mon épouse a vécu quelque chose de similaire. Dieu guérit encore aujourd\'hui.', // i18n-ignore
-                      time: context.l10n.commentsAgoDaysShort(1),
-                      likeCount: 21,
-                    ),
-                  ],
-                ),
+                child: _loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _comments.isEmpty
+                    ? ListView(
+                        controller: scrollController,
+                        padding: const EdgeInsets.all(32),
+                        children: [
+                          Text(
+                            _loadFailed
+                                ? context.l10n.commentsLoadError
+                                : context.l10n.detailNoComments,
+                            textAlign: TextAlign.center,
+                            style: AppTextStyles.bodyMedium.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      )
+                    : ListView.builder(
+                        controller: scrollController,
+                        padding: const EdgeInsets.only(top: 8, bottom: 8),
+                        itemCount: _comments.length,
+                        itemBuilder: (_, i) =>
+                            _VideoCommentItem(comment: _comments[i]),
+                      ),
               ),
               const Divider(height: 1, color: AppColors.border),
               _VideoCommentInputBar(
                 controller: _controller,
                 focusNode: _focusNode,
-                onSend: () {
-                  if (_controller.text.trim().isNotEmpty) _controller.clear();
-                },
+                initials: _initialsOf(me?.displayName ?? ''),
+                sending: _sending,
+                onSend: _send,
               ),
               SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
             ],
@@ -2008,6 +2122,26 @@ class _VideoCommentsBottomSheetState extends State<_VideoCommentsBottomSheet> {
       },
     );
   }
+}
+
+String _initialsOf(String name) {
+  final parts = name.trim().split(RegExp(r'\s+'));
+  if (parts.length >= 2 && parts.first.isNotEmpty && parts.last.isNotEmpty) {
+    return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
+  }
+  return name.trim().isNotEmpty ? name.trim()[0].toUpperCase() : '?';
+}
+
+String _commentAge(CommentModel comment) {
+  final date = DateTime.tryParse(comment.createdAt ?? '');
+  final l = L10n.current;
+  if (comment.isPending) return l.outboxPendingBadge;
+  if (date == null) return l.timeJustNow;
+  final diff = DateTime.now().difference(date);
+  if (diff.inMinutes < 1) return l.timeJustNow;
+  if (diff.inMinutes < 60) return l.timeMinutesAgo(diff.inMinutes);
+  if (diff.inHours < 24) return l.commentsAgoHoursShort(diff.inHours);
+  return l.commentsAgoDaysShort(diff.inDays);
 }
 
 class _DragHandle extends StatelessWidget {
@@ -2055,22 +2189,13 @@ class _SheetHeader extends StatelessWidget {
 }
 
 class _VideoCommentItem extends StatelessWidget {
-  const _VideoCommentItem({
-    required this.name,
-    required this.initials,
-    required this.text,
-    required this.time,
-    required this.likeCount,
-  });
+  const _VideoCommentItem({required this.comment});
 
-  final String name;
-  final String initials;
-  final String text;
-  final String time;
-  final int likeCount;
+  final CommentModel comment;
 
   @override
   Widget build(BuildContext context) {
+    final name = comment.user?.displayName ?? context.l10n.commonAnonymous;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: Row(
@@ -2085,7 +2210,7 @@ class _VideoCommentItem extends StatelessWidget {
             ),
             child: Center(
               child: Text(
-                initials,
+                _initialsOf(name),
                 style: const TextStyle(
                   color: AppColors.textSecondary,
                   fontWeight: FontWeight.w600,
@@ -2112,35 +2237,27 @@ class _VideoCommentItem extends StatelessWidget {
                     children: [
                       Text(name, style: AppTextStyles.labelMedium),
                       const SizedBox(height: 4),
-                      Text(text, style: AppTextStyles.bodyMedium),
+                      MentionText(
+                        comment.text,
+                        mentions: comment.mentions,
+                        style: AppTextStyles.bodyMedium,
+                      ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 6),
                 Row(
                   children: [
-                    Text(time, style: AppTextStyles.bodySmall),
-                    const SizedBox(width: 16),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.favorite_border_rounded,
-                          size: 13,
-                          color: AppColors.textSecondary,
-                        ),
-                        const SizedBox(width: 3),
-                        Text('$likeCount', style: AppTextStyles.bodySmall),
-                      ],
-                    ),
-                    const SizedBox(width: 16),
                     Text(
-                      context.l10n.detailReply,
-                      style: const TextStyle(
-                        fontFamily: AppFonts.family,
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w500,
-                      ),
+                      _commentAge(comment),
+                      style: AppTextStyles.bodySmall,
+                    ),
+                    const SizedBox(width: 12),
+                    CommentLikeButton(
+                      comment: CommentRef.testimony(comment.id),
+                      initialCount: comment.likesCount,
+                      initialLiked: comment.isLikedByMe,
+                      iconSize: 13,
                     ),
                   ],
                 ),
@@ -2157,11 +2274,15 @@ class _VideoCommentInputBar extends StatelessWidget {
   const _VideoCommentInputBar({
     required this.controller,
     required this.focusNode,
+    required this.initials,
+    required this.sending,
     required this.onSend,
   });
 
   final TextEditingController controller;
   final FocusNode focusNode;
+  final String initials;
+  final bool sending;
   final VoidCallback onSend;
 
   @override
@@ -2177,10 +2298,10 @@ class _VideoCommentInputBar extends StatelessWidget {
               shape: BoxShape.circle,
               gradient: LinearGradient(colors: AppColors.guerisonGradient),
             ),
-            child: const Center(
+            child: Center(
               child: Text(
-                'V',
-                style: TextStyle(
+                initials,
+                style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w600,
                   fontSize: 14,
@@ -2195,6 +2316,8 @@ class _VideoCommentInputBar extends StatelessWidget {
               controller: controller,
               focusNode: focusNode,
               style: AppTextStyles.bodyMedium,
+              textInputAction: TextInputAction.send,
+              onSubmitted: (_) => onSend(),
               decoration: InputDecoration(
                 hintText: context.l10n.commentsAddHintDots,
                 hintStyle: const TextStyle(
@@ -2228,7 +2351,7 @@ class _VideoCommentInputBar extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           GestureDetector(
-            onTap: onSend,
+            onTap: sending ? null : onSend,
             child: Container(
               width: 40,
               height: 40,
@@ -2236,11 +2359,19 @@ class _VideoCommentInputBar extends StatelessWidget {
                 shape: BoxShape.circle,
                 color: AppColors.primary,
               ),
-              child: const Icon(
-                Icons.send_rounded,
-                color: Colors.white,
-                size: 18,
-              ),
+              child: sending
+                  ? const Padding(
+                      padding: EdgeInsets.all(11),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(
+                      Icons.send_rounded,
+                      color: Colors.white,
+                      size: 18,
+                    ),
             ),
           ),
         ],

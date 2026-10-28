@@ -10521,4 +10521,441 @@ class AppLocalizationsEn extends AppLocalizations {
   String myDataRequestFailedNoEmail(String url) {
     return 'Couldn\'t open the deletion page. Open $url in your browser.';
   }
+
+  @override
+  String get outboxTitle => 'To send';
+
+  @override
+  String get outboxIntro =>
+      'What you do without a connection is kept on this phone, then sent automatically as soon as the network is back.';
+
+  @override
+  String get outboxQueuedSnack =>
+      'No connection: saved on this phone. It will be sent automatically when the network is back.';
+
+  @override
+  String get outboxView => 'View';
+
+  @override
+  String outboxSyncedSnack(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count items saved offline were sent.',
+      one: '1 item saved offline was sent.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String outboxFailedSnack(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count items couldn\'t be sent.',
+      one: '1 item couldn\'t be sent.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get outboxParentMissing =>
+      'The content this action was for couldn\'t be sent: the action is cancelled.';
+
+  @override
+  String get outboxFileMissing => 'An attached file is no longer on the phone.';
+
+  @override
+  String get outboxGaveUp => 'The server isn\'t responding. Try again later.';
+
+  @override
+  String get outboxPendingBadge => 'Waiting to be sent';
+
+  @override
+  String get outboxEmpty => 'Nothing to send: everything is up to date.';
+
+  @override
+  String get outboxOffline =>
+      'Offline: items will be sent when the network is back.';
+
+  @override
+  String get outboxOnline => 'Connected: waiting items are sent automatically.';
+
+  @override
+  String get outboxSendNow => 'Send now';
+
+  @override
+  String get outboxSending => 'Sending…';
+
+  @override
+  String get outboxRetry => 'Retry';
+
+  @override
+  String get outboxDelete => 'Delete';
+
+  @override
+  String get outboxDeleteTitle => 'Delete this item?';
+
+  @override
+  String get outboxDeleteBody => 'It hasn\'t been sent yet: it will be lost.';
+
+  @override
+  String get outboxSectionPending => 'Waiting';
+
+  @override
+  String get outboxSectionFailed => 'Not sent';
+
+  @override
+  String get outboxWaiting => 'Waiting for the network';
+
+  @override
+  String outboxRetryLater(String time) {
+    return 'Next try at $time';
+  }
+
+  @override
+  String outboxSavedAt(String date) {
+    return 'Saved on $date';
+  }
+
+  @override
+  String outboxCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count waiting',
+      one: '1 waiting',
+      zero: 'Nothing waiting',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get outboxKindTestimony => 'Testimony';
+
+  @override
+  String get outboxKindVideo => 'Video testimony';
+
+  @override
+  String get outboxKindPrayerRequest => 'Prayer request';
+
+  @override
+  String get outboxKindPrayerSession => 'Prayer session';
+
+  @override
+  String get outboxKindEvent => 'Event';
+
+  @override
+  String get outboxKindComment => 'Comment';
+
+  @override
+  String get outboxKindEncouragement => 'Encouragement';
+
+  @override
+  String get outboxKindReaction => 'Reaction';
+
+  @override
+  String get outboxKindSave => 'Save';
+
+  @override
+  String get outboxKindOther => 'Action';
+
+  @override
+  String get outboxVideoQueued =>
+      'Another video is being sent: this one will follow right after.';
+
+  @override
+  String eventsOfflinePending(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count events saved offline are waiting for the network to be sent.',
+      one: '1 event saved offline is waiting for the network to be sent.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String eventsOfflineFailed(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count events saved offline couldn\'t be sent. Tap to see.',
+      one: '1 event saved offline couldn\'t be sent. Tap to see.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get publishDraftsTitle => 'Drafts';
+
+  @override
+  String get publishDraftsHint =>
+      'Testimonies you started, kept on this phone: tap to continue.';
+
+  @override
+  String publishDraftUpdated(String date) {
+    return 'Edited $date';
+  }
+
+  @override
+  String get publishDraftDeleteTitle => 'Delete this draft?';
+
+  @override
+  String get publishDraftDeleteBody =>
+      'This testimony hasn\'t been published: it will be lost.';
+
+  @override
+  String get publishDraftSaved => 'Draft saved. Find it in “Publish”.';
+
+  @override
+  String get publishLeaveTitle => 'Leave this testimony?';
+
+  @override
+  String get publishLeaveBody =>
+      'Your testimony isn\'t published yet. Save it as a draft to continue later from “Publish”.';
+
+  @override
+  String get publishLeaveKeep => 'Save draft';
+
+  @override
+  String get publishLeaveDiscard => 'Delete';
+
+  @override
+  String get publishLeaveStay => 'Keep writing';
+
+  @override
+  String get publishVerseAttached => 'Testimony about this verse';
+
+  @override
+  String get bibleCopyLink => 'Copy verse link';
+
+  @override
+  String get bibleLinkCopied => 'Link copied';
+
+  @override
+  String get bibleShareChapter => 'Share link';
+
+  @override
+  String get offlineMineTitle => 'My testimonies on this phone';
+
+  @override
+  String get offlineMineHint =>
+      'Kept automatically so you can read them offline. Removing them doesn\'t delete them online.';
+
+  @override
+  String get offlineMineRemove => 'Remove from this phone';
+
+  @override
+  String get offlineMineRemoveAll => 'Remove all';
+
+  @override
+  String get offlineMineRemoveAllTitle =>
+      'Remove your testimonies from this phone?';
+
+  @override
+  String get offlineMineRemoveBody =>
+      'They stay published online: only the copy kept on this phone is erased.';
+
+  @override
+  String get offlineMineRemoved => 'Removed from this phone';
+
+  @override
+  String offlineMineBanner(String date) {
+    return 'Offline: copy saved on this phone on $date.';
+  }
+
+  @override
+  String get offlineMineMediaHint =>
+      'Offline, only the text is available. Download this testimony to play its media offline.';
+
+  @override
+  String get reactionPeopleTitle => 'Who reacted?';
+
+  @override
+  String get reactionPeopleAll => 'All';
+
+  @override
+  String get reactionPeopleEmpty => 'No one has reacted yet.';
+
+  @override
+  String get reactionPeopleError => 'Couldn\'t load the reactions.';
+
+  @override
+  String get reactionPeopleMore => 'Show more';
+
+  @override
+  String reactionPeoplePrayedTimes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Prayed $count times',
+      one: 'Prayed once',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String prayTimesYou(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'You prayed $count times',
+      one: 'You prayed once',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get prayAgainHint =>
+      'You can pray again: a new 5-minute prayer time opens.';
+
+  @override
+  String get prayAgain => 'Pray again';
+
+  @override
+  String get prayRemoveLast => 'Remove my last prayer';
+
+  @override
+  String get reactionPeopleEncouragements => 'Encouragements';
+
+  @override
+  String get reactionPeopleEmptyComments => 'No comments yet.';
+
+  @override
+  String get reactionPeopleShort => 'Reactions';
+
+  @override
+  String get sharedLinkOpenTitle => 'Open this link?';
+
+  @override
+  String sharedLinkOpenBody(String url) {
+    return 'This link will open outside the app:\n$url';
+  }
+
+  @override
+  String get sharedLinkOpen => 'Open';
+
+  @override
+  String get sharedLinkOpenFailed => 'This link could not be opened.';
+
+  @override
+  String get publishFormatLink => 'Link';
+
+  @override
+  String get publishFormatImage => 'Image';
+
+  @override
+  String get publishLinkTitle => 'Insert a link';
+
+  @override
+  String get publishLinkText => 'Displayed text';
+
+  @override
+  String get publishLinkUrl => 'Address (URL)';
+
+  @override
+  String get publishLinkInvalid => 'Invalid address (e.g. https://example.com)';
+
+  @override
+  String get publishLinkInsert => 'Insert';
+
+  @override
+  String publishImageLimit(int count) {
+    return 'At most $count images per testimony.';
+  }
+
+  @override
+  String get publishImageNeedsConnection =>
+      'An Internet connection is needed to add an image.';
+
+  @override
+  String get publishImageUploadFailed =>
+      'The image could not be sent. Please try again.';
+
+  @override
+  String get publishImageRemove => 'Remove image';
+
+  @override
+  String get publishPreviewAction => 'Preview';
+
+  @override
+  String get publishPreviewTitle => 'Testimony preview';
+
+  @override
+  String get publishPreviewCardTitle => 'See it before publishing';
+
+  @override
+  String get publishPreviewCardBody => 'Your testimony as readers will see it.';
+
+  @override
+  String get publishPreviewNotice => 'Preview: nothing has been published yet.';
+
+  @override
+  String get publishPreviewBack => 'Keep editing';
+
+  @override
+  String get publishPreviewMediaError =>
+      'Playback is not possible on this device.';
+
+  @override
+  String get publishPreviewPlay => 'Listen';
+
+  @override
+  String get publishPreviewPause => 'Pause';
+
+  @override
+  String get publishWebTitle => 'Also publish on the web';
+
+  @override
+  String get publishWebHint =>
+      'Your testimony may appear on the My Testimony website and in Google. You can withdraw this consent from your testimony\'s page on the website.';
+
+  @override
+  String get publishWebAnonymous => 'Testify anonymously on the website';
+
+  @override
+  String get publishWebAnonymousHint =>
+      'On the website, neither your name nor your photo. The app always shows the author.';
+
+  @override
+  String get publishResumeLabel => 'Written summary (recommended)';
+
+  @override
+  String get publishResumeHint =>
+      'Shown on your testimony\'s page on the website and read by Google.';
+
+  @override
+  String get publishResumePlaceholder =>
+      'In a few sentences: what God did for you';
+
+  @override
+  String get publishTranscriptionLabel => 'Transcript (optional)';
+
+  @override
+  String get publishTranscriptionPlaceholder =>
+      'What is said in the video, word for word';
+
+  @override
+  String get testimonyWebTitle => 'On the web';
+
+  @override
+  String get testimonyWebOnHint =>
+      'Visible on the My Testimony website and in Google. Unchecked: the page is no longer public and Google removes it from its results.';
+
+  @override
+  String get testimonyWebOffHint =>
+      'Neither on the website nor in Google. Still visible in the app.';
+
+  @override
+  String get testimonyWebSavedOn => 'Your testimony is published on the web.';
+
+  @override
+  String get testimonyWebSavedOff =>
+      'Your testimony has been removed from the web.';
+
+  @override
+  String get testimonyWebSaveFailed =>
+      'Your choice could not be saved. Please try again.';
 }

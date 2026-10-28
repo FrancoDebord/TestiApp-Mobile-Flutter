@@ -1,8 +1,13 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/app_constants.dart';
+import '../../../core/network/network_failure.dart';
 import '../../../core/media/playback_preferences.dart' show FeedLayout;
+import '../../offline/outbox_controller.dart';
 import '../../../services/api_service.dart' show secureStorageProvider;
 import '../../auth/providers/auth_notifier.dart' show currentUserProvider;
 
@@ -10,13 +15,73 @@ import '../../home/models/testimony_model.dart';
 import '../data/events_repository.dart';
 import '../models/event_models.dart';
 
+// ── Copie hors connexion ─────────────────────────────────────────────────────
+
+/// Clé de la copie hors connexion de « Mes événements » (null : pas de copie).
+String? myEventsOfflineKey(Ref ref, EventListKey key) {
+  final uid = ref.read(currentUserProvider)?.id;
+  if (uid == null || key.scope != EventScope.mine || key.type != null || key.query != null) return null;
+  return 'events.offline.$uid.mine'; // i18n-ignore
+}
+
+/// Clé de la copie hors connexion d'un événement que je gère.
+String? eventOfflineKey(String? userId, String eventId) =>
+    userId == null ? null : 'events.offline.$userId.event.$eventId'; // i18n-ignore
+
+/// Clé de file d'une modification d'événement faite hors connexion (la dernière l'emporte).
+String eventEditKey(String eventId) => 'event-edit:$eventId';
+
 // ── Droits de création ───────────────────────────────────────────────────────
+
+Map<String, dynamic> _personJson(EventPerson p) => {
+      'id': p.id,
+      'displayName': p.displayName,
+      'initials': p.initials,
+      'avatarUrl': p.avatarUrl,
+      'isOrganization': p.isOrganization,
+      'isVerified': p.isVerified,
+    };
+
+/// Dernière liste reçue, gardée sur le téléphone : hors connexion, le bouton
+/// « Créer un événement » et le choix de l'organisateur restent disponibles
+/// (l'événement part ensuite par la file d'envoi).
+Future<List<T>> _withOfflineCopy<T>(
+  String key,
+  Future<List<T>> Function() fetch,
+  Map<String, dynamic> Function(T) encode,
+  T Function(Map<String, dynamic>) decode,
+) async {
+  try {
+    final list = await fetch();
+    try {
+      await (await SharedPreferences.getInstance()).setString(key, jsonEncode([for (final e in list) encode(e)]));
+    } catch (_) {}
+    return list;
+  } catch (e) {
+    if (!isNetworkFailure(e)) rethrow;
+    String? raw;
+    try {
+      raw = (await SharedPreferences.getInstance()).getString(key);
+    } catch (_) {}
+    if (raw == null) rethrow;
+    return [
+      for (final m in jsonDecode(raw) as List)
+        if (m is Map) decode(Map<String, dynamic>.from(m)),
+    ];
+  }
+}
 
 /// Organisations dont la personne connectée est gestionnaire (et si elles sont vérifiées).
 final managedOrganizationsProvider =
     FutureProvider.autoDispose<List<(EventPerson, bool)>>((ref) async {
-  if (ref.watch(currentUserProvider) == null) return const [];
-  return ref.watch(eventsRepositoryProvider).managedOrganizations();
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return const [];
+  return _withOfflineCopy(
+    'events.managedOrganizations.${user.id}', // i18n-ignore
+    () => ref.watch(eventsRepositoryProvider).managedOrganizations(),
+    (e) => {..._personJson(e.$1), 'canCreate': e.$2},
+    (m) => (EventPerson.fromJson(m), m['canCreate'] == true),
+  );
 });
 
 /// Peut créer des événements : administrateur, organisation vérifiée, ou
@@ -30,9 +95,15 @@ final canCreateEventsProvider = Provider.autoDispose<bool>((ref) {
 });
 
 /// Au nom de qui créer un événement (meta.organizations de GET /events?scope=mine).
-final eventCreatorsProvider = FutureProvider.autoDispose<List<EventPerson>>(
-  (ref) async => (await ref.watch(eventsRepositoryProvider).list(scope: EventScope.mine)).organizations,
-);
+final eventCreatorsProvider = FutureProvider.autoDispose<List<EventPerson>>((ref) async {
+  final uid = ref.watch(currentUserProvider)?.id ?? '';
+  return _withOfflineCopy(
+    'events.creators.$uid', // i18n-ignore
+    () async => (await ref.watch(eventsRepositoryProvider).list(scope: EventScope.mine)).organizations,
+    _personJson,
+    EventPerson.fromJson,
+  );
+});
 
 // ── Affichage de la liste : cartes / liste compacte (mémorisé) ───────────────
 
@@ -111,7 +182,8 @@ class EventListNotifier extends AsyncNotifier<EventListState> {
 
   @override
   Future<EventListState> build() async {
-    final p = await _repo.list(scope: key.scope, type: key.type, query: key.query);
+    final p = await _repo.list(
+        scope: key.scope, type: key.type, query: key.query, offlineKey: myEventsOfflineKey(ref, key));
     return EventListState(items: p.items, hasMore: p.hasMore, canCreate: p.canCreate);
   }
 
@@ -168,7 +240,8 @@ class EventDetailNotifier extends AsyncNotifier<ChristianEvent> {
   EventsRepository get _repo => ref.read(eventsRepositoryProvider);
 
   @override
-  Future<ChristianEvent> build() => _repo.show(id);
+  Future<ChristianEvent> build() =>
+      _repo.show(id, offlineKey: eventOfflineKey(ref.read(currentUserProvider)?.id, id));
 
   /// Remplace l'événement (après une action qui renvoie la version à jour).
   void replace(ChristianEvent e) => state = AsyncData(e);
@@ -259,8 +332,26 @@ class EventCommentsNotifier extends AsyncNotifier<EventCommentsState> {
   @override
   Future<EventCommentsState> build() async {
     final p = await _repo.comments(eventId);
-    return EventCommentsState(items: p.items, hasMore: p.hasMore);
+    // Écrits hors connexion, pas encore envoyés : en tête, « en attente d'envoi ».
+    return EventCommentsState(items: [..._pending(), ...p.items], hasMore: p.hasMore);
   }
+
+  List<EventComment> _pending() {
+    final me = ref.read(currentUserProvider);
+    return [
+      for (final i in ref.read(outboxProvider).pendingFor(OutboxKind.eventComment, eventId).reversed)
+        if (!i.isFailed) _pendingComment(i.localId ?? 'local_${i.id}', i.label, i.createdAt, me?.id, me?.displayName, me?.avatarUrl),
+    ];
+  }
+
+  static EventComment _pendingComment(String id, String body, DateTime at, String? uid, String? name, String? avatar) =>
+      EventComment(
+        id: id,
+        body: body,
+        user: EventPerson(id: uid ?? '', displayName: name ?? '', avatarUrl: avatar),
+        isMine: true,
+        createdAt: at,
+      );
 
   Future<void> loadMore() async {
     final s = state.value;
@@ -275,16 +366,29 @@ class EventCommentsNotifier extends AsyncNotifier<EventCommentsState> {
     }
   }
 
-  /// Renvoie un message d'erreur, ou null.
-  Future<String?> add(String body) async {
+  /// Renvoie un message d'erreur, ou null. [queued] : gardé hors connexion.
+  Future<({String? error, bool queued})> add(String body) async {
     try {
-      final c = await _repo.addComment(eventId, body);
+      final draft = OutboxDraft(
+        kind: OutboxKind.eventComment,
+        label: body,
+        targetId: eventId,
+        localId: newLocalId(),
+        request: OutboxRequest('POST', AppConstants.eventComments(eventId), body: {'body': body.trim()}),
+      );
+      final c = await ref.read(outboxProvider.notifier).sendOrQueue(() => _repo.addComment(eventId, body), () => draft);
       final s = state.value ?? const EventCommentsState();
+      if (c == null) {
+        final me = ref.read(currentUserProvider);
+        final pending = _pendingComment(draft.localId!, body.trim(), DateTime.now(), me?.id, me?.displayName, me?.avatarUrl);
+        state = AsyncData(s.copyWith(items: [pending, ...s.items]));
+        return (error: null, queued: true);
+      }
       state = AsyncData(s.copyWith(items: [c, ...s.items]));
       ref.invalidate(eventDetailProvider(eventId)); // compteur
-      return null;
+      return (error: null, queued: false);
     } on EventFailure catch (e) {
-      return e.message;
+      return (error: e.message, queued: false);
     }
   }
 

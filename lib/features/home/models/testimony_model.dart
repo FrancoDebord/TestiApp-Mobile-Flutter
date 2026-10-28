@@ -198,6 +198,46 @@ class ConversionDetails {
   String get summary => [if (year != null) '$year', ?place, ?verse].join(' · ');
 }
 
+// ── Publication sur le web ───────────────────────────────────────────────────
+
+/// Accord de l'auteur pour le site et Google (`publicationWeb`, `isAnonymous`,
+/// `visibility`, `status` de l'API ; docs serveur fonctionnalites/referencement.md).
+class TestimonyWebPublication {
+  const TestimonyWebPublication({
+    required this.publicationWeb,
+    this.isAnonymous = false,
+    this.visibility,
+    this.status,
+  });
+
+  /// null : serveur antérieur au 2026-10-27 (champ absent).
+  static TestimonyWebPublication? fromJson(Map<String, dynamic> m) {
+    final web = m['publicationWeb'] ?? m['publication_web'];
+    if (web is! bool) return null;
+    return TestimonyWebPublication(
+      publicationWeb: web,
+      isAnonymous: (m['isAnonymous'] ?? m['is_anonymous']) == true,
+      visibility: m['visibility'] as String?,
+      status: m['status'] as String?,
+    );
+  }
+
+  final bool publicationWeb;
+  final bool isAnonymous;
+  final String? visibility;
+  final String? status;
+
+  /// Seul un témoignage public peut être sur le site (abonnés, carnet : jamais).
+  bool get canBeOnWeb => visibility == null || visibility == 'public';
+
+  TestimonyWebPublication copyWith({bool? publicationWeb, bool? isAnonymous}) => TestimonyWebPublication(
+        publicationWeb: publicationWeb ?? this.publicationWeb,
+        isAnonymous: isAnonymous ?? this.isAnonymous,
+        visibility: visibility,
+        status: status,
+      );
+}
+
 // ── Base testimony ───────────────────────────────────────────────────────────
 
 sealed class Testimony {
@@ -217,11 +257,17 @@ sealed class Testimony {
     this.mentions = const [],
     this.repost,
     this.myReaction,
+    this.myPrayerTimes = 0,
     this.canDelete = false,
     this.badges = const {},
     this.featuredSource,
     this.conversion,
+    this.web,
   });
+
+  /// Accord pour le web (null : serveur ancien). Modifiable par l'auteur :
+  /// PUT /testimonies/{id}/web.
+  final TestimonyWebPublication? web;
 
   final String id;
   final TestimonyAuthor author;
@@ -251,6 +297,10 @@ sealed class Testimony {
   /// Réaction « j'aime » choisie par la personne connectée (`myReaction` : like, love,
   /// fire, glory, strong, touched) ; une seule à la fois (docs serveur fonctionnalites/reactions.md).
   final String? myReaction;
+
+  /// Nombre de fois que la personne connectée a prié (`myPrayerTimes` ; 0 si elle ne prie pas).
+  /// docs serveur fonctionnalites/prier-plusieurs-fois.md
+  final int myPrayerTimes;
 
   /// L'auteur ou un administrateur peut le supprimer (`canDelete`) ; jamais un modérateur.
   final bool canDelete;
@@ -308,10 +358,12 @@ final class TextTestimony extends Testimony {
     super.mentions,
     super.repost,
     super.myReaction,
+    super.myPrayerTimes,
     super.canDelete,
     super.badges,
     super.featuredSource,
     super.conversion,
+    super.web,
   });
 
   final String preview;
@@ -401,10 +453,12 @@ final class AudioTestimony extends Testimony {
     super.mentions,
     super.repost,
     super.myReaction,
+    super.myPrayerTimes,
     super.canDelete,
     super.badges,
     super.featuredSource,
     super.conversion,
+    super.web,
   });
 
   final int     durationSeconds;
@@ -469,10 +523,12 @@ final class VideoTestimony extends Testimony {
     super.mentions,
     super.repost,
     super.myReaction,
+    super.myPrayerTimes,
     super.canDelete,
     super.badges,
     super.featuredSource,
     super.conversion,
+    super.web,
   });
 
   final int     durationSeconds;
@@ -553,8 +609,9 @@ final class VideoTestimony extends Testimony {
         videoStatus: videoStatus,
         isFeatured: isFeatured, isLiked: isLiked, isPrayed: isPrayed,
         isSaved: isSaved, shareUrl: shareUrl, proofs: proofs,
-        mentions: mentions, repost: repost, myReaction: myReaction,
+        mentions: mentions, repost: repost, myReaction: myReaction, myPrayerTimes: myPrayerTimes,
         canDelete: canDelete, badges: badges, featuredSource: featuredSource,
+        conversion: conversion, web: web,
       );
 
   String get formattedDuration {
@@ -567,7 +624,38 @@ final class VideoTestimony extends Testimony {
   TestimonyType get type => TestimonyType.video;
 }
 
+/// Verset après une prière de plus ([again]) ou de moins : le compteur (personnes) ne change
+/// que si la personne commence ou cesse de prier.
+DailyVerse verseWithPrayer(DailyVerse v, {required bool again}) {
+  final times = v.prayerTimes + (again ? 1 : -1);
+  final prayed = times > 0;
+  return v.copyWith(
+    isPrayed: prayed,
+    myPrayerTimes: prayed ? times : 0,
+    prayerCount: (v.prayerCount + (prayed == v.isPrayed ? 0 : (prayed ? 1 : -1))).clamp(0, 1 << 30),
+  );
+}
+
+/// Corps de POST /daily-verse/{id}/react : prier encore, ou retirer la dernière prière.
+Map<String, Object> versePrayBody({required bool again}) =>
+    again ? const {'type': 'pray', 'again': true} : const {'type': 'pray', 'active': false, 'last': true};
+
 // ── Daily verse ───────────────────────────────────────────────────────────────
+
+/// Verset affiché sans réseau ni cache (Jérémie 29:11), dans la langue affichée.
+DailyVerse fallbackDailyVerse() => L10n.languageCode == 'en'
+    ? const DailyVerse(
+        text: '“For I know the thoughts that I think toward you, saith the LORD, ' // i18n-ignore
+            'thoughts of peace, and not of evil, to give you an expected end.”', // i18n-ignore
+        reference: 'Jeremiah 29:11', // i18n-ignore
+        language: 'en',
+        textTranslation: 'KJV', // i18n-ignore
+      )
+    : const DailyVerse(
+        text: '« Car je connais les projets que j\'ai formés sur vous, dit l\'Éternel, ' // i18n-ignore
+            'projets de paix et non de malheur, afin de vous donner un avenir et de l\'espérance. »', // i18n-ignore
+        reference: 'Jérémie 29 : 11', // i18n-ignore
+      );
 
 class DailyVerse {
   const DailyVerse({
@@ -578,19 +666,49 @@ class DailyVerse {
     this.prayerCount = 0,
     this.isLiked  = false,
     this.isPrayed = false,
+    this.myPrayerTimes = 0,
     this.commentCount = 0,
     this.designOfTheDay,
     this.effectiveDesignId,
     this.userStyle,
+    this.language,
+    this.textTranslation,
+    this.textTranslationName,
+    this.originalText,
+    this.originalReference,
   });
 
   final int    id;
+
+  /// Texte et référence dans la langue de la requête (Accept-Language) :
+  /// texte du jour en français, traduction installée (KJV…) en anglais.
   final String text;
   final String reference;
+
+  /// Langue de [text] (`fr` | `en`) ; null : serveur antérieur au 2026-10-27.
+  final String? language;
+
+  /// Traduction d'où vient [text] (« KJV ») ; null : texte du jour.
+  final String? textTranslation;
+  final String? textTranslationName;
+
+  /// Texte et référence du jour tels que saisis (français).
+  final String? originalText;
+  final String? originalReference;
+
+  /// Le serveur a choisi le texte selon la langue : à afficher tel quel.
+  bool get isLocalized => language != null;
   final int    likeCount;
   final int    prayerCount;
   final bool   isLiked;
   final bool   isPrayed;
+
+  /// Nombre de fois que la personne a prié (`myPrayerTimes` ; docs serveur
+  /// fonctionnalites/prier-plusieurs-fois.md).
+  final int    myPrayerTimes;
+
+  /// Nombre de fois affiché (au moins 1 si la personne prie).
+  int get prayerTimes => isPrayed ? (myPrayerTimes < 1 ? 1 : myPrayerTimes) : 0;
 
   /// Commentaires (`counts.comments`), relus avec le reste à chaque synchronisation.
   final int    commentCount;
@@ -636,6 +754,8 @@ class DailyVerse {
                 reactions.contains('like'),
       isPrayed: j['is_prayed'] as bool? ?? j['isPrayed'] as bool? ??
                 reactions.contains('pray'),
+      myPrayerTimes: (j['myPrayerTimes'] as num?)?.toInt() ??
+                     (j['my_prayer_times'] as num?)?.toInt() ?? 0,
       commentCount: (j['comment_count'] as num?)?.toInt() ??
                     (counts?['comments'] as num?)?.toInt() ?? 0,
       designOfTheDay: j['design_of_the_day'] as String?,
@@ -643,6 +763,13 @@ class DailyVerse {
       userStyle: j['user_style'] is Map
           ? Map<String, dynamic>.from(j['user_style'] as Map)
           : null,
+      // Verset dans la langue de l'application (docs serveur verset-du-jour.md,
+      // « Langue du verset ») ; le cache local garde les mêmes clés.
+      language: str(['language']).isEmpty ? null : str(['language']),
+      textTranslation: str(['textTranslation']).isEmpty ? null : str(['textTranslation']),
+      textTranslationName: str(['textTranslationName']).isEmpty ? null : str(['textTranslationName']),
+      originalText: str(['originalText']).isEmpty ? null : str(['originalText']),
+      originalReference: str(['originalReference']).isEmpty ? null : str(['originalReference']),
     );
   }
 
@@ -651,6 +778,7 @@ class DailyVerse {
     int? prayerCount,
     bool? isLiked,
     bool? isPrayed,
+    int? myPrayerTimes,
     int? commentCount,
   }) => DailyVerse(
     id:          id,
@@ -660,9 +788,15 @@ class DailyVerse {
     prayerCount: prayerCount ?? this.prayerCount,
     isLiked:     isLiked     ?? this.isLiked,
     isPrayed:    isPrayed    ?? this.isPrayed,
+    myPrayerTimes: myPrayerTimes ?? this.myPrayerTimes,
     commentCount: commentCount ?? this.commentCount,
     designOfTheDay:    designOfTheDay,
     effectiveDesignId: effectiveDesignId,
     userStyle:         userStyle,
+    language:            language,
+    textTranslation:     textTranslation,
+    textTranslationName: textTranslationName,
+    originalText:        originalText,
+    originalReference:   originalReference,
   );
 }

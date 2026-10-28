@@ -12,6 +12,8 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_tokens.dart';
 import '../../auth/providers/auth_notifier.dart' show currentUserProvider;
+import '../../bible/providers/bible_providers.dart' show bibleVerseRefProvider, bibleVerseToInsertProvider;
+import '../drafts/publish_drafts.dart';
 import '../models/publish_models.dart';
 import '../providers/publish_provider.dart';
 import '../providers/publishing_rules_provider.dart';
@@ -187,6 +189,8 @@ class PublishScreen extends ConsumerWidget {
     final forEvent = ref.watch(publishEventProvider);
     final forLive = ref.watch(publishLiveProvider);
     final forProphecy = ref.watch(publishProphecyProvider);
+    // Verset choisi dans la Bible ou le verset du jour.
+    final forVerse = ref.watch(bibleVerseToInsertProvider);
     // Témoignage de conversion : un seul par compte personnel (docs serveur
     // fonctionnalites/temoignage-de-conversion.md).
     final forConversion = ref.watch(publishConversionProvider);
@@ -269,6 +273,21 @@ class PublishScreen extends ConsumerWidget {
                 24,
               ),
               children: [
+                // Brouillons gardés sur le téléphone (reprendre ou supprimer).
+                const _DraftsSection(),
+                // Témoigner sur un verset : repris dans le type choisi ci-dessous.
+                if (forVerse != null && forVerse.trim().isNotEmpty) ...[
+                  _EventAttachBanner(
+                    title: forVerse.trim(),
+                    label: context.l10n.publishVerseAttached,
+                    icon: Icons.menu_book_rounded,
+                    onClear: () {
+                      ref.read(bibleVerseToInsertProvider.notifier).clear();
+                      ref.read(bibleVerseRefProvider.notifier).clear();
+                    },
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                ],
                 // Témoignage sur un direct terminé.
                 if (forLive != null) ...[
                   _EventAttachBanner(
@@ -401,6 +420,101 @@ class PublishScreen extends ConsumerWidget {
           if (draft.status != PublishStatus.draft || draft.title.isNotEmpty)
             _StatusBarRow(status: draft.status),
         ],
+      ),
+    );
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Brouillons
+// -----------------------------------------------------------------------------
+
+class _DraftsSection extends ConsumerWidget {
+  const _DraftsSection();
+
+  static IconData _icon(TestimonyFormat? f) => switch (f) {
+        TestimonyFormat.video => Icons.videocam_rounded,
+        TestimonyFormat.audio => Icons.mic_rounded,
+        _ => Icons.article_rounded,
+      };
+
+  void _resume(BuildContext context, WidgetRef ref, SavedPublishDraft d) {
+    ref.read(publishProvider.notifier).loadDraft(d.draft);
+    ref.read(publishStepProvider.notifier).goTo(1);
+    context.pushNamed(AppRoutes.publishPreview, extra: d.draft.format ?? TestimonyFormat.text);
+  }
+
+  Future<void> _delete(BuildContext context, WidgetRef ref, SavedPublishDraft d) async {
+    final l10n = context.l10n;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.publishDraftDeleteTitle),
+        content: Text(l10n.publishDraftDeleteBody),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.commonCancel)),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+            child: Text(l10n.publishLeaveDiscard),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    // Brouillon ouvert dans le formulaire : vidé aussi.
+    if (ref.read(publishProvider).draftId == d.id) {
+      await ref.read(publishProvider.notifier).discardDraft();
+    } else {
+      await ref.read(publishDraftsProvider.notifier).delete(d.id);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final drafts = ref.watch(publishDraftsProvider).value ?? const <SavedPublishDraft>[];
+    if (drafts.isEmpty) return const SizedBox.shrink();
+    final l10n = context.l10n;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: AppColors.border),
+        ),
+        padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.xs, AppSpacing.xs),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('${l10n.publishDraftsTitle} (${drafts.length})',
+                style: AppTextStyles.labelMedium.copyWith(fontWeight: FontWeight.w700, color: AppColors.primary)),
+            const SizedBox(height: 2),
+            Text(l10n.publishDraftsHint, style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
+            const SizedBox(height: AppSpacing.xs),
+            for (final d in drafts)
+              ListTile(
+                key: ValueKey('draft-${d.id}'),
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                leading: CircleAvatar(
+                  radius: 18,
+                  backgroundColor: AppColors.primarySoft,
+                  child: Icon(_icon(d.draft.format), size: 18, color: AppColors.primary),
+                ),
+                title: Text(d.draft.effectiveTitle, maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w600)),
+                subtitle: Text(l10n.publishDraftUpdated(formatDateTime(d.updatedAt)),
+                    style: AppTextStyles.bodySmall),
+                onTap: () => _resume(context, ref, d),
+                trailing: IconButton(
+                  tooltip: l10n.publishLeaveDiscard,
+                  icon: const Icon(Icons.delete_outline_rounded, color: AppColors.textSecondary),
+                  onPressed: () => _delete(context, ref, d),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

@@ -2647,9 +2647,21 @@
   "prayerFromTestimonyAction": "Confier un sujet de prière",
   "prayerFromTestimonyShort": "Sujet de prière",
   "prayerRequestFromTestimony": "Après le témoignage « {title} »",
-  "@prayerRequestFromTestimony": {"placeholders": {"title": {"type": "String"}}},
+  "@prayerRequestFromTestimony": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
   "prayerRequestLinkedToTestimony": "Inspirée du témoignage « {title} » : votre requête y renverra.",
-  "@prayerRequestLinkedToTestimony": {"placeholders": {"title": {"type": "String"}}},
+  "@prayerRequestLinkedToTestimony": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
   "prayerYourRequest": "Votre requête",
   "prayerRequestEmptyError": "Écrivez votre requête de prière.",
   "prayerRequestTooShort": "Votre requête est trop courte (10 caractères au moins).",
@@ -5240,7 +5252,13 @@
   "privacyOffline": "Pas de connexion Internet. Connectez-vous pour lire la politique de confidentialité.",
   "privacyOpenFailed": "Impossible d'ouvrir la politique de confidentialité. Vérifiez votre connexion et réessayez.",
   "privacyUpdatedOn": "Mise à jour le {date}",
-  "@privacyUpdatedOn": {"placeholders": {"date": {"type": "String"}}},
+  "@privacyUpdatedOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "privacySavedCopy": "Hors ligne : version enregistrée sur cet appareil.",
   "privacyViewOnWeb": "Voir sur le site",
   "accountDeleteWhatTitle": "Ce qui sera supprimé",
@@ -5298,5 +5316,210 @@
         "type": "String"
       }
     }
-  }
+  },
+  "outboxTitle": "À envoyer",
+  "outboxIntro": "Ce que vous faites sans connexion est gardé sur ce téléphone, puis envoyé automatiquement dès que le réseau revient.",
+  "outboxQueuedSnack": "Pas de connexion : enregistré sur ce téléphone. L'envoi se fera tout seul au retour du réseau.",
+  "outboxView": "Voir",
+  "outboxSyncedSnack": "{count, plural, =1{1 élément enregistré hors connexion a été envoyé.} other{{count} éléments enregistrés hors connexion ont été envoyés.}}",
+  "@outboxSyncedSnack": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "outboxFailedSnack": "{count, plural, =1{1 élément n'a pas pu être envoyé.} other{{count} éléments n'ont pas pu être envoyés.}}",
+  "@outboxFailedSnack": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "outboxParentMissing": "Le contenu visé n'a pas pu être envoyé : cette action est annulée.",
+  "outboxFileMissing": "Un fichier joint n'est plus sur le téléphone.",
+  "outboxGaveUp": "Le serveur ne répond pas. Réessayez plus tard.",
+  "outboxPendingBadge": "En attente d'envoi",
+  "outboxEmpty": "Rien à envoyer : tout est à jour.",
+  "outboxOffline": "Hors connexion : les éléments partiront au retour du réseau.",
+  "outboxOnline": "Connecté : les éléments en attente partent automatiquement.",
+  "outboxSendNow": "Envoyer maintenant",
+  "outboxSending": "Envoi en cours…",
+  "outboxRetry": "Réessayer",
+  "outboxDelete": "Supprimer",
+  "outboxDeleteTitle": "Supprimer cet élément ?",
+  "outboxDeleteBody": "Il n'a pas encore été envoyé : il sera perdu.",
+  "outboxSectionPending": "En attente",
+  "outboxSectionFailed": "Non envoyés",
+  "outboxWaiting": "En attente du réseau",
+  "outboxRetryLater": "Nouvelle tentative à {time}",
+  "@outboxRetryLater": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "outboxSavedAt": "Enregistré le {date}",
+  "@outboxSavedAt": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "outboxCount": "{count, plural, =0{Rien en attente} =1{1 en attente} other{{count} en attente}}",
+  "@outboxCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "outboxKindTestimony": "Témoignage",
+  "outboxKindVideo": "Témoignage vidéo",
+  "outboxKindPrayerRequest": "Requête de prière",
+  "outboxKindPrayerSession": "Session de prière",
+  "outboxKindEvent": "Événement",
+  "outboxKindComment": "Commentaire",
+  "outboxKindEncouragement": "Encouragement",
+  "outboxKindReaction": "Réaction",
+  "outboxKindSave": "Enregistrement",
+  "outboxKindOther": "Action",
+  "outboxVideoQueued": "Une autre vidéo est en cours d'envoi : celle-ci partira juste après.",
+  "eventsOfflinePending": "{count, plural, =1{1 événement enregistré hors connexion attend le réseau pour être envoyé.} other{{count} événements enregistrés hors connexion attendent le réseau pour être envoyés.}}",
+  "@eventsOfflinePending": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "eventsOfflineFailed": "{count, plural, =1{1 événement enregistré hors connexion n'a pas pu être envoyé. Touchez pour voir.} other{{count} événements enregistrés hors connexion n'ont pas pu être envoyés. Touchez pour voir.}}",
+  "@eventsOfflineFailed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "publishDraftsTitle": "Brouillons",
+  "publishDraftsHint": "Témoignages commencés, gardés sur ce téléphone : touchez pour continuer.",
+  "publishDraftUpdated": "Modifié le {date}",
+  "@publishDraftUpdated": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "publishDraftDeleteTitle": "Supprimer ce brouillon ?",
+  "publishDraftDeleteBody": "Ce témoignage n'a pas été publié : il sera perdu.",
+  "publishDraftSaved": "Brouillon enregistré. Retrouvez-le dans « Publier ».",
+  "publishLeaveTitle": "Quitter ce témoignage ?",
+  "publishLeaveBody": "Votre témoignage n'est pas encore publié. Enregistrez-le en brouillon pour le reprendre plus tard depuis « Publier ».",
+  "publishLeaveKeep": "Enregistrer le brouillon",
+  "publishLeaveDiscard": "Supprimer",
+  "publishLeaveStay": "Continuer à écrire",
+  "publishVerseAttached": "Témoignage sur ce verset",
+  "bibleCopyLink": "Copier le lien du verset",
+  "bibleLinkCopied": "Lien copié",
+  "bibleShareChapter": "Partager le lien",
+  "offlineMineTitle": "Mes témoignages sur ce téléphone",
+  "offlineMineHint": "Gardés automatiquement pour les relire sans connexion. Les retirer ne les supprime pas en ligne.",
+  "offlineMineRemove": "Retirer de ce téléphone",
+  "offlineMineRemoveAll": "Tout retirer",
+  "offlineMineRemoveAllTitle": "Retirer vos témoignages de ce téléphone ?",
+  "offlineMineRemoveBody": "Ils restent publiés et visibles en ligne : seule la copie gardée sur ce téléphone est effacée.",
+  "offlineMineRemoved": "Retiré de ce téléphone",
+  "offlineMineBanner": "Hors connexion : copie enregistrée sur ce téléphone le {date}.",
+  "@offlineMineBanner": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "offlineMineMediaHint": "Sans connexion, seul le texte est disponible. Téléchargez ce témoignage pour lire le média hors ligne.",
+  "reactionPeopleTitle": "Qui a réagi ?",
+  "reactionPeopleAll": "Toutes",
+  "reactionPeopleEmpty": "Personne n'a encore réagi.",
+  "reactionPeopleError": "Impossible de charger les réactions.",
+  "reactionPeopleMore": "Afficher plus",
+  "reactionPeoplePrayedTimes": "{count, plural, =1{A prié 1 fois} other{A prié {count} fois}}",
+  "@reactionPeoplePrayedTimes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prayTimesYou": "{count, plural, =1{Vous avez prié 1 fois} other{Vous avez prié {count} fois}}",
+  "@prayTimesYou": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prayAgainHint": "Vous pouvez prier encore : un nouveau temps de prière de 5 minutes s'ouvre.",
+  "prayAgain": "Prier encore",
+  "prayRemoveLast": "Retirer ma dernière prière",
+  "reactionPeopleEncouragements": "Encouragements",
+  "reactionPeopleEmptyComments": "Aucun commentaire pour le moment.",
+  "reactionPeopleShort": "Réactions",
+  "sharedLinkOpenTitle": "Ouvrir ce lien ?",
+  "sharedLinkOpenBody": "Ce lien s'ouvrira hors de l'application :\n{url}",
+  "@sharedLinkOpenBody": {
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "sharedLinkOpen": "Ouvrir",
+  "sharedLinkOpenFailed": "Impossible d'ouvrir ce lien.",
+  "publishFormatLink": "Lien",
+  "publishFormatImage": "Image",
+  "publishLinkTitle": "Insérer un lien",
+  "publishLinkText": "Texte affiché",
+  "publishLinkUrl": "Adresse (URL)",
+  "publishLinkInvalid": "Adresse invalide (ex. : https://exemple.com)",
+  "publishLinkInsert": "Insérer",
+  "publishImageLimit": "{count} images au plus par témoignage.",
+  "@publishImageLimit": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "publishImageNeedsConnection": "Une connexion Internet est nécessaire pour ajouter une image.",
+  "publishImageUploadFailed": "L'image n'a pas pu être envoyée. Réessayez.",
+  "publishImageRemove": "Retirer l'image",
+  "publishPreviewAction": "Aperçu",
+  "publishPreviewTitle": "Aperçu du témoignage",
+  "publishPreviewCardTitle": "Voir avant de publier",
+  "publishPreviewCardBody": "Votre témoignage tel que les lecteurs le verront.",
+  "publishPreviewNotice": "Aperçu : rien n'est encore publié.",
+  "publishPreviewBack": "Continuer la modification",
+  "publishPreviewMediaError": "Lecture impossible sur cet appareil.",
+  "publishPreviewPlay": "Écouter",
+  "publishPreviewPause": "Pause",
+  "publishWebTitle": "Publier aussi sur le web",
+  "publishWebHint": "Votre témoignage pourra apparaître sur le site My Testimony et dans Google. Vous pourrez retirer cet accord depuis la page de votre témoignage sur le site.",
+  "publishWebAnonymous": "Témoigner de façon anonyme sur le site",
+  "publishWebAnonymousHint": "Sur le site, ni votre nom ni votre photo. L'application montre toujours l'auteur.",
+  "publishResumeLabel": "Résumé écrit (recommandé)",
+  "publishResumeHint": "Affiché sur la page de votre témoignage sur le site et lu par Google.",
+  "publishResumePlaceholder": "En quelques phrases : ce que Dieu a fait pour vous",
+  "publishTranscriptionLabel": "Transcription (facultatif)",
+  "publishTranscriptionPlaceholder": "Ce qui est dit dans la vidéo, mot pour mot",
+  "testimonyWebTitle": "Sur le web",
+  "testimonyWebOnHint": "Visible sur le site My Testimony et dans Google. Décoché : la page n'est plus publique et Google la retire de ses résultats.",
+  "testimonyWebOffHint": "Ni sur le site ni dans Google. Toujours visible dans l'application.",
+  "testimonyWebSavedOn": "Votre témoignage est publié sur le web.",
+  "testimonyWebSavedOff": "Votre témoignage est retiré du web.",
+  "testimonyWebSaveFailed": "Le choix n'a pas pu être enregistré. Réessayez."
 }

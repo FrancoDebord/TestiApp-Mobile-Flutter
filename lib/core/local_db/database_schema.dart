@@ -1,9 +1,11 @@
+import 'dart:convert';
+
 import 'package:sqflite/sqflite.dart';
 
 /// All CREATE TABLE statements and index definitions.
 /// Version history is managed via onUpgrade.
 abstract final class DatabaseSchema {
-  static const int version = 5;
+  static const int version = 8;
 
   // ── Table names ────────────────────────────────────────────────────────────
   static const tUsers              = 'users';
@@ -17,6 +19,14 @@ abstract final class DatabaseSchema {
   static const tDrafts             = 'drafts';
   static const tSyncCursors        = 'sync_cursors';
   static const tPendingOperations  = 'pending_operations';
+
+  // File d'envoi hors connexion (lib/features/offline/outbox_controller.dart).
+  static const tOutbox             = 'outbox';
+  static const tOutboxIds          = 'outbox_ids';
+
+  // Mes témoignages et index des téléchargements, lisibles hors connexion
+  // (lib/features/downloads/data/offline_testimonies_store.dart).
+  static const tOfflineTestimonies = 'offline_testimonies';
 
   // ── Bible (v2) ─────────────────────────────────────────────────────────────
   static const tBibleTranslations = 'bible_translations';
@@ -39,6 +49,9 @@ abstract final class DatabaseSchema {
     batch.execute(_createDrafts);
     batch.execute(_createSyncCursors);
     batch.execute(_createPendingOperations);
+    batch.execute(_createOutbox);
+    batch.execute(_createOutboxIds);
+    batch.execute(_createOfflineTestimonies);
     batch.execute(_createBibleTranslations);
     batch.execute(_createBibleBooks);
     batch.execute(_createBibleVerses);
@@ -51,6 +64,7 @@ abstract final class DatabaseSchema {
     batch.execute(_idxNotificationsRecipient);
     batch.execute(_idxCommentsTestimony);
     batch.execute(_idxPendingOpStatus);
+    batch.execute(_idxOutboxOwner);
     batch.execute(_idxBibleVersesLookup);
 
     await batch.commit(noResult: true);
@@ -89,6 +103,41 @@ abstract final class DatabaseSchema {
       await db.delete(tSyncCursors,
           where: 'entity IN (?, ?, ?, ?)',
           whereArgs: ['seed_v1', 'verse_of_day', 'feed', 'categories']);
+    }
+    if (oldV < 6) {
+      // File d'envoi hors connexion : remplace pending_operations, dont les
+      // publications en attente (POST /testimonies) sont reprises telles quelles.
+      await db.execute(_createOutbox);
+      await db.execute(_createOutboxIds);
+      await db.execute(_idxOutboxOwner);
+      final old = await db.query(tPendingOperations, where: 'status = ?', whereArgs: ['pending']);
+      for (final op in old) {
+        final body = op['body'] as String?;
+        await db.insert(tOutbox, {
+          'id': op['id'],
+          'user_id': '', // compte connecté à la prochaine synchronisation
+          'kind': op['endpoint'] == '/testimonies' ? 'testimony' : 'request',
+          'payload': jsonEncode({
+            'request': {
+              'method': op['method'],
+              'path': op['endpoint'],
+              'body': body == null ? null : jsonDecode(body),
+            },
+          }),
+          'status': 'pending',
+          'created_at': op['created_at'],
+          'updated_at': op['created_at'],
+        });
+      }
+      await db.delete(tPendingOperations);
+    }
+    if (oldV < 7) {
+      // Brouillons de témoignage : tout le formulaire en JSON (lib/features/publish/drafts/).
+      await db.execute('ALTER TABLE $tDrafts ADD COLUMN payload TEXT'); // i18n-ignore
+    }
+    if (oldV < 8) {
+      // L'index des téléchargements (downloads/index.json) y est repris au premier chargement.
+      await db.execute(_createOfflineTestimonies);
     }
   }
 
@@ -248,6 +297,7 @@ abstract final class DatabaseSchema {
       visibility      TEXT DEFAULT 'public',
       consent_given   INTEGER DEFAULT 0,
       status          TEXT DEFAULT 'draft',
+      payload         TEXT,
       created_at      TEXT NOT NULL,
       updated_at      TEXT NOT NULL
     )
@@ -278,6 +328,63 @@ abstract final class DatabaseSchema {
       last_tried_at TEXT
     )
   ''';
+
+  // ── File d'envoi hors connexion (v6) ─────────────────────────────────────
+  //
+  // Une ligne par action faite sans réseau (création, commentaire, réaction…),
+  // rejouée dans l'ordre au retour de la connexion. `payload` : étapes JSON
+  // (fichiers à envoyer avant / après, requête principale). `local_id` : identifiant
+  // provisoire de ce qui est créé (« local_… »), remplacé par celui du serveur dans
+  // les actions suivantes grâce à `outbox_ids`. `dedupe_key` : une seule action en
+  // attente par clé (ex. la dernière réaction posée sur un témoignage).
+
+  static const _createOutbox = '''
+    CREATE TABLE $tOutbox (
+      id            TEXT PRIMARY KEY,
+      user_id       TEXT NOT NULL,
+      act_as        TEXT,
+      kind          TEXT NOT NULL,
+      target_id     TEXT,
+      local_id      TEXT,
+      dedupe_key    TEXT,
+      payload       TEXT NOT NULL,
+      label         TEXT NOT NULL DEFAULT '',
+      status        TEXT NOT NULL DEFAULT 'pending',
+      attempts      INTEGER NOT NULL DEFAULT 0,
+      error         TEXT,
+      next_try_at   TEXT,
+      created_at    TEXT NOT NULL,
+      updated_at    TEXT NOT NULL
+    )
+  ''';
+
+  static const _createOutboxIds = '''
+    CREATE TABLE $tOutboxIds (
+      local_id   TEXT PRIMARY KEY,
+      remote_id  TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    )
+  ''';
+
+  // ── Témoignages hors connexion (v8) ──────────────────────────────────────
+  // source « mine » : témoignages de la personne (JSON de l'API) ; « download » :
+  // index des téléchargements (owner_id vide : propres au téléphone).
+  // excluded = 1 : retiré du téléphone par la personne, plus recopié.
+
+  static const _createOfflineTestimonies = '''
+    CREATE TABLE $tOfflineTestimonies (
+      owner_id   TEXT NOT NULL,
+      source     TEXT NOT NULL,
+      id         TEXT NOT NULL,
+      payload    TEXT NOT NULL,
+      excluded   INTEGER NOT NULL DEFAULT 0,
+      saved_at   TEXT NOT NULL,
+      PRIMARY KEY (owner_id, source, id)
+    )
+  ''';
+
+  static const _idxOutboxOwner =
+      'CREATE INDEX idx_outbox_owner ON $tOutbox(user_id, status, created_at)';
 
   // ── Bible tables (v3 — string code as PK) ────────────────────────────────
 

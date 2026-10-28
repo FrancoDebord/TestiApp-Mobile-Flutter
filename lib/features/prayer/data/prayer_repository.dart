@@ -2,16 +2,21 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/app_constants.dart';
+import '../../../core/network/network_failure.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../services/api_service.dart';
 import '../models/prayer_models.dart';
 
 /// Erreur lisible d'une action de prière.
 /// Codes : 403 droits · 404 introuvable · 409 état (salle pas encore ouvrable…) · 422 données · 429 trop rapide.
-class PrayerFailure implements Exception {
-  const PrayerFailure(this.message, {this.statusCode = 0});
+class PrayerFailure implements Exception, OfflineAwareFailure {
+  const PrayerFailure(this.message, {this.statusCode = 0, this.offline = false});
   final String message;
   final int statusCode;
+
+  /// Serveur injoignable : l'action peut être gardée hors connexion.
+  @override
+  final bool offline;
 
   @override
   String toString() => message;
@@ -66,7 +71,7 @@ class PrayerRepository {
       final msg = body is Map ? body['message'] as String? : null;
       if (msg != null && msg.isNotEmpty) throw PrayerFailure(msg, statusCode: status);
       if (status >= 500) throw PrayerFailure(L10n.current.prayerErrorServer(status), statusCode: status);
-      throw PrayerFailure(L10n.current.prayerErrorConnection);
+      throw PrayerFailure(L10n.current.prayerErrorConnection, offline: true);
     }
   }
 
@@ -133,6 +138,19 @@ class PrayerRepository {
 
   Future<PrayerRequest> pray(String id, {required bool prayed}) => _guard(() async {
         final res = await _api.post<dynamic>(AppConstants.prayerRequestPray(id), data: {'prayed': prayed});
+        return PrayerRequest.fromJson(_map(res.data));
+      });
+
+  /// Une prière de plus (la première si la personne ne prie pas encore), après le temps de prière.
+  /// docs serveur fonctionnalites/prier-plusieurs-fois.md
+  Future<PrayerRequest> prayAgain(String id) => _guard(() async {
+        final res = await _api.post<dynamic>(AppConstants.prayerRequestPray(id), data: const {'again': true});
+        return PrayerRequest.fromJson(_map(res.data));
+      });
+
+  /// Retire la dernière prière ; à la dernière, la personne ne prie plus.
+  Future<PrayerRequest> removeLastPrayer(String id) => _guard(() async {
+        final res = await _api.post<dynamic>(AppConstants.prayerRequestPray(id), data: const {'prayed': false, 'last': true});
         return PrayerRequest.fromJson(_map(res.data));
       });
 
