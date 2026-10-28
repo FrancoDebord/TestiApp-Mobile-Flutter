@@ -19,10 +19,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/app_constants.dart';
 import '../../core/theme/app_colors.dart';
 import '../../services/api_service.dart';
+import 'link_editing_controller.dart';
 import 'mention_text.dart';
 import '../models/account_approval.dart';
 import 'approval_badges.dart';
 import '../../l10n/app_localizations.dart';
+
+export 'link_editing_controller.dart';
 
 /// Compte proposé après « @ ».
 class MentionCandidate {
@@ -85,8 +88,9 @@ final mentionSearchProvider = Provider<MentionSearch>((ref) {
   };
 });
 
-/// Contrôleur de saisie qui retient les comptes choisis et surligne « @Nom ».
-class MentionEditingController extends TextEditingController {
+/// Contrôleur de saisie qui retient les comptes choisis et surligne « @Nom »
+/// (et les adresses collées, comme [LinkEditingController]).
+class MentionEditingController extends LinkEditingController {
   MentionEditingController({super.text});
 
   final Map<String, MentionRef> _picked = {}; // nom affiché → compte
@@ -115,23 +119,7 @@ class MentionEditingController extends TextEditingController {
   }
 
   @override
-  TextSpan buildTextSpan({required BuildContext context, TextStyle? style, required bool withComposing}) {
-    final composing = withComposing && value.isComposingRangeValid;
-    final ranges = composing ? const <({int start, int end, MentionRef ref})>[] : MentionCodec.ranges(text, _picked.values);
-    if (ranges.isEmpty) {
-      return super.buildTextSpan(context: context, style: style, withComposing: withComposing);
-    }
-    final highlight = (style ?? const TextStyle()).copyWith(color: AppColors.primary, fontWeight: FontWeight.w600);
-    final children = <TextSpan>[];
-    var last = 0;
-    for (final r in ranges) {
-      if (r.start > last) children.add(TextSpan(text: text.substring(last, r.start)));
-      children.add(TextSpan(text: text.substring(r.start, r.end), style: highlight));
-      last = r.end;
-    }
-    if (last < text.length) children.add(TextSpan(text: text.substring(last)));
-    return TextSpan(style: style, children: children);
-  }
+  Iterable<MentionRef> get highlightedMentions => _picked.values;
 }
 
 /// « @requête » juste avant le curseur, ou null.

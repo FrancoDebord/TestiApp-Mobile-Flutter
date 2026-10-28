@@ -71,6 +71,55 @@ Future<void> openDailyVerse(BuildContext context, {int initialTab = 0}) {
   ));
 }
 
+/// Lien à partager du verset : `shareUrl` du serveur, sinon la page datée du
+/// site (`/verset-du-jour/AAAA-MM-JJ`, jour de [date] ou du verset du jour).
+/// Docs serveur : verset-du-jour.md, « Lien de partage ».
+String dailyVerseShareLink(DailyVerse? verse, {DateTime? date, DateTime? now}) {
+  final url = verse?.shareUrl;
+  if (url != null && url.isNotEmpty) return url;
+  final day = date ?? verseDay(now ?? DateTime.now());
+  return '${AppConstants.webBaseUrl}/verset-du-jour/${VerseStylePrefs.dayKey(day)}';
+}
+
+/// Lien daté reçu (`/verset-du-jour/AAAA-MM-JJ`) : le verset de ce jour-là
+/// (comme sur le site) ; aujourd'hui, date invalide ou verset introuvable :
+/// le verset du jour.
+class DatedDailyVerseScreen extends ConsumerStatefulWidget {
+  const DatedDailyVerseScreen({required this.date, super.key});
+
+  /// Jour tel qu'il figure dans le lien.
+  final String date;
+
+  @override
+  ConsumerState<DatedDailyVerseScreen> createState() => _DatedDailyVerseScreenState();
+}
+
+class _DatedDailyVerseScreenState extends ConsumerState<DatedDailyVerseScreen> {
+  late final DateTime? _day = RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(widget.date)
+      ? DateTime.tryParse(widget.date)
+      : null;
+  late final bool _today = _day == null || _day == verseDay(DateTime.now());
+  late final Future<DailyVerse?> _verse = _today
+      ? Future.value(null)
+      : ref.read(dailyVerseRepositoryProvider).byDate(widget.date).then<DailyVerse?>((v) => v.id > 0 ? v : null,
+          onError: (_) => null);
+
+  @override
+  Widget build(BuildContext context) {
+    if (_today) return const DailyVerseScreen();
+    return FutureBuilder<DailyVerse?>(
+      future: _verse,
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        }
+        final v = snap.data;
+        return v == null ? const DailyVerseScreen() : DailyVerseScreen(verseId: v.id, date: _day);
+      },
+    );
+  }
+}
+
 class DailyVerseScreen extends ConsumerStatefulWidget {
   const DailyVerseScreen({this.initialTab = 0, this.verseId, this.date, super.key});
 
@@ -175,6 +224,10 @@ class _DailyVerseScreenState extends ConsumerState<DailyVerseScreen>
 
   Future<void> _share(String text, String reference, String label, VerseVersion? version) async {
     final suffix = version == null ? '' : ' ($label)';
+    final verse = widget.verseId != null
+        ? ref.read(verseByIdProvider(widget.verseId!)).value
+        : ref.read(dailyVerseProvider).value;
+    final link = dailyVerseShareLink(verse, date: widget.date);
     await shareVerseImage(
       context,
       design: ref.read(currentVerseDesignProvider),
@@ -182,7 +235,8 @@ class _DailyVerseScreenState extends ConsumerState<DailyVerseScreen>
       text: text,
       reference: version == null ? reference : '$reference$suffix',
       version: version,
-      shareText: context.l10n.verseShareText(_strip(text), '$reference$suffix'),
+      // Lien daté : ouvert plus tard, il montre toujours ce verset.
+      shareText: '${context.l10n.verseShareText(_strip(text), '$reference$suffix')}\n$link',
     );
     if (widget.verseId == null) await ref.read(dailyVerseProvider.notifier).recordShare();
   }
@@ -1314,7 +1368,7 @@ class VersePrayerSheet extends ConsumerStatefulWidget {
 
 class _VersePrayerSheetState extends ConsumerState<VersePrayerSheet> {
   final _form = GlobalKey<FormState>();
-  final _body = TextEditingController();
+  final _body = LinkEditingController();
   late final _draft = PrayerRequestDraft(dailyVerseId: widget.verseId);
   bool _sending = false;
 
@@ -1640,7 +1694,7 @@ class _CommentTile extends StatelessWidget {
                     child: Text(context.l10n.verseCommentHidden, style: AppTextStyles.bodySmall.copyWith(color: AppColors.warning)),
                   ),
                 const SizedBox(height: 4),
-                MentionText(c.body, mentions: c.mentions, style: AppTextStyles.bodyMedium),
+                MentionText(c.body, mentions: c.mentions, linkPreview: true, style: AppTextStyles.bodyMedium),
                 CommentLikeButton(
                   comment: CommentRef.verse('$verseId', c.id),
                   initialCount: c.likesCount,

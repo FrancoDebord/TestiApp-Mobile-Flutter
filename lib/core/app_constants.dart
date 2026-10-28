@@ -214,6 +214,11 @@ abstract final class AppConstants {
   static const String userSuggestions = '/users/suggestions';
   // Mentions « @ » : GET ?q=&limit=8&testimony_id= → [{id, displayName, avatarUrl, initials, isVerified, isFollowing}] (connecté)
   static const String mentionSearch   = '/users/mention-search';
+
+  /// Aperçu d'un lien (docs serveur fonctionnalites/liens-et-apercus.md) :
+  /// `GET ?url=` → `{ url, title, description, image, siteName, host } | null`.
+  static const String linkPreview     = '/link-preview';      // API, connecté
+  static const String webLinkPreview  = '/liens/apercu';      // site, visiteur
   // Autocomplétion des recherches (public) : GET ?q=&scope=all|testimonies|users|events|prayer|bible&limit=
   // → {query, scope, suggestions:[{text, source, highlight}], results:[{type, id, label, sublabel, route, url, avatar…}]}
   static const String searchSuggest = '/search/suggest';

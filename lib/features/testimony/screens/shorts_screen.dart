@@ -27,6 +27,7 @@ import '../widgets/testimony_info.dart';
 import '../providers/view_tracker.dart';
 import 'video_player_screen.dart' show showVideoQualitySheet, videoQualityChipLabel;
 import '../../../shared/widgets/video_poster.dart';
+import '../../../shared/widgets/link_editing_controller.dart';
 
 // ============================================================================
 // ShortsScreen
@@ -987,7 +988,7 @@ class _ShortsCommentsSheet extends ConsumerStatefulWidget {
 
 class _ShortsCommentsSheetState
     extends ConsumerState<_ShortsCommentsSheet> {
-  final _ctrl      = TextEditingController();
+  final _ctrl      = LinkEditingController();
   final _focus     = FocusNode();
   final _scrollCtrl = ScrollController();
   bool _sending    = false;
@@ -1261,6 +1262,7 @@ class _CommentTile extends StatelessWidget {
                 const SizedBox(height: 3),
                 MentionText(
                   MentionCodec.encode(comment.text, comment.mentions),
+                  linkPreview: true,
                   style: AppTextStyles.bodyMedium.copyWith(height: 1.4),
                 ),
                 CommentLikeButton(

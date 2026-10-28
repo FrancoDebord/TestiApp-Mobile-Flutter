@@ -11,6 +11,8 @@ import '../../../shared/models/comment_model.dart';
 import '../../../shared/widgets/guest_gate.dart';
 import '../../../shared/widgets/approval_badges.dart';
 import '../providers/comments_provider.dart';
+import '../../../shared/widgets/link_editing_controller.dart';
+import '../../../shared/widgets/mention_text.dart';
 
 // =============================================================================
 // TestimonyCommentsScreen
@@ -179,8 +181,11 @@ class _CommentTile extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 4),
-                      Text(
+                      // Mentions et liens cliquables ; aperçu du premier lien.
+                      MentionText(
                         comment.text,
+                        mentions: comment.mentions,
+                        linkPreview: true,
                         style: const TextStyle(
                           fontFamily: AppFonts.family,
                           fontSize: 14,
@@ -362,7 +367,7 @@ class _CommentInput extends StatefulWidget {
 }
 
 class _CommentInputState extends State<_CommentInput> {
-  final _controller = TextEditingController();
+  final _controller = LinkEditingController();
   bool _hasText = false;
 
   @override

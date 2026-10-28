@@ -12,6 +12,7 @@ import '../data/prayer_repository.dart';
 import '../models/prayer_models.dart';
 import '../providers/prayer_providers.dart';
 import '../widgets/prayer_widgets.dart';
+import '../../../shared/widgets/link_editing_controller.dart';
 
 /// Programmer (ou modifier, [sessionId]) une session de prière. Tout compte connecté peut
 /// programmer ; [eventId] : session d'un événement (réservé à ses gestionnaires, vérifié par le serveur).
@@ -30,8 +31,8 @@ class _CreatePrayerSessionScreenState extends ConsumerState<CreatePrayerSessionS
 
   final _form = GlobalKey<FormState>();
   final _title = TextEditingController();
-  final _description = TextEditingController();
-  final _topic = TextEditingController();
+  final _description = LinkEditingController();
+  final _topic = LinkEditingController();
   PrayerSessionDraft? _draft;
   bool _saving = false;
 

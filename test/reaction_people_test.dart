@@ -286,6 +286,51 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  // Affichage bord à bord : la barre de navigation du téléphone (48 px ici) ne
+  // doit cacher ni les noms ni le titre ; la feuille ne reste pas collée en bas.
+  testWidgets('feuille au-dessus de la barre de navigation du téléphone', (tester) async {
+    tester.view.physicalSize = const Size(780, 1600);
+    tester.view.devicePixelRatio = 2;
+    tester.view.viewPadding = const FakeViewPadding(top: 48, bottom: 96); // 24 / 48 px logiques
+    addTearDown(tester.view.reset);
+    final api = _Api()
+      ..people = (_) => {
+            'summary': _summary,
+            'people': [for (var i = 0; i < 12; i++) _person('u$i', 'Personne $i', ['like'])],
+          };
+    await tester.pumpWidget(ProviderScope(
+      overrides: [apiServiceProvider.overrideWithValue(api)],
+      child: MaterialApp(
+        locale: const Locale('fr'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: TextButton(
+                onPressed: () => showReactionPeople(context, subject: ReactionSubject.testimony, id: 't1'),
+                child: const Text('ouvrir'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ));
+    await tester.tap(find.text('ouvrir'));
+    await tester.pumpAndSettle();
+
+    const screenHeight = 800.0;
+    const navBar = 48.0;
+    final sheet = tester.getRect(find.byType(ReactionPeopleSheet));
+    expect(sheet.bottom, lessThanOrEqualTo(screenHeight - navBar), reason: 'contenu sous la barre système');
+    expect(sheet.height, greaterThanOrEqualTo(screenHeight * 0.4 - 1));
+    // Dernier nom visible une fois la liste défilée jusqu'en bas : au-dessus de la barre.
+    await tester.drag(find.byType(ListView), const Offset(0, -2000));
+    await tester.pumpAndSettle();
+    expect(tester.getRect(find.text('Personne 11')).bottom, lessThanOrEqualTo(screenHeight - navBar));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('témoignage : onglet « Commentaires » toujours là, juste après « Toutes »', (tester) async {
     final api = _Api()
       ..people = (q) => {

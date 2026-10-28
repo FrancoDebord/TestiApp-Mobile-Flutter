@@ -21,10 +21,26 @@ const _kInlineMarkers = ['**', '__', '~~'];
 final kRichLinkPattern =
     RegExp(r'(?<![!@])\[([^\]\n]+)\]\((https?://[^\s)]+)\)');
 
-/// Adresse `https://…` écrite telle quelle : lien aussi (comme sur le site).
-/// La ponctuation finale (« . », « , », « ! »…) n'en fait pas partie.
-final kBareUrlPattern =
-    RegExp(r'''(https?://[^\s<>()\[\]"']*[^\s<>()\[\]"'.,;:!?»])''');
+/// Adresse `https://…` (ou `www.…`) écrite ou collée telle quelle : lien aussi
+/// (comme sur le site). La ponctuation finale (« . », « , », « ! »…) n'en fait pas partie.
+final kBareUrlPattern = RegExp(
+    r'''((?:https?://|(?<![\w.@/])www\.)[^\s<>()\[\]"']*[^\s<>()\[\]"'.,;:!?»])''',
+    caseSensitive: false);
+
+/// Adresse ouvrable : « www.… » reçoit `https://`.
+String normalizeLinkUrl(String url) =>
+    RegExp(r'^https?://', caseSensitive: false).hasMatch(url) ? url : 'https://$url';
+
+/// Première adresse de [text] (lien `[texte](https://…)` ou adresse nue),
+/// images exclues ; null s'il n'y en a pas. Sert à l'aperçu du lien.
+String? firstLinkUrl(String text) {
+  final withoutImages = text.replaceAll(RegExp(r'!\[[^\]\n]*\]\([^\s)]*\)'), ' ');
+  final link = kRichLinkPattern.firstMatch(withoutImages);
+  final bare = kBareUrlPattern.firstMatch(withoutImages);
+  if (link == null && bare == null) return null;
+  if (bare == null || (link != null && link.start <= bare.start)) return link!.group(2);
+  return normalizeLinkUrl(bare.group(1)!);
+}
 
 /// Image insérée dans le texte : `![légende](https://…)`, seule sur sa ligne.
 final kRichImageLinePattern =
@@ -41,6 +57,7 @@ List<String> richBodyImageUrls(String text) => [
 
 /// Demande confirmation (adresse complète affichée) puis ouvre [url] hors de l'application.
 Future<void> openRichTextLink(BuildContext context, String url) async {
+  url = normalizeLinkUrl(url);
   final uri = Uri.tryParse(url);
   if (uri == null) return;
   final l10n = context.l10n;

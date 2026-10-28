@@ -49,7 +49,7 @@ import '../../features/testimony/screens/featured_testimony_screen.dart';
 import '../../features/testimony/screens/report_testimony_screen.dart';
 import '../../features/testimony/screens/testimony_comments_screen.dart';
 import '../../features/testimony/screens/testimony_detail_screen.dart';
-import '../../features/daily_verse/screens/daily_verse_screen.dart' show DailyVerseScreen;
+import '../../features/daily_verse/screens/daily_verse_screen.dart' show DailyVerseScreen, DatedDailyVerseScreen;
 import '../../features/daily_verse/screens/verse_history_screen.dart';
 import '../../features/conversion/screens/conversion_edit_screen.dart';
 import '../../features/events/screens/past_events_screen.dart';
@@ -411,14 +411,15 @@ List<RouteBase> _buildRoutes() {
       path: '/priere/sessions/:id',
       redirect: (_, state) => '/prayer-sessions/${state.pathParameters['id']}',
     ),
-    // Verset du jour (le lien d'un jour passé ouvre le verset du jour).
+    // Verset du jour (lien daté : verset de ce jour-là, docs serveur verset-du-jour.md).
     GoRoute(
       path: '/verset-du-jour',
       builder: (context, state) => const DailyVerseScreen(),
       routes: [
         // Avant ':date' : sinon « historique » serait lu comme une date.
         GoRoute(path: 'historique', redirect: (_, _) => '/verse-history'),
-        GoRoute(path: ':date', builder: (context, state) => const DailyVerseScreen()),
+        // Lien de partage daté : le verset de ce jour-là.
+        GoRoute(path: ':date', builder: (context, state) => DatedDailyVerseScreen(date: state.pathParameters['date']!)),
       ],
     ),
     // Historique des versets du jour (page dédiée).

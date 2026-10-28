@@ -76,7 +76,7 @@ class _PrayerRequestDetailScreenState extends ConsumerState<PrayerRequestDetailS
   }
 
   Future<void> _markAnswered() async {
-    final note = TextEditingController();
+    final note = LinkEditingController();
     final success = context.l10n.prayerAnsweredSuccess;
     final ok = await showDialog<bool>(
       context: context,
@@ -302,7 +302,7 @@ class _RequestBody extends StatelessWidget {
           // Mentions « @Nom » cliquables (profil).
           SelectionArea(
             child: MentionText(r.body,
-                mentions: r.mentions, style: AppTextStyles.bodyLarge.copyWith(color: AppColors.textPrimary, height: 1.5)),
+                mentions: r.mentions, linkPreview: true, style: AppTextStyles.bodyLarge.copyWith(color: AppColors.textPrimary, height: 1.5)),
           ),
           if (r.event != null) ...[
             const SizedBox(height: AppSpacing.md),
@@ -517,7 +517,7 @@ class _Messages extends ConsumerWidget {
                           ),
                       ]),
                       const SizedBox(height: 4),
-                      MentionText(m.body, mentions: m.mentions, style: AppTextStyles.bodyMedium),
+                      MentionText(m.body, mentions: m.mentions, linkPreview: true, style: AppTextStyles.bodyMedium),
                       if (m.bibleReference != null) ...[
                         const SizedBox(height: 4),
                         Row(children: [

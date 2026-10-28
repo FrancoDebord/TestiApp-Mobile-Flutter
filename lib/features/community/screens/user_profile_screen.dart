@@ -18,6 +18,7 @@ import '../providers/follow_provider.dart';
 import '../widgets/account_tile.dart';
 import '../widgets/follow_button.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/mention_text.dart';
 
 /// Profil public d'un auteur (personne ou organisation) : présentation, bouton Suivre, témoignages.
 /// Son propre profil ouvre l'onglet « Profil ».
@@ -227,7 +228,7 @@ class _Header extends StatelessWidget {
                 FollowButton(userId: a.id, displayName: a.displayName, onCountChanged: onFollowers),
                 if (a.bio != null) ...[
                   const SizedBox(height: 14),
-                  Text(a.bio!, textAlign: TextAlign.center, style: const TextStyle(fontSize: 14)),
+                  MentionText(a.bio!, textAlign: TextAlign.center, style: const TextStyle(fontSize: 14)),
                 ],
               ],
             ),

@@ -34,6 +34,7 @@ import '../providers/profile_provider.dart';
 import '../widgets/profile_menu.dart';
 import '../../events/widgets/organizer_events_section.dart';
 import 'settings_screen.dart' show confirmLogout;
+import '../../../shared/widgets/mention_text.dart';
 
 /// Écran 9 de la maquette : « Profil utilisateur ».
 class ProfileScreen extends ConsumerWidget {
@@ -366,7 +367,7 @@ class _ProfileHeaderState extends ConsumerState<_ProfileHeader> {
         ),
         if (profile.bio != null && profile.bio!.isNotEmpty) ...[
           const SizedBox(height: 6),
-          Text(
+          MentionText(
             profile.bio!,
             style: AppTextStyles.bodySmall.copyWith(fontStyle: FontStyle.italic, height: 1.4),
             textAlign: TextAlign.center,

@@ -19,6 +19,7 @@ import '../widgets/event_location_widgets.dart';
 import '../widgets/event_widgets.dart';
 import '../../../core/media/youtube.dart' show extractYouTubeId;
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/link_editing_controller.dart';
 
 /// Création ([eventId] null) ou modification d'un événement :
 /// infos, dates, lieu, invités principaux, images du carrousel, publication.
@@ -37,6 +38,9 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
 
   final _formKey = GlobalKey<FormState>();
   EventDraft _draft = EventDraft();
+
+  /// Description : les adresses collées sont soulignées pendant la saisie.
+  final _description = LinkEditingController();
 
   /// Événement en cours de modification (images déjà en ligne).
   ChristianEvent? _event;
@@ -85,6 +89,12 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
     if (_isEdit) _load();
   }
 
+  @override
+  void dispose() {
+    _description.dispose();
+    super.dispose();
+  }
+
   Future<void> _load() async {
     setState(() {
       _loading = true;
@@ -109,6 +119,7 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
       setState(() {
         _event = e;
         _draft = queued != null ? EventDraft.fromJson(queued) : EventDraft.fromEvent(e);
+        _description.text = _draft.description;
         _loading = false;
       });
     } on EventFailure catch (e) {
@@ -459,7 +470,7 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
                 ),
                 const SizedBox(height: 14),
                 TextFormField(
-                  initialValue: d.description,
+                  controller: _description,
                   minLines: 4,
                   maxLines: 12,
                   maxLength: 5000,

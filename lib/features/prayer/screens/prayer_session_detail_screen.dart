@@ -12,6 +12,7 @@ import '../data/prayer_repository.dart';
 import '../models/prayer_models.dart';
 import '../providers/prayer_providers.dart';
 import '../widgets/prayer_widgets.dart';
+import '../../../shared/widgets/mention_text.dart';
 
 /// Détail d'une session de prière : « Je serai là », puis rejoindre la salle.
 /// La salle est un direct : l'hôte l'ouvre (studio `/lives/{id}/studio`), les autres la
@@ -186,7 +187,7 @@ class _PrayerSessionDetailScreenState extends ConsumerState<PrayerSessionDetailS
                   const SizedBox(height: AppSpacing.xl),
                   Text(context.l10n.prayerSessionDescriptionLabel, style: AppTextStyles.h4),
                   const SizedBox(height: AppSpacing.sm),
-                  Text(value.description!, style: AppTextStyles.bodyMedium.copyWith(height: 1.5)),
+                  MentionText(value.description!, linkPreview: true, style: AppTextStyles.bodyMedium.copyWith(height: 1.5)),
                 ],
                 if (value.topics.isNotEmpty) ...[
                   const SizedBox(height: AppSpacing.xl),

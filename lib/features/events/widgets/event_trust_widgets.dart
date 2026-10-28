@@ -13,6 +13,7 @@ import '../models/event_models.dart';
 import '../providers/events_providers.dart';
 import '../../../l10n/app_localizations.dart';
 import 'event_widgets.dart';
+import '../../../shared/widgets/link_editing_controller.dart';
 
 const _postponedColor = Color(0xFFB54708);
 
@@ -463,7 +464,7 @@ class _EventSurveyCardState extends ConsumerState<EventSurveyCard> {
     final mine = widget.event.survey.mine;
     _attended = mine?.attended;
     _rating = mine?.rating;
-    _body = TextEditingController(text: mine?.body ?? '');
+    _body = LinkEditingController(text: mine?.body ?? '');
   }
 
   @override

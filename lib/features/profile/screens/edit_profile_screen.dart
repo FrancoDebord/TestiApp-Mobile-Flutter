@@ -17,6 +17,7 @@ import '../../../shared/widgets/profile_cover.dart';
 import '../models/profile_models.dart';
 import '../providers/profile_provider.dart';
 import '../../../services/api_service.dart' show LaravelApiException;
+import '../../../shared/widgets/link_editing_controller.dart';
 
 // Pays : liste partagée avec le site (lib/core/data/countries.dart).
 
@@ -108,7 +109,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         text: PhoneNumberField.nationalPart(
             (me?.phone.isNotEmpty ?? false) ? me!.phone : e.phone, _phoneDial));
     _emailCtrl       = TextEditingController(text: e.email);
-    _bioCtrl         = TextEditingController(text: e.bio);
+    _bioCtrl         = LinkEditingController(text: e.bio);
     _customTitleCtrl = TextEditingController(
         text: _kSuggestedTitles.contains(e.title) ? '' : e.title);
     _gender        = _kGenderValues.contains(e.gender) ? e.gender : null;

@@ -20,6 +20,7 @@ import '../models/ip_camera_config.dart';
 import '../models/live_models.dart';
 import '../widgets/ip_camera_form.dart';
 import 'live_studio_screen.dart';
+import '../../../shared/widgets/link_editing_controller.dart';
 
 enum _CheckState { pending, ok, warning, failed }
 
@@ -65,7 +66,7 @@ class _LiveSetupScreenState extends ConsumerState<LiveSetupScreen>
     with WidgetsBindingObserver {
   final _form = GlobalKey<FormState>();
   final _title = TextEditingController();
-  final _description = TextEditingController();
+  final _description = LinkEditingController();
 
   /// Lien du direct YouTube (source youtube).
   final _youtubeUrl = TextEditingController();

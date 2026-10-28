@@ -1127,6 +1127,7 @@ class DailyVerseNotifier extends AsyncNotifier<DailyVerse> {
         'textTranslationName': verse.textTranslationName,
         'originalText':        verse.originalText,
         'originalReference':   verse.originalReference,
+        'shareUrl':            verse.shareUrl,
         'like_count':    verse.likeCount,
         'prayer_count':  verse.prayerCount,
         'is_liked':      verse.isLiked,

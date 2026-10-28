@@ -109,6 +109,14 @@ class DailyVerseRepository {
     );
   }
 
+  // ── Verset d'une date ─────────────────────────────────────────────────────
+
+  /// Verset du jour [date] (AAAA-MM-JJ) : lien de partage daté ouvert plus tard.
+  Future<DailyVerse> byDate(String date) => _guard(() async {
+        final res = await _api.get<Map<String, dynamic>>(AppConstants.verseToday, query: {'date': date});
+        return DailyVerse.fromJson(res.data);
+      });
+
   // ── Réactions ─────────────────────────────────────────────────────────────
 
   Future<void> react(int verseId, String type, {required bool active}) => _guard(() async {

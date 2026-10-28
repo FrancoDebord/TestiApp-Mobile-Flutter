@@ -54,6 +54,7 @@ import '../widgets/testimony_info.dart';
 import '../widgets/tts_listen_card.dart';
 import 'audio_player_screen.dart';
 import 'video_player_screen.dart';
+import '../../../shared/widgets/link_preview.dart';
 
 // ── Modèle commentaire local (in-memory + SQLite) ─────────────────────────────
 
@@ -1062,19 +1063,26 @@ class _ContentBody extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      // Texte complet mis en forme, dévoilé morceau par morceau.
-      child: ProgressiveRichText(
-        text: text,
-        mentions: mentions,
-        style: AppTextStyles.bodyLarge,
-        initialChars: 700,
-        stepChars: 1200,
-        linkStyle: const TextStyle(
-          fontFamily: AppFonts.family,
-          fontWeight: FontWeight.w600,
-          fontSize: 14,
-          color: AppColors.primary,
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Texte complet mis en forme, dévoilé morceau par morceau.
+          ProgressiveRichText(
+            text: text,
+            mentions: mentions,
+            style: AppTextStyles.bodyLarge,
+            initialChars: 700,
+            stepChars: 1200,
+            linkStyle: const TextStyle(
+              fontFamily: AppFonts.family,
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+              color: AppColors.primary,
+            ),
+          ),
+          // Aperçu (miniature, titre) du premier lien du texte.
+          TextLinkPreview(text, padding: const EdgeInsets.only(top: 4)),
+        ],
       ),
     );
   }
@@ -1517,7 +1525,7 @@ class _CommentItem extends StatelessWidget {
                       Text(name, style: AppTextStyles.labelMedium),
                       const SizedBox(height: 4),
                       // Mentions « @ » cliquables (profil)
-                      MentionText(text, style: AppTextStyles.bodyMedium),
+                      MentionText(text, style: AppTextStyles.bodyMedium, linkPreview: true),
                     ],
                   ),
                 ),

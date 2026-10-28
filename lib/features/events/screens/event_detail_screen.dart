@@ -990,10 +990,12 @@ class _DescriptionState extends State<_Description> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
+        // Liens cliquables ; aperçu du premier lien.
+        MentionText(
           widget.text,
           maxLines: _expanded || !long ? null : 6,
           overflow: _expanded || !long ? null : TextOverflow.fade,
+          linkPreview: true,
           style: AppTextStyles.bodyMedium.copyWith(height: 1.5, color: AppColors.textPrimary),
         ),
         if (long)
@@ -1358,7 +1360,7 @@ class _CommentCard extends ConsumerWidget {
                 ),
                 const SizedBox(height: 4),
                 // Mentions « @Nom » cliquables (docs serveur fonctionnalites/mentions.md).
-                MentionText(c.body, mentions: c.mentions, style: AppTextStyles.bodyMedium.copyWith(height: 1.45)),
+                MentionText(c.body, mentions: c.mentions, linkPreview: true, style: AppTextStyles.bodyMedium.copyWith(height: 1.45)),
                 const SizedBox(height: 2),
                 CommentLikeButton(
                   comment: CommentRef.event(event.id, c.id),

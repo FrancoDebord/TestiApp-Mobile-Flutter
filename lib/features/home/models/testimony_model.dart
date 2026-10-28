@@ -676,9 +676,14 @@ class DailyVerse {
     this.textTranslationName,
     this.originalText,
     this.originalReference,
+    this.shareUrl,
   });
 
   final int    id;
+
+  /// Lien à partager (`shareUrl`) : page datée du site, qui montre ce verset
+  /// même ouverte un autre jour (docs serveur verset-du-jour.md, « Lien de partage »).
+  final String? shareUrl;
 
   /// Texte et référence dans la langue de la requête (Accept-Language) :
   /// texte du jour en français, traduction installée (KJV…) en anglais.
@@ -770,6 +775,7 @@ class DailyVerse {
       textTranslationName: str(['textTranslationName']).isEmpty ? null : str(['textTranslationName']),
       originalText: str(['originalText']).isEmpty ? null : str(['originalText']),
       originalReference: str(['originalReference']).isEmpty ? null : str(['originalReference']),
+      shareUrl: str(['shareUrl', 'share_url']).isEmpty ? null : str(['shareUrl', 'share_url']),
     );
   }
 
@@ -798,5 +804,6 @@ class DailyVerse {
     textTranslationName: textTranslationName,
     originalText:        originalText,
     originalReference:   originalReference,
+    shareUrl:            shareUrl,
   );
 }

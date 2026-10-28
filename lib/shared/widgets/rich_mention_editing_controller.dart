@@ -11,7 +11,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../models/mention.dart';
-import '../utils/rich_text_utils.dart' show kRichImageLinePattern;
+import '../utils/rich_text_utils.dart' show kBareUrlPattern, kRichImageLinePattern;
 import 'mention_text_field.dart';
 
 class RichMentionEditingController extends MentionEditingController {
@@ -144,8 +144,31 @@ class RichMentionEditingController extends MentionEditingController {
     if (last < s.length) _plain(s.substring(last), start + last, style, mentionRanges, out);
   }
 
-  /// Texte sans balise ; « @Nom » mis en évidence.
+  /// Texte sans balise ; adresses collées soulignées, « @Nom » mis en évidence.
   void _plain(
+    String s,
+    int start,
+    TextStyle style,
+    List<({int start, int end, MentionRef ref})> mentionRanges,
+    List<InlineSpan> out,
+  ) {
+    var last = 0;
+    for (final m in kBareUrlPattern.allMatches(s)) {
+      if (m.start > last) _mentions(s.substring(last, m.start), start + last, style, mentionRanges, out);
+      out.add(TextSpan(
+        text: m.group(0),
+        style: style.copyWith(
+          color: AppColors.primary,
+          decoration: TextDecoration.underline,
+          decorationColor: AppColors.primary,
+        ),
+      ));
+      last = m.end;
+    }
+    if (last < s.length) _mentions(s.substring(last), start + last, style, mentionRanges, out);
+  }
+
+  void _mentions(
     String s,
     int start,
     TextStyle style,

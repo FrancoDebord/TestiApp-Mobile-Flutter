@@ -43,6 +43,7 @@ import '../../../shared/widgets/youtube_video_player.dart';
 import '../providers/recommendations_provider.dart';
 import '../providers/view_tracker.dart';
 import '../../repost/testimony_share_sheet.dart';
+import '../../../shared/widgets/link_editing_controller.dart';
 
 // ============================================================================
 // Video Player Screen — YouTube-inspired
@@ -1941,7 +1942,7 @@ class _VideoCommentsBottomSheet extends ConsumerStatefulWidget {
 
 class _VideoCommentsBottomSheetState
     extends ConsumerState<_VideoCommentsBottomSheet> {
-  final _controller = TextEditingController();
+  final _controller = LinkEditingController();
   final _focusNode = FocusNode();
 
   List<CommentModel> _comments = [];
@@ -2240,6 +2241,7 @@ class _VideoCommentItem extends StatelessWidget {
                       MentionText(
                         comment.text,
                         mentions: comment.mentions,
+                        linkPreview: true,
                         style: AppTextStyles.bodyMedium,
                       ),
                     ],

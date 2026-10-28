@@ -11,10 +11,13 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../models/mention.dart';
+import '../utils/rich_text_utils.dart' show kBareUrlPattern, openRichTextLink;
+import 'link_preview.dart';
 
 export '../models/mention.dart';
 
-/// Texte avec mentions cliquables (profil `/users/{id}` par défaut).
+/// Texte avec mentions cliquables (profil `/users/{id}` par défaut) et adresses
+/// `https://…` / `www.…` cliquables (confirmation puis navigateur).
 class MentionText extends StatefulWidget {
   const MentionText(
     this.text, {
@@ -25,6 +28,8 @@ class MentionText extends StatefulWidget {
     this.overflow,
     this.onMentionTap,
     this.prefix = const [],
+    this.textAlign,
+    this.linkPreview = false,
     super.key,
   });
 
@@ -39,6 +44,11 @@ class MentionText extends StatefulWidget {
   final TextStyle? mentionStyle;
   final int? maxLines;
   final TextOverflow? overflow;
+  final TextAlign? textAlign;
+
+  /// Carte d'aperçu (miniature, titre) du premier lien sous le texte :
+  /// commentaires, réponses, descriptions.
+  final bool linkPreview;
 
   /// Remplace l'ouverture du profil.
   final ValueChanged<MentionRef>? onMentionTap;
@@ -79,31 +89,53 @@ class _MentionTextState extends State<MentionText> {
     final text = decoded.text;
     final base = widget.style ?? DefaultTextStyle.of(context).style;
     final linkStyle = widget.mentionStyle ?? base.copyWith(color: AppColors.primary, fontWeight: FontWeight.w600);
+    final urlStyle = linkStyle.copyWith(decoration: TextDecoration.underline, decorationColor: linkStyle.color);
 
-    final ranges = MentionCodec.ranges(text, mentions);
+    // Mentions et adresses, dans l'ordre ; une adresse qui chevauche une mention est ignorée.
+    final ranges = <({int start, int end, MentionRef? ref, String? url})>[
+      for (final r in MentionCodec.ranges(text, mentions)) (start: r.start, end: r.end, ref: r.ref, url: null),
+    ];
+    for (final m in kBareUrlPattern.allMatches(text)) {
+      if (ranges.any((r) => r.ref != null && m.start < r.end && r.start < m.end)) continue;
+      ranges.add((start: m.start, end: m.end, ref: null, url: m.group(1)));
+    }
+    ranges.sort((a, b) => a.start.compareTo(b.start));
+
+    final Widget body;
     if (ranges.isEmpty && widget.prefix.isEmpty) {
-      return Text(text, style: base, maxLines: widget.maxLines, overflow: widget.overflow);
+      body = Text(text, style: base, maxLines: widget.maxLines, overflow: widget.overflow, textAlign: widget.textAlign);
+    } else {
+      final spans = <InlineSpan>[...widget.prefix];
+      var last = 0;
+      for (final r in ranges) {
+        if (r.start > last) spans.add(TextSpan(text: text.substring(last, r.start)));
+        final recognizer = TapGestureRecognizer()
+          ..onTap = r.ref != null ? () => _open(r.ref!) : () => openRichTextLink(context, r.url!);
+        _recognizers.add(recognizer);
+        spans.add(TextSpan(
+          text: text.substring(r.start, r.end),
+          style: r.ref != null ? linkStyle : urlStyle,
+          recognizer: recognizer,
+        ));
+        last = r.end;
+      }
+      if (last < text.length) spans.add(TextSpan(text: text.substring(last)));
+      body = Text.rich(
+        TextSpan(style: base, children: spans),
+        maxLines: widget.maxLines,
+        overflow: widget.overflow,
+        textAlign: widget.textAlign,
+      );
     }
 
-    final spans = <InlineSpan>[...widget.prefix];
-    var last = 0;
-    for (final r in ranges) {
-      if (r.start > last) spans.add(TextSpan(text: text.substring(last, r.start)));
-      final recognizer = TapGestureRecognizer()..onTap = () => _open(r.ref);
-      _recognizers.add(recognizer);
-      spans.add(TextSpan(
-        text: text.substring(r.start, r.end),
-        style: linkStyle,
-        recognizer: recognizer,
-      ));
-      last = r.end;
-    }
-    if (last < text.length) spans.add(TextSpan(text: text.substring(last)));
-
-    return Text.rich(
-      TextSpan(style: base, children: spans),
-      maxLines: widget.maxLines,
-      overflow: widget.overflow,
+    if (!widget.linkPreview || !ranges.any((r) => r.url != null)) return body;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: switch (widget.textAlign) {
+        TextAlign.center => CrossAxisAlignment.center,
+        _ => CrossAxisAlignment.start,
+      },
+      children: [body, TextLinkPreview(text)],
     );
   }
 }

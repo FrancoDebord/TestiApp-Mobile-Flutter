@@ -461,7 +461,7 @@ class PrayerSessionCard extends StatelessWidget {
                 Text(s.title, style: AppTextStyles.h4, maxLines: 2, overflow: TextOverflow.ellipsis),
                 if (s.description != null) ...[
                   const SizedBox(height: 4),
-                  Text(s.description!,
+                  MentionText(s.description!,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),

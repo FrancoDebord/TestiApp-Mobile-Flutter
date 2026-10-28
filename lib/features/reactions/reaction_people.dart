@@ -198,16 +198,30 @@ Future<void> showReactionPeople(
     useSafeArea: true,
     isScrollControlled: true,
     backgroundColor: AppColors.surface,
-    builder: (sheet) => ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(sheet).height * 0.75),
-      child: ReactionPeopleSheet(
-        path: subject.peoplePath(id),
-        initialType: initialType,
-        commentsLabel: subject.commentsLabel,
-        // Pas de commentaires sur une session de prière.
-        hasComments: subject != ReactionSubject.prayerSession,
-      ),
-    ),
+    builder: (sheet) {
+      // Affichage bord à bord (Android 15) : la barre de navigation du téléphone
+      // recouvre le bas de la feuille (useSafeArea ne protège que le haut). Le
+      // contenu est remonté au-dessus d'elle, avec une marge, et la feuille garde
+      // une hauteur minimale pour ne jamais rester collée au bas de l'écran.
+      final height = MediaQuery.sizeOf(sheet).height;
+      final bottom = MediaQuery.viewPaddingOf(sheet).bottom;
+      return Padding(
+        padding: EdgeInsets.only(bottom: bottom + 12),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minHeight: height * 0.4,
+            maxHeight: height * 0.75 - bottom,
+          ),
+          child: ReactionPeopleSheet(
+            path: subject.peoplePath(id),
+            initialType: initialType,
+            commentsLabel: subject.commentsLabel,
+            // Pas de commentaires sur une session de prière.
+            hasComments: subject != ReactionSubject.prayerSession,
+          ),
+        ),
+      );
+    },
   );
 }
 
