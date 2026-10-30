@@ -21,6 +21,7 @@ import '../../../services/api_service.dart' show LaravelApiException;
 import '../../downloads/offline_open.dart' show openMyTestimonyOffline;
 import '../models/user_testimony_model.dart';
 import '../providers/profile_provider.dart';
+import '../../playlists/widgets/playlist_sheets.dart' show showAddToPlaylistSheet;
 import '../../../shared/content_deletion.dart' show deleteTestimonyContent;
 
 // =============================================================================
@@ -682,6 +683,8 @@ class _CardMenu extends StatelessWidget {
           case 'view':   onView();
           case 'edit':   onEdit();
           case 'delete': onDelete();
+          // Ses témoignages (jamais le carnet privé, qui a sa propre liste).
+          case 'playlist': showAddToPlaylistSheet(context, testimonyId: testimony.id);
         }
       },
       itemBuilder: (_) => [
@@ -700,6 +703,14 @@ class _CardMenu extends StatelessWidget {
             const Icon(Icons.edit_outlined, size: 18),
             const SizedBox(width: 10),
             Text(context.l10n.commonEdit),
+          ]),
+        ),
+        PopupMenuItem(
+          value: 'playlist',
+          child: Row(children: [
+            const Icon(Icons.playlist_add_rounded, size: 18),
+            const SizedBox(width: 10),
+            Flexible(child: Text(context.l10n.playlistAddTo, overflow: TextOverflow.ellipsis)),
           ]),
         ),
         PopupMenuItem(

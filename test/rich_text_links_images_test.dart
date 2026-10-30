@@ -13,6 +13,7 @@ import 'package:testi_app/features/publish/screens/publish_preview_screen.dart';
 import 'package:testi_app/shared/models/user_model.dart';
 import 'package:testi_app/shared/utils/rich_text_utils.dart';
 import 'package:testi_app/shared/widgets/rich_mention_editing_controller.dart';
+import 'package:testi_app/features/playlists/providers/playlist_providers.dart' show myPlaylistsProvider;
 
 const _img = 'https://temoignage.as-krea.com/storage/media/images/a.jpg';
 
@@ -127,6 +128,8 @@ void main() {
     await tester.pumpWidget(ProviderScope(
       overrides: [
         currentUserProvider.overrideWithValue(const UserModel(id: 'u1', displayName: 'Marie')),
+        // Bloc « Liste de témoignages » de l'étape 3 : pas de réseau.
+        myPlaylistsProvider.overrideWith((ref) async => const []),
         categoriesListProvider.overrideWithValue(const [CategoryModel(id: 'c2', name: 'Guérison', slug: 'guerison')]),
         publishProvider.overrideWith(() => _Draft(PublishDraft(
               format: TestimonyFormat.text,

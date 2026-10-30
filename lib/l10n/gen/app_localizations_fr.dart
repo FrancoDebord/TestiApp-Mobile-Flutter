@@ -11061,4 +11061,195 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get testimonyWebSaveFailed =>
       'Le choix n\'a pas pu être enregistré. Réessayez.';
+
+  @override
+  String get playlistsTitle => 'Listes de témoignages';
+
+  @override
+  String get playlistsMine => 'Mes listes';
+
+  @override
+  String get playlistsTab => 'Listes';
+
+  @override
+  String get playlistsMineIntro =>
+      'Regroupez vos témoignages qui parlent d\'une même chose, comme des épisodes. À la lecture, les suivants s\'enchaînent.';
+
+  @override
+  String get playlistsEmptyMine => 'Vous n\'avez pas encore de liste.';
+
+  @override
+  String get playlistsEmptyUser => 'Aucune liste pour le moment.';
+
+  @override
+  String get playlistsLoadError => 'Impossible de charger les listes.';
+
+  @override
+  String get playlistLoadError => 'Impossible de charger la liste.';
+
+  @override
+  String get playlistNotFound =>
+      'Cette liste n\'existe plus ou ne contient aucun témoignage visible.';
+
+  @override
+  String playlistCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count témoignages',
+      one: '1 témoignage',
+      zero: 'Aucun témoignage',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String playlistPosition(int position, int count) {
+    return '$position sur $count';
+  }
+
+  @override
+  String get playlistPublishTitle => 'Liste de témoignages';
+
+  @override
+  String get playlistPublishHint =>
+      'Facultatif : ajoutez ce témoignage à une de vos listes, ou créez-en une.';
+
+  @override
+  String get playlistPublishExisting => 'Liste';
+
+  @override
+  String get playlistNone => 'Aucune liste';
+
+  @override
+  String get playlistPublishNew => 'Ou nouvelle liste';
+
+  @override
+  String get playlistPublishNewHint => 'Titre de la nouvelle liste';
+
+  @override
+  String get playlistPrevious => 'Précédent';
+
+  @override
+  String get playlistNext => 'Suivant';
+
+  @override
+  String get playlistAutoplay => 'Lecture auto de la liste';
+
+  @override
+  String playlistUpNext(String title) {
+    return 'À suivre : $title';
+  }
+
+  @override
+  String playlistUpNextIn(int seconds) {
+    return 'Lecture dans $seconds s';
+  }
+
+  @override
+  String get playlistPlayNow => 'Lire maintenant';
+
+  @override
+  String get playlistOpen => 'Ouvrir la liste';
+
+  @override
+  String get playlistNew => 'Nouvelle liste';
+
+  @override
+  String get playlistCreate => 'Créer';
+
+  @override
+  String get playlistEditTitle => 'Modifier la liste';
+
+  @override
+  String get playlistTitleLabel => 'Titre';
+
+  @override
+  String get playlistDescriptionLabel => 'Description (facultatif)';
+
+  @override
+  String get playlistTitleRequired => 'Donnez un titre à la liste.';
+
+  @override
+  String get playlistCreated => 'Liste créée';
+
+  @override
+  String get playlistSaved => 'Liste enregistrée';
+
+  @override
+  String get playlistDelete => 'Supprimer la liste';
+
+  @override
+  String playlistDeleteTitle(String title) {
+    return 'Supprimer « $title » ?';
+  }
+
+  @override
+  String get playlistDeleteBody =>
+      'Seule la liste est supprimée : vos témoignages restent publiés.';
+
+  @override
+  String get playlistDeleted => 'Liste supprimée';
+
+  @override
+  String get playlistPlayAll => 'Tout lire';
+
+  @override
+  String get playlistShare => 'Partager la liste';
+
+  @override
+  String get playlistAddTo => 'Ajouter à une liste';
+
+  @override
+  String get playlistAddToHint => 'Choisissez une liste ou créez-en une.';
+
+  @override
+  String playlistAdded(String title) {
+    return 'Ajouté à « $title »';
+  }
+
+  @override
+  String get playlistRemoveItem => 'Retirer de la liste';
+
+  @override
+  String get playlistRemoveItemTitle => 'Retirer ce témoignage de la liste ?';
+
+  @override
+  String get playlistRemoveItemBody =>
+      'Le témoignage reste publié ; il n\'est plus dans cette liste.';
+
+  @override
+  String get playlistRemoved => 'Retiré de la liste';
+
+  @override
+  String get playlistAddMine => 'Ajouter un de mes témoignages';
+
+  @override
+  String get playlistNothingToAdd =>
+      'Tous vos témoignages sont déjà dans cette liste.';
+
+  @override
+  String get playlistReorderHint =>
+      'Maintenez un témoignage et faites-le glisser pour changer l\'ordre.';
+
+  @override
+  String get playlistEmptyItems => 'Cette liste est vide.';
+
+  @override
+  String get playlistOnlyYou => 'Visible par vous seulement';
+
+  @override
+  String get playlistOrderSaved => 'Ordre enregistré';
+
+  @override
+  String get playlistMoreActions => 'Actions de la liste';
+
+  @override
+  String get playlistItemTypeText => 'Écrit';
+
+  @override
+  String get playlistItemTypeAudio => 'Audio';
+
+  @override
+  String get playlistItemTypeVideo => 'Vidéo';
 }

@@ -14,6 +14,7 @@ import 'package:testi_app/features/publish/screens/publish_preview_screen.dart';
 import 'package:testi_app/features/publish/screens/publish_screen.dart';
 import 'package:testi_app/shared/models/user_model.dart';
 import 'package:testi_app/shared/widgets/app_button.dart';
+import 'package:testi_app/features/playlists/providers/playlist_providers.dart' show myPlaylistsProvider;
 
 const _admin = UserModel(
   id: 'u1',
@@ -72,6 +73,8 @@ Widget _app(
     ProviderScope(
       overrides: [
         currentUserProvider.overrideWithValue(_admin),
+        // Bloc « Liste de témoignages » de l'étape 3 : pas de réseau.
+        myPlaylistsProvider.overrideWith((ref) async => const []),
         categoriesListProvider.overrideWithValue(_categories),
         if (draft != null) publishProvider.overrideWith(() => _Draft(draft)),
         publishStepProvider.overrideWith(() => _Step(step)),

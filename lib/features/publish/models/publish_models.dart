@@ -180,6 +180,9 @@ class PublishDraft {
     this.isAnonymous = false,
     this.resume = '',
     this.transcription = '',
+    this.playlistId,
+    this.playlistTitle = '',
+    this.playlistError,
   });
 
   /// Brouillon enregistré sur le téléphone (table `drafts`) dont ce formulaire est la suite.
@@ -232,6 +235,16 @@ class PublishDraft {
   /// lus par Google sur la page du témoignage.
   String resume;
   String transcription;
+
+  // Liste de témoignages (facultatif ; docs serveur listes-de-temoignages.md)
+  /// Liste existante choisie (`playlist_id`) ; null : aucune.
+  String? playlistId;
+
+  /// Titre d'une nouvelle liste (`playlist_title`), prioritaire sur [playlistId].
+  String playlistTitle;
+
+  /// Erreur 422 du serveur (`errors.playlist_id`), affichée sous le champ.
+  String? playlistError;
 
   // preuves : emplacement (1 ou 2) → fichier local
   Map<int, ProofAttachment> proofs;
@@ -332,6 +345,8 @@ class PublishDraft {
         'isAnonymous': isAnonymous,
         'resume': resume,
         'transcription': transcription,
+        'playlistId': playlistId,
+        'playlistTitle': playlistTitle,
       };
 
   factory PublishDraft.fromDraftJson(Map<String, dynamic> j, {String? draftId}) {
@@ -387,6 +402,8 @@ class PublishDraft {
       isAnonymous: j['isAnonymous'] == true,
       resume: pick<String>('resume') ?? '',
       transcription: pick<String>('transcription') ?? '',
+      playlistId: pick<String>('playlistId'),
+      playlistTitle: pick<String>('playlistTitle') ?? '',
     );
   }
 
@@ -430,6 +447,9 @@ class PublishDraft {
     bool? isAnonymous,
     String? resume,
     String? transcription,
+    Object? playlistId = _sentinel,
+    String? playlistTitle,
+    Object? playlistError = _sentinel,
   }) {
     return PublishDraft(
       format: format ?? this.format,
@@ -479,6 +499,9 @@ class PublishDraft {
       isAnonymous: isAnonymous ?? this.isAnonymous,
       resume: resume ?? this.resume,
       transcription: transcription ?? this.transcription,
+      playlistId: playlistId == _sentinel ? this.playlistId : playlistId as String?,
+      playlistTitle: playlistTitle ?? this.playlistTitle,
+      playlistError: playlistError == _sentinel ? this.playlistError : playlistError as String?,
     );
   }
 }

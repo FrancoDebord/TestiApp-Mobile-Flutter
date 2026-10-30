@@ -25,6 +25,7 @@ class AudioPlayerState {
     this.currentTestimony,
     this.qualityLabel,
     this.qualityOverride,
+    this.completedTracks = 0,
   });
 
   final String? url;
@@ -51,6 +52,10 @@ class AudioPlayerState {
   /// Qualité choisie manuellement dans le lecteur (null = préférence).
   final AudioQuality? qualityOverride;
 
+  /// Pistes arrivées au bout en mode [AudioPlayerNotifier.stopAtTrackEnd]
+  /// (liste de témoignages : l'écran annonce alors le suivant de la liste).
+  final int completedTracks;
+
   bool get hasNext => queueIndex < queueLength - 1;
   bool get hasPrevious => queueIndex > 0;
 
@@ -69,6 +74,7 @@ class AudioPlayerState {
     String? qualityLabel,
     AudioQuality? qualityOverride,
     bool clearQualityOverride = false,
+    int? completedTracks,
   }) {
     return AudioPlayerState(
       url: url ?? this.url,
@@ -85,6 +91,7 @@ class AudioPlayerState {
       qualityOverride: clearQualityOverride
           ? null
           : (qualityOverride ?? this.qualityOverride),
+      completedTracks: completedTracks ?? this.completedTracks,
     );
   }
 
@@ -174,6 +181,15 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
     final isLast = _queueIndex >= _queue.length - 1;
     final repeatAll = prefs.repeatMode == RepeatMode.all;
 
+    // Liste de témoignages : arrêt au bout de la piste (sauf « Répéter ce
+    // témoignage ») ; l'écran choisit la suite dans la liste.
+    if (stopAtTrackEnd && prefs.repeatMode != RepeatMode.one) {
+      state = state.copyWith(isPlaying: false, position: Duration.zero, completedTracks: state.completedTracks + 1);
+      await _player.seek(Duration.zero);
+      await _player.pause();
+      return;
+    }
+
     if (prefs.repeatMode == RepeatMode.one ||
         (prefs.autoplayNext && repeatAll && _queue.length <= 1)) {
       await _player.seek(Duration.zero);
@@ -194,6 +210,22 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
     state = state.copyWith(isPlaying: false, position: Duration.zero);
     await _player.seek(Duration.zero);
     await _player.pause();
+  }
+
+  /// Mode liste de témoignages (docs serveur listes-de-temoignages.md) : la
+  /// file n'enchaîne pas, la fin de piste est signalée par `completedTracks`.
+  bool stopAtTrackEnd = false;
+
+  /// Change à chaque nouvelle file de lecture ([setQueue], [setTestimonyQueue]) :
+  /// un écran remplacé n'arrête que la lecture qu'il a lancée ([stopSession]).
+  int get session => _session;
+  int _session = 0;
+
+  /// Arrête la lecture si elle est toujours celle de [session].
+  Future<void> stopSession(int session) async {
+    if (session != _session) return;
+    stopAtTrackEnd = false;
+    await stop();
   }
 
   bool get _metered => ref.read(isMeteredConnectionProvider).value ?? true;
@@ -321,6 +353,7 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
   /// [startIndex]. Clamps [startIndex] to a valid range.
   Future<void> setQueue(List<String> sources, {int startIndex = 0}) async {
     if (sources.isEmpty) return;
+    _session++;
 
     _queue = List<String>.of(sources);
     _testimonies = [];
@@ -334,6 +367,7 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
     List<AudioTestimony> testimonies, {
     int startIndex = 0,
   }) async {
+    _session++;
     final start = testimonies.isEmpty
         ? null
         : testimonies[startIndex.clamp(0, testimonies.length - 1)];

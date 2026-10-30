@@ -70,6 +70,22 @@ void main() {
     expect(e.isLiked, isFalse);
   });
 
+  test('lien de partage du jour : shareUrl, sinon webUrl daté', () {
+    expect(VerseHistoryEntry.fromJson(_entry(1)).shareUrl, isNull);
+    expect(
+      VerseHistoryEntry.fromJson({..._entry(1), 'webUrl': 'https://site.org/verset-du-jour/2026-10-27'}).shareUrl,
+      'https://site.org/verset-du-jour/2026-10-27',
+    );
+    expect(
+      VerseHistoryEntry.fromJson({
+        ..._entry(1),
+        'webUrl': 'https://site.org/verset-du-jour/2026-10-27',
+        'shareUrl': 'https://partage.org/verset-du-jour/2026-10-27',
+      }).shareUrl,
+      'https://partage.org/verset-du-jour/2026-10-27',
+    );
+  });
+
   testWidgets('page des versets précédents : jours, compteurs, page suivante', (tester) async {
     final api = await _pump(tester);
     expect(find.text('Versets précédents'), findsOneWidget);
@@ -77,6 +93,9 @@ void main() {
     expect(find.text('Jean 3:16'), findsOneWidget);
     expect(find.text('12 j\'aime'), findsOneWidget);
     expect(find.text('2 témoignages'), findsWidgets);
+    // Chaque jour se partage sans l'ouvrir.
+    expect(find.byKey(const ValueKey('verse-history-share-99')), findsOneWidget);
+    expect(find.byTooltip('Partager le verset'), findsWidgets);
     // Défilement : page 2.
     await tester.drag(find.byType(ListView), const Offset(0, -3000));
     await tester.pumpAndSettle();

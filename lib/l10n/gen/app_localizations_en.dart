@@ -10958,4 +10958,196 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get testimonyWebSaveFailed =>
       'Your choice could not be saved. Please try again.';
+
+  @override
+  String get playlistsTitle => 'Testimony playlists';
+
+  @override
+  String get playlistsMine => 'My playlists';
+
+  @override
+  String get playlistsTab => 'Playlists';
+
+  @override
+  String get playlistsMineIntro =>
+      'Group your testimonies about the same thing, like episodes. When someone watches one, the next ones play in a row.';
+
+  @override
+  String get playlistsEmptyMine => 'You don\'t have any playlist yet.';
+
+  @override
+  String get playlistsEmptyUser => 'No playlist yet.';
+
+  @override
+  String get playlistsLoadError => 'Couldn\'t load the playlists.';
+
+  @override
+  String get playlistLoadError => 'Couldn\'t load the playlist.';
+
+  @override
+  String get playlistNotFound =>
+      'This playlist no longer exists or has no visible testimony.';
+
+  @override
+  String playlistCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count testimonies',
+      one: '1 testimony',
+      zero: 'No testimony',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String playlistPosition(int position, int count) {
+    return '$position of $count';
+  }
+
+  @override
+  String get playlistPublishTitle => 'Testimony playlist';
+
+  @override
+  String get playlistPublishHint =>
+      'Optional: add this testimony to one of your playlists, or create one.';
+
+  @override
+  String get playlistPublishExisting => 'Playlist';
+
+  @override
+  String get playlistNone => 'No playlist';
+
+  @override
+  String get playlistPublishNew => 'Or new playlist';
+
+  @override
+  String get playlistPublishNewHint => 'New playlist title';
+
+  @override
+  String get playlistPrevious => 'Previous';
+
+  @override
+  String get playlistNext => 'Next';
+
+  @override
+  String get playlistAutoplay => 'Autoplay playlist';
+
+  @override
+  String playlistUpNext(String title) {
+    return 'Up next: $title';
+  }
+
+  @override
+  String playlistUpNextIn(int seconds) {
+    return 'Playing in $seconds s';
+  }
+
+  @override
+  String get playlistPlayNow => 'Play now';
+
+  @override
+  String get playlistOpen => 'Open playlist';
+
+  @override
+  String get playlistNew => 'New playlist';
+
+  @override
+  String get playlistCreate => 'Create';
+
+  @override
+  String get playlistEditTitle => 'Edit playlist';
+
+  @override
+  String get playlistTitleLabel => 'Title';
+
+  @override
+  String get playlistDescriptionLabel => 'Description (optional)';
+
+  @override
+  String get playlistTitleRequired => 'Give the playlist a title.';
+
+  @override
+  String get playlistCreated => 'Playlist created';
+
+  @override
+  String get playlistSaved => 'Playlist saved';
+
+  @override
+  String get playlistDelete => 'Delete playlist';
+
+  @override
+  String playlistDeleteTitle(String title) {
+    return 'Delete “$title”?';
+  }
+
+  @override
+  String get playlistDeleteBody =>
+      'Only the playlist is deleted: your testimonies stay published.';
+
+  @override
+  String get playlistDeleted => 'Playlist deleted';
+
+  @override
+  String get playlistPlayAll => 'Play all';
+
+  @override
+  String get playlistShare => 'Share playlist';
+
+  @override
+  String get playlistAddTo => 'Add to a playlist';
+
+  @override
+  String get playlistAddToHint => 'Choose a playlist or create one.';
+
+  @override
+  String playlistAdded(String title) {
+    return 'Added to “$title”';
+  }
+
+  @override
+  String get playlistRemoveItem => 'Remove from playlist';
+
+  @override
+  String get playlistRemoveItemTitle =>
+      'Remove this testimony from the playlist?';
+
+  @override
+  String get playlistRemoveItemBody =>
+      'The testimony stays published; it\'s just no longer in this playlist.';
+
+  @override
+  String get playlistRemoved => 'Removed from the playlist';
+
+  @override
+  String get playlistAddMine => 'Add one of my testimonies';
+
+  @override
+  String get playlistNothingToAdd =>
+      'All your testimonies are already in this playlist.';
+
+  @override
+  String get playlistReorderHint =>
+      'Press and hold a testimony, then drag it to change the order.';
+
+  @override
+  String get playlistEmptyItems => 'This playlist is empty.';
+
+  @override
+  String get playlistOnlyYou => 'Only visible to you';
+
+  @override
+  String get playlistOrderSaved => 'Order saved';
+
+  @override
+  String get playlistMoreActions => 'Playlist actions';
+
+  @override
+  String get playlistItemTypeText => 'Written';
+
+  @override
+  String get playlistItemTypeAudio => 'Audio';
+
+  @override
+  String get playlistItemTypeVideo => 'Video';
 }

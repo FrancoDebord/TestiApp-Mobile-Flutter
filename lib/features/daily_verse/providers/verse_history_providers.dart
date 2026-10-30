@@ -1,7 +1,7 @@
 // Historique des versets du jour et verset d'un jour passé.
 // Backend : docs/fonctionnalites/verset-du-jour.md
 //   GET /daily-verse/history?page=&limit= → [{ date, id, reference, verseText, themeLabel,
-//       counts: { likes, prayers, comments, testimonies, prayerRequests }, myReactions, webUrl }]
+//       counts: { likes, prayers, comments, testimonies, prayerRequests }, myReactions, webUrl, shareUrl? }]
 //   GET /daily-verse/{id}                 → verset complet (comme le verset du jour)
 //   POST /daily-verse/{id}/react { type, active } → verset à jour
 
@@ -28,6 +28,7 @@ class VerseHistoryEntry {
     this.prayerRequests = 0,
     this.isLiked = false,
     this.isPrayed = false,
+    this.shareUrl,
   });
 
   factory VerseHistoryEntry.fromJson(Map<String, dynamic> m) {
@@ -47,6 +48,7 @@ class VerseHistoryEntry {
       prayerRequests: n(c['prayerRequests']),
       isLiked: mine.contains('like'),
       isPrayed: mine.contains('pray'),
+      shareUrl: [m['shareUrl'], m['webUrl']].whereType<String>().where((u) => u.isNotEmpty).firstOrNull,
     );
   }
 
@@ -62,6 +64,9 @@ class VerseHistoryEntry {
   final int prayerRequests;
   final bool isLiked;
   final bool isPrayed;
+
+  /// Lien daté du jour (`shareUrl`, sinon `webUrl`) ; null : construit par l'app.
+  final String? shareUrl;
 }
 
 class VerseHistoryState {

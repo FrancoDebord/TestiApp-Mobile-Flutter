@@ -317,13 +317,13 @@ class _PrayerRequestFeedCardState extends ConsumerState<PrayerRequestFeedCard> {
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       MyPrayerTimesLine(times: r.prayerTimes),
-                      TextButton(
+                      // Icône « annuler » ; le libellé reste en infobulle (lecteur d'écran).
+                      IconButton(
                         onPressed: _busy || r.isHidden ? null : () => _apply(removeLastPrayerAction(ref, r)),
-                        style: TextButton.styleFrom(
-                          foregroundColor: AppColors.textSecondary,
-                          visualDensity: VisualDensity.compact,
-                        ),
-                        child: Text(context.l10n.prayRemoveLast),
+                        tooltip: context.l10n.prayRemoveLast,
+                        icon: const Icon(Icons.undo_rounded, size: 18),
+                        color: AppColors.textSecondary,
+                        visualDensity: VisualDensity.compact,
                       ),
                     ],
                   ),

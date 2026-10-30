@@ -35,16 +35,23 @@ Future<PrayAgainChoice?> askPrayAgain(BuildContext context, {required int times}
               const SizedBox(height: 6),
               Text(l10n.prayAgainHint, style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary, height: 1.4)),
               const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: () => Navigator.of(sheet).pop(PrayAgainChoice.again),
-                icon: const Icon(Icons.volunteer_activism_outlined),
-                label: Text(l10n.prayAgain),
-              ),
-              const SizedBox(height: 6),
-              TextButton(
-                onPressed: () => Navigator.of(sheet).pop(PrayAgainChoice.removeLast),
-                child: Text(l10n.prayRemoveLast),
-              ),
+              Row(children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: () => Navigator.of(sheet).pop(PrayAgainChoice.again),
+                    icon: const Icon(Icons.volunteer_activism_outlined),
+                    label: Text(l10n.prayAgain),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                // Retirer ma dernière prière : icône « annuler », libellé en infobulle.
+                IconButton.outlined(
+                  onPressed: () => Navigator.of(sheet).pop(PrayAgainChoice.removeLast),
+                  tooltip: l10n.prayRemoveLast,
+                  icon: const Icon(Icons.undo_rounded),
+                  color: AppColors.textSecondary,
+                ),
+              ]),
             ],
           ),
         ),

@@ -55,6 +55,8 @@ import '../widgets/tts_listen_card.dart';
 import 'audio_player_screen.dart';
 import 'video_player_screen.dart';
 import '../../../shared/widgets/link_preview.dart';
+import '../../playlists/widgets/playlist_panel.dart' show PlaylistPanelFor;
+import '../../playlists/widgets/playlist_sheets.dart' show showAddToPlaylistSheet;
 
 // ── Modèle commentaire local (in-memory + SQLite) ─────────────────────────────
 
@@ -139,8 +141,12 @@ class _LocalComment {
 ///      │        └─ _SimilarTestimonies
 ///      └─ bottomNavigationBar: _StickyReactionBar
 class TestimonyDetailScreen extends ConsumerStatefulWidget {
-  const TestimonyDetailScreen({required this.testimonyId, super.key});
+  const TestimonyDetailScreen({required this.testimonyId, this.listId, super.key});
   final String testimonyId;
+
+  /// Liste d'où l'on vient (`?list=`) : panneau de cette liste ; sinon celle
+  /// choisie par le serveur (docs serveur listes-de-temoignages.md).
+  final String? listId;
 
   @override
   ConsumerState<TestimonyDetailScreen> createState() =>
@@ -539,7 +545,7 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
 
                     // Lecteur audio inline (en haut, comme le lecteur vidéo)
                     if (testimony is AudioTestimony)
-                      _AudioPlayerEmbed(testimony: testimony),
+                      _AudioPlayerEmbed(testimony: testimony, listId: widget.listId),
 
                     // Lecteur vidéo inline (lecteur YouTube si publiée par lien)
                     if (testimony is VideoTestimony && testimony.isYouTube)
@@ -554,7 +560,15 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
                         ),
                       )
                     else if (testimony is VideoTestimony)
-                      _VideoPlayerEmbed(testimony: testimony),
+                      _VideoPlayerEmbed(testimony: testimony, listId: widget.listId),
+
+                    // Liste de témoignages en cours : titre, position, Précédent / Suivant.
+                    PlaylistPanelFor(
+                      testimonyId: testimony.id,
+                      listId: widget.listId,
+                      showAutoplay: !isText,
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    ),
 
                     // Auteur et chaîne de la vidéo YouTube d'origine.
                     if (testimony is VideoTestimony && testimony.isYouTube && testimony.youtubeCredit != null)
@@ -635,6 +649,18 @@ class _TestimonyDetailScreenState extends ConsumerState<TestimonyDetailScreen> {
                         ),
                       ),
                     ),
+                    // Auteur : ranger ce témoignage dans une de ses listes.
+                    if (isOwnProfile)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                        child: OutlinedButton.icon(
+                          key: const ValueKey('detail-add-to-playlist'),
+                          onPressed: () => showAddToPlaylistSheet(context, testimonyId: testimony.id),
+                          icon: const Icon(Icons.playlist_add_rounded, size: 20),
+                          label: Text(context.l10n.playlistAddTo),
+                          style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(44)),
+                        ),
+                      ),
                     const Divider(
                       height: 1,
                       indent: 16,
@@ -1093,9 +1119,10 @@ class _ContentBody extends StatelessWidget {
 // ============================================================================
 
 class _AudioPlayerEmbed extends ConsumerStatefulWidget {
-  const _AudioPlayerEmbed({required this.testimony});
+  const _AudioPlayerEmbed({required this.testimony, this.listId});
 
   final AudioTestimony testimony;
+  final String? listId;
 
   @override
   ConsumerState<_AudioPlayerEmbed> createState() => _AudioPlayerEmbedState();
@@ -1136,7 +1163,7 @@ class _AudioPlayerEmbedState extends ConsumerState<_AudioPlayerEmbed> {
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) =>
-              AudioPlayerScreen(testimonyId: t.id, mediaPath: t.mediaPath),
+              AudioPlayerScreen(testimonyId: t.id, mediaPath: t.mediaPath, listId: widget.listId),
         ),
       ),
       child: Container(
@@ -1252,9 +1279,10 @@ class _AudioPlayerEmbedState extends ConsumerState<_AudioPlayerEmbed> {
 // ============================================================================
 
 class _VideoPlayerEmbed extends ConsumerWidget {
-  const _VideoPlayerEmbed({required this.testimony});
+  const _VideoPlayerEmbed({required this.testimony, this.listId});
 
   final VideoTestimony testimony;
+  final String? listId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1269,6 +1297,7 @@ class _VideoPlayerEmbed extends ConsumerWidget {
                   testimonyId: testimony.id,
                   mediaPath: testimony.mediaPath,
                   testimony: testimony,
+                  listId: listId,
                 ),
               ),
             ),

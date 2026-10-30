@@ -59,6 +59,8 @@ bool guestCanAccess(String location) {
     '/verset-du-jour',
     '/verse-history',
     '/temoignages-de-conversion',
+    // Liste de témoignages partagée (lecture libre ; « Mes listes » demande un compte).
+    '/listes/',
   ];
   // Section des témoignages de conversion (pas la modification du sien).
   if (path == '/conversions') return true;

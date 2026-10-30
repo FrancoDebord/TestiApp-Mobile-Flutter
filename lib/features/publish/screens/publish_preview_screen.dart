@@ -42,6 +42,10 @@ import 'video_camera_screen.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../conversion/data/conversion_repository.dart' show conversionMinYear, isValidConversionYear;
 import '../../conversion/widgets/conversion_widgets.dart' show conversionIcon;
+import '../../playlists/models/playlist_models.dart' show Playlist;
+import '../../playlists/providers/playlist_providers.dart' show myPlaylistsProvider;
+import '../../playlists/widgets/playlist_card.dart' show playlistsLoadErrorText;
+import '../../playlists/widgets/playlist_sheets.dart' show kPlaylistTitleMax;
 
 // =============================================================================
 // PublishPreviewScreen — 3-step stepper for text / audio / video testimony
@@ -1864,6 +1868,12 @@ class _Step3Visibility extends ConsumerWidget {
             const SizedBox(height: AppSpacing.lg),
           ],
 
+          // Liste de témoignages (facultatif ; jamais pour le carnet privé).
+          if (draft.visibility != TestimonyVisibility.private) ...[
+            const _PlaylistPublishCard(),
+            const SizedBox(height: AppSpacing.lg),
+          ],
+
           // Carnet privé : pas de consentement de publication.
           if (draft.visibility == TestimonyVisibility.private)
             const _JournalInfoCard()
@@ -2067,6 +2077,96 @@ class _WebPublicationCard extends ConsumerWidget {
           title: Text(l10n.publishWebAnonymous, style: titleStyle),
           subtitle: Text(l10n.publishWebAnonymousHint, style: AppTextStyles.bodySmall),
         ),
+    ]);
+  }
+}
+
+// ── Liste de témoignages (étape 3) ────────────────────────────────────────────
+
+/// « Liste de témoignages » : une de mes listes (`playlist_id`) ou le titre
+/// d'une nouvelle liste (`playlist_title`, prioritaire). Erreur 422 du serveur
+/// sous le champ. Docs serveur fonctionnalites/listes-de-temoignages.md
+class _PlaylistPublishCard extends ConsumerStatefulWidget {
+  const _PlaylistPublishCard();
+
+  @override
+  ConsumerState<_PlaylistPublishCard> createState() => _PlaylistPublishCardState();
+}
+
+class _PlaylistPublishCardState extends ConsumerState<_PlaylistPublishCard> {
+  late final _title = TextEditingController(text: ref.read(publishProvider).playlistTitle);
+
+  @override
+  void dispose() {
+    _title.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final draft = ref.watch(publishProvider);
+    final notifier = ref.read(publishProvider.notifier);
+    final lists = ref.watch(myPlaylistsProvider);
+    final newTitle = draft.playlistTitle.trim().isNotEmpty;
+    final mine = lists.value ?? const <Playlist>[];
+    // Liste choisie absente (supprimée depuis le brouillon) : « Aucune liste ».
+    final selected = mine.any((p) => p.id == draft.playlistId) ? draft.playlistId : null;
+
+    return _SectionCard(children: [
+      Row(children: [
+        const Icon(Icons.playlist_add_rounded, color: AppColors.primary),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(l10n.playlistPublishTitle,
+              style: AppTextStyles.labelMedium.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+        ),
+      ]),
+      const SizedBox(height: 4),
+      Text(l10n.playlistPublishHint, style: AppTextStyles.bodySmall),
+      const SizedBox(height: 12),
+      if (lists.isLoading && !lists.hasValue)
+        const LinearProgressIndicator(minHeight: 2)
+      else if (lists.hasError && !lists.hasValue)
+        Row(children: [
+          Expanded(child: Text(playlistsLoadErrorText(lists.error!), style: AppTextStyles.bodySmall)),
+          TextButton(onPressed: () => ref.invalidate(myPlaylistsProvider), child: Text(l10n.commonRetry)),
+        ])
+      else if (mine.isNotEmpty)
+        DropdownButtonFormField<String?>(
+          key: const ValueKey('publish-playlist-select'),
+          initialValue: selected,
+          isExpanded: true,
+          decoration: InputDecoration(
+            labelText: l10n.playlistPublishExisting,
+            // Erreur du serveur sous la liste choisie (titre vide : liste existante en cause).
+            errorText: newTitle ? null : draft.playlistError,
+          ),
+          items: [
+            DropdownMenuItem<String?>(value: null, child: Text(l10n.playlistNone)),
+            for (final p in mine)
+              DropdownMenuItem<String?>(
+                value: p.id,
+                child: Text(p.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+              ),
+          ],
+          // Un titre de nouvelle liste l'emporte : le choix est alors grisé.
+          onChanged: newTitle ? null : notifier.setPlaylist,
+        ),
+      const SizedBox(height: 10),
+      TextField(
+        key: const ValueKey('publish-playlist-new'),
+        controller: _title,
+        maxLength: kPlaylistTitleMax,
+        textCapitalization: TextCapitalization.sentences,
+        onChanged: notifier.setPlaylistTitle,
+        decoration: InputDecoration(
+          labelText: l10n.playlistPublishNew,
+          hintText: l10n.playlistPublishNewHint,
+          errorText: newTitle ? draft.playlistError : null,
+          prefixIcon: const Icon(Icons.add_rounded),
+        ),
+      ),
     ]);
   }
 }

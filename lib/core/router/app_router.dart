@@ -87,6 +87,8 @@ import 'app_transitions.dart';
 import '../../shared/widgets/scaffold_with_bottom_nav.dart';
 import '../../l10n/app_localizations.dart';
 import '../../features/profile/screens/my_data_screen.dart';
+import '../../features/playlists/screens/my_playlists_screen.dart' show MyPlaylistsScreen;
+import '../../features/playlists/screens/playlist_screen.dart' show PlaylistScreen;
 
 // ============================================================================
 // Router provider
@@ -422,6 +424,12 @@ List<RouteBase> _buildRoutes() {
         GoRoute(path: ':date', builder: (context, state) => DatedDailyVerseScreen(date: state.pathParameters['date']!)),
       ],
     ),
+    // Listes de témoignages : lien partagé (shareUrl /listes/{id}) et « Mes listes ».
+    GoRoute(
+      path: '/listes/:id',
+      builder: (context, state) => PlaylistScreen(playlistId: state.pathParameters['id']!),
+    ),
+    GoRoute(path: '/mes-listes', builder: (context, state) => const MyPlaylistsScreen()),
     // Historique des versets du jour (page dédiée).
     GoRoute(path: '/verse-history', builder: (context, state) => const VerseHistoryScreen()),
 
@@ -432,7 +440,8 @@ List<RouteBase> _buildRoutes() {
         final id = state.pathParameters['id']!;
         return AppTransitions.fadeScale(
           state: state,
-          child: TestimonyDetailScreen(testimonyId: id),
+          // ?list= : liste de témoignages d'où l'on vient (docs serveur listes-de-temoignages.md).
+          child: TestimonyDetailScreen(testimonyId: id, listId: state.uri.queryParameters['list']),
         );
       },
       routes: [

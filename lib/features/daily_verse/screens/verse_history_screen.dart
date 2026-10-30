@@ -1,7 +1,8 @@
 // Historique des versets du jour : un jour par carte, du plus récent au plus
 // ancien, avec ses « J'aime », prières, commentaires et témoignages (et ses
 // propres réactions en couleur). Toucher un jour ouvre son verset, avec les
-// mêmes onglets que le verset du jour.
+// mêmes onglets que le verset du jour. Chaque carte se partage sans l'ouvrir
+// (image du verset, texte et lien daté).
 // Backend : docs/fonctionnalites/verset-du-jour.md (GET /daily-verse/history).
 
 import 'package:flutter/material.dart';
@@ -11,6 +12,10 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../home/models/testimony_model.dart' show DailyVerse;
+import '../../home/providers/home_providers.dart' show dailyVerseProvider;
+import '../design/verse_share_image.dart';
+import '../design/verse_style_prefs.dart';
 import '../providers/verse_history_providers.dart';
 import 'daily_verse_screen.dart';
 
@@ -33,6 +38,25 @@ class VerseHistoryScreen extends ConsumerWidget {
       fullscreenDialog: true,
       builder: (_) => DailyVerseScreen(verseId: e.id, date: e.date),
     ));
+  }
+
+  /// Partage le verset du jour [e] tel quel : image (design choisi), texte et lien daté.
+  Future<void> _share(BuildContext context, WidgetRef ref, VerseHistoryEntry e) async {
+    final text = e.text.trim().replaceAll(RegExp(r'^[«"\s]+|[»"\s]+$'), '');
+    final link = dailyVerseShareLink(
+      DailyVerse(text: e.text, reference: e.reference, shareUrl: e.shareUrl),
+      date: e.date,
+    );
+    await shareVerseImage(
+      context,
+      design: ref.read(currentVerseDesignProvider),
+      prefs: ref.read(verseStylePrefsProvider),
+      text: e.text,
+      reference: e.reference,
+      shareText: '${context.l10n.verseShareText(text, e.reference)}\n$link',
+    );
+    // Le serveur ne compte que les partages du verset du jour.
+    if (_isToday(e.date)) await ref.read(dailyVerseProvider.notifier).recordShare();
   }
 
   @override
@@ -72,7 +96,12 @@ class VerseHistoryScreen extends ConsumerWidget {
                   ],
                 AsyncValue(:final value?) => [
                     for (final e in value.items) ...[
-                      _VerseDayCard(entry: e, isToday: _isToday(e.date), onTap: () => _open(context, e)),
+                      _VerseDayCard(
+                        entry: e,
+                        isToday: _isToday(e.date),
+                        onTap: () => _open(context, e),
+                        onShare: () => _share(context, ref, e),
+                      ),
                       const SizedBox(height: 12),
                     ],
                     if (value.loadingMore)
@@ -109,11 +138,12 @@ class VerseHistoryScreen extends ConsumerWidget {
 }
 
 class _VerseDayCard extends StatelessWidget {
-  const _VerseDayCard({required this.entry, required this.isToday, required this.onTap});
+  const _VerseDayCard({required this.entry, required this.isToday, required this.onTap, required this.onShare});
 
   final VerseHistoryEntry entry;
   final bool isToday;
   final VoidCallback onTap;
+  final VoidCallback onShare;
 
   @override
   Widget build(BuildContext context) {
@@ -163,6 +193,15 @@ class _VerseDayCard extends StatelessWidget {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
+                  ),
+                  // Partager sans ouvrir le verset.
+                  IconButton(
+                    key: ValueKey('verse-history-share-${e.id}'),
+                    onPressed: onShare,
+                    tooltip: l10n.verseShare,
+                    icon: const Icon(Icons.share_outlined, size: 20),
+                    color: AppColors.primary,
+                    visualDensity: VisualDensity.compact,
                   ),
                   const Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary),
                 ],

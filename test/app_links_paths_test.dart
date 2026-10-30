@@ -17,6 +17,7 @@ void main() {
       '/priere/requetes/',
       '/priere/sessions/',
       '/verset-du-jour',
+      '/listes/',
     ]) {
       expect(manifest, contains('android:pathPrefix="$prefix"'), reason: prefix);
     }
@@ -35,10 +36,12 @@ void main() {
       '/videos/9b1c',
       '/temoignages-de-conversion',
       '/conversions',
+      '/listes/0199aaaa-bbbb-7ccc-8ddd-eeeeffff0001',
     ]) {
       expect(guestCanAccess(path), isTrue, reason: path);
     }
     // Modifier son témoignage de conversion demande un compte.
     expect(guestCanAccess('/conversions/mine/edit'), isFalse);
+    expect(guestCanAccess('/mes-listes'), isFalse);
   });
 }

@@ -44,6 +44,11 @@ import '../providers/recommendations_provider.dart';
 import '../providers/view_tracker.dart';
 import '../../repost/testimony_share_sheet.dart';
 import '../../../shared/widgets/link_editing_controller.dart';
+import '../../playlists/models/playlist_models.dart';
+import '../../playlists/playlist_navigation.dart' show openPlaylistItem;
+import '../../playlists/providers/playlist_providers.dart';
+import '../../playlists/widgets/playlist_panel.dart' show PlaylistPanelFor;
+import '../../playlists/widgets/playlist_up_next_banner.dart';
 
 // ============================================================================
 // Video Player Screen — YouTube-inspired
@@ -90,10 +95,15 @@ class VideoPlayerScreen extends ConsumerStatefulWidget {
     this.testimony,
     this.playlist,
     this.qualityOverride,
+    this.listId,
     super.key,
   });
 
   final String testimonyId;
+
+  /// Liste de témoignages d'où l'on vient (`?list=`) ; null : celle choisie
+  /// par le serveur, s'il y en a une (docs serveur listes-de-temoignages.md).
+  final String? listId;
 
   /// URL directe passée depuis l'écran appelant (évite une recherche dans le feed).
   final String? mediaPath;
@@ -135,6 +145,11 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
   VideoTestimony? _nextUp; // vidéo suivante annoncée
   int _nextCountdown = 0;
   Timer? _nextTimer;
+
+  /// Témoignage suivant de la liste annoncé (bandeau « À suivre »).
+  PlaylistItem? _playlistNext;
+
+  PlaylistContextKey get _listKey => (testimonyId: widget.testimonyId, listId: widget.listId);
 
   Timer? _hideTimer;
 
@@ -529,6 +544,15 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
       return;
     }
 
+    // Dans une liste qui continue : son suivant (si la lecture auto de la
+    // liste est active), jamais une recommandation. En fin de liste : comme avant.
+    final list = ref.read(playlistContextProvider(_listKey)).value;
+    if (list?.nextId != null) {
+      final next = playlistNextToAutoplay(list, enabled: ref.read(playlistAutoplayProvider));
+      if (next != null) setState(() => _playlistNext = next);
+      return;
+    }
+
     // Lecture auto désactivée : on s'arrête (« Répéter la liste » implique
     // toujours la lecture auto, cf. PlaybackPreferencesNotifier).
     if (!prefs.autoplayNext) return;
@@ -583,6 +607,19 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
   void _cancelNext() {
     _nextTimer?.cancel();
     setState(() => _nextUp = null);
+  }
+
+  /// Ouvre le suivant de la liste en remplaçant ce lecteur.
+  Future<void> _playPlaylistNext() async {
+    final item = _playlistNext;
+    final list = ref.read(playlistContextProvider(_listKey)).value;
+    if (item == null || list == null) return;
+    if (_chewieCtrl?.isFullScreen ?? false) {
+      _chewieCtrl!.exitFullScreen();
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+    }
+    if (!mounted) return;
+    await openPlaylistItem(context, item, list.id, replace: true);
   }
 
   Future<void> _goToVideo(VideoTestimony t) async {
@@ -716,6 +753,19 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
                         ),
                       // Chargement pendant le changement de qualité
                       if (_switching) const _QualitySwitchOverlay(),
+                      // Suivant de la liste de témoignages (5 s, Annuler, Lire maintenant)
+                      if (_playlistNext != null)
+                        Positioned(
+                          left: 8,
+                          right: 8,
+                          bottom: 8,
+                          child: PlaylistUpNextBanner(
+                            key: ValueKey('playlist-up-next-${_playlistNext!.id}'),
+                            item: _playlistNext!,
+                            onPlay: _playPlaylistNext,
+                            onCancel: () => setState(() => _playlistNext = null),
+                          ),
+                        ),
                       // Annonce de la vidéo suivante
                       if (_nextUp != null)
                         Positioned(
@@ -769,6 +819,12 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
                       onLike: () => _toggleLike(testimony),
                       onShare: () => _share(testimony),
                       onComment: () => _showCommentsSheet(context),
+                    ),
+                    // Liste de témoignages en cours (titre, position, suivant).
+                    PlaylistPanelFor(
+                      testimonyId: widget.testimonyId,
+                      listId: widget.listId,
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
                     ),
                     _CommentsPreview(
                       count: testimony?.stats.comments ?? 0,

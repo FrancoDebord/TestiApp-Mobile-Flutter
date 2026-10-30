@@ -19,6 +19,7 @@ import '../../../core/media/video_source.dart' show isHlsUrl;
 import '../../../shared/models/account_approval.dart';
 import '../../../shared/models/mention.dart' show MentionRef;
 import '../../repost/repost.dart' show RepostInfo;
+import '../../playlists/models/playlist_models.dart' show PlaylistContext;
 
 // ============================================================================
 // ReactionType enum + extension
@@ -124,7 +125,7 @@ Testimony _applyStatsDelta(
       shareUrl: t.shareUrl, proofs: t.proofs,
       mentions: t.mentions, repost: t.repost, myReaction: t.myReaction, myPrayerTimes: t.myPrayerTimes,
       canDelete: t.canDelete, badges: t.badges, featuredSource: t.featuredSource,
-      conversion: t.conversion, web: t.web,
+      conversion: t.conversion, web: t.web, playlist: t.playlist,
     );
   }
   if (t is AudioTestimony) {
@@ -141,7 +142,7 @@ Testimony _applyStatsDelta(
       shareUrl: t.shareUrl, proofs: t.proofs,
       mentions: t.mentions, repost: t.repost, myReaction: t.myReaction, myPrayerTimes: t.myPrayerTimes,
       canDelete: t.canDelete, badges: t.badges, featuredSource: t.featuredSource,
-      conversion: t.conversion, web: t.web,
+      conversion: t.conversion, web: t.web, playlist: t.playlist,
     );
   }
   if (t is VideoTestimony) {
@@ -158,7 +159,7 @@ Testimony _applyStatsDelta(
       shareUrl: t.shareUrl, proofs: t.proofs,
       mentions: t.mentions, repost: t.repost, myReaction: t.myReaction, myPrayerTimes: t.myPrayerTimes,
       canDelete: t.canDelete, badges: t.badges, featuredSource: t.featuredSource,
-      conversion: t.conversion, web: t.web,
+      conversion: t.conversion, web: t.web, playlist: t.playlist,
     );
   }
   return t;
@@ -315,6 +316,8 @@ Testimony? testimonyFromApiJson(dynamic raw) {
     final conversion    = ConversionDetails.fromTestimonyJson(m);
     // Accord pour le web (docs serveur fonctionnalites/referencement.md).
     final web           = TestimonyWebPublication.fromJson(m);
+    // Liste de témoignages en cours (GET /testimonies/{id}?list=) : null hors liste.
+    final playlist      = PlaylistContext.fromJson(m['playlist']);
 
     switch (youtubeId != null ? 'video' : type) {
       case 'audio':
@@ -335,7 +338,7 @@ Testimony? testimonyFromApiJson(dynamic raw) {
           isFeatured: isFeatured, isLiked: isLiked, isPrayed: isPrayed, isSaved: isSaved,
           shareUrl: shareUrl, proofs: proofs, mentions: mentions,
           repost: repost, myReaction: myReaction, myPrayerTimes: myPrayerTimes, canDelete: canDelete,
-          badges: badges, featuredSource: featuredSource, conversion: conversion, web: web,
+          badges: badges, featuredSource: featuredSource, conversion: conversion, web: web, playlist: playlist,
         );
       case 'video':
         final bunny = youtubeId == null ? parseBunnyVideo(m) : null;
@@ -363,7 +366,7 @@ Testimony? testimonyFromApiJson(dynamic raw) {
           isFeatured: isFeatured, isLiked: isLiked, isPrayed: isPrayed, isSaved: isSaved,
           shareUrl: shareUrl, proofs: proofs, mentions: mentions,
           repost: repost, myReaction: myReaction, myPrayerTimes: myPrayerTimes, canDelete: canDelete,
-          badges: badges, featuredSource: featuredSource, conversion: conversion, web: web,
+          badges: badges, featuredSource: featuredSource, conversion: conversion, web: web, playlist: playlist,
         );
       default:
         final body = (m['bodyText'] ?? m['body_text']) as String? ?? '';
@@ -376,7 +379,7 @@ Testimony? testimonyFromApiJson(dynamic raw) {
           isFeatured: isFeatured, isLiked: isLiked, isPrayed: isPrayed, isSaved: isSaved,
           shareUrl: shareUrl, proofs: proofs, mentions: mentions,
           repost: repost, myReaction: myReaction, myPrayerTimes: myPrayerTimes, canDelete: canDelete,
-          badges: badges, featuredSource: featuredSource, conversion: conversion, web: web,
+          badges: badges, featuredSource: featuredSource, conversion: conversion, web: web, playlist: playlist,
         );
     }
   } catch (_) {

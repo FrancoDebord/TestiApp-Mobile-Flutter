@@ -239,7 +239,7 @@ void main() {
     expect(find.text('12 personnes prient'), findsOneWidget);
     expect(find.text('Vous avez prié 2 fois'), findsOneWidget);
 
-    await tester.tap(find.text('Retirer ma dernière prière'));
+    await tester.tap(find.byTooltip('Retirer ma dernière prière'));
     await tester.pumpAndSettle();
     expect(api.calls.last.path, '/prayer/requests/q1/pray');
     expect(api.calls.last.data, {'prayed': false, 'last': true});

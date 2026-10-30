@@ -146,6 +146,7 @@ class AppDrawer extends ConsumerWidget {
               item(Icons.record_voice_over_outlined, l10n.sharedDrawerProphecies, '/prophecies',
                   subtitle: l10n.sharedDrawerPropheciesSubtitle),
               item(Icons.video_library_outlined, l10n.profileMyTesti, '/profile/my-testimonies', tab: true),
+              item(Icons.playlist_play_rounded, l10n.playlistsMine, '/mes-listes'),
               item(Icons.bookmark_outline_rounded, l10n.sharedDrawerSaved, '/profile/saved', tab: true),
               // Administrateurs du compte (tous les comptes) et comptes que j'administre.
               item(Icons.manage_accounts_outlined, l10n.sharedDrawerManagers, '/managers',

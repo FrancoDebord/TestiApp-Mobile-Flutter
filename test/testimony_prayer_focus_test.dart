@@ -96,7 +96,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Vous avez prié 1 fois'), findsOneWidget);
     expect(find.text('Prier encore'), findsOneWidget);
-    await tester.tap(find.text('Retirer ma dernière prière'));
+    await tester.tap(find.byTooltip('Retirer ma dernière prière'));
     await tester.pumpAndSettle();
     expect(find.text('Temps de prière'), findsNothing);
     expect(api.deletes, [AppConstants.testimonyReactions('t1')]);

@@ -9,6 +9,7 @@ import 'media_rendition.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/models/account_approval.dart';
 import '../../../shared/models/mention.dart';
+import '../../playlists/models/playlist_models.dart';
 
 export 'media_rendition.dart';
 
@@ -263,7 +264,12 @@ sealed class Testimony {
     this.featuredSource,
     this.conversion,
     this.web,
+    this.playlist,
   });
+
+  /// Liste de témoignages en cours (`playlist` de GET /testimonies/{id}) ;
+  /// null hors liste ou dans le fil. Docs serveur listes-de-temoignages.md
+  final PlaylistContext? playlist;
 
   /// Accord pour le web (null : serveur ancien). Modifiable par l'auteur :
   /// PUT /testimonies/{id}/web.
@@ -364,6 +370,7 @@ final class TextTestimony extends Testimony {
     super.featuredSource,
     super.conversion,
     super.web,
+    super.playlist,
   });
 
   final String preview;
@@ -459,6 +466,7 @@ final class AudioTestimony extends Testimony {
     super.featuredSource,
     super.conversion,
     super.web,
+    super.playlist,
   });
 
   final int     durationSeconds;
@@ -529,6 +537,7 @@ final class VideoTestimony extends Testimony {
     super.featuredSource,
     super.conversion,
     super.web,
+    super.playlist,
   });
 
   final int     durationSeconds;
@@ -611,7 +620,7 @@ final class VideoTestimony extends Testimony {
         isSaved: isSaved, shareUrl: shareUrl, proofs: proofs,
         mentions: mentions, repost: repost, myReaction: myReaction, myPrayerTimes: myPrayerTimes,
         canDelete: canDelete, badges: badges, featuredSource: featuredSource,
-        conversion: conversion, web: web,
+        conversion: conversion, web: web, playlist: playlist,
       );
 
   String get formattedDuration {

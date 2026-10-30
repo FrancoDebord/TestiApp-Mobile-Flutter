@@ -22,6 +22,7 @@ import 'package:testi_app/services/api_service.dart';
 import 'package:testi_app/l10n/app_localizations.dart';
 import 'package:testi_app/shared/models/user_model.dart';
 import 'package:testi_app/shared/utils/rich_text_utils.dart';
+import 'package:testi_app/features/playlists/providers/playlist_providers.dart' show myPlaylistsProvider;
 
 class _Draft extends PublishNotifier {
   _Draft(this.initial);
@@ -123,6 +124,8 @@ void main() {
     Widget step3(TestimonyVisibility v) => ProviderScope(
           overrides: [
             currentUserProvider.overrideWithValue(const UserModel(id: 'u1', displayName: 'Marie')),
+            // Bloc « Liste de témoignages » de l'étape 3 : pas de réseau.
+            myPlaylistsProvider.overrideWith((ref) async => const []),
             categoriesListProvider.overrideWithValue(const [CategoryModel(id: 'c', name: 'Guérison', slug: 'guerison')]),
             publishProvider.overrideWith(() => _Draft(PublishDraft(
                   format: TestimonyFormat.text,

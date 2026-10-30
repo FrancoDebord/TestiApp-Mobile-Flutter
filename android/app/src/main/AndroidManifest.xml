@@ -97,6 +97,8 @@
                 <data android:pathPrefix="/priere/sessions/"/>
                 <data android:pathPrefix="/verset-du-jour"/>
                 <data android:path="/temoignages-de-conversion"/>
+                <!-- Listes de témoignages partagées : /listes/{id} -->
+                <data android:pathPrefix="/listes/"/>
                 <!-- Passages de la Bible : /bible/{traduction}/{livre}/{chapitre}/{versets} -->
                 <data android:pathPrefix="/bible/"/>
             </intent-filter>

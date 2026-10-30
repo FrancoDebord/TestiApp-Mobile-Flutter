@@ -19,6 +19,8 @@ import '../widgets/account_tile.dart';
 import '../widgets/follow_button.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/mention_text.dart';
+import '../../playlists/providers/playlist_providers.dart' show userPlaylistsProvider;
+import '../../playlists/widgets/profile_playlists_section.dart';
 
 /// Profil public d'un auteur (personne ou organisation) : présentation, bouton Suivre, témoignages.
 /// Son propre profil ouvre l'onglet « Profil ».
@@ -97,6 +99,7 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
           : RefreshIndicator(
               onRefresh: () {
                 ref.invalidate(userConversionProvider(widget.userId));
+                ref.invalidate(userPlaylistsProvider(widget.userId));
                 return _load();
               },
               child: ListView(
@@ -109,6 +112,11 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                   ),
                   // Témoignage de conversion publié, mis en avant (masqué s'il n'y en a pas).
                   ProfileConversionSection(
+                    userId: widget.userId,
+                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+                  ),
+                  // Listes de témoignages du compte (masquées s'il n'y en a aucune).
+                  ProfilePlaylistsSection(
                     userId: widget.userId,
                     padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
                   ),

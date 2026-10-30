@@ -5521,5 +5521,105 @@
   "testimonyWebOffHint": "Ni sur le site ni dans Google. Toujours visible dans l'application.",
   "testimonyWebSavedOn": "Votre témoignage est publié sur le web.",
   "testimonyWebSavedOff": "Votre témoignage est retiré du web.",
-  "testimonyWebSaveFailed": "Le choix n'a pas pu être enregistré. Réessayez."
+  "testimonyWebSaveFailed": "Le choix n'a pas pu être enregistré. Réessayez.",
+  "playlistsTitle": "Listes de témoignages",
+  "playlistsMine": "Mes listes",
+  "playlistsTab": "Listes",
+  "playlistsMineIntro": "Regroupez vos témoignages qui parlent d'une même chose, comme des épisodes. À la lecture, les suivants s'enchaînent.",
+  "playlistsEmptyMine": "Vous n'avez pas encore de liste.",
+  "playlistsEmptyUser": "Aucune liste pour le moment.",
+  "playlistsLoadError": "Impossible de charger les listes.",
+  "playlistLoadError": "Impossible de charger la liste.",
+  "playlistNotFound": "Cette liste n'existe plus ou ne contient aucun témoignage visible.",
+  "playlistCount": "{count, plural, =0{Aucun témoignage} =1{1 témoignage} other{{count} témoignages}}",
+  "@playlistCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "playlistPosition": "{position} sur {count}",
+  "@playlistPosition": {
+    "placeholders": {
+      "position": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "playlistPublishTitle": "Liste de témoignages",
+  "playlistPublishHint": "Facultatif : ajoutez ce témoignage à une de vos listes, ou créez-en une.",
+  "playlistPublishExisting": "Liste",
+  "playlistNone": "Aucune liste",
+  "playlistPublishNew": "Ou nouvelle liste",
+  "playlistPublishNewHint": "Titre de la nouvelle liste",
+  "playlistPrevious": "Précédent",
+  "playlistNext": "Suivant",
+  "playlistAutoplay": "Lecture auto de la liste",
+  "playlistUpNext": "À suivre : {title}",
+  "@playlistUpNext": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "playlistUpNextIn": "Lecture dans {seconds} s",
+  "@playlistUpNextIn": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "playlistPlayNow": "Lire maintenant",
+  "playlistOpen": "Ouvrir la liste",
+  "playlistNew": "Nouvelle liste",
+  "playlistCreate": "Créer",
+  "playlistEditTitle": "Modifier la liste",
+  "playlistTitleLabel": "Titre",
+  "playlistDescriptionLabel": "Description (facultatif)",
+  "playlistTitleRequired": "Donnez un titre à la liste.",
+  "playlistCreated": "Liste créée",
+  "playlistSaved": "Liste enregistrée",
+  "playlistDelete": "Supprimer la liste",
+  "playlistDeleteTitle": "Supprimer « {title} » ?",
+  "@playlistDeleteTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "playlistDeleteBody": "Seule la liste est supprimée : vos témoignages restent publiés.",
+  "playlistDeleted": "Liste supprimée",
+  "playlistPlayAll": "Tout lire",
+  "playlistShare": "Partager la liste",
+  "playlistAddTo": "Ajouter à une liste",
+  "playlistAddToHint": "Choisissez une liste ou créez-en une.",
+  "playlistAdded": "Ajouté à « {title} »",
+  "@playlistAdded": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "playlistRemoveItem": "Retirer de la liste",
+  "playlistRemoveItemTitle": "Retirer ce témoignage de la liste ?",
+  "playlistRemoveItemBody": "Le témoignage reste publié ; il n'est plus dans cette liste.",
+  "playlistRemoved": "Retiré de la liste",
+  "playlistAddMine": "Ajouter un de mes témoignages",
+  "playlistNothingToAdd": "Tous vos témoignages sont déjà dans cette liste.",
+  "playlistReorderHint": "Maintenez un témoignage et faites-le glisser pour changer l'ordre.",
+  "playlistEmptyItems": "Cette liste est vide.",
+  "playlistOnlyYou": "Visible par vous seulement",
+  "playlistOrderSaved": "Ordre enregistré",
+  "playlistMoreActions": "Actions de la liste",
+  "playlistItemTypeText": "Écrit",
+  "playlistItemTypeAudio": "Audio",
+  "playlistItemTypeVideo": "Vidéo"
 }

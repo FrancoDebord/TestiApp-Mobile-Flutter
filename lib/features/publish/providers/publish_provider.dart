@@ -366,6 +366,13 @@ class PublishNotifier extends Notifier<PublishDraft> {
 
   void updateTranscription(String value) => state = state.copyWith(transcription: value);
 
+  /// Liste existante (null : aucune). Efface le titre d'une nouvelle liste.
+  void setPlaylist(String? id) =>
+      state = state.copyWith(playlistId: id, playlistTitle: id == null ? null : '', playlistError: null);
+
+  /// Titre d'une nouvelle liste (prioritaire sur la liste choisie, comme côté serveur).
+  void setPlaylistTitle(String value) => state = state.copyWith(playlistTitle: value, playlistError: null);
+
   // ── Step 3: Publication ─────────────────────────────────────────────────────
 
   void setVisibility(TestimonyVisibility v) =>
@@ -560,6 +567,8 @@ class PublishNotifier extends Notifier<PublishDraft> {
       // anonymat sur le site ; audio et vidéo : résumé et transcription
       // (pour un audio, la transcription est la description saisie).
       ...webPublicationFields(state, format),
+      // Liste de témoignages (facultatif ; jamais pour le carnet privé).
+      ...playlistPublishFields(state),
       'visibility'  : switch (state.visibility) {
         TestimonyVisibility.private => 'private',
         TestimonyVisibility.friends => 'followers', // valeur attendue par l'API
@@ -683,12 +692,27 @@ class PublishNotifier extends Notifier<PublishDraft> {
       } else {
         // Erreur serveur (4xx/5xx) — informer l'utilisateur
         final serverMsg = (e.response?.data as Map?)?['message'] as String?;
+        // Liste d'un autre compte (422 errors.playlist_id) : message sous le champ.
+        final playlistError = playlistErrorFrom(e.response?.data);
+        if (playlistError != null) {
+          state = state.copyWith(status: PublishStatus.draft, errorMessage: playlistError, playlistError: playlistError);
+          return;
+        }
         final msg = serverMsg ??
             L10n.current.publishServerErrorRetry(
                 '${e.response?.statusCode ?? L10n.current.publishUnknownCode}');
         state = state.copyWith(status: PublishStatus.draft, errorMessage: msg);
         return;
       }
+    } on LaravelApiException catch (e) {
+      // 422 errors.playlist_id (liste d'un autre compte) : message sous le champ.
+      final playlistError = playlistErrorFrom({'errors': e.errors});
+      state = state.copyWith(
+        status: PublishStatus.draft,
+        errorMessage: playlistError ?? e.message,
+        playlistError: playlistError,
+      );
+      return;
     } catch (e) {
       debugPrint('═══ PUBLISH catch-all: $e');
       final raw = e.toString();
@@ -805,6 +829,29 @@ class PublishNotifier extends Notifier<PublishDraft> {
   }
 
   void reset() => state = PublishDraft();
+}
+
+/// Champs de la liste de témoignages envoyés avec POST /testimonies (et
+/// upload-init) : `playlist_title` (nouvelle liste, prioritaire) ou
+/// `playlist_id` ; rien pour le carnet privé. Docs serveur listes-de-temoignages.md
+Map<String, dynamic> playlistPublishFields(PublishDraft d) {
+  if (d.visibility == TestimonyVisibility.private) return const {};
+  final title = d.playlistTitle.trim();
+  if (title.isNotEmpty) return {'playlist_title': title};
+  final id = d.playlistId;
+  return id == null || id.isEmpty ? const {} : {'playlist_id': id};
+}
+
+/// Premier message de `errors.playlist_id` (ou `playlist_title`) d'une réponse 422.
+String? playlistErrorFrom(Object? body) {
+  final errors = body is Map ? body['errors'] : null;
+  if (errors is! Map) return null;
+  for (final key in const ['playlist_id', 'playlist_title']) {
+    final v = errors[key];
+    if (v is List && v.isNotEmpty) return '${v.first}';
+    if (v is String && v.isNotEmpty) return v;
+  }
+  return null;
 }
 
 // Mappe les libellés français → enum TestimonyCategory

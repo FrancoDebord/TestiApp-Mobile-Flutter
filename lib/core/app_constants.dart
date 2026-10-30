@@ -270,6 +270,19 @@ abstract final class AppConstants {
       '/bible/$book/$chapter?translation=$code';
   static const String bibleSearch = '/bible/search';
 
+  // ── Listes de témoignages (docs serveur fonctionnalites/listes-de-temoignages.md) ──
+  // GET /playlists/mine · GET /users/{id}/playlists · GET /playlists/{id}
+  // POST /playlists { title, description?, testimonyIds? } · PUT /playlists/{id} { title?, description?, testimonyIds? }
+  // DELETE /playlists/{id} · POST /playlists/{id}/testimonies { testimonyId }
+  // DELETE /playlists/{id}/testimonies/{testimonyId}
+  // GET /testimonies/{id}?list={playlistId} → data.playlist (liste en cours)
+  static const String playlists     = '/playlists';
+  static const String myPlaylists   = '/playlists/mine';
+  static String userPlaylists(String userId) => '/users/$userId/playlists';
+  static String playlistById(String id) => '/playlists/$id';
+  static String playlistTestimonies(String id) => '/playlists/$id/testimonies';
+  static String playlistTestimony(String id, String testimonyId) => '/playlists/$id/testimonies/$testimonyId';
+
   // ── Verset du jour ────────────────────────────────────────────────────────
   // POST /daily-verse/react  { type: "like"|"pray"|"amen" }
   // DELETE /daily-verse/react  { type: "like"|"pray"|"amen" }

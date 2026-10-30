@@ -22,6 +22,11 @@ import '../widgets/testimony_info.dart';
 import 'testimony_comments_screen.dart';
 import 'video_player_screen.dart' show singleQualityReason;
 import '../../repost/testimony_share_sheet.dart';
+import '../../playlists/models/playlist_models.dart';
+import '../../playlists/playlist_navigation.dart' show openPlaylistItem;
+import '../../playlists/providers/playlist_providers.dart';
+import '../../playlists/widgets/playlist_panel.dart' show PlaylistPanelFor;
+import '../../playlists/widgets/playlist_up_next_banner.dart';
 
 // ============================================================================
 // Audio Player Screen — lecteur plein écran (charte : fond blanc, bleu, orange)
@@ -54,10 +59,14 @@ import '../../repost/testimony_share_sheet.dart';
 //         └─ _MiniClose
 
 class AudioPlayerScreen extends ConsumerStatefulWidget {
-  const AudioPlayerScreen({required this.testimonyId, this.mediaPath, super.key});
+  const AudioPlayerScreen({required this.testimonyId, this.mediaPath, this.listId, super.key});
 
   final String  testimonyId;
   final String? mediaPath;
+
+  /// Liste de témoignages d'où l'on vient (`?list=`) ; null : celle choisie
+  /// par le serveur, s'il y en a une (docs serveur listes-de-temoignages.md).
+  final String? listId;
 
   @override
   ConsumerState<AudioPlayerScreen> createState() => _AudioPlayerScreenState();
@@ -74,6 +83,18 @@ class _AudioPlayerScreenState extends ConsumerState<AudioPlayerScreen>
   /// Notifier mémorisé pour pouvoir arrêter la lecture dans dispose().
   late final AudioPlayerNotifier _audio;
 
+  /// Lecture lancée par cet écran : remplacé par le témoignage suivant d'une
+  /// liste, il n'arrête pas la lecture du nouvel écran.
+  int? _session;
+
+  /// Témoignage de la liste en cours : la file n'enchaîne pas sur le fil.
+  PlaylistContext? _list;
+
+  /// Suivant de la liste annoncé (bandeau « À suivre »).
+  PlaylistItem? _playlistNext;
+
+  PlaylistContextKey get _listKey => (testimonyId: widget.testimonyId, listId: widget.listId);
+
   static const _speedOptions = [0.75, 1.0, 1.25, 1.5, 2.0];
 
   String _fmtDuration(Duration d) {
@@ -86,6 +107,17 @@ class _AudioPlayerScreenState extends ConsumerState<AudioPlayerScreen>
   void initState() {
     super.initState();
     _audio = ref.read(audioPlayerProvider.notifier);
+    // Dans une liste : arrêt en fin de piste, puis suivant de la liste.
+    ref.listenManual<AsyncValue<PlaylistContext?>>(playlistContextProvider(_listKey), (_, next) {
+      if (!mounted) return;
+      setState(() => _list = next.value);
+      if (_list != null && _session != null) _audio.stopAtTrackEnd = true;
+    }, fireImmediately: true);
+    ref.listenManual<int>(audioPlayerProvider.select((s) => s.completedTracks), (prev, next) {
+      if (prev == null || next <= prev || !mounted) return;
+      final item = playlistNextToAutoplay(_list, enabled: ref.read(playlistAutoplayProvider));
+      if (item != null) setState(() => _playlistNext = item);
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Un seul son à la fois : l'audio arrête la lecture vocale en cours.
       ref.read(ttsControllerProvider.notifier).stop();
@@ -109,6 +141,7 @@ class _AudioPlayerScreenState extends ConsumerState<AudioPlayerScreen>
     // Déjà en cours de lecture : on ne relance pas.
     if (ref.read(audioPlayerProvider).currentTestimony?.id ==
         widget.testimonyId) {
+      _started();
       return;
     }
 
@@ -123,6 +156,7 @@ class _AudioPlayerScreenState extends ConsumerState<AudioPlayerScreen>
       if (idx >= 0) {
         if (mounted) setState(() => _setTestimony(audios[idx]));
         await _audio.setTestimonyQueue(audios, startIndex: idx);
+        _started();
         return;
       }
     }
@@ -141,6 +175,7 @@ class _AudioPlayerScreenState extends ConsumerState<AudioPlayerScreen>
         setState(() => _setTestimony(t));
         if (_hasMedia(t)) {
           await _audio.setTestimonyQueue([t]);
+          _started();
           return;
         }
       }
@@ -161,9 +196,29 @@ class _AudioPlayerScreenState extends ConsumerState<AudioPlayerScreen>
     return src.startsWith('/') ? '$root$src' : '$root/$src';
   }
 
+  /// Lecture lancée : retenue pour dispose() ; dans une liste, pas d'enchaînement sur le fil.
+  void _started() {
+    _session = _audio.session;
+    _audio.stopAtTrackEnd = _list != null;
+  }
+
+  /// Ouvre le suivant de la liste en remplaçant ce lecteur.
+  Future<void> _playPlaylistNext() async {
+    final item = _playlistNext;
+    final list = _list;
+    if (item == null || list == null || !mounted) return;
+    await openPlaylistItem(context, item, list.id, replace: true);
+  }
+
   @override
   void dispose() {
-    _audio.stop();
+    // Remplacé par le suivant d'une liste : la nouvelle lecture continue.
+    final session = _session;
+    if (session == null) {
+      _audio.stop();
+    } else {
+      _audio.stopSession(session);
+    }
     super.dispose();
   }
 
@@ -307,9 +362,13 @@ class _AudioPlayerScreenState extends ConsumerState<AudioPlayerScreen>
                             isPlaying ? _audio.pause() : _audio.resume(),
                         onRewind: () => _audio.skipBackward(),
                         onForward: () => _audio.skipForward(),
-                        onPrevious:
-                            player.hasPrevious ? _audio.playPrevious : null,
-                        onNext: canNext ? _audio.playNext : null,
+                        // Dans une liste : précédent / suivant de la liste.
+                        onPrevious: _list != null
+                            ? (_list!.previous == null ? null : () => openPlaylistItem(context, _list!.previous!, _list!.id, replace: true))
+                            : player.hasPrevious ? _audio.playPrevious : null,
+                        onNext: _list != null
+                            ? (_list!.next == null ? null : () => openPlaylistItem(context, _list!.next!, _list!.id, replace: true))
+                            : canNext ? _audio.playNext : null,
                       ),
                       const SizedBox(height: 12),
 
@@ -325,7 +384,24 @@ class _AudioPlayerScreenState extends ConsumerState<AudioPlayerScreen>
                         onQuality: () => _openQualitySheet(player),
                         onSpeed: () => _cycleSpeed(player.speed),
                       ),
+                      // ── Suivant de la liste (5 s, Annuler, Lire maintenant) ─
+                      if (_playlistNext != null) ...[
+                        const SizedBox(height: 12),
+                        PlaylistUpNextBanner(
+                          key: ValueKey('playlist-up-next-${_playlistNext!.id}'),
+                          item: _playlistNext!,
+                          dark: false,
+                          onPlay: _playPlaylistNext,
+                          onCancel: () => setState(() => _playlistNext = null),
+                        ),
+                      ],
                       const SizedBox(height: 16),
+                      // ── Liste de témoignages en cours ─────────────────
+                      PlaylistPanelFor(
+                        testimonyId: widget.testimonyId,
+                        listId: widget.listId,
+                        padding: const EdgeInsets.only(bottom: 16),
+                      ),
                       const Divider(height: 1, color: AppColors.border),
                       const SizedBox(height: 16),
 

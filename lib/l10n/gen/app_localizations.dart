@@ -18997,6 +18997,336 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Le choix n\'a pas pu être enregistré. Réessayez.'**
   String get testimonyWebSaveFailed;
+
+  /// No description provided for @playlistsTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Listes de témoignages'**
+  String get playlistsTitle;
+
+  /// No description provided for @playlistsMine.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mes listes'**
+  String get playlistsMine;
+
+  /// No description provided for @playlistsTab.
+  ///
+  /// In fr, this message translates to:
+  /// **'Listes'**
+  String get playlistsTab;
+
+  /// No description provided for @playlistsMineIntro.
+  ///
+  /// In fr, this message translates to:
+  /// **'Regroupez vos témoignages qui parlent d\'une même chose, comme des épisodes. À la lecture, les suivants s\'enchaînent.'**
+  String get playlistsMineIntro;
+
+  /// No description provided for @playlistsEmptyMine.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vous n\'avez pas encore de liste.'**
+  String get playlistsEmptyMine;
+
+  /// No description provided for @playlistsEmptyUser.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune liste pour le moment.'**
+  String get playlistsEmptyUser;
+
+  /// No description provided for @playlistsLoadError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Impossible de charger les listes.'**
+  String get playlistsLoadError;
+
+  /// No description provided for @playlistLoadError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Impossible de charger la liste.'**
+  String get playlistLoadError;
+
+  /// No description provided for @playlistNotFound.
+  ///
+  /// In fr, this message translates to:
+  /// **'Cette liste n\'existe plus ou ne contient aucun témoignage visible.'**
+  String get playlistNotFound;
+
+  /// No description provided for @playlistCount.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count, plural, =0{Aucun témoignage} =1{1 témoignage} other{{count} témoignages}}'**
+  String playlistCount(int count);
+
+  /// No description provided for @playlistPosition.
+  ///
+  /// In fr, this message translates to:
+  /// **'{position} sur {count}'**
+  String playlistPosition(int position, int count);
+
+  /// No description provided for @playlistPublishTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Liste de témoignages'**
+  String get playlistPublishTitle;
+
+  /// No description provided for @playlistPublishHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Facultatif : ajoutez ce témoignage à une de vos listes, ou créez-en une.'**
+  String get playlistPublishHint;
+
+  /// No description provided for @playlistPublishExisting.
+  ///
+  /// In fr, this message translates to:
+  /// **'Liste'**
+  String get playlistPublishExisting;
+
+  /// No description provided for @playlistNone.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune liste'**
+  String get playlistNone;
+
+  /// No description provided for @playlistPublishNew.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ou nouvelle liste'**
+  String get playlistPublishNew;
+
+  /// No description provided for @playlistPublishNewHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Titre de la nouvelle liste'**
+  String get playlistPublishNewHint;
+
+  /// No description provided for @playlistPrevious.
+  ///
+  /// In fr, this message translates to:
+  /// **'Précédent'**
+  String get playlistPrevious;
+
+  /// No description provided for @playlistNext.
+  ///
+  /// In fr, this message translates to:
+  /// **'Suivant'**
+  String get playlistNext;
+
+  /// No description provided for @playlistAutoplay.
+  ///
+  /// In fr, this message translates to:
+  /// **'Lecture auto de la liste'**
+  String get playlistAutoplay;
+
+  /// No description provided for @playlistUpNext.
+  ///
+  /// In fr, this message translates to:
+  /// **'À suivre : {title}'**
+  String playlistUpNext(String title);
+
+  /// No description provided for @playlistUpNextIn.
+  ///
+  /// In fr, this message translates to:
+  /// **'Lecture dans {seconds} s'**
+  String playlistUpNextIn(int seconds);
+
+  /// No description provided for @playlistPlayNow.
+  ///
+  /// In fr, this message translates to:
+  /// **'Lire maintenant'**
+  String get playlistPlayNow;
+
+  /// No description provided for @playlistOpen.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ouvrir la liste'**
+  String get playlistOpen;
+
+  /// No description provided for @playlistNew.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nouvelle liste'**
+  String get playlistNew;
+
+  /// No description provided for @playlistCreate.
+  ///
+  /// In fr, this message translates to:
+  /// **'Créer'**
+  String get playlistCreate;
+
+  /// No description provided for @playlistEditTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Modifier la liste'**
+  String get playlistEditTitle;
+
+  /// No description provided for @playlistTitleLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Titre'**
+  String get playlistTitleLabel;
+
+  /// No description provided for @playlistDescriptionLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Description (facultatif)'**
+  String get playlistDescriptionLabel;
+
+  /// No description provided for @playlistTitleRequired.
+  ///
+  /// In fr, this message translates to:
+  /// **'Donnez un titre à la liste.'**
+  String get playlistTitleRequired;
+
+  /// No description provided for @playlistCreated.
+  ///
+  /// In fr, this message translates to:
+  /// **'Liste créée'**
+  String get playlistCreated;
+
+  /// No description provided for @playlistSaved.
+  ///
+  /// In fr, this message translates to:
+  /// **'Liste enregistrée'**
+  String get playlistSaved;
+
+  /// No description provided for @playlistDelete.
+  ///
+  /// In fr, this message translates to:
+  /// **'Supprimer la liste'**
+  String get playlistDelete;
+
+  /// No description provided for @playlistDeleteTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Supprimer « {title} » ?'**
+  String playlistDeleteTitle(String title);
+
+  /// No description provided for @playlistDeleteBody.
+  ///
+  /// In fr, this message translates to:
+  /// **'Seule la liste est supprimée : vos témoignages restent publiés.'**
+  String get playlistDeleteBody;
+
+  /// No description provided for @playlistDeleted.
+  ///
+  /// In fr, this message translates to:
+  /// **'Liste supprimée'**
+  String get playlistDeleted;
+
+  /// No description provided for @playlistPlayAll.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tout lire'**
+  String get playlistPlayAll;
+
+  /// No description provided for @playlistShare.
+  ///
+  /// In fr, this message translates to:
+  /// **'Partager la liste'**
+  String get playlistShare;
+
+  /// No description provided for @playlistAddTo.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ajouter à une liste'**
+  String get playlistAddTo;
+
+  /// No description provided for @playlistAddToHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Choisissez une liste ou créez-en une.'**
+  String get playlistAddToHint;
+
+  /// No description provided for @playlistAdded.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ajouté à « {title} »'**
+  String playlistAdded(String title);
+
+  /// No description provided for @playlistRemoveItem.
+  ///
+  /// In fr, this message translates to:
+  /// **'Retirer de la liste'**
+  String get playlistRemoveItem;
+
+  /// No description provided for @playlistRemoveItemTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Retirer ce témoignage de la liste ?'**
+  String get playlistRemoveItemTitle;
+
+  /// No description provided for @playlistRemoveItemBody.
+  ///
+  /// In fr, this message translates to:
+  /// **'Le témoignage reste publié ; il n\'est plus dans cette liste.'**
+  String get playlistRemoveItemBody;
+
+  /// No description provided for @playlistRemoved.
+  ///
+  /// In fr, this message translates to:
+  /// **'Retiré de la liste'**
+  String get playlistRemoved;
+
+  /// No description provided for @playlistAddMine.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ajouter un de mes témoignages'**
+  String get playlistAddMine;
+
+  /// No description provided for @playlistNothingToAdd.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tous vos témoignages sont déjà dans cette liste.'**
+  String get playlistNothingToAdd;
+
+  /// No description provided for @playlistReorderHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Maintenez un témoignage et faites-le glisser pour changer l\'ordre.'**
+  String get playlistReorderHint;
+
+  /// No description provided for @playlistEmptyItems.
+  ///
+  /// In fr, this message translates to:
+  /// **'Cette liste est vide.'**
+  String get playlistEmptyItems;
+
+  /// No description provided for @playlistOnlyYou.
+  ///
+  /// In fr, this message translates to:
+  /// **'Visible par vous seulement'**
+  String get playlistOnlyYou;
+
+  /// No description provided for @playlistOrderSaved.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ordre enregistré'**
+  String get playlistOrderSaved;
+
+  /// No description provided for @playlistMoreActions.
+  ///
+  /// In fr, this message translates to:
+  /// **'Actions de la liste'**
+  String get playlistMoreActions;
+
+  /// No description provided for @playlistItemTypeText.
+  ///
+  /// In fr, this message translates to:
+  /// **'Écrit'**
+  String get playlistItemTypeText;
+
+  /// No description provided for @playlistItemTypeAudio.
+  ///
+  /// In fr, this message translates to:
+  /// **'Audio'**
+  String get playlistItemTypeAudio;
+
+  /// No description provided for @playlistItemTypeVideo.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vidéo'**
+  String get playlistItemTypeVideo;
 }
 
 class _AppLocalizationsDelegate

@@ -549,6 +549,13 @@ class _MainMenu extends StatelessWidget {
           title: l10n.profileMyTesti,
           onTap: () => context.pushNamed(AppRoutes.myTestimonies),
         ),
+        // Listes de témoignages (docs serveur listes-de-temoignages.md).
+        ProfileMenuTile(
+          key: const ValueKey('profile-my-playlists'),
+          icon: Icons.playlist_play_rounded,
+          title: l10n.playlistsMine,
+          onTap: () => context.push('/mes-listes'),
+        ),
         ProfileMenuTile(
           icon: Icons.download_rounded,
           title: l10n.profileDownloads,
